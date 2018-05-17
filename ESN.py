@@ -4,6 +4,9 @@
 @author: Xavier HINAUT
 xavier.hinaut #/at\# inria.fr
 Copyright Xavier Hinaut 2018
+
+I would like to thank Mantas Lukosevicius for his code that was used as inspiration for this code:
+http://minds.jacobs-university.de/mantas/code
 """
 
 import numpy as np
