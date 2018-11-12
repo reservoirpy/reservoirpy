@@ -14,6 +14,7 @@ from scipy import linalg
 
 class ESN():
     def __init__(self, lr, W, Win, input_bias=True, ridge=None, Wfb=None, fbfunc=None):
+        #TODO : add check if fbfunc is not set when Wfb is not None
         """
         Dimensions of matrices:
             - W : (nr_neurons, nr_neurons)
@@ -40,12 +41,57 @@ class ESN():
             self.dim_out = self.Wfb.shape[1] # dimension of outputs
         else:
             self.dim_out = None
+        self.autocheck_nan()
 
 
+    def autocheck_nan(self):
+        """ Auto-check to see if some important variables do not have a problem (e.g. NAN values). """
+        assert np.isnan(self.W).any() == False # W matrix should not contain NAN values
+        assert np.isnan(self.Win).any() == False # W matrix should not contain NAN values
+        if self.Wfb is not None:
+            assert np.isnan(self.Wfb).any() == False # W matrix should not contain NAN values
 
+    def check_values(self, array_or_list, value):
+        """ Check if the given array or list contains the given value. """
+        if value == np.nan:
+            assert np.isnan(array_or_list).any() == False # array should not contain NAN values
+        if value == None:
+            if type(array_or_list) is list:
+                assert array_or_list.count(None) == 0 # check if there is a None value
+                #TODO: this one does not seem to work: assert any([x is None for x in array_or_list])  # check if there is a None value
+            elif type(array_or_list) is np.array:
+                # None is transformed to np.nan when it is in an array
+                assert np.isnan(array_or_list).any() == False # array should not contain NAN values
+
+
+    def autocheck_io(self, inputs, outputs=None, verbose=False):
+        # TODO: add check of output dimension
+        if verbose:
+            print "self.Win.shape[1]", self.Win.shape[1]
+            print "self.dim_inp", self.dim_inp
+            print "inputs[0].shape", inputs[0].shape
+        # check if inputs and outputs are lists
+        assert type(inputs) is list # inputs should be a list of numpy arrays
+        if outputs is not None:
+            assert type(outputs) is list # outputs should be a list of numpy arrays
+        # check if Win matrix has coherent dimensions with input dimensions
+        assert self.Win.shape[1] == self.dim_inp
+        if self.in_bias:
+            assert self.Win.shape[1] == inputs[0].shape[1] + 1 # with biais, the 2nd dimension of input matrix Win should be = dimension_of_input + 1
+        else:
+            assert self.Win.shape[1] == inputs[0].shape[1] # without biais, the 2nd dimension of input matrix Win should be = dimension_of_input
+        if outputs is not None:
+            # TODO: add check of outputs
+            # check feedback matrix
+            if self.Wfb is not None:
+                y = np.zeros((self.dim_out,1)) # I guess it's the best we can do, because we have no info on the teacher for this time step
+                assert teachers[0].shape[1] == self.dim_out # check if output dimension is correct
 
     def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False):
         #TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
+        #TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
+        #TODO: add option to enable direct connection from input to output to be learned
+            # need to remember the input at this stage
         """
         Dimensions:
         Inputs:
@@ -56,7 +102,10 @@ class ESN():
                 - during the execution of this method : (N, nr_time_step)
                 - returned dim (nr_time_step, N)
 
-        - #TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
+        - TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
+        - TODO: add option to enable direct connection from input to output to be learned
+            # need to remember the input at this stage
+        - TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
         """
         if verbose:
             print "len(inputs)", len(inputs)
@@ -64,18 +113,14 @@ class ESN():
             print "self.N", self.N
             print "self.W.shape", self.W.shape
             print "self.Win.shape", self.Win.shape
+        self.autocheck_io(inputs=inputs, outputs=teachers)
 
         # 'pre-allocated' memory for the list that will collect the states
         all_int_states = [None]*len(inputs)
         x = np.zeros((self.N,1)) # current internal state initialized at zero
-        if self.Wfb is not None:
-            y = np.zeros((self.dim_out,1)) # I guess it's the best we can do, because we have no info on the teacher for this time step
-            assert teachers[0].shape[1] == self.dim_out # check if output dimension is correct
         x = np.zeros((self.N,1)) # current internal state initialized at zero
         # 'pre-allocated' memory for the list that will collect the teachers (desired outputs)
         all_teachers = [None]*len(teachers)
-        # print "all_int_states.count(None)", all_int_states.count(None)
-        # raw_input()
 
         # change of variable for conveniance in equation
         di = self.dim_inp
@@ -120,7 +165,10 @@ class ESN():
                     print "u[t].shape", u[t].shape
                     print "u[t,:].shape", u[t,:].shape
                     print "di", di
-                    print "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,1).shape
+                    print "np.atleast_2d(u[t,:]).shape", np.atleast_2d(u[t,:]).shape
+                    # print "np.atleast_2d(u[t,:]).reshape(di,1).shape", np.atleast_2d(u[t,:]).reshape(di,1).shape
+                    # print "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,1).shape
+                    # print "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,-1).shape
                     # print "y", y
                     print "self.dim_out", self.dim_out
                     # print "tea[t,:].reshape(self.dim_out,1).T", tea[t,:].reshape(self.dim_out,1).T
@@ -132,7 +180,26 @@ class ESN():
                 # x = (1-self.lr) * x  +  self.lr * np.tanh( np.dot( self.Win, np.atleast_2d(u[t]).T ) + np.dot( self.W, x ) )
                 # TODO: this one is equivalent, but don't know which one is faster #TODO have to be tested
                 if self.Wfb is None:
+                    if verbose:
+                        print "u", u.shape
+                        print "x", x.shape
+                        print "self.Win", self.Win.shape
+                        print "self.W", self.W.shape
+                        print "u[t,:]", u[t,:].shape
+                        print "atleast_2d(u)[t,:]", np.atleast_2d(u)[t,:].shape
+                        print "u[t,:].reshape(di,1)", u[t,:].reshape(di,1).shape
+                        print "x", x
+                        print "DEBUG BEFORE"
+                        print "self.W", self.W
+                        print "(1-self.lr) * x", (1-self.lr) * x
+                        print "np.dot( self.Win, u[t,:].reshape(di,1) )", np.dot( self.Win, u[t,:].reshape(di,1) )
+                        print "np.dot( self.W, x )", np.dot( self.W, x )
                     x = (1-self.lr) * x  +  self.lr * np.tanh( np.dot( self.Win, u[t,:].reshape(di,1) ) + np.dot( self.W, x ) )
+                    if verbose:
+                        print "DEBUG AFTER"
+                        print "x.shape", x.shape
+                        print "x", x
+                    # raw_input()
                 else:
                     x = (1-self.lr) * x  +  self.lr * np.tanh( np.dot( self.Win, u[t,:].reshape(di,1) ) + np.dot( self.W, x ) + np.dot( self.Wfb, self.fbfunc(y) ) )
                     y = tea[t,:].reshape(self.dim_out,1)
@@ -142,8 +209,10 @@ class ESN():
                     # X[:,t-initLen] = np.vstack((1,u,x))[:,0]
                     if verbose:
                         print "x.shape", x.shape
+                        print "x", x
                         print "x.reshape(-1,).shape", x.reshape(-1,).shape
                         print "all_int_states[j][:,t-wash_nr_time_step].shape", all_int_states[j][:,t-wash_nr_time_step].shape
+                        # raw_input()
                         if self.Wfb is not None:
                             print "y.shape", y.shape
                             print "y.reshape(-1,).shape", y.reshape(-1,).shape
@@ -154,6 +223,11 @@ class ESN():
                             print "(y.reshape(-1,) == tea[t,:].reshape(-1,))", (y.reshape(-1,).shape == tea[t,:].reshape(-1,))
                     if self.Wfb is not None:
                         assert all(y.reshape(-1,) == tea[t,:].reshape(-1,))
+                    if verbose:
+                        print "x", x
+                        print "x.reshape(-1,)", x.reshape(-1,)
+                    #TODO: add option to enable direct connection from input to output to be learned
+                        # need to remember the input at this stage
                     all_int_states[j][:,t-wash_nr_time_step] = x.reshape(-1,)
                     all_teachers[j][:,t-wash_nr_time_step] = tea[t,:].reshape(-1,)
 
@@ -161,11 +235,14 @@ class ESN():
             print "all_int_states", all_int_states
             print "len(all_int_states)", len(all_int_states)
             print "all_int_states[0].shape", all_int_states[0].shape
+            print "all_int_states[0][:5,:15] (5 neurons on 15 time steps)", all_int_states[0][:5,:15]
             print "all_int_states.count(None)", all_int_states.count(None)
         # TODO: change the 2 following lines according to this error:
         # ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
         # assert all_int_states.count(None) == 0 # check if some input/teacher pass was not done
         # assert all_teachers.count(None) == 0 # check if some input/teacher pass was not done
+        self.check_values(array_or_list=all_int_states, value=None)
+        self.check_values(array_or_list=all_teachers, value=None)
 
         # concatenate the lists
         X = np.hstack(all_int_states)
@@ -189,6 +266,10 @@ class ESN():
             # use ridge regression (linear regression with regularization)
             if verbose:
                 print "USING RIDGE REGRESSION"
+                print "X", X.shape
+                print "X_T", X_T.shape
+                print "Y", Y.shape
+                print "N", self.N
             # Wout = np.dot(np.dot(Yt,X_T), linalg.inv(np.dot(X,X_T) + \
             Wout = np.dot(np.dot(Y,X_T), linalg.inv(np.dot(X,X_T) + \
                     self.ridge*np.eye(1+self.N) ) )
@@ -239,6 +320,9 @@ class ESN():
 
         - float32 : use float32 precision for training the reservoir instead of the default float64 precision
         """
+        ## Autochecks
+        self.autocheck_io(inputs=inputs)
+
         if reset_state:
             x = np.zeros((self.N,1))
             if self.Wfb is not None:
