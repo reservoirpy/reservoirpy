@@ -39,7 +39,7 @@ You can do this in a few steps:
     W = W * (spectral_radius / original_spectral_radius) # rescale W to reach the requested spectral radius
     ```
 
-(2. bis) Or use the tools available in mat_gen.py for automatic generation method:
+2. (Or use the tools available in mat_gen.py for automatic generation method.)
 
     ```python
     import mat_gen
