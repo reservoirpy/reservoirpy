@@ -7,21 +7,21 @@ This toolbox works for Python 2. Please send a request if you need it for Python
 Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
 
+    ```bash
+    python simple_example_MackeyGlass.py
+    ```
 
-      ```bash
-      python simple_example_MackeyGlass.py
-      ```
 - minimalESN_MackeyGlass.py (without the ESN class)
--
-```bash
-python simple_example_MackeyGlass.py
-```
+
+    ```bash
+    python simple_example_MackeyGlass.py
+    ```
 
 ## How to use the ESN class
 You can do this in a few steps:
 1. Define the number of dimension of input, recurrent and outputs layers:
 
-    `python
+    ```python
     n_inputs = 1
     input_bias = True # add a constant input to 1
     n_outputs = 1
@@ -30,7 +30,7 @@ You can do this in a few steps:
 
 2. Define yourself the random input Win and recurrent W matrices:
 
-    ``python
+    ```python
     import numpy as np
     Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
     W = np.random.rand(N,N)-0.5
@@ -38,12 +38,13 @@ You can do this in a few steps:
     original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
     W = W * (spectral_radius / original_spectral_radius) # rescale W to reach the requested spectral radius
     ```
+
 Or use the tools available in mat_gen.py for automatic generation method:
-    ```python
-    import mat_gen
-    W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=0.2, Wstd=1.0)
-    Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=0.2, input_bias=input_bias)
-    ```
+      ```python
+      import mat_gen
+      W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=0.2, Wstd=1.0)
+      Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=0.2, input_bias=input_bias)
+      ```
 
 3. Define the Echo State Network (ESN):
      ```python
