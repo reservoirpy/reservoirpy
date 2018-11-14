@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 #from pyESN import ESN
-# import ESN
-import ESNold as ESN
+import ESN
+# import ESNold as ESN
 # import reservoir as ESN
 
 def set_seed(seed=None):
@@ -23,7 +23,7 @@ def set_seed(seed=None):
     return seed
 
 #change the seed, reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
-seed = 42 #42
+seed = None #42
 
 set_seed(seed) #random.seed(seed)
 
@@ -66,6 +66,7 @@ N = n_reservoir#100
 dim_inp = n_inputs #26
 
 ## Generating random weight matrices with toolbox methods
+#import mat_gen
 # W = mat_gen.generate_internal_weights(N=self.N, spectral_radius=self.sr, proba=self.w_proba,
 # #                                            seed=seed, verbose=verbose)
 #                                 Wstd=self.Wstd, seed=current_seed, verbose=verbose)
@@ -100,19 +101,21 @@ Win = Win * input_scaling
 # scaling of recurrent matrix
 # compute the spectral radius of these weights:
 print 'Computing spectral radius...',
-radius = np.max(np.abs(np.linalg.eigvals(W)))
+original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
 #TODO: check if this operation is quicker: max(abs(linalg.eig(W)[0])) #from scipy import linalg
 print "default spectral radius before scaling:", radius
 # rescale them to reach the requested spectral radius:
-W = W * (spectral_radius / radius)
+W = W * (spectral_radius / original_spectral_radius)
 print "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W)))
 
 
 reservoir = ESN.ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
 
 
-train_in, train_out =  data[None,0:trainLen], data[None,0+1:trainLen+1]
-test_in, test_out =  data[None,trainLen:trainLen+testLen], data[None,trainLen+1:trainLen+testLen+1]
+train_in = data[None,0:trainLen]
+train_out = data[None,0+1:trainLen+1]
+test_in = data[None,trainLen:trainLen+testLen]
+test_out = data[None,trainLen+1:trainLen+testLen+1]
 
 # train_in, train_out =  np.vstack([data[0:trainLen],data[0:trainLen]]), np.vstack([data[0+1:trainLen+1], data[0+1:trainLen+1]])
 # test_in, test_out =  np.vstack([data[trainLen:trainLen+testLen],data[trainLen:trainLen+testLen]]) , np.vstack([data[trainLen+1:trainLen+testLen+1],data[trainLen+1:trainLen+testLen+1]])
