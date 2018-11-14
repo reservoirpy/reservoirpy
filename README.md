@@ -14,7 +14,7 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
 python imple_example_MackeyGlass.py
 ```
 
-## Using the ESN class for your own application
+## How to use the ESN class
 You can do this in a few steps:
 1. Define the number of dimension of input, recurrent and outputs layers:
     `python
