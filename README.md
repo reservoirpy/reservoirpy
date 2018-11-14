@@ -1,5 +1,6 @@
 # FunkyReservoir
 A simple and flexible code for Reservoir Computing architectures like Echo State Networks.
+
 This toolbox works for Python 2. Please send a request if you need it for Python 3, because the update to Python 3 should not be long.
 
 ## Quick try
