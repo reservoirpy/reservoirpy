@@ -7,15 +7,15 @@ This toolbox works for Python 2. Please send a request if you need it for Python
 Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
 
-    ```bash
-    python simple_example_MackeyGlass.py
-    ```
 
+      ```bash
+      python simple_example_MackeyGlass.py
+      ```
 - minimalESN_MackeyGlass.py (without the ESN class)
-
-    ```bash
-    python simple_example_MackeyGlass.py
-    ```
+-
+```bash
+python simple_example_MackeyGlass.py
+```
 
 ## How to use the ESN class
 You can do this in a few steps:
@@ -39,12 +39,13 @@ You can do this in a few steps:
     W = W * (spectral_radius / original_spectral_radius) # rescale W to reach the requested spectral radius
     ```
 
-Or use the tools available in mat_gen.py for automatic generation method:
-      ```python
-      import mat_gen
-      W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=0.2, Wstd=1.0)
-      Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=0.2, input_bias=input_bias)
-      ```
+2. (bis) Or use the tools available in mat_gen.py for automatic generation method:
+
+    ```python
+    import mat_gen
+    W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=0.2, Wstd=1.0)
+    Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=0.2, input_bias=input_bias)
+    ```
 
 3. Define the Echo State Network (ESN):
      ```python
