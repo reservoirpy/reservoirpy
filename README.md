@@ -7,15 +7,15 @@ This toolbox works for Python 2. Please send a request if you need it for Python
 Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
 
+    ```bash
+    python simple_example_MackeyGlass.py
+    ```
 
-      ```bash
-      python simple_example_MackeyGlass.py
-      ```
 - minimalESN_MackeyGlass.py (without the ESN class)
--
-```bash
-python simple_example_MackeyGlass.py
-```
+
+    ```bash
+    python simple_example_MackeyGlass.py
+    ```
 
 ## How to use the ESN class
 You can do this in a few steps:
