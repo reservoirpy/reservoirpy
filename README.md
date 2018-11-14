@@ -39,7 +39,7 @@ You can do this in a few steps:
     W = W * (spectral_radius / original_spectral_radius) # rescale W to reach the requested spectral radius
     ```
 
-2. (bis) Or use the tools available in mat_gen.py for automatic generation method:
+(2. bis) Or use the tools available in mat_gen.py for automatic generation method:
 
     ```python
     import mat_gen
@@ -78,26 +78,25 @@ Be careful to give lists for the input and output (i.e. teachers) training data.
 
     ```python
     print("\nRoot Mean Squared error:")
-    # print(np.sqrt(np.mean((output_pred[0] - test_out)**2)))
-    print(np.sqrt(np.mean((output_pred[0] - test_out)**2))/errorLen)
+    print(np.sqrt(np.mean((output_pred[0] - test_out)**2))/testLen)
     ```
 
 8. Plot the internal states of the ESN and the outputs for test data. If the training was sucessful, predicted output and real curves should overlap:
 
-  ```python
-  import matplotlib.pyplot as plt
-  ## Plot internal states of the ESN
-  plt.figure()
-  plt.plot( internal_trained[0][:200,:12])
-  plt.ylim([-1.1,1.1])
-  plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 11 for 200 time steps')
+    ```python
+    import matplotlib.pyplot as plt
+    ## Plot internal states of the ESN
+    plt.figure()
+    plt.plot( internal_trained[0][:200,:12])
+    plt.ylim([-1.1,1.1])
+    plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 11 for 200 time steps')
 
-  ## Plot the predicted output with the real one.
-  plt.figure(figsize=(12,4))
-  plt.plot(test_out,  color='0.75', lw=1.0)
-  plt.plot(output_pred[0], color='0.00', lw=1.5)
-  plt.title("Ouput predictions against real timeseries")
-  plt.legend(["real timeseries", "output predictions"])
-  # plt.ylim(-1.1,1.1)
-  plt.show()
-  ```
+    ## Plot the predicted output with the real one.
+    plt.figure(figsize=(12,4))
+    plt.plot(test_out,  color='0.75', lw=1.0)
+    plt.plot(output_pred[0], color='0.00', lw=1.5)
+    plt.title("Ouput predictions against real timeseries")
+    plt.legend(["real timeseries", "output predictions"])
+    # plt.ylim(-1.1,1.1)
+    plt.show()
+    ```
