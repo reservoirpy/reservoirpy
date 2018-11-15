@@ -75,17 +75,17 @@ dim_inp = n_inputs #26
 # Wfb = mat_gen.generate_input_weights(nbr_neuron=self.N, dim_input=self.dim_output, #TODO stim_sent_train[0].shape
 #                                 input_scaling=self.fbscale, proba=self.fbproba, input_bias=None, seed=current_seed, verbose=verbose)
 
-# ### Generating random weight matrices with custom method
-# W = np.random.rand(N,N) - 0.5
-# if input_bias:
-#     Win = np.random.rand(N,dim_inp+1) - 0.5
-# else:
-#     Win = np.random.rand(N,dim_inp) - 0.5
-# Wfb = np.random.rand(N,n_outputs) - 0.5
+### Generating random weight matrices with custom method
+W = np.random.rand(N,N) - 0.5
+if input_bias:
+    Win = np.random.rand(N,dim_inp+1) - 0.5
+else:
+    Win = np.random.rand(N,dim_inp) - 0.5
+Wfb = np.random.rand(N,n_outputs) - 0.5
 
-# Mantas way
-Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
-W = np.random.rand(N,N)-0.5
+# # Mantas way
+# Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
+# W = np.random.rand(N,N)-0.5
 
 ## delete the fraction of connections given the sparsity (i.e. proba of non-zero connections):
 mask = np.random.rand(N,N) # create a mask Uniform[0;1]

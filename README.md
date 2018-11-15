@@ -15,11 +15,11 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
 - minimalESN_MackeyGlass.py (without the ESN class)
 
     ```bash
-    python simple_example_MackeyGlass.py
+    python minimalESN_MackeyGlass.py
     ```
 
 ## How to use the ESN class
-You can do this in a few steps:
+You can generate and train a reservoir to predict the MackeyGlass timeseries in a few steps:
 1. Define the number of dimension of input, recurrent and outputs layers:
 
     ```python
@@ -33,19 +33,36 @@ You can do this in a few steps:
 
     ```python
     import numpy as np
-    Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
-    W = np.random.rand(N,N)-0.5
-    print 'Computing spectral radius...',
+
+    # Generating matrices Win and W
+    W = np.random.rand(N,N) - 0.5
+    if input_bias:
+        Win = np.random.rand(N,dim_inp+1) - 0.5
+    else:
+        Win = np.random.rand(N,dim_inp) - 0.5
+
+    # Apply mask to make matrices sparse
+    proba_non_zero_connec_W = 0.2 # set the probability of non-zero connections
+    mask = np.random.rand(N,N) # create a mask with Uniform[0;1] distribution
+    W[mask > proba_non_zero_connec_W] = 0 # apply mask on W: set to zero some connections given by the mask
+    mask = np.random.rand(N,Win.shape[1]) # Do the same for input matrix
+    Win[mask > proba_non_zero_connec_Win] = 0
+
+    # Scaling matrices Win and W
+    input_scaling = 1.0 # Define the scaling of the input matrix Win
+    Win = Win * input_scaling # Apply scaling
+    spectral_radius = 1.0 # Define the scaling of the recurrent matrix W
+    print 'Computing spectral radius ...',
     original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
-    W = W * (spectral_radius / original_spectral_radius) # rescale W to reach the requested spectral radius
+    W = W * (spectral_radius / original_spectral_radius) # Rescale W to reach the requested spectral radius
     ```
 
 2. (Or use the tools available in mat_gen.py for automatic generation method.)
 
     ```python
     import mat_gen
-    W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=0.2, Wstd=1.0)
-    Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=0.2, input_bias=input_bias)
+    W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=1.0, Wstd=1.0) # Normal distribution with mean 0 and standard deviation 0
+    Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=1.0, input_bias=input_bias)
     ```
 
 3. Define the Echo State Network (ESN):
@@ -101,3 +118,5 @@ Be careful to give lists for the input and output (i.e. teachers) training data.
     # plt.ylim(-1.1,1.1)
     plt.show()
     ```
+
+If you want to have more information on all the steps and more option (for example, have a reservoir with output feedback), please have a look at **simple_example_MackeyGlass.py**.
