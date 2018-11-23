@@ -103,7 +103,7 @@ Win = Win * input_scaling
 print 'Computing spectral radius...',
 original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
 #TODO: check if this operation is quicker: max(abs(linalg.eig(W)[0])) #from scipy import linalg
-print "default spectral radius before scaling:", radius
+print "default spectral radius before scaling:", original_spectral_radius
 # rescale them to reach the requested spectral radius:
 W = W * (spectral_radius / original_spectral_radius)
 print "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W)))
