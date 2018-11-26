@@ -33,10 +33,15 @@ def set_seed(seed=None):
     print "Seed used for random values:", seed
     return seed
 
-# load the data
-trainLen = 2000
-testLen = 2000
-initLen = 100
+## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
+# NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
+seed = None #42
+
+## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
+# 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size (resSize) = 300
+initLen = 100 # number of time steps during which internal activations are washed-out during training
+trainLen = 2000 # number of time steps during which we train the network
+testLen = 2000 # number of time steps during which we test/run the network
 
 data = np.loadtxt('MackeyGlass_t17.txt')
 
@@ -48,19 +53,20 @@ plt.title('A sample of input data')
 
 # generate the ESN reservoir
 inSize = outSize = 1 #input/output dimension
-resSize = 300 #reservoir size (for prediction)
+resSize = 300 #reservoir size (for prediction)  #TODO: try to change the value
 #resSize = 1000 #reservoir size (for generation)
-a = 0.3 # leaking rate
-spectral_radius = 1.25
-input_scaling = 1.
+a = 0.3 # leaking rate  #TODO: try to change the value
+spectral_radius = 1.25 #TODO: try to change the value
+input_scaling = 1. #TODO: try to change the value
 reg =  1e-8 #None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
 
-mode = 'prediction'
-# mode = 'generative'
+#TODO: Try different modes:
+mode = 'prediction' # receives the real input at each time steps and tries to predict the next input
+# mode = 'generative' # the read-out output is feedback to the input INSTEAD of the real input. Thus the reservoir is in 'free run' mode, it does not receive real input anymore after training phase.
+
+# Show complementary information
 verbose = False
 
-#change the seed, reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
-seed = None #42
 
 set_seed(seed) #random.seed(seed)
 Win = (np.random.rand(resSize,1+inSize)-0.5) * input_scaling
@@ -91,7 +97,7 @@ for t in range(trainLen):
         print "x.shape", x.shape
         print "W.shape", W.shape
         print "Win.shape", Win.shape
-        raw_input()
+    # ESN update equation = we compute x(t+1) based on x(t) and input u(t)
     x = (1-a)*x + a*np.tanh( np.dot( Win, np.vstack((1,u)) ) + np.dot( W, x ) )
     if t >= initLen:
         X[:,t-initLen] = np.vstack((1,u,x))[:,0]
@@ -130,7 +136,7 @@ for t in range(testLen):
         raise Exception, "ERROR: 'mode' was not set correctly."
 
 # compute MSE for the first errorLen time steps
-errorLen = 2000 #500
+errorLen = testLen #2000 #500
 mse = sum( np.square( data[trainLen+1:trainLen+errorLen+1] - Y[0,0:errorLen] ) ) / errorLen
 print 'MSE = ' + str( mse )
 
@@ -152,7 +158,8 @@ elif mode == 'prediction':
 # plt.title('Input $\mathbf{u}(n)$ and bias for 2000 time steps')
 
 plt.figure(3).clear()
-plt.plot( X[1:11,0:200].T )
+# plt.plot( X[1:12,0:200].T ) # 10 neurons + input u(t)
+plt.plot( X[2:12,0:200].T ) # 10 neurons without input u(t)
 plt.ylim([-1.1,1.1])
 plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 9 for 200 time steps')
 #

@@ -22,15 +22,18 @@ def set_seed(seed=None):
     print "Seed used for random values:", seed
     return seed
 
-#change the seed, reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
+## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
+# NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
 seed = None #42
 
 set_seed(seed) #random.seed(seed)
 
-# load the data
+## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
+# 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size (resSize) = 300
 initLen = 100 # number of time steps during which internal activations are washed-out during training
-trainLen = initLen + 1900 #we consider trainLen including the warming-up period (i.e. internal activations that are washed-out when training)
-testLen = 2000
+# we consider trainLen including the warming-up period (i.e. internal activations that are washed-out when training)
+trainLen = initLen + 1900 # number of time steps during which we train the network
+testLen = 2000 # number of time steps during which we test/run the network
 
 data = np.loadtxt('MackeyGlass_t17.txt')
 print "data dimensions", data.shape
@@ -157,7 +160,7 @@ internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wa
 output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=False)
 # print(np.sqrt(np.mean((pred_test - test_out)**2)))
 errorLen = testLen #2000
-print("\nRoot Mean Squared error:")
+print("\nNormalized Root Mean Squared error:")
 # print(np.sqrt(np.mean((output_pred[0] - test_out)**2)))
 print(np.sqrt(np.mean((output_pred[0] - test_out)**2))/errorLen)
 
