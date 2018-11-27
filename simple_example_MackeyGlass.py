@@ -24,7 +24,7 @@ def set_seed(seed=None):
 
 ## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
 # NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
-seed = None #42
+seed = 42 #None #42
 
 set_seed(seed) #random.seed(seed)
 
@@ -126,12 +126,14 @@ test_out = data[None,trainLen+1:trainLen+testLen+1]
 # train_in, train_out =  np.atleast_2d(data[0:trainLen]), np.atleast_2d(data[0+1:trainLen+1])
 # test_in, test_out =  np.atleast_2d(data[trainLen:trainLen+testLen]), np.atleast_2d(data[trainLen+1:trainLen+testLen+1])
 
-print "train_in, train_out dimensions", train_in.shape, train_out.shape
-print "test_in, test_out dimensions", test_in.shape, test_out.shape
 
 # rearange inputs in correct dimensions
 train_in, train_out = train_in.T, train_out.T
 test_in, test_out = test_in.T, test_out.T
+
+# Dimensions of input/output train/test data
+print "train_in, train_out dimensions", train_in.shape, train_out.shape
+print "test_in, test_out dimensions", test_in.shape, test_out.shape
 
 plt.figure()
 plt.plot(train_in, train_out)
@@ -151,18 +153,24 @@ plt.title('train_in & train_out')
 # plt.title('test_in & test_out')
 
 
-# plt.show()
-
-# pred_train = esn.fit(train_in,train_out)
-# internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=initLen)
 internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=initLen, verbose=False)
-# pred_test = esn.predict(test_in)
 output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=False)
-# print(np.sqrt(np.mean((pred_test - test_out)**2)))
-errorLen = testLen #2000
-print("\nNormalized Root Mean Squared error:")
-# print(np.sqrt(np.mean((output_pred[0] - test_out)**2)))
-print(np.sqrt(np.mean((output_pred[0] - test_out)**2))/errorLen)
+errorLen = len(test_out[:]) #testLen #2000
+
+## Printing errors made on test set
+# mse = sum( np.square( test_out[:] - output_pred[0] ) ) / errorLen
+# print 'MSE = ' + str( mse )
+mse = np.mean((test_out[:] - output_pred[0])**2) # Mean Squared Error: see https://en.wikipedia.org/wiki/Mean_squared_error
+rmse = np.sqrt(mse) # Root Mean Squared Error: see https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
+nmrse_mean = abs(rmse / np.mean(test_out[:])) # Normalised RMSE (based on mean)
+nmrse_maxmin = rmse / abs(np.max(test_out[:]) - np.min(test_out[:])) # Normalised RMSE (based on max - min)
+print("\n********************")
+print("Errors computed over %d time steps" % (errorLen))
+print("\nMean Squared error (MSE):\t\t%.4e" % (mse) )
+print("Root Mean Squared error (RMSE):\t\t%.4e\n" % rmse )
+print("Normalized RMSE (based on mean):\t%.4e" % (nmrse_mean) )
+print("Normalized RMSE (based on max - min):\t%.4e" % (nmrse_maxmin) )
+print("********************\n")
 
 plt.figure()
 plt.plot( internal_trained[0][:200,:12])
