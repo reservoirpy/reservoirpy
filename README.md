@@ -37,7 +37,7 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=1.0, input_bias=input_bias)
     ```
 
-2. (instead of previous step) Define yourself the random input Win and recurrent W matrices (customize method):
+3. (instead of previous step) Define yourself the random input Win and recurrent W matrices (customize method):
 
     ```python
     import numpy as np
@@ -65,15 +65,15 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     W = W * (spectral_radius / original_spectral_radius) # Rescale W to reach the requested spectral radius
     ```
 
-3. Define the Echo State Network (ESN):
+4. Define the Echo State Network (ESN):
      ```python
      import ESN
      reservoir = ESN.ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
      ```
 
-4. Define your input/output training and testing data:
+5. Define your input/output training and testing data:
 
-In this step, we load the dataset to perform the prediction of the chaotic MackeyGlass timeseries, and we split the data into the different subsets.
+    In this step, we load the dataset to perform the prediction of the chaotic MackeyGlass timeseries, and we split the data into the different subsets.
 
     ```python
     data = np.loadtxt('MackeyGlass_t17.txt')
@@ -83,31 +83,31 @@ In this step, we load the dataset to perform the prediction of the chaotic Macke
     test_out = data[None,trainLen+1:trainLen+testLen+1].T # output to be predicted (TESTING PHASE)
     ```
 
-5. Train the ESN:
+6. Train the ESN:
 
-Be careful to give lists for the input and output (i.e. teachers) training data. Here we are training with only one timeseries, but you actually can provide a list of timeseries segments to train from.
+    Be careful to give lists for the input and output (i.e. teachers) training data. Here we are training with only one timeseries, but you actually can provide a list of timeseries segments to train from.
 
-**wash_nr_time_step** defines the initial warming-up period: corresponding reservoir states are discarded for training.
+    **wash_nr_time_step** defines the initial warming-up period: corresponding reservoir states are discarded for training.
 
     ```python
     internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=100)
     ```
 
-6. Test the ESN (i.e. predict the next value in the timeseries):
+7. Test the ESN (i.e. predict the next value in the timeseries):
     ```python
     output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=False)
     ```
 
-7. Compute the error made on test data:
+8. Compute the error made on test data:
 
     ```python
     print("\nRoot Mean Squared error:")
     print(np.sqrt(np.mean((output_pred[0] - test_out)**2))/testLen)
     ```
 
-8. Plot the internal states of the ESN and the outputs for test data.
+9. Plot the internal states of the ESN and the outputs for test data.
 
-If the training was sucessful, predicted output and real curves should overlap:
+    If the training was sucessful, predicted output and real curves should overlap:
 
     ```python
     import matplotlib.pyplot as plt
