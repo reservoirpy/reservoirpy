@@ -74,6 +74,7 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
 4. Define your input/output training and testing data:
 
 In this step, we load the dataset to perform the prediction of the chaotic MackeyGlass timeseries, and we split the data into the different subsets.
+
     ```python
     data = np.loadtxt('MackeyGlass_t17.txt')
     train_in = data[None,0:trainLen].T # input data (TRAINING PHASE)
@@ -85,7 +86,9 @@ In this step, we load the dataset to perform the prediction of the chaotic Macke
 5. Train the ESN:
 
 Be careful to give lists for the input and output (i.e. teachers) training data. Here we are training with only one timeseries, but you actually can provide a list of timeseries segments to train from.
+
 **wash_nr_time_step** defines the initial warming-up period: corresponding reservoir states are discarded for training.
+
     ```python
     internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=100)
     ```
