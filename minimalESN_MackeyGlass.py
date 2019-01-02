@@ -35,7 +35,7 @@ def set_seed(seed=None):
 
 ## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
 # NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
-seed = None #42
+seed = 42 #None #42
 
 ## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
 # 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size (resSize) = 300

@@ -1,4 +1,4 @@
-# FunkyReservoir
+# ReservoirPy (FunkyReservoir)
 A simple and flexible code for Reservoir Computing architectures like Echo State Networks.
 
 This toolbox works for Python 2. Please send a request if you need it for Python 3, because the update to Python 3 should not be long.
@@ -29,7 +29,15 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     N = 300 # number of recurrent units
     ```
 
-2. Define yourself the random input Win and recurrent W matrices:
+2. Define the random input Win and recurrent W matrices (quick method with generation tools):
+
+    ```python
+    import mat_gen
+    W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=1.0, Wstd=1.0) # Normal distribution with mean 0 and standard deviation 0
+    Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=1.0, input_bias=input_bias)
+    ```
+
+2. (instead of previous step) Define yourself the random input Win and recurrent W matrices (customize method):
 
     ```python
     import numpy as np
@@ -55,14 +63,6 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     print 'Computing spectral radius ...',
     original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
     W = W * (spectral_radius / original_spectral_radius) # Rescale W to reach the requested spectral radius
-    ```
-
-2. (Or use the tools available in mat_gen.py for automatic generation method.)
-
-    ```python
-    import mat_gen
-    W = mat_gen.generate_internal_weights(N=N, spectral_radius=1.0, proba=1.0, Wstd=1.0) # Normal distribution with mean 0 and standard deviation 0
-    Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=1.0, input_bias=input_bias)
     ```
 
 3. Define the Echo State Network (ESN):
