@@ -39,7 +39,7 @@ def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed
     # Computing the spectral radius of W matrix
     rhoW = max(abs(linalg.eig(w)[0]))
     if verbose:
-        # print( "Spectra radius of generated matrix before applying another spectral radius: "+str(Oger.utils.get_spectral_radius(w))
+        # print( "Spectra radius of generated matrix before applying another spectral radius: "+str(Oger.utils.get_spectral_radius(w)))
         print( "Spectra radius of generated matrix before applying another spectral radius: "+str(rhoW))
     if spectral_radius is not None:
         w *= spectral_radius / rhoW
