@@ -25,12 +25,12 @@ def set_seed(seed=None):
         seed = int((time.time()*10**6) % 4294967295)
     try:
         np.random.seed(seed)
-    except Exception, e:
-        print "!!! WARNING !!!: Seed was not set correctly."
-        print "!!! Seed that we tried to use: "+str(seed)
-        print "!!! Error message: "+str(e)
+    except Exception as e:
+        print( "!!! WARNING !!!: Seed was not set correctly.")
+        print( "!!! Seed that we tried to use: "+str(seed))
+        print( "!!! Error message: "+str(e))
         seed = None
-    print "Seed used for random values:", seed
+    print( "Seed used for random values:", seed)
     return seed
 
 ## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
@@ -74,11 +74,11 @@ W = np.random.rand(resSize,resSize)-0.5
 # Option 1 - direct scaling (quick&dirty, reservoir-specific):
 #W *= 0.135
 # Option 2 - normalizing and setting spectral radius (correct, slow):
-print 'Computing spectral radius...',
+print( 'Computing spectral radius...')
 rhoW = max(abs(linalg.eig(W)[0]))
 #np_rhoW = max(abs(np.linalg.eig(W)[0]))
-#print "Difference between scipy and numpy .eig() method: scipy="+str(rhoW)+" numpy="+str(np_rhoW)
-print 'done.'
+#print( "Difference between scipy and numpy .eig() method: scipy="+str(rhoW)+" numpy="+str(np_rhoW)
+print( 'done.')
 W *= spectral_radius / rhoW
 
 # allocated memory for the design (collected states) matrix
@@ -91,12 +91,12 @@ x = np.zeros((resSize,1))
 for t in range(trainLen):
     u = data[t]
     if verbose:
-        print "t:", t
-        print "u:", u
-        print "u.shape", u.shape
-        print "x.shape", x.shape
-        print "W.shape", W.shape
-        print "Win.shape", Win.shape
+        print( "t:", t)
+        print( "u:", u)
+        print( "u.shape", u.shape)
+        print( "x.shape", x.shape)
+        print( "W.shape", W.shape)
+        print( "Win.shape", Win.shape)
     # ESN update equation = we compute x(t+1) based on x(t) and input u(t)
     x = (1-a)*x + a*np.tanh( np.dot( Win, np.vstack((1,u)) ) + np.dot( W, x ) )
     if t >= initLen:
@@ -112,7 +112,7 @@ if reg is not None:
         ### For more info, see https://www.scipy.org/scipylib/faq.html#why-both-numpy-linalg-and-scipy-linalg-what-s-the-difference
 #    np_Wout = np.dot(np.dot(Yt,X_T), np.linalg.inv(np.dot(X,X_T) + \
 #        reg*np.eye(1+inSize+resSize) ) )
-#    print "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
+#    print( "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
 #        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout))
 else:
     # use pseudo inverse
@@ -133,12 +133,12 @@ for t in range(testLen):
         ## predictive mode:
         u = data[trainLen+t+1]
     else:
-        raise Exception, "ERROR: 'mode' was not set correctly."
+        raise Exception( "ERROR: 'mode' was not set correctly.")
 
 # compute MSE for the first errorLen time steps
 errorLen = testLen #2000 #500
 mse = sum( np.square( data[trainLen+1:trainLen+errorLen+1] - Y[0,0:errorLen] ) ) / errorLen
-print 'MSE = ' + str( mse )
+print( 'MSE = ' + str( mse ))
 
 # plot some signals
 plt.figure(1).clear()
