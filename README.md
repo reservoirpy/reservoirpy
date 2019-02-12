@@ -1,7 +1,7 @@
 # ReservoirPy (FunkyReservoir)
 A simple and flexible code for Reservoir Computing architectures like Echo State Networks.
 
-This toolbox works for Python 2. Please send a request if you need it for Python 3, because the update to Python 3 should not be long.
+This toolbox works for Python 3 (and should be compatible for Python2). We just updated it from Python 2 to 3, so tell us if you have any issue with it.
 
 ## Quick try
 #### Chaotic timeseries prediction (MackeyGlass)
