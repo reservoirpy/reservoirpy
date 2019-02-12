@@ -154,7 +154,7 @@ plt.title('train_in & train_out')
 
 
 internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=initLen, verbose=False)
-output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=True)
+output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=False)
 errorLen = len(test_out[:]) #testLen #2000
 
 ## printing errors made on test set
