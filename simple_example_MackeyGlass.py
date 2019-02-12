@@ -157,7 +157,7 @@ internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wa
 output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=True)
 errorLen = len(test_out[:]) #testLen #2000
 
-## printing errors made on test set)
+## printing errors made on test set
 # mse = sum( np.square( test_out[:] - output_pred[0] ) ) / errorLen
 # print( 'MSE = ' + str( mse ))
 mse = np.mean((test_out[:] - output_pred[0])**2) # Mean Squared Error: see https://en.wikipedia.org/wiki/Mean_squared_error
