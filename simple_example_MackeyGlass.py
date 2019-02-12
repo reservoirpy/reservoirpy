@@ -14,12 +14,12 @@ def set_seed(seed=None):
         seed = int((time.time()*10**6) % 4294967295)
     try:
         np.random.seed(seed)
-    except Exception, e:
-        print "!!! WARNING !!!: Seed was not set correctly."
-        print "!!! Seed that we tried to use: "+str(seed)
-        print "!!! Error message: "+str(e)
+    except Exception as e:
+        print( "!!! WARNING !!!: Seed was not set correctly.")
+        print( "!!! Seed that we tried to use: "+str(seed))
+        print( "!!! Error message: "+str(e))
         seed = None
-    print "Seed used for random values:", seed
+    print( "Seed used for random values:", seed)
     return seed
 
 ## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
@@ -36,7 +36,7 @@ trainLen = initLen + 1900 # number of time steps during which we train the netwo
 testLen = 2000 # number of time steps during which we test/run the network
 
 data = np.loadtxt('MackeyGlass_t17.txt')
-print "data dimensions", data.shape
+print( "data dimensions", data.shape)
 
 # plot some of it
 plt.figure(0)
@@ -103,13 +103,13 @@ Win[mask > proba_non_zero_connec_Win] = 0
 Win = Win * input_scaling
 # scaling of recurrent matrix
 # compute the spectral radius of these weights:
-print 'Computing spectral radius...',
+print( 'Computing spectral radius...')
 original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
 #TODO: check if this operation is quicker: max(abs(linalg.eig(W)[0])) #from scipy import linalg
-print "default spectral radius before scaling:", original_spectral_radius
+print( "default spectral radius before scaling:", original_spectral_radius)
 # rescale them to reach the requested spectral radius:
 W = W * (spectral_radius / original_spectral_radius)
-print "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W)))
+print( "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W))))
 
 
 reservoir = ESN.ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
@@ -132,8 +132,8 @@ train_in, train_out = train_in.T, train_out.T
 test_in, test_out = test_in.T, test_out.T
 
 # Dimensions of input/output train/test data
-print "train_in, train_out dimensions", train_in.shape, train_out.shape
-print "test_in, test_out dimensions", test_in.shape, test_out.shape
+print( "train_in, train_out dimensions", train_in.shape, train_out.shape)
+print( "test_in, test_out dimensions", test_in.shape, test_out.shape)
 
 plt.figure()
 plt.plot(train_in, train_out)
@@ -157,9 +157,9 @@ internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wa
 output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=False)
 errorLen = len(test_out[:]) #testLen #2000
 
-## Printing errors made on test set
+## printing errors made on test set
 # mse = sum( np.square( test_out[:] - output_pred[0] ) ) / errorLen
-# print 'MSE = ' + str( mse )
+# print( 'MSE = ' + str( mse ))
 mse = np.mean((test_out[:] - output_pred[0])**2) # Mean Squared Error: see https://en.wikipedia.org/wiki/Mean_squared_error
 rmse = np.sqrt(mse) # Root Mean Squared Error: see https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
 nmrse_mean = abs(rmse / np.mean(test_out[:])) # Normalised RMSE (based on mean)
