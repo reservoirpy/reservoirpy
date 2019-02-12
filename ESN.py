@@ -90,7 +90,7 @@ class ESN():
 
     def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False):
         #TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
-        #TODO: add a 'speed mode' where all asserts, print(s and saved values are minimal
+        #TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
         #TODO: add option to enable direct connection from input to output to be learned
             # need to remember the input at this stage
         """
@@ -106,7 +106,7 @@ class ESN():
         - TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
         - TODO: add option to enable direct connection from input to output to be learned
             # need to remember the input at this stage
-        - TODO: add a 'speed mode' where all asserts, print(s and saved values are minimal
+        - TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
         """
         if verbose:
             print( "len(inputs)", len(inputs))
