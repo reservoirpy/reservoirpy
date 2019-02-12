@@ -77,7 +77,7 @@ W = np.random.rand(resSize,resSize)-0.5
 print( 'Computing spectral radius...')
 rhoW = max(abs(linalg.eig(W)[0]))
 #np_rhoW = max(abs(np.linalg.eig(W)[0]))
-#print( "Difference between scipy and numpy .eig() method: scipy="+str(rhoW)+" numpy="+str(np_rhoW)
+#print( "Difference between scipy and numpy .eig() method: scipy="+str(rhoW)+" numpy="+str(np_rhoW))
 print( 'done.')
 W *= spectral_radius / rhoW
 
@@ -113,7 +113,7 @@ if reg is not None:
 #    np_Wout = np.dot(np.dot(Yt,X_T), np.linalg.inv(np.dot(X,X_T) + \
 #        reg*np.eye(1+inSize+resSize) ) )
 #    print( "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
-#        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout))
+#        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout)))
 else:
     # use pseudo inverse
     Wout = np.dot( Yt, linalg.pinv(X) )
