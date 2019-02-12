@@ -20,7 +20,7 @@ def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed
         - N: number of neurons
         - spectral_radius: SR
         - proba: probability of non-zero connections (sparsity), usually between 0.05 to 0.30
-        - verbose: print( in the console detailed information.
+        - verbose: print in the console detailed information.
         - seed: if not None, set the seed of the numpy.random generator to the given value.
         - randomize_seed_afterwards: as the module mdp.numx.random may not be used only by this method,
             the user may want to run several experiments with the same seed only for this method
