@@ -36,7 +36,7 @@ class ESN():
         else:
             str_err = "TODO: the ESN class is uncomplete for the case you try to use "
             str_err += "-> the ESN without input bias is not implemented yet."
-            raise ValueError, str_err
+            raise ValueError(str_err)
         if self.Wfb is not None:
             self.dim_out = self.Wfb.shape[1] # dimension of outputs
         else:
@@ -57,7 +57,8 @@ class ESN():
             assert np.isnan(array_or_list).any() == False # array should not contain NAN values
         if value == None:
             if type(array_or_list) is list:
-                assert array_or_list.count(None) == 0 # check if there is a None value
+                assert np.count_nonzero(array_or_list == None) == 0
+                #assert array_or_list.count(None) == 0 # check if there is a None value
                 #TODO: this one does not seem to work: assert any([x is None for x in array_or_list])  # check if there is a None value
             elif type(array_or_list) is np.array:
                 # None is transformed to np.nan when it is in an array
@@ -67,9 +68,9 @@ class ESN():
     def autocheck_io(self, inputs, outputs=None, verbose=False):
         # TODO: add check of output dimension
         if verbose:
-            print "self.Win.shape[1]", self.Win.shape[1]
-            print "self.dim_inp", self.dim_inp
-            print "inputs[0].shape", inputs[0].shape
+            print( "self.Win.shape[1]", self.Win.shape[1])
+            print( "sel.dim_inp", self.dim_inp)
+            print( "inputs[0].shape", inputs[0].shape)
         # check if inputs and outputs are lists
         assert type(inputs) is list # inputs should be a list of numpy arrays
         if outputs is not None:
@@ -89,7 +90,7 @@ class ESN():
 
     def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False):
         #TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
-        #TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
+        #TODO: add a 'speed mode' where all asserts, print(s and saved values are minimal
         #TODO: add option to enable direct connection from input to output to be learned
             # need to remember the input at this stage
         """
@@ -105,14 +106,14 @@ class ESN():
         - TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
         - TODO: add option to enable direct connection from input to output to be learned
             # need to remember the input at this stage
-        - TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
+        - TODO: add a 'speed mode' where all asserts, print(s and saved values are minimal
         """
         if verbose:
-            print "len(inputs)", len(inputs)
-            print "len(teachers)", len(teachers)
-            print "self.N", self.N
-            print "self.W.shape", self.W.shape
-            print "self.Win.shape", self.Win.shape
+            print( "len(inputs)", len(inputs))
+            print( "len(teachers)", len(teachers))
+            print( "self.N", self.N)
+            print( "self.W.shape", self.W.shape)
+            print( "self.Win.shape", self.Win.shape)
         self.autocheck_io(inputs=inputs, outputs=teachers)
 
         # 'pre-allocated' memory for the list that will collect the states
@@ -129,14 +130,14 @@ class ESN():
             #TODO: FINISH TO PUT ALL USEFUL VARIABLES IN float32
             inputs = [aa.astype('float32') for aa in inputs]
             teachers = [aa.astype('float32') for aa in teachers]
-            raise Exception, "TODO: float32 option not finished yet!"
+            raise Exception( "TODO: float32 option not finished yet!")
 
         # run reservoir over the inputs, to save the internal states and the teachers (desired outputs) in lists
         for (j, (inp, tea)) in enumerate(zip(inputs, teachers)):
             if verbose:
-                print "j:", j
-                print "inp.shape", inp.shape
-                print "tea.shape", tea.shape
+                print( "j:", j)
+                print( "inp.shape", inp.shape)
+                print( "tea.shape", tea.shape)
 
             if self.in_bias:
                 u = np.column_stack((np.ones((inp.shape[0],1)),inp))
@@ -158,47 +159,47 @@ class ESN():
                 # u = data[t]
                 # u = np.atleast_2d(inp[t,:])
                 if verbose:
-                    print "inp[t,:].shape", inp[t,:].shape
-                    print "tea[t,:].shape", tea[t,:].shape
-                    print "u.shape", u.shape
-                    print "inp[t,:]", inp[t,:]
-                    print "u[t].shape", u[t].shape
-                    print "u[t,:].shape", u[t,:].shape
-                    print "di", di
-                    print "np.atleast_2d(u[t,:]).shape", np.atleast_2d(u[t,:]).shape
-                    # print "np.atleast_2d(u[t,:]).reshape(di,1).shape", np.atleast_2d(u[t,:]).reshape(di,1).shape
-                    # print "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,1).shape
-                    # print "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,-1).shape
-                    # print "y", y
-                    print "self.dim_out", self.dim_out
-                    # print "tea[t,:].reshape(self.dim_out,1).T", tea[t,:].reshape(self.dim_out,1).T
-                    # print "y.T", y.T
-                    # print "np.atleast_2d(u[t,:]).shape", np.atleast_2d(u[t,:]).shape
-                    # print "np.atleast_2d(u[t,:].T).shape", np.atleast_2d(u[t,:].T).shape
-                    # print "np.atleast_2d(u[t]).T", np.atleast_2d(u[t]).T.shape
-                    # print "np.atleast_2d(u[t,:]).T", np.atleast_2d(u[t,:]).T.shape
+                    print( "inp[t,:].shape", inp[t,:].shape)
+                    print( "tea[t,:].shape", tea[t,:].shape)
+                    print( "u.shape", u.shape)
+                    print( "inp[t,:]", inp[t,:])
+                    print( "u[t].shape", u[t].shape)
+                    print( "u[t,:].shape", u[t,:].shape)
+                    print( "di", di)
+                    print( "np.atleast_2d(u[t,:]).shape", np.atleast_2d(u[t,:]).shape)
+                    # print( "np.atleast_2d(u[t,:]).reshape(di,1).shape", np.atleast_2d(u[t,:]).reshape(di,1).shape)
+                    # print( "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,1).shape)
+                    # print( "u[t,:].reshape(di,1).shape", u[t,:].reshape(di,-1).shape)
+                    # print( "y", y)
+                    print( "self.dim_out", self.dim_out)
+                    # print( "tea[t,:].reshape(self.dim_out,1).T", tea[t,:].reshape(self.dim_out,1).T)
+                    # print( "y.T", y.T)
+                    # print( "np.atleast_2d(u[t,:]).shape", np.atleast_2d(u[t,:]).shape)
+                    # print( "np.atleast_2d(u[t,:].T).shape", np.atleast_2d(u[t,:].T).shape)
+                    # print( "np.atleast_2d(u[t]).T", np.atleast_2d(u[t]).T.shape)
+                    # print( "np.atleast_2d(u[t,:]).T", np.atleast_2d(u[t,:]).T.shape)
                 # x = (1-self.lr) * x  +  self.lr * np.tanh( np.dot( self.Win, np.atleast_2d(u[t]).T ) + np.dot( self.W, x ) )
                 # TODO: this one is equivalent, but don't know which one is faster #TODO have to be tested
                 if self.Wfb is None:
                     if verbose:
-                        print "u", u.shape
-                        print "x", x.shape
-                        print "self.Win", self.Win.shape
-                        print "self.W", self.W.shape
-                        print "u[t,:]", u[t,:].shape
-                        print "atleast_2d(u)[t,:]", np.atleast_2d(u)[t,:].shape
-                        print "u[t,:].reshape(di,1)", u[t,:].reshape(di,1).shape
-                        print "x", x
-                        print "DEBUG BEFORE"
-                        print "self.W", self.W
-                        print "(1-self.lr) * x", (1-self.lr) * x
-                        print "np.dot( self.Win, u[t,:].reshape(di,1) )", np.dot( self.Win, u[t,:].reshape(di,1) )
-                        print "np.dot( self.W, x )", np.dot( self.W, x )
+                        print( "u", u.shape)
+                        print( "x", x.shape)
+                        print( "self.Win", self.Win.shape)
+                        print( "self.W", self.W.shape)
+                        print( "u[t,:]", u[t,:].shape)
+                        print( "atleast_2d(u)[t,:]", np.atleast_2d(u)[t,:].shape)
+                        print( "u[t,:].reshape(di,1)", u[t,:].reshape(di,1).shape)
+                        print( "x", x)
+                        print( "DEBUG BEFORE")
+                        print( "self.W", self.W)
+                        print( "(1-self.lr) * x", (1-self.lr) * x)
+                        print( "np.dot( self.Win, u[t,:].reshape(di,1) )", np.dot( self.Win, u[t,:].reshape(di,1) ))
+                        print( "np.dot( self.W, x )", np.dot( self.W, x ))
                     x = (1-self.lr) * x  +  self.lr * np.tanh( np.dot( self.Win, u[t,:].reshape(di,1) ) + np.dot( self.W, x ) )
                     if verbose:
-                        print "DEBUG AFTER"
-                        print "x.shape", x.shape
-                        print "x", x
+                        print( "DEBUG AFTER")
+                        print( "x.shape", x.shape)
+                        print( "x", x)
                     # raw_input()
                 else:
                     x = (1-self.lr) * x  +  self.lr * np.tanh( np.dot( self.Win, u[t,:].reshape(di,1) ) + np.dot( self.W, x ) + np.dot( self.Wfb, self.fbfunc(y) ) )
@@ -208,35 +209,35 @@ class ESN():
                 if t >= wash_nr_time_step:
                     # X[:,t-initLen] = np.vstack((1,u,x))[:,0]
                     if verbose:
-                        print "x.shape", x.shape
-                        print "x", x
-                        print "x.reshape(-1,).shape", x.reshape(-1,).shape
-                        print "all_int_states[j][:,t-wash_nr_time_step].shape", all_int_states[j][:,t-wash_nr_time_step].shape
+                        print( "x.shape", x.shape)
+                        print( "x", x)
+                        print( "x.reshape(-1,).shape", x.reshape(-1,).shape)
+                        print( "all_int_states[j][:,t-wash_nr_time_step].shape", all_int_states[j][:,t-wash_nr_time_step].shape)
                         # raw_input()
                         if self.Wfb is not None:
-                            print "y.shape", y.shape
-                            print "y.reshape(-1,).shape", y.reshape(-1,).shape
-                            print "tea[t,:].shape", tea[t,:].shape
-                            print "tea[t,:].reshape(-1,).shape", tea[t,:].reshape(-1,).shape
-                            print "tea[t,:].reshape(-1,).T", tea[t,:].reshape(-1,).T
-                            print "y.T", y.T
-                            print "(y.reshape(-1,) == tea[t,:].reshape(-1,))", (y.reshape(-1,).shape == tea[t,:].reshape(-1,))
+                            print( "y.shape", y.shape)
+                            print( "y.reshape(-1,).shape", y.reshape(-1,).shape)
+                            print( "tea[t,:].shape", tea[t,:].shape)
+                            print( "tea[t,:].reshape(-1,).shape", tea[t,:].reshape(-1,).shape)
+                            print( "tea[t,:].reshape(-1,).T", tea[t,:].reshape(-1,).T)
+                            print( "y.T", y.T)
+                            print( "(y.reshape(-1,) == tea[t,:].reshape(-1,))", (y.reshape(-1,).shape == tea[t,:].reshape(-1,)))
                     if self.Wfb is not None:
                         assert all(y.reshape(-1,) == tea[t,:].reshape(-1,))
                     if verbose:
-                        print "x", x
-                        print "x.reshape(-1,)", x.reshape(-1,)
+                        print( "x", x)
+                        print( "x.reshape(-1,)", x.reshape(-1,))
                     #TODO: add option to enable direct connection from input to output to be learned
                         # need to remember the input at this stage
                     all_int_states[j][:,t-wash_nr_time_step] = x.reshape(-1,)
                     all_teachers[j][:,t-wash_nr_time_step] = tea[t,:].reshape(-1,)
 
         if verbose:
-            print "all_int_states", all_int_states
-            print "len(all_int_states)", len(all_int_states)
-            print "all_int_states[0].shape", all_int_states[0].shape
-            print "all_int_states[0][:5,:15] (5 neurons on 15 time steps)", all_int_states[0][:5,:15]
-            print "all_int_states.count(None)", all_int_states.count(None)
+            print( "all_int_states", all_int_states)
+            print( "len(all_int_states)", len(all_int_states))
+            print( "all_int_states[0].shape", all_int_states[0].shape)
+            print( "all_int_states[0][:5,:15] (5 neurons on 15 time steps)", all_int_states[0][:5,:15])
+            print( "all_int_states.count(None)", all_int_states.count(None))
         # TODO: change the 2 following lines according to this error:
         # ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
         # assert all_int_states.count(None) == 0 # check if some input/teacher pass was not done
@@ -248,28 +249,28 @@ class ESN():
         X = np.hstack(all_int_states)
         Y = np.hstack(all_teachers)
         if verbose:
-            print "X.shape", X.shape
-            print "Y.shape", Y.shape
+            print( "X.shape", X.shape)
+            print( "Y.shape", Y.shape)
         # Adding ones for regression with biais b in (y = a*x + b)
         X = np.vstack((np.ones((1,X.shape[1])),X))
         if verbose:
-            print "X.shape", X.shape
+            print( "X.shape", X.shape)
         # raw_input()
 
         # train the output
         X_T = X.T # dim of X_T (nr of time steps, nr of neurons)
         # Yt = Y.T # dim of Y_T (output_dim, nr_of_time_steps)
         if verbose:
-            print "X_T.shape", X_T.shape
-            print "Y.shape", Y.shape
+            print( "X_T.shape", X_T.shape)
+            print( "Y.shape", Y.shape)
         if self.ridge is not None:
             # use ridge regression (linear regression with regularization)
             if verbose:
-                print "USING RIDGE REGRESSION"
-                print "X", X.shape
-                print "X_T", X_T.shape
-                print "Y", Y.shape
-                print "N", self.N
+                print( "USING RIDGE REGRESSION")
+                print( "X", X.shape)
+                print( "X_T", X_T.shape)
+                print( "Y", Y.shape)
+                print( "N", self.N)
             # Wout = np.dot(np.dot(Yt,X_T), linalg.inv(np.dot(X,X_T) + \
             Wout = np.dot(np.dot(Y,X_T), linalg.inv(np.dot(X,X_T) + \
                     self.ridge*np.eye(1+self.N) ) )
@@ -279,12 +280,12 @@ class ESN():
                 ### For more info, see https://www.scipy.org/scipylib/faq.html#why-both-numpy-linalg-and-scipy-linalg-what-s-the-difference
         #    np_Wout = np.dot(np.dot(Yt,X_T), np.linalg.inv(np.dot(X,X_T) + \
         #        reg*np.eye(1+inSize+resSize) ) )
-        #    print "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
-        #        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout))
+        #    print( "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
+        #        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout)))
         else:
             # use pseudo inverse
             if verbose:
-                print "USING PSEUDO INVERSE"
+                print( "USING PSEUDO INVERSE")
             # Wout = np.dot( Yt, linalg.pinv(X) )
             Wout = np.dot( Y, linalg.pinv(X) )
 
@@ -296,8 +297,8 @@ class ESN():
         self.y = y #useful when we will have feedback
 
         if verbose:
-            print "Wout.shape", Wout.shape
-            print "all_int_states[0].shape", all_int_states[0].shape
+            print( "Wout.shape", Wout.shape)
+            print( "all_int_states[0].shape", all_int_states[0].shape)
 
         # return all_int_states
         return [st.T for st in all_int_states]
@@ -371,17 +372,17 @@ class ESN():
                 y = np.dot( self.Wout, np.vstack((1,x)) )
 
                 if verbose:
-                    print "x.shape", x.shape
-                    print "np.vstack((1,x)).shape", np.vstack((1,x)).shape
-                    print "y.shape", y.shape
+                    print( "x.shape", x.shape)
+                    print( "np.vstack((1,x)).shape", np.vstack((1,x)).shape)
+                    print( "y.shape", y.shape)
 
                 # Y[:,t] = y
                 # u = data[trainLen+t+1]
                 if verbose:
-                    print "x.reshape(-1,).shape", x.reshape(-1,).shape
-                    print "y.reshape(-1,).shape", y.reshape(-1,).shape
-                    print "all_int_states[j][:,t].shape", all_int_states[j][:,t].shape
-                    print "all_outputs[j][:,t].shape", all_outputs[j][:,t].shape
+                    print( "x.reshape(-1,).shape", x.reshape(-1,).shape)
+                    print( "y.reshape(-1,).shape", y.reshape(-1,).shape)
+                    print( "all_int_states[j][:,t].shape", all_int_states[j][:,t].shape)
+                    print( "all_outputs[j][:,t].shape", all_outputs[j][:,t].shape)
                 all_int_states[j][:,t] = x.reshape(-1,)
                 all_outputs[j][:,t] = y.reshape(-1,)
 
@@ -390,32 +391,32 @@ class ESN():
         self.y = y #useful when we will have feedback
 
         if verbose:
-            print ""
-            print "len(all_int_states)", len(all_int_states)
-            print "len(all_outputs)", len(all_outputs)
-            print "all_int_states[0].shape", all_int_states[0].shape
-            print "all_outputs[0].shape", all_outputs[0].shape
+            print()
+            print( "len(all_int_states)", len(all_int_states))
+            print( "len(all_outputs)", len(all_outputs))
+            print( "all_int_states[0].shape", all_int_states[0].shape)
+            print( "all_outputs[0].shape", all_outputs[0].shape)
 
         # return all_outputs, all_int_states
         return [st.T for st in all_outputs], [st.T for st in all_int_states]
 
     def print_trained_esn_info(self):
-        print "esn.Win", self.Win
-        print "esn.Win", self.Win
-        print "esn.Win max", np.max(self.Win)
-        print "esn.Win min", np.min(self.Win)
-        print "esn.Win mean", np.mean(self.Win)
-        print "esn.Win median", np.median(self.Win)
-        print "esn.Win std", np.std(self.Win)
-        print "esn.W", self.W
-        print "esn.W max", np.max(self.W)
-        print "esn.W min", np.min(self.W)
-        print "esn.W mean", np.mean(self.W)
-        print "esn.W median", np.median(self.W)
-        print "esn.W std", np.std(self.W)
-        print "esn.Wout", self.Wout
-        print "esn.Wout max", np.max(self.Wout)
-        print "esn.Wout min", np.min(self.Wout)
-        print "esn.Wout mean", np.mean(self.Wout)
-        print "esn.Wout median", np.median(self.Wout)
-        print "esn.Wout std", np.std(self.Wout)
+        print( "esn.Win", self.Win)
+        print( "esn.Win", self.Win)
+        print( "esn.Win max", np.max(self.Win))
+        print( "esn.Win min", np.min(self.Win))
+        print( "esn.Win mean", np.mean(self.Win))
+        print( "esn.Win median", np.median(self.Win))
+        print( "esn.Win std", np.std(self.Win))
+        print( "esn.W", self.W)
+        print( "esn.W max", np.max(self.W))
+        print( "esn.W min", np.min(self.W))
+        print( "esn.W mean", np.mean(self.W))
+        print( "esn.W median", np.median(self.W))
+        print( "esn.W std", np.std(self.W))
+        print( "esn.Wout", self.Wout)
+        print( "esn.Wout max", np.max(self.Wout))
+        print( "esn.Wout min", np.min(self.Wout))
+        print( "esn.Wout mean", np.mean(self.Wout))
+        print( "esn.Wout median", np.median(self.Wout))
+        print( "esn.Wout std", np.std(self.Wout))
