@@ -11,6 +11,8 @@ http://minds.jacobs-university.de/mantas/code
 
 import numpy as np
 from scipy import linalg
+import sklearn.linear_model as sklm
+
 
 class ESN():
     def __init__(self, lr, W, Win, input_bias=True, ridge=None, Wfb=None, fbfunc=None):
@@ -88,7 +90,7 @@ class ESN():
                 y = np.zeros((self.dim_out,1)) # I guess it's the best we can do, because we have no info on the teacher for this time step
                 assert teachers[0].shape[1] == self.dim_out # check if output dimension is correct
 
-    def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False):
+    def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False, linear_model = None):
         #TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
         #TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
         #TODO: add option to enable direct connection from input to output to be learned
@@ -98,6 +100,11 @@ class ESN():
         Inputs:
             - inputs: list of numpy array item with dimension (nr_time_step, input_dimension)
             - teachers: list of numpy array item with dimension (nr_time_step, output_dimension)
+            
+            - linear_model: sklearn.linear_model regression objects. (eg. sklm.Lasso(1e-8))) 
+                    If ESN was not initialized with a ridge coefficient, the provided model
+                    is used to learn output weights.
+            
         Outputs:
             - all_int_states: list of numpy array item with dimension
                 - during the execution of this method : (N, nr_time_step)
@@ -263,6 +270,8 @@ class ESN():
         if verbose:
             print( "X_T.shape", X_T.shape)
             print( "Y.shape", Y.shape)
+            
+    
         if self.ridge is not None:
             # use ridge regression (linear regression with regularization)
             if verbose:
@@ -282,6 +291,10 @@ class ESN():
         #        reg*np.eye(1+inSize+resSize) ) )
         #    print( "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
         #        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout)))
+        elif linear_model is not None:
+            # scikit learn linear models are used for interpolation
+            Wout = ESN._linear_model_solving(linear_model, X, Y)
+
         else:
             # use pseudo inverse
             if verbose:
@@ -303,6 +316,22 @@ class ESN():
         # return all_int_states
         return [st.T for st in all_int_states]
 
+
+    @classmethod
+    def _linear_model_solving(cls, linear_model, X, Ytarget):
+        """
+            Uses regression method provided to return W such as W * X ~= Ytarget
+            First row of X MUST be only ones.
+        """
+        # Learning of the model (first row of X, which contains only ones, is removed) 
+        linear_model.fit(X[1:, :].T, Ytarget.T)
+        
+        # linear_model provides Matrix A and Vector b such as A * X[1:, :] + b ~= Ytarget       
+        A = np.asmatrix(linear_model.coef_)
+        b = np.asmatrix(linear_model.intercept_).T
+        
+        # Then the matrix W = "[b | A]" statisfies "W * X ~= Ytarget"
+        return np.asarray(np.hstack([b, A]))
 
 
 
