@@ -15,13 +15,21 @@ import sklearn.linear_model as sklm
 
 
 class ESN():
-    def __init__(self, lr, W, Win, input_bias=True, ridge=None, Wfb=None, fbfunc=None):
+    def __init__(self, lr, W, Win, input_bias=True, ridge=None, Wfb=None, fbfunc=None, reg_model=None):
         #TODO : add check if fbfunc is not set when Wfb is not None
         """
         Dimensions of matrices:
             - W : (nr_neurons, nr_neurons)
             - Win : (nr_neurons, dim_input)
             - Wout : (dim_output, nr_neurons)
+            
+            
+        Inputs:                        
+            - reg_model: sklearn.linear_model regression object.
+                If it is defined, the provided model is used to learn output weights. 
+                ridge coefficient must not be defined at the same time
+                Examples : reg_model = sklearn.linear_model.Lasso(1e-8)
+                            reg_model = sklearn.linear_model.Ridge(1e-8)
         """
         self.lr = lr # leaking rate
         self.W = W # reservoir matrix
@@ -32,7 +40,11 @@ class ESN():
         self.N = self.W.shape[1] # nr of neurons
         self.in_bias = input_bias
         self.dim_inp = self.Win.shape[1] # dimension of inputs (including the bias at 1)
-        self.ridge = ridge
+        
+        self.ridge =  None 
+        self.reg_model = None
+        self.update_regression_model(ridge, reg_model)        
+        
         if self.in_bias:
             pass
         else:
@@ -44,6 +56,20 @@ class ESN():
         else:
             self.dim_out = None
         self.autocheck_nan()
+
+
+    def update_regression_model(self, ridge = None, reg_model = None):
+        
+        if ridge is not None and reg_model is not None:
+            raise Exception, "ridge and reg_model can't be defined at the same time"
+        
+        if ridge is not None:
+            self.ridge = ridge
+            self.reg_model = None           
+            
+        if reg_model is not None:
+            self.reg_model = reg_model
+            self.ridge = None
 
 
     def autocheck_nan(self):
@@ -90,7 +116,7 @@ class ESN():
                 y = np.zeros((self.dim_out,1)) # I guess it's the best we can do, because we have no info on the teacher for this time step
                 assert teachers[0].shape[1] == self.dim_out # check if output dimension is correct
 
-    def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False, linear_model = None):
+    def train(self, inputs, teachers, wash_nr_time_step, reset_state=True, float32=False, verbose=False):
         #TODO float32 : use float32 precision for training the reservoir instead of the default float64 precision
         #TODO: add a 'speed mode' where all asserts, prints and saved values are minimal
         #TODO: add option to enable direct connection from input to output to be learned
@@ -100,10 +126,6 @@ class ESN():
         Inputs:
             - inputs: list of numpy array item with dimension (nr_time_step, input_dimension)
             - teachers: list of numpy array item with dimension (nr_time_step, output_dimension)
-            
-            - linear_model: sklearn.linear_model regression objects. (eg. sklm.Lasso(1e-8))) 
-                    If ESN was not initialized with a ridge coefficient, the provided model
-                    is used to learn output weights.
             
         Outputs:
             - all_int_states: list of numpy array item with dimension
@@ -272,7 +294,11 @@ class ESN():
             print( "Y.shape", Y.shape)
             
     
-        if self.ridge is not None:
+        if self.reg_model is not None:
+            # scikit learn linear models are used for interpolation
+            Wout = self._linear_model_solving(X, Y)
+
+        elif self.ridge is not None:
             # use ridge regression (linear regression with regularization)
             if verbose:
                 print( "USING RIDGE REGRESSION")
@@ -291,9 +317,6 @@ class ESN():
         #        reg*np.eye(1+inSize+resSize) ) )
         #    print( "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
         #        str(np.mean(Wout))+"\n\tnumpy_mean_Wout="+str(np.mean(np_Wout)))
-        elif linear_model is not None:
-            # scikit learn linear models are used for interpolation
-            Wout = ESN._linear_model_solving(linear_model, X, Y)
 
         else:
             # use pseudo inverse
@@ -317,18 +340,17 @@ class ESN():
         return [st.T for st in all_int_states]
 
 
-    @classmethod
-    def _linear_model_solving(cls, linear_model, X, Ytarget):
+    def _linear_model_solving(self, X, Ytarget):
         """
-            Uses regression method provided to return W such as W * X ~= Ytarget
+            Uses regression method provided during network instanciation to return W such as W * X ~= Ytarget
             First row of X MUST be only ones.
         """
         # Learning of the model (first row of X, which contains only ones, is removed) 
-        linear_model.fit(X[1:, :].T, Ytarget.T)
+        self.reg_model.fit(X[1:, :].T, Ytarget.T)
         
         # linear_model provides Matrix A and Vector b such as A * X[1:, :] + b ~= Ytarget       
-        A = np.asmatrix(linear_model.coef_)
-        b = np.asmatrix(linear_model.intercept_).T
+        A = np.asmatrix(self.reg_model.coef_)
+        b = np.asmatrix(self.reg_model.intercept_).T
         
         # Then the matrix W = "[b | A]" statisfies "W * X ~= Ytarget"
         return np.asarray(np.hstack([b, A]))
