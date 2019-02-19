@@ -43,7 +43,7 @@ class ESN():
         self.in_bias = input_bias
         self.dim_inp = self.Win.shape[1] # dimension of inputs (including the bias at 1)
         
-        self.ridge = ridge
+        self.ridge = None
         self.reg_model = None
         self.update_regression_model(ridge, reg_model)
         
