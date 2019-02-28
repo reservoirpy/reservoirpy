@@ -12,7 +12,7 @@ xavier.hinaut #/at\# inria.fr
 import numpy as np
 from scipy import linalg
 
-def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed=None, randomize_seed_afterwards=False, verbose=False):
+def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed=None, randomize_seed_afterwards=False, verbose=False,typefloat=np.float64):
     """
     Method that generate the weight matrix that will be used for the internal connections of the Reservoir.
 
@@ -20,7 +20,7 @@ def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed
         - N: number of neurons
         - spectral_radius: SR
         - proba: probability of non-zero connections (sparsity), usually between 0.05 to 0.30
-        - verbose: print in the console detailed information.
+        - verbose: print( in the console detailed information.
         - seed: if not None, set the seed of the numpy.random generator to the given value.
         - randomize_seed_afterwards: as the module mdp.numx.random may not be used only by this method,
             the user may want to run several experiments with the same seed only for this method
@@ -35,7 +35,7 @@ def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed
     # w = mdp.numx.multiply(mat, mask)
     mask = 1 * (np.random.rand(N, N) < proba)
     mat = np.random.normal(0, Wstd, (N,N)) #equivalent to mdp.numx.random.randn(n, m) * sd + mu
-    w = np.multiply(mat, mask)
+    w = np.multiply(mat, mask,dtype=typefloat)
     # Computing the spectral radius of W matrix
     rhoW = max(abs(linalg.eig(w)[0]))
     if verbose:
@@ -55,7 +55,7 @@ def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed
         np.seed(int(time.time()*10**6))
     return w
 
-def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1, input_bias=False, seed=None, randomize_seed_afterwards=False, verbose=False):
+def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1, input_bias=False, seed=None, randomize_seed_afterwards=False, verbose=False,typefloat=np.float64):
     """
     Method that generate the weight matrix that will be used for the input connections of the Reservoir.
 
@@ -81,7 +81,7 @@ def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1,
         dim_input += 1
     mask = 1 * (np.random.rand(nbr_neuron, dim_input) < proba)
     mat = np.random.randint(0, 2, (nbr_neuron, dim_input)) * 2 - 1
-    w = np.multiply(mat, mask)
+    w = np.multiply(mat, mask,dtype=typefloat)
     if input_scaling is not None:
         w = input_scaling * w
     if randomize_seed_afterwards:
@@ -92,3 +92,4 @@ def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1,
         # mdp.numx.random.seed(int(time.time()*10**6))
         np.random.seed(int(time.time()*10**6))
     return w
+
