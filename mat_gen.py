@@ -7,8 +7,6 @@ Modified 2018
 xavier.hinaut #/at\# inria.fr
 """
 
-# import mdp
-# import Oger
 import numpy as np
 from scipy import linalg
 
@@ -92,4 +90,3 @@ def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1,
         # mdp.numx.random.seed(int(time.time()*10**6))
         np.random.seed(int(time.time()*10**6))
     return w
-
