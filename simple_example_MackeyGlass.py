@@ -25,8 +25,16 @@ def set_seed(seed=None):
 ## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
 # NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
 seed = 42 #None #42
+verbose_mode = True
 
 set_seed(seed) #random.seed(seed)
+
+
+########################################
+########################################
+# loading data
+data = np.loadtxt('MackeyGlass_t17.txt')
+normalization_auto = True #False #True
 
 ## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
 # 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size (resSize) = 300
@@ -34,9 +42,27 @@ initLen = 100 # number of time steps during which internal activations are washe
 # we consider trainLen including the warming-up period (i.e. internal activations that are washed-out when training)
 trainLen = initLen + 1900 # number of time steps during which we train the network
 testLen = 2000 # number of time steps during which we test/run the network
+########################################
+########################################
 
-data = np.loadtxt('MackeyGlass_t17.txt')
-print( "data dimensions", data.shape)
+if verbose_mode:
+    print( "data dimensions", data.shape)
+    print("data not normalized",data)
+    print("max",data.max())
+    print("min",data.min())
+    print("mean",data.mean())
+    print("std",data.std())
+
+# normalizing data
+if normalization_auto:
+    data = data / (data.max() - data.min())
+    if verbose_mode:
+        print("data normalized",data)
+        print("max",data.max())
+        print("min",data.min())
+        print("mean",data.mean())
+        print("std",data.std())
+
 
 # plot some of it
 plt.figure(0)
@@ -45,13 +71,6 @@ plt.ylim([-1.1,1.1])
 plt.title('A sample of input data')
 
 # generate the ESN reservoir
-# inSize = outSize = 1 #input/output dimension
-# resSize = 300 #reservoir size (for prediction)
-# resSize = 1000 #reservoir size (for generation)
-# spectral_radius = 1.25
-# input_scaling = 1.
-
-
 n_inputs = 1
 input_bias = True # add a constant input to 1
 n_outputs = 1
@@ -69,6 +88,7 @@ N = n_reservoir#100
 dim_inp = n_inputs #26
 
 ## Generating random weight matrices with toolbox methods
+#TODO: uncomment if you want to test the more detailed matrix generation method
 #import mat_gen
 # W = mat_gen.generate_internal_weights(N=self.N, spectral_radius=self.sr, proba=self.w_proba,
 # #                                            seed=seed, verbose=verbose)
