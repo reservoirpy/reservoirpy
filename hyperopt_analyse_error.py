@@ -36,8 +36,8 @@ def byteify(input):
 if __name__=='__main__':
     """
     Example how to run it (on 2 lines):
-    > python hp_analyse_error.py -l -t DOSSIER-OU-YA-LES-PARAMETRES/hyperopt_trials.pkl
-        -o DOSSIER-DE-SORTIE/error_vs_
+    > python hp_analyse_error.py -l -t your_folder_with_hp_exploration_files/hyperopt_trials.pkl
+      -o your_output_folder/error_vs_
     > python hp_analyse_error.py -t hyper-explorations/2019-04-24_19h32__user1_1556127146038513/hyperopt_trials.pkl -o hyper-explorations/2019-04-24_19h32__user1_1556127146038513/error_vs_
     """
     import json
