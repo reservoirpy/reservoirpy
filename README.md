@@ -1,4 +1,5 @@
-# ReservoirPy A simple and flexible code for Reservoir Computing architectures like Echo State Networks.
+# ReservoirPy (FunkyReservoir)
+A simple and flexible code for Reservoir Computing architectures like Echo State Networks.
 
 This toolbox works for Python 3 (and should be compatible for Python2). We just updated it from Python 2 to 3, so tell us if you have any issue with it.
 
@@ -127,15 +128,3 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     ```
 
 If you want to have more information on all the steps and more option (for example, have a reservoir with output feedback), please have a look at **simple_example_MackeyGlass.py**.
-
-## Explore which are optimum Hyper-Parameters for your task with Hyperopt
-1. Adapt hyperopt_explore.py to you own needs
-2. Run the exploration
-    ```python
-    python hyperapero.py -s your_simulation_name
-    ```
-3. Analyse the error vs. the hyperparameters
-    ```python
-    python hp_analyse_error.py -l -t your_folder_with_hp_exploration_files/hyperopt_trials.pkl
-          -o your_output_folder/error_vs_
-    ```
