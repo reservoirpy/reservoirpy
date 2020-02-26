@@ -4,7 +4,7 @@ Created on 11 juil. 2012
 Modified 2018
 
 @author: Xavier HINAUT
-xavier.hinaut@inria.fr
+xavier.hinaut #/at\# inria.fr
 """
 import time
 import warnings

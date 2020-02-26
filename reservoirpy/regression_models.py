@@ -1,5 +1,4 @@
 import numpy as np
-import sklearn.linear_model as sklm
 
 from scipy import linalg
 
@@ -26,7 +25,7 @@ def sklearn_linear_model(model):
 
 def ridge_linear_model(ridge, typefloat=np.float32):
     
-    def ridge_model_solving(X, Y):
+    def ridge_model_solving(X, Y): 
         ridgeid = (ridge*np.eye(X.shape[0])).astype(typefloat)
         
         return np.dot(np.dot(Y, X.T), linalg.inv(np.dot(X, X.T) + ridgeid))
