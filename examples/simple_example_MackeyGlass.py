@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 #from pyESN import ESN
-import ESN
+from reservoirpy import ESN
 # import ESNold as ESN
 # import reservoir as ESN
 
@@ -33,7 +33,7 @@ set_seed(seed) #random.seed(seed)
 ########################################
 ########################################
 # loading data
-data = np.loadtxt('MackeyGlass_t17.txt')
+data = np.loadtxt('examples/MackeyGlass_t17.txt')
 normalization_auto = True #False #True
 
 ## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
@@ -81,7 +81,8 @@ input_scaling = 1. # Scaling of input matrix
 proba_non_zero_connec_W = 0.2 # Sparsity of recurrent matrix: Perceptage of non-zero connections in W matrix
 proba_non_zero_connec_Win = 1. # Sparsity of input matrix
 proba_non_zero_connec_Wfb = 1. # Sparsity of feedback matrix
-regularization_coef =  1e-8 #None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
+regularization_coef =  1e-8
+#None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
 # out_func_activation = lambda x: x
 
 N = n_reservoir#100
@@ -198,9 +199,9 @@ plt.ylim([-1.1,1.1])
 plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 11 for 200 time steps')
 
 plt.figure(figsize=(12,4))
-plt.plot(test_out,  color='0.75', lw=1.0)
-plt.plot(output_pred[0], color='0.00', lw=1.5)
+plt.plot(output_pred[0], color='red', lw=1.5, label="output predictions")
+plt.plot(test_out, lw=0.75, label="real timeseries")
 plt.title("Ouput predictions against real timeseries")
-plt.legend(["real timeseries", "output predictions"])
+plt.legend()
 # plt.ylim(-1.1,1.1)
 plt.show()

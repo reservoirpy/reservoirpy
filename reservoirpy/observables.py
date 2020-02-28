@@ -16,10 +16,11 @@ def compute_error_NRMSE(teacher_signal, predicted_signal, verbose=False):
     - Mean Squared Error https://en.wikipedia.org/wiki/Mean_squared_error
     - Root Mean Squared Error https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
     """
+    errorLen = len(predicted_signal[:])
     mse = np.mean((teacher_signal - predicted_signal)**2)
     rmse = np.sqrt(mse)
-    nmrse_mean = abs(rmse / np.mean(test_out[:])) # Normalised RMSE (based on mean)
-    nmrse_maxmin = rmse / abs(np.max(test_out[:]) - np.min(test_out[:])) # Normalised RMSE (based on max - min)
+    nmrse_mean = abs(rmse / np.mean(predicted_signal[:])) # Normalised RMSE (based on mean)
+    nmrse_maxmin = rmse / abs(np.max(predicted_signal[:]) - np.min(predicted_signal[:])) # Normalised RMSE (based on max - min)
     if verbose:
         print("Errors computed over %d time steps" % (errorLen))
         print("\nMean Squared error (MSE):\t\t%.4e" % (mse) )

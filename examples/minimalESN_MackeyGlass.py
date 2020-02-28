@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from scipy import linalg
 #from numpy import linalg
 
+
 def set_seed(seed=None):
     """Making the seed (for random values) variable if None"""
 
@@ -43,7 +44,7 @@ initLen = 100 # number of time steps during which internal activations are washe
 trainLen = 2000 # number of time steps during which we train the network
 testLen = 2000 # number of time steps during which we test/run the network
 
-data = np.loadtxt('MackeyGlass_t17.txt')
+data = np.loadtxt('examples/MackeyGlass_t17.txt')
 
 # plot some of it
 plt.figure(0).clear()
@@ -58,7 +59,7 @@ resSize = 300 #reservoir size (for prediction)  #TODO: try to change the value
 a = 0.3 # leaking rate  #TODO: try to change the value
 spectral_radius = 1.25 #TODO: try to change the value
 input_scaling = 1. #TODO: try to change the value
-reg =  1e-8 #None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
+reg =  1e-6 #None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
 
 #TODO: Try different modes:
 mode = 'prediction' # receives the real input at each time steps and tries to predict the next input

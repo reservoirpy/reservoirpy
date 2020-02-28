@@ -6,11 +6,21 @@ Modified 2018
 @author: Xavier HINAUT
 xavier.hinaut #/at\# inria.fr
 """
+import time
+import warnings
 
 import numpy as np
 from scipy import linalg
 
-def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed=None, randomize_seed_afterwards=False, verbose=False,typefloat=np.float64):
+
+def generate_internal_weights(N,
+                              spectral_radius=None,
+                              proba=0.1,
+                              Wstd=1.0,
+                              seed=None,
+                              randomize_seed_afterwards=False,
+                              verbose=False,
+                              typefloat=np.float64):
     """
     Method that generate the weight matrix that will be used for the internal connections of the Reservoir.
 
@@ -47,13 +57,22 @@ def generate_internal_weights(N, spectral_radius=None, proba=0.1, Wstd=1.0, seed
     if randomize_seed_afterwards:
         """ redifine randomly the seed in order to not fix the seed also for other methods that are using numpy.random methods.
         """
-        raise Exception( "Have to check if you really want to randomize the seed, because this makes the whole experiment not reproducible.")
-        import time
+        warnings.warn("Have to check if you really want to randomize the seed, \
+            because this makes the whole experiment not reproducible.", UserWarning)
         # mdp.numx.random.seed(int(time.time()*10**6))
         np.seed(int(time.time()*10**6))
     return w
 
-def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1, input_bias=False, seed=None, randomize_seed_afterwards=False, verbose=False,typefloat=np.float64):
+
+def generate_input_weights(nbr_neuron,
+                           dim_input,
+                           input_scaling=None,
+                           proba=0.1,
+                           input_bias=False,
+                           seed=None,
+                           randomize_seed_afterwards=False,
+                           verbose=False,
+                           typefloat=np.float64):
     """
     Method that generate the weight matrix that will be used for the input connections of the Reservoir.
 
@@ -85,8 +104,8 @@ def generate_input_weights(nbr_neuron, dim_input, input_scaling=None, proba=0.1,
     if randomize_seed_afterwards:
         """ redifine randomly the seed in order to not fix the seed also for other methods that are using numpy.random methods.
         """
-        raise Exception( "Have to check if you really want to randomize the seed, because this makes the whole experiment not reproducible.")
-        import time
+        warnings.warn("Have to check if you really want to randomize the seed, \
+            because this makes the whole experiment not reproducible.", UserWarning)
         # mdp.numx.random.seed(int(time.time()*10**6))
         np.random.seed(int(time.time()*10**6))
     return w
