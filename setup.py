@@ -1,11 +1,13 @@
 import setuptools
 
+from reservoirpy import __version__
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="reservoirpy", # Replace with your own username
-    version="0.0.1",
+    name="reservoirpy",
+    version=__version__,
     author="Xavier Hinaut",
     author_email="xavier.hinaut@inria.fr",
     description="A simple and flexible code for Reservoir Computing architectures like Echo State Networks.",
