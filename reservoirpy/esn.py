@@ -468,7 +468,8 @@ class ESN(object):
         self._autocheck_io(inputs=inputs, outputs=teachers)
         
         if verbose:
-            print(f"Training on {len(inputs)} -- wash_nr_time_step: {wash_nr_time_step}")
+            steps = np.sum([i.shape[0] for i in inputs])
+            print(f"Training on {len(inputs)} inputs ({steps} steps)-- wash: {wash_nr_time_step} steps")
 
         # compute all states
         all_states = self.compute_all_states(inputs, 
@@ -549,6 +550,10 @@ class ESN(object):
             (yet) well suited for this.
         """
         
+        if verbose:
+            steps = np.sum([i.shape[0] for i in inputs])
+            print(f"Running on {len(inputs)} inputs ({steps} steps)")
+        
         ## Autochecks of inputs
         self._autocheck_io(inputs=inputs)
         
@@ -598,6 +603,14 @@ class ESN(object):
                 "sr": max(abs(linalg.eig(self.W)[0]))  
             }
         }
+        if self.Wfb is not None:
+            desc["Wfb"] = {
+                "max": np.max(self.Wfb),
+                "min": np.min(self.Wfb), 
+                "mean": np.mean(self.Wfb),
+                "median": np.median(self.Wfb),
+                "std": np.std(self.Wfb)  
+            }
         if self.Wout is not None:
             desc["Wout"] = {
                 "max": np.max(self.Wout),

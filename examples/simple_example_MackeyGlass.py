@@ -133,7 +133,7 @@ W = W * (spectral_radius / original_spectral_radius)
 print( "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W))))
 
 
-reservoir = ESN.ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
+reservoir = ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
 
 
 train_in = data[None,0:trainLen]
@@ -170,12 +170,12 @@ plt.title('train_in & train_out')
 # plt.plot(test_in)
 # plt.plot(test_out)
 # plt.ylim([-1.1,1.1])
-# plt.legend(['test_in','test_out'])
+# plt.legend(['test_in','test_out']) 
 # plt.title('test_in & test_out')
 
-
+init_state = np.zeros((N, 1))
 internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=initLen, verbose=False)
-output_pred, internal_pred = reservoir.run(inputs=[test_in,], reset_state=False)
+output_pred, internal_pred = reservoir.run(inputs=[test_in,], init_state=init_state)
 errorLen = len(test_out[:]) #testLen #2000
 
 ## printing errors made on test set

@@ -1,10 +1,10 @@
 import os
 import time
-import pickle
 import json
 import warnings
 from typing import Sequence, Union, Any
 
+import dill
 import numpy as np
 
 import reservoirpy
@@ -20,7 +20,8 @@ def check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
         elif type(array_or_list) is np.array:
             # None is transformed to np.nan when it is in an array
             assert np.isnan(array_or_list).any() == False, f"{array_or_list} should not contain NaN values."
-            
+      
+      
 def _save(esn, directory: str):
     """ Base utilitary for saving an ESN model, based on the ESN class.
     
@@ -65,7 +66,7 @@ def _save(esn, directory: str):
         fbfunc = f"fbfunc_save-{current_time}"
         dim_out = esn.dim_out
         with open(os.path.join(savedir, fbfunc), "wb+") as f:
-            pickle.dump(esn.fbfunc, f)
+            dill.dump(esn.fbfunc, f)
 
     reg_model = {"type": "pinv"}
     if esn.ridge is not None:
@@ -74,13 +75,13 @@ def _save(esn, directory: str):
         reg_model = {"type": "sklearn", "path": f"sklearn_func_save-{current_time}"}
         # reg_model is serialized and stored
         with open(os.path.join(savedir, reg_model), "wb+") as f:
-            pickle.dump(esn.sklearn_model, f)
+            dill.dump(esn.sklearn_model, f)
     
     # a copy of the ESN class is also serialized.
     # allow to load an ESN without necesseraly using the same version of Reservoirpy.
     cls_path = f"cls_bin-{current_time}"
     with open(os.path.join(savedir, cls_path), "wb+") as f:
-        pickle.dump(esn.__class__, f)
+        dill.dump(esn.__class__, f)
         
     attr = {
         "cls": esn.__class__.__name__,
@@ -133,7 +134,7 @@ def load(directory: str):
     if model_attr["Wfb"] is not None:
         model_attr["Wfb"] = np.load(os.path.join(directory, model_attr["Wfb"]))
         with open(os.path.join(directory, model_attr["fbfunc"]), "rb") as f:
-            model_attr["fbfunc"] = pickle.load(f)
+            model_attr["fbfunc"] = dill.load(f)
     
 
     if model_attr["reg_model"]["type"] == "ridge":
@@ -141,7 +142,7 @@ def load(directory: str):
         model_attr["reg_model"] = None
     elif model_attr["reg_model"]["type"] == "sklearn":
         with open(os.path.join(directory, model_attr["reg_model"]["path"]), "rb") as f:
-            model_attr["reg_model"] = pickle.load(f)
+            model_attr["reg_model"] = dill.load(f)
         model_attr["ridge"] = None
     else:
         model_attr["reg_model"] = None
@@ -150,7 +151,7 @@ def load(directory: str):
     model_attr["typefloat"] = type(model_attr["W"][0,0]) 
     
     with open(os.path.join(directory, attr["cls_bin"]), 'rb') as f:
-        base_cls = pickle.load(f)
+        base_cls = dill.load(f)
    
     model = _new_from_save(base_cls, model_attr)
     
