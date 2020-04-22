@@ -382,7 +382,7 @@ class ESN(object):
     
     def compute_outputs(self, 
                         states: Sequence[np.ndarray],
-                        verbose: bool=True) -> Sequence[np.ndarray]:
+                        verbose: bool=False) -> Sequence[np.ndarray]:
         """Compute all readouts of a given sequence of states.
         
         Arguments:
@@ -426,8 +426,52 @@ class ESN(object):
         
         else:
             raise RuntimeError("Impossible to compute outputs: no readout matrix available.")
+    
+    
+    def fit_readout(self,
+                    states: Sequence,
+                    teachers: Sequence,
+                    verbose=False) -> np.ndarray:
+        """Compute a readout matrix by fitting the states computed by the ESN
+        to the ground truth expected values, using the regression model defined
+        in the ESN.
+
+        Arguments:
+            states {Sequence} -- All states computed.
+            teachers {Sequence} -- All ground truth vectors.
+
+        Keyword Arguments:
+            verbose {bool} -- (default: {False})
+
+        Returns:
+            np.ndarray -- Readout matrix.
+        """
+    
+        # check if network responses are valid
+        check_values(array_or_list=states, value=None)
+
+        if verbose:
+            tic = time.time()
+            print("Linear regression...")
+        # concatenate the lists (along timestep axis)
+        X = np.hstack(states).astype(self.typefloat)
+        Y = np.hstack(teachers).astype(self.typefloat)
         
+        # Adding ones for regression with bias b in (y = a*x + b)
+        X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
+
+        # Building Wout with a linear regression model.
+        # saving the output matrix in the ESN object for later use
+        Wout = self.reg_model(X, Y)
+        
+        if verbose:
+            toc = time.time()
+            print(f"Linear regression done! (in {toc - tic} sec)")
+        
+        # return readout matrix
+        return Wout
       
+    
     def train(self, 
               inputs: Sequence[np.ndarray], 
               teachers: Sequence[np.ndarray], 
@@ -481,29 +525,11 @@ class ESN(object):
         
         all_teachers = [t[wash_nr_time_step:].T for t in teachers]
         
-        # check if network responses are valid
-        check_values(array_or_list=all_states, value=None)
-
-        if verbose:
-            tic = time.time()
-            print("Linear regression...")
-        # concatenate the lists (along timestep axis)
-        X = np.hstack(all_states).astype(self.typefloat)
-        Y = np.hstack(all_teachers).astype(self.typefloat)
-        
-        # Adding ones for regression with biais b in (y = a*x + b)
-        X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
-
-        # Building Wout with a linear regression model.
-        # saving the output matrix in the ESN object for later use
-        self.Wout = self.reg_model(X, Y)
+        # compute readout matrix
+        self.Wout = self.fit_readout(all_states, all_teachers, verbose=verbose)
         
         # save the expected dimension of outputs
         self.dim_out = self.Wout.shape[0]
-        
-        if verbose:
-            toc = time.time()
-            print(f"Linear regression done! (in {toc - tic} sec)")
         
         # return all internal states
         return [st.T for st in all_states]
