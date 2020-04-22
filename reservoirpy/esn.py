@@ -83,7 +83,7 @@ class ESN(object):
         self.typefloat = typefloat
         self.lr = lr # leaking rate
         
-        self.reg_model = self._set_regression_model(ridge, reg_model)
+        self.reg_model = self._get_regression_model(ridge, reg_model)
         self.fbfunc = fbfunc
         if self.Wfb is not None and self.fbfunc is None:
             raise ValueError(f"If a feedback matrix is provided, \
@@ -102,7 +102,7 @@ class ESN(object):
         return out
     
     
-    def _set_regression_model(self, ridge: float=None, sklearn_model: Callable=None):
+    def _get_regression_model(self, ridge: float=None, sklearn_model: Callable=None):
         """Set the type of regression used in the model. All regression models available
         for now are described in reservoipy.regression_models:
             - any scikit-learn linear regression model (like Lasso or Ridge)
@@ -431,7 +431,10 @@ class ESN(object):
     def fit_readout(self,
                     states: Sequence,
                     teachers: Sequence,
-                    verbose=False) -> np.ndarray:
+                    reg_model: Callable=None,
+                    ridge: float=None,
+                    force_pinv: bool=False,
+                    verbose: bool=False) -> np.ndarray:
         """Compute a readout matrix by fitting the states computed by the ESN
         to the ground truth expected values, using the regression model defined
         in the ESN.
@@ -441,12 +444,23 @@ class ESN(object):
             teachers {Sequence} -- All ground truth vectors.
 
         Keyword Arguments:
+            reg_model {scikit-learn regression model} -- Use a scikit-learn regression model. (default: {None})
+            ridge {float} -- Use Tikhonov regression and set regularization parameter to ridge. (default: {None})
+            force_pinv -- Overwrite all previous parameters and force pseudo-inverse resolution. (default: {False})
             verbose {bool} -- (default: {False})
 
         Returns:
             np.ndarray -- Readout matrix.
         """
-    
+        # switch the regression model used at instanciation if needed.
+        # WARNING: this change won't be saved by the save function.
+        if (ridge is not None) or (reg_model is not None):
+            reg_model = self._get_regression_model(ridge, reg_model)
+        elif force_pinv:
+            reg_model = self._get_regression_model(None, None)
+        else:
+            reg_model = self.reg_model
+            
         # check if network responses are valid
         check_values(array_or_list=states, value=None)
 
@@ -462,7 +476,7 @@ class ESN(object):
 
         # Building Wout with a linear regression model.
         # saving the output matrix in the ESN object for later use
-        Wout = self.reg_model(X, Y)
+        Wout = reg_model(X, Y)
         
         if verbose:
             toc = time.time()
