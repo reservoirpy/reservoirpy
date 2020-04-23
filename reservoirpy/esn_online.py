@@ -183,7 +183,7 @@ class ESNOnline(object):
 
         # add bias
         if self.in_bias:
-            u = np.vstack((1, single_input)).astype(self.typefloat)
+            u = np.hstack((1, single_input)).astype(self.typefloat)
         else:
             u = single_input
         
@@ -200,7 +200,7 @@ class ESNOnline(object):
 
         # return the next state computed
         if self.use_raw_inp:
-            self.state = np.vstack((1.0, x1, u))
+            self.state = np.vstack((1.0, x1, u.reshape(self.dim_inp, 1)))
         else:
             self.state = np.vstack((1.0, x1))         
         
