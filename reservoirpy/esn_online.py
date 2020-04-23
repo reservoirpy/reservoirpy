@@ -39,10 +39,13 @@ class ESNOnline(object):
             Win {np.ndarray} -- Input weights matrix
         
         Keyword Arguments:
-            input_bias {bool} -- If True, will add a constant bias
-                                 to the input vector (default: {True})
+            alpha_coef {float} -- Coefficient to scale the inversed state correlation matrix
+                                  used for FORCE learning
             use_raw_input {bool} -- If True, input is used directly when computing output
                                     (default: {False})
+            input_bias {bool} -- If True, will add a constant bias
+                                 to the input vector (default: {True})
+            Wfb {np.ndarray} -- Feedback weights matrix
             fbfunc {Callable} -- Feedback activation function. (default: {None})
             typefloat {np.dtype} -- Float precision to use (default: {np.float32})
         
@@ -208,13 +211,35 @@ class ESNOnline(object):
     
     
     def compute_output_from_current_state(self):
-        return np.dot(self.Wout, self.state).astype(self.typefloat).ravel()
+        """ Compute output from current state s(t) of the reservoir
+        
+        Returns:
+            np.ndarray -- Output at time t
+        """
+        
+        output = np.dot(self.Wout, self.state).astype(self.typefloat)
+        return output.ravel()
 
 
     def compute_output(self,
                        single_input: np.ndarray,
                        last_feedback: np.ndarray=None,
-                       wash_nr_time_step: int=0):        
+                       wash_nr_time_step: int=0):
+        """ Compute output from input to the reservoir
+
+        Arguments:
+            single_input {np.ndarray} -- Input vector u(t).
+    
+        Keyword Arguments:
+            last_feedback {np.ndarray} -- Feedback vector if enabled. (default: {None})
+            wash_nr_time_step {int} -- Time for reservoir to run in free (without collecting output 
+                                       or fitting Wout). (default: {0})
+
+        Returns:
+            state {np.ndarray} -- New state after input u(t) is passed
+            output {np.ndarray} -- Output after input u(t) is passed
+        """
+        
         # if a feedback matrix is available, feedback will be set to 0 or to 
         # a specific value.
         if self.Wfb is not None:
@@ -237,7 +262,19 @@ class ESNOnline(object):
         self.state_corr_inv = np.asmatrix(np.eye(self.state_size)) / self.alpha_coef
 
 
-    def prepare_for_training(self, output_dim, alpha_coef, random_Wout=None):
+    def prepare_for_training(self, output_dim, random_Wout=None):
+        """ Configure reservoir parameters before training
+
+        Arguments:
+            output_dim {int} -- Number of outputs.
+    
+        Keyword Arguments:
+            random_Wout {str} -- Type of random initialization of Wout. 
+                                 (default: {None}, only support ['gaussian'|'uniform'] for now)
+
+        Raises:
+            NotImplementedError: random_Wout is not None but unknown.
+        """
         
         # Reset reservoir
         self.reset_reservoir()
@@ -251,14 +288,21 @@ class ESNOnline(object):
             self.Wout = np.zeros(Wout_shape)
         elif random_Wout == 'gaussian':
             self.Wout = np.random.normal(0, 1, Wout_shape)
-        else:
+        elif random_Wout == 'uniform':
             self.Wout = np.random.randint(0, 2, Wout_shape) * 2 - 1
+        else:
+            raise NotImplementedError(f'Unknown {random_Wout} type of random Wout')
 
 
     def train_from_current_state(self, error, indexes = None):
-        """
-            Fit Wout to achieve the target output from current internal state.
-            If indexes is not None, only the provided output indexes are learned
+        """ Train Wout from current internal state.
+        
+        Arguments:
+            error {np.ndarray} -- Error when using current Wout to compute output
+        
+        Keyword Arguments:
+            indexes {int | list} -- If indexes is not None, only the provided output 
+                                    indexes are learned (default: {None})            
         """
 
         self.state_corr_inv = _new_correlation_matrix_inverse(self.state, self.state_corr_inv)
@@ -272,7 +316,7 @@ class ESNOnline(object):
     def train(self, 
               inputs: Sequence[np.ndarray], 
               teachers: Sequence[np.ndarray],
-              alpha_coef: float=1e-6,
+              random_Wout: str=None,
               wash_nr_time_step: int=0,
               verbose: bool=False) -> Sequence[np.ndarray]:
         """Train the ESN model on a sequence of inputs.
@@ -282,6 +326,8 @@ class ESNOnline(object):
             teachers {Sequence[np.ndarray]} -- Training set of ground truth.
         
         Keyword Arguments:
+            random_Wout {str} -- Type of random initialization of Wout. 
+                                 (default: {None}, only support ['gaussian'|'uniform'] for now)
             wash_nr_time_step {int} -- Number of states to considered as transitory 
                             when training. (default: {0})
             verbose {bool} -- if `True`, display progress in stdout.
@@ -293,7 +339,7 @@ class ESNOnline(object):
         self._autocheck_io(inputs=inputs, outputs=teachers)
         
         # Prepare the network for training
-        self.prepare_for_training(teachers[0].shape[0], alpha_coef)
+        self.prepare_for_training(teachers[0].shape[0], random_Wout=random_Wout)
         
         if verbose:
             steps = np.sum([i.shape[0] for i in inputs])
