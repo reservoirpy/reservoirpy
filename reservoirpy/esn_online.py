@@ -207,6 +207,10 @@ class ESNOnline(object):
         return self.state.copy()
     
     
+    def compute_output_from_current_state(self):
+        return np.dot(self.Wout, self.state).astype(self.typefloat).ravel()
+
+
     def compute_output(self,
                        single_input: np.ndarray,
                        last_feedback: np.ndarray=None,
@@ -220,7 +224,7 @@ class ESNOnline(object):
             last_feedback = None
         
         state = self._get_next_state(single_input, feedback=last_feedback)
-        output = np.dot(self.Wout, state).astype(self.typefloat)
+        output = self.compute_output_from_current_state()
         
         return state, output
     
