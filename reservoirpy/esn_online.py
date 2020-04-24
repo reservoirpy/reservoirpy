@@ -191,19 +191,18 @@ class ESNOnline(object):
             u = single_input
         
         # linear transformation
-        x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1)) \
-            + np.dot(self.W, x)
+        x1 = self.Win @ u.reshape(-1, 1) + self.W @ x
         
         # add feedback if requested
         if self.Wfb is not None:
-            x1 += np.dot(self.Wfb, self.fbfunc(feedback))
+            x1 += self.Wfb @ self.fbfunc(feedback)
         
         # previous states memory leak and non-linear transformation
         x1 = (1-self.lr)*x + self.lr*np.tanh(x1)
 
         # return the next state computed
         if self.use_raw_inp:
-            self.state = np.vstack((1.0, x1, u.reshape(self.dim_inp, 1)))
+            self.state = np.vstack((1.0, x1, u.reshape(-1, 1)))
         else:
             self.state = np.vstack((1.0, x1))         
         
@@ -217,7 +216,9 @@ class ESNOnline(object):
             np.ndarray -- Output at time t
         """
         
-        output = np.dot(self.Wout, self.state).astype(self.typefloat)
+        assert self.Wout is not None, "Matrix Wout is not initialized/trained yet"
+        
+        output = (self.Wout @ self.state).astype(self.typefloat)
         return output.ravel()
 
 
@@ -308,9 +309,9 @@ class ESNOnline(object):
         self.state_corr_inv = _new_correlation_matrix_inverse(self.state, self.state_corr_inv)
         
         if indexes == None:
-            self.Wout -= np.dot(error, np.dot(self.state_corr_inv, self.state).T)
+            self.Wout -= error.reshape(-1,1) @ (self.state_corr_inv @ self.state).T
         else:
-            self.Wout[indexes] -= np.dot(error[indexes], np.dot(self.state_corr_inv, self.state).T)
+            self.Wout[indexes] -= error[indexes] * (self.state_corr_inv @ self.state).T
 
 
     def train(self, 
@@ -428,8 +429,8 @@ def _new_correlation_matrix_inverse(new_data, old_corr_mat_inv):
     x = new_data
     
     # TODO : numerical instabilities if xTP is not computed first (order of multiplications)  
-    xTP = np.dot(x.T, P)
-    Px = np.dot(P, x)
-    P = P - np.dot(Px, xTP)/(1. + np.dot(xTP, x))
+    xTP = x.T @ P
+    Px = P @ x
+    P = P - (Px @ xTP)/(1. + np.dot(xTP, x))
     
     return P
