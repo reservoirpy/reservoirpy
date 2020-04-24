@@ -462,7 +462,6 @@ def _new_correlation_matrix_inverse(new_data, old_corr_mat_inv):
     
     # TODO : numerical instabilities if xTP is not computed first (order of multiplications)  
     xTP = x.T @ P
-    Px = P @ x
-    P = P - (Px @ xTP)/(1. + np.dot(xTP, x))
+    P = P - (P @ x @ xTP)/(1. + np.dot(xTP, x))
     
     return P
