@@ -15,6 +15,7 @@ from scipy import linalg
 from tqdm import tqdm
 
 from .utils import check_values, _save
+from .mat_gen import generate_input_weights
 
 
 
@@ -66,7 +67,7 @@ class ESNOnline(object):
 
         self.N = self.W.shape[1] # number of neurons
         self.in_bias = input_bias
-        self.dim_inp = self.Win.shape[1] # dimension of inputs (including the bias at 1)
+        self.dim_inp = self.Win.shape[1] - 1 if self.in_bias else self.Win.shape[1] # dimension of inputs (not including the bias at 1)
         self.dim_out = None
         if self.Wfb is not None:
             self.dim_out = self.Wfb.shape[1] # dimension of outputs
@@ -209,6 +210,33 @@ class ESNOnline(object):
         return self.state.copy()
     
     
+    def increase_input_size(self, nb_added_input = 1):
+        """
+            Increases the number of inputs the network needs
+        """
+        
+        added_input_weights = generate_input_weights(self.N, nb_added_input,
+                                                     input_scaling=self.input_scaling, proba=1.0)
+        self.Win = np.hstack([self.Win, added_input_weights])
+        self.dim_inp += nb_added_input
+        
+        if not self.use_raw_inp:
+            return
+        
+        self.state_size += nb_added_input
+        self.state = np.vstack([self.state, np.zeros((nb_added_input, 1))])
+        self.Wout = np.hstack([self.Wout, np.zeros((self.dim_out, nb_added_input))])
+
+
+    def increase_output_size(self, nb_added_output = 1):
+        """
+            Increases the number of inputs the network needs
+        """
+        
+        self.dim_out += nb_added_output
+        self.Wout = np.vstack([self.Wout, np.zeros((nb_added_output, self.state_size))])
+
+
     def compute_output_from_current_state(self):
         """ Compute output from current state s(t) of the reservoir
         
