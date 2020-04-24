@@ -93,6 +93,7 @@ class ESNOnline(object):
         # Init internal state vector and state_corr_inv matrix
         # (useful if we want to freeze the online learning)
         self.reset_reservoir()
+        self.reset_correlation_matrix()
 
 
     def __repr__(self):
@@ -288,6 +289,9 @@ class ESNOnline(object):
             Reset reservoir by setting internal values to zero
         """
         self.state = np.zeros((self.state_size,1),dtype=self.typefloat)
+
+
+    def reset_correlation_matrix(self):
         self.state_corr_inv = np.asmatrix(np.eye(self.state_size)) / self.alpha_coef
 
 
