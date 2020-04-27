@@ -26,6 +26,7 @@ class ESNOnline(object):
                  lr: float,
                  W: np.ndarray,
                  Win: np.ndarray,
+                 output_size: int=0,
                  alpha_coef: float=1e-6,
                  use_raw_input: bool=False,
                  input_bias: bool=True,
@@ -40,6 +41,7 @@ class ESNOnline(object):
             Win {np.ndarray} -- Input weights matrix
         
         Keyword Arguments:
+            output_size {int} -- Dimension of output vector of reservoir. (default: {0})
             alpha_coef {float} -- Coefficient to scale the inversed state correlation matrix
                                   used for FORCE learning
             use_raw_input {bool} -- If True, input is used directly when computing output
@@ -58,7 +60,6 @@ class ESNOnline(object):
         
         self.W = W 
         self.Win = Win 
-        self.Wout = None # output weights matrix. In case of FORCE learning, it is initialized before training.
         self.Wfb = Wfb    
         
         # check if dimensions of matrices are coherent
@@ -66,11 +67,10 @@ class ESNOnline(object):
         self._autocheck_nan() 
 
         self.N = self.W.shape[1] # number of neurons
+        
         self.in_bias = input_bias
         self.dim_inp = self.Win.shape[1] - 1 if self.in_bias else self.Win.shape[1] # dimension of inputs (not including the bias at 1)
-        self.dim_out = None
-        if self.Wfb is not None:
-            self.dim_out = self.Wfb.shape[1] # dimension of outputs
+        self.input_sparsity = 1. - np.count_nonzero(Win) / (Win.shape[0]*Win.shape[1])
             
         self.typefloat = typefloat
         self.lr = lr # leaking rate
@@ -87,6 +87,21 @@ class ESNOnline(object):
             self.state_size = self.N + 1 + self.Win.shape[1]
         else:
             self.state_size = self.N + 1
+            
+        # Init dim_out, output_values and Wout
+        assert output_size >= 0, "Output dimension is negative"
+        if output_size == 0: # Wout is not initialized for offline learning
+            if self.Wfb is not None:
+                self.dim_out = self.Wfb.shape[1]
+                self.output_values = np.zeros((self.dim_out,1)).astype(self.typefloat)
+            else:
+                self.dim_out = None
+                self.output_values = None
+            self.Wout = None
+        else: # in case of FORCE learning, Wout must be initialized before training
+            self.dim_out = output_size
+            self.output_values = np.zeros((self.dim_out,1)).astype(self.typefloat)
+            self.Wout = np.zeros((self.dim_out,self.state_size)).astype(self.typefloat)
             
         self.alpha_coef = alpha_coef # coef used to init state_corr_inv matrix
         
@@ -155,18 +170,20 @@ class ESNOnline(object):
                 err = f"With feedback, Wfb matrix should be of shape ({self.N}, "
                 err += f"{outputs_0.shape[0]}) but is {self.Wfb.shape}."
                 assert outputs_0.shape[0] == self.Wfb.shape[1], err
+            # check output weights matrix
+            if self.Wout is not None:
+                outputs_0 = outputs[0]
+                err = f"Wout matrix should be of shape ({outputs_0.shape[0]}, "
+                err += f"{self.state_size}) but is {self.Wout.shape}."
+                assert (outputs_0.shape[0], self.state_size) == self.Wout.shape, err
 
         
     def _get_next_state(self,
-                        single_input: np.ndarray,   
-                        feedback: np.ndarray=None) -> np.ndarray:
+                        single_input: np.ndarray) -> np.ndarray:
         """Given a state vector x(t) and an input vector u(t), compute the state vector x(t+1).
         
         Arguments:
             single_input {np.ndarray} -- Input vector u(t).
-        
-        Keyword Arguments:
-            feedback {np.ndarray} -- Feedback vector if enabled. (default: {None})
             
         Raises:
             RuntimeError: feedback is enabled but no feedback vector is available.
@@ -175,14 +192,9 @@ class ESNOnline(object):
             np.ndarray -- Next state s(t+1).
         """
         
-        # check if the user is trying to add empty feedback
-        if self.Wfb is not None and feedback is None:
+        # check if feedback weights matrix is not None but empty feedback
+        if self.Wfb is not None and self.output_values is None:
             raise RuntimeError("Missing a feedback vector.")
-        
-        # warn if the user is adding a feedback vector when feedback is not available
-        # (might have forgotten the feedback weights matrix)
-        if self.Wfb is None and feedback is not None:
-            warnings.warn("Feedback vector should not be passed to update_state if no feedback matrix is provided.", UserWarning)
         
         x = self.state[1:self.N+1]
 
@@ -197,7 +209,7 @@ class ESNOnline(object):
         
         # add feedback if requested
         if self.Wfb is not None:
-            x1 += self.Wfb @ self.fbfunc(feedback)
+            x1 += self.Wfb @ self.fbfunc(self.output_values)
         
         # previous states memory leak and non-linear transformation
         x1 = (1-self.lr)*x + self.lr*np.tanh(x1)
@@ -217,7 +229,7 @@ class ESNOnline(object):
         """
         
         added_input_weights = generate_input_weights(self.N, nb_added_input,
-                                                     input_scaling=self.input_scaling, proba=1.0)
+                                                     input_scaling=self.input_scaling, proba=1.0 - self.input_sparsity)
         self.Win = np.hstack([self.Win, added_input_weights])
         self.dim_inp += nb_added_input
         
@@ -234,6 +246,8 @@ class ESNOnline(object):
             Increases the number of inputs the network needs
         """
         
+        assert self.Wout is not None, f"Matrix Wout is not initialized/trained yet (Wout={self.Wout})"
+        
         self.dim_out += nb_added_output
         self.Wout = np.vstack([self.Wout, np.zeros((nb_added_output, self.state_size))])
 
@@ -247,13 +261,12 @@ class ESNOnline(object):
         
         assert self.Wout is not None, "Matrix Wout is not initialized/trained yet"
         
-        output = (self.Wout @ self.state).astype(self.typefloat)
-        return output.ravel()
+        self.output_values = (self.Wout @ self.state).astype(self.typefloat)
+        return self.output_values.copy().ravel()
 
 
     def compute_output(self,
                        single_input: np.ndarray,
-                       last_feedback: np.ndarray=None,
                        wash_nr_time_step: int=0):
         """ Compute output from input to the reservoir
 
@@ -261,7 +274,6 @@ class ESNOnline(object):
             single_input {np.ndarray} -- Input vector u(t).
     
         Keyword Arguments:
-            last_feedback {np.ndarray} -- Feedback vector if enabled. (default: {None})
             wash_nr_time_step {int} -- Time for reservoir to run in free (without collecting output 
                                        or fitting Wout). (default: {0})
 
@@ -270,15 +282,7 @@ class ESNOnline(object):
             output {np.ndarray} -- Output after input u(t) is passed
         """
         
-        # if a feedback matrix is available, feedback will be set to 0 or to 
-        # a specific value.
-        if self.Wfb is not None:
-            if last_feedback is None:
-                last_feedback = np.zeros((self.dim_out, 1), dtype=self.typefloat)
-        else:
-            last_feedback = None
-        
-        state = self._get_next_state(single_input, feedback=last_feedback)
+        state = self._get_next_state(single_input)
         output = self.compute_output_from_current_state()
         
         return state, output
@@ -295,39 +299,7 @@ class ESNOnline(object):
         self.state_corr_inv = np.asmatrix(np.eye(self.state_size)) / self.alpha_coef
 
 
-    def prepare_for_training(self, output_dim, random_Wout=None):
-        """ Configure reservoir parameters before training
-
-        Arguments:
-            output_dim {int} -- Number of outputs.
-    
-        Keyword Arguments:
-            random_Wout {str} -- Type of random initialization of Wout. 
-                                 (default: {None}, only support ['gaussian'|'uniform'] for now)
-
-        Raises:
-            NotImplementedError: random_Wout is not None but unknown.
-        """
-        
-        # Reset reservoir
-        self.reset_reservoir()
-        
-        # Set the output dimension
-        self.dim_out = output_dim
-        
-        # Init Wout(0)
-        Wout_shape = (self.dim_out, self.state_size)
-        if random_Wout is None:
-            self.Wout = np.zeros(Wout_shape)
-        elif random_Wout == 'gaussian':
-            self.Wout = np.random.normal(0, 1, Wout_shape)
-        elif random_Wout == 'uniform':
-            self.Wout = np.random.randint(0, 2, Wout_shape) * 2 - 1
-        else:
-            raise NotImplementedError(f'Unknown {random_Wout} type of random Wout')
-
-
-    def train_from_current_state(self, error, indexes = None):
+    def train_from_current_state(self, targeted_output, indexes = None):
         """ Train Wout from current internal state.
         
         Arguments:
@@ -338,10 +310,12 @@ class ESNOnline(object):
                                     indexes are learned (default: {None})            
         """
 
+        error = self.output_values - targeted_output.reshape(-1,1)
+
         self.state_corr_inv = _new_correlation_matrix_inverse(self.state, self.state_corr_inv)
         
         if indexes == None:
-            self.Wout -= error.reshape(-1,1) @ (self.state_corr_inv @ self.state).T
+            self.Wout -= error @ (self.state_corr_inv @ self.state).T
         else:
             self.Wout[indexes] -= error[indexes] * (self.state_corr_inv @ self.state).T
 
@@ -371,9 +345,6 @@ class ESNOnline(object):
         ## Autochecks of inputs and outputs
         self._autocheck_io(inputs=inputs, outputs=teachers)
         
-        # Prepare the network for training
-        self.prepare_for_training(teachers[0].shape[0], random_Wout=random_Wout)
-        
         if verbose:
             steps = np.sum([i.shape[0] for i in inputs])
             print(f"Training on {len(inputs)} inputs ({steps} steps)-- wash: {wash_nr_time_step} steps")
@@ -387,8 +358,8 @@ class ESNOnline(object):
 
         # Train Wout on each input
         while i < nb_inputs:
-            _, output = self.compute_output(inputs[i])
-            self.train_from_current_state(output - teachers[i])
+            self.compute_output(inputs[i])
+            self.train_from_current_state(teachers[i])
             i += 1
 
 
