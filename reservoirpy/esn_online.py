@@ -26,6 +26,7 @@ class ESNOnline(object):
                  lr: float,
                  W: np.ndarray,
                  Win: np.ndarray,
+                 input_sparsity: float=-1,
                  output_size: int=0,
                  alpha_coef: float=1e-6,
                  use_raw_input: bool=False,
@@ -70,7 +71,9 @@ class ESNOnline(object):
         
         self.in_bias = input_bias
         self.dim_inp = self.Win.shape[1] - 1 if self.in_bias else self.Win.shape[1] # dimension of inputs (not including the bias at 1)
-        self.input_sparsity = 1. - np.count_nonzero(Win) / (Win.shape[0]*Win.shape[1])
+        if self.Win.shape[1] == 0:
+            assert input_sparsity >= 0, "input_sparsity is missing" 
+        self.input_sparsity = input_sparsity if Win.shape[1] == 0 else 1. - np.count_nonzero(Win) / (Win.shape[0]*Win.shape[1]) 
             
         self.typefloat = typefloat
         self.lr = lr # leaking rate
