@@ -134,7 +134,7 @@ class ESN(object):
 
     def _autocheck_nan(self):
         """ Auto-check to see if some important variables do not have a problem (e.g. NAN values). """
-        assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
+        #assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
         assert np.isnan(self.Win).any() == False, "Win matrix should not contain NaN values."
         if self.Wfb is not None:
             assert np.isnan(self.Wfb).any() == False, "Wfb matrix should not contain NaN values."
@@ -224,7 +224,7 @@ class ESN(object):
         
         # linear transformation
         x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1)) \
-            + np.dot(self.W, x)
+            + self.W.dot(x)
         
         # add feedback if requested
         if self.Wfb is not None:
