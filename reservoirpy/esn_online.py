@@ -360,10 +360,15 @@ class ESNOnline(object):
             i += 1
 
         # Train Wout on each input
+        all_states = []
         while i < nb_inputs:
-            self.compute_output(inputs[i])
+            state, _ = self.compute_output(inputs[i])
             self.train_from_current_state(teachers[i])
+            all_states.append(state)
             i += 1
+
+        # return all internal states
+        return [st.T for st in all_states]
 
 
     def save(self, directory: str):
