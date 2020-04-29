@@ -15,7 +15,6 @@ from scipy import linalg
 from tqdm import tqdm
 
 from .utils import check_values, _save
-from .mat_gen import generate_input_weights
 
 
 
@@ -26,8 +25,7 @@ class ESNOnline(object):
                  lr: float,
                  W: np.ndarray,
                  Win: np.ndarray,
-                 input_sparsity: float=-1,
-                 output_size: int=0,
+                 Wout: np.ndarray,
                  alpha_coef: float=1e-6,
                  use_raw_input: bool=False,
                  input_bias: bool=True,
@@ -40,9 +38,9 @@ class ESNOnline(object):
             lr {float} -- Leaking rate 
             W {np.ndarray} -- Reservoir weights matrix
             Win {np.ndarray} -- Input weights matrix
+            Wout {np.ndarray} -- Output weights matrix
         
         Keyword Arguments:
-            output_size {int} -- Dimension of output vector of reservoir. (default: {0})
             alpha_coef {float} -- Coefficient to scale the inversed state correlation matrix
                                   used for FORCE learning
             use_raw_input {bool} -- If True, input is used directly when computing output
@@ -62,7 +60,10 @@ class ESNOnline(object):
         self.W = W 
         self.Win = Win 
         self.Wfb = Wfb    
+        self.Wout = Wout
         
+        self.use_raw_inp = use_raw_input
+
         # check if dimensions of matrices are coherent
         self._autocheck_dimensions()
         self._autocheck_nan() 
@@ -71,9 +72,10 @@ class ESNOnline(object):
         
         self.in_bias = input_bias
         self.dim_inp = self.Win.shape[1] - 1 if self.in_bias else self.Win.shape[1] # dimension of inputs (not including the bias at 1)
-        if self.Win.shape[1] == 0:
-            assert input_sparsity >= 0, "input_sparsity is missing" 
-        self.input_sparsity = input_sparsity if Win.shape[1] == 0 else 1. - np.count_nonzero(Win) / (Win.shape[0]*Win.shape[1]) 
+
+        self.dim_out = Wout.shape[0]
+        self.state_size = Wout.shape[1]
+        self.output_values = np.zeros((self.dim_out,1)).astype(typefloat)
             
         self.typefloat = typefloat
         self.lr = lr # leaking rate
@@ -83,29 +85,6 @@ class ESNOnline(object):
             raise ValueError(f"If a feedback matrix is provided, \
                 fbfunc must be a callable object, not {self.fbfunc}.")
 
-        self.use_raw_inp = use_raw_input
-        
-        # Set the size of state vector containing the value of neurons, bias, (may/maynot) input
-        if self.use_raw_inp:
-            self.state_size = self.N + 1 + self.Win.shape[1]
-        else:
-            self.state_size = self.N + 1
-            
-        # Init dim_out, output_values and Wout
-        assert output_size >= 0, "Output dimension is negative"
-        if output_size == 0: # Wout is not initialized for offline learning
-            if self.Wfb is not None:
-                self.dim_out = self.Wfb.shape[1]
-                self.output_values = np.zeros((self.dim_out,1)).astype(self.typefloat)
-            else:
-                self.dim_out = None
-                self.output_values = None
-            self.Wout = None
-        else: # in case of FORCE learning, Wout must be initialized before training
-            self.dim_out = output_size
-            self.output_values = np.zeros((self.dim_out,1)).astype(self.typefloat)
-            self.Wout = np.zeros((self.dim_out,self.state_size)).astype(self.typefloat)
-            
         self.alpha_coef = alpha_coef # coef used to init state_corr_inv matrix
         
         # Init internal state vector and state_corr_inv matrix
@@ -144,6 +123,18 @@ class ESNOnline(object):
         assert len(self.Win.shape) == 2, f"Win shape should be (N, input) but is {self.Win.shape}."
         err = f"Win shape should be ({self.W.shape[1]}, input) but is {self.Win.shape}."
         assert self.Win.shape[0] == self.W.shape[0], err
+        
+        # Wout dimensions check list
+        assert len(self.Wout.shape) == 2, f"Wout shape should be (output, nb_states) but is {self.Wout.shape}."
+        nb_states = self.Win.shape[1] + self.W.shape[0] + 1 if self.use_raw_inp else self.W.shape[0] + 1
+        err = f"Wout shape should be (output, {nb_states}) but is {self.Wout.shape}."
+        assert self.Wout.shape[1] == nb_states, err
+
+        # Wfb dimensions check list
+        if self.Wfb is not None:
+            assert len(self.Wfb.shape) == 2, f"Wfb shape should be (input, output) but is {self.Wfb.shape}."
+            err = f"Wfb shape should be ({self.Win.shape[0]}, {self.Wout.shape[0]}) but is {self.Wfb.shape}."
+            assert (self.Win.shape[0],self.Wout.shape[0]) == self.Wfb.shape, err
         
 
     def _autocheck_io(self,
@@ -226,35 +217,6 @@ class ESNOnline(object):
         return self.state.copy()
     
     
-    def increase_input_size(self, nb_added_input = 1):
-        """
-            Increases the number of inputs the network needs
-        """
-        
-        added_input_weights = generate_input_weights(self.N, nb_added_input,
-                                                     input_scaling=self.input_scaling, proba=1.0 - self.input_sparsity)
-        self.Win = np.hstack([self.Win, added_input_weights])
-        self.dim_inp += nb_added_input
-        
-        if not self.use_raw_inp:
-            return
-        
-        self.state_size += nb_added_input
-        self.state = np.vstack([self.state, np.zeros((nb_added_input, 1))])
-        self.Wout = np.hstack([self.Wout, np.zeros((self.dim_out, nb_added_input))])
-
-
-    def increase_output_size(self, nb_added_output = 1):
-        """
-            Increases the number of inputs the network needs
-        """
-        
-        assert self.Wout is not None, f"Matrix Wout is not initialized/trained yet (Wout={self.Wout})"
-        
-        self.dim_out += nb_added_output
-        self.Wout = np.vstack([self.Wout, np.zeros((nb_added_output, self.state_size))])
-
-
     def compute_output_from_current_state(self):
         """ Compute output from current state s(t) of the reservoir
         
