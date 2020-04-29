@@ -317,20 +317,30 @@ class ESNOnline(object):
             steps = np.sum([i.shape[0] for i in inputs])
             print(f"Training on {len(inputs)} inputs ({steps} steps)-- wash: {wash_nr_time_step} steps")
 
-        i = 0; nb_inputs = len(inputs_concat)
-
-        # First 'warm up' the network
-        while i < wash_nr_time_step:
-            self.compute_output(inputs_concat[i])
-            i += 1
-
-        # Train Wout on each input
+        # List of all internal states when training
         all_states = []
-        while i < nb_inputs:
-            state, _ = self.compute_output(inputs_concat[i])
-            self.train_from_current_state(teachers_concat[i])
-            all_states.append(state)
-            i += 1
+        start = 1 if self.in_bias else 0
+        end = self.N + start
+
+        for i in range(len(inputs)):
+
+            t = 0
+            all_states_inp_i = []
+
+            # First 'warm up' the network
+            while t < wash_nr_time_step:
+                self.compute_output(inputs_concat[i+t])
+                t += 1
+
+            # Train Wout on each input
+            while t < inputs[i].shape[0]:
+                state, _ = self.compute_output(inputs_concat[i+t])
+                self.train_from_current_state(teachers_concat[i+t])
+                all_states_inp_i.append(state[start:end])
+                t += 1
+                
+            # Pack in all_states
+            all_states.append(np.hstack(all_states_inp_i))
 
         # return all internal states
         return [st.T for st in all_states]
@@ -363,13 +373,19 @@ class ESNOnline(object):
         ## Autochecks of inputs
         self._autocheck_io(inputs=inputs_concat)
         
-        internal_pred = [None]*steps
-        output_pred = [None]*steps
-        for i in range(steps):
-            internal_pred[i], output_pred[i] = self.compute_output(inputs_concat[i])
+        all_outputs = []
+        all_states = []
+        for i in range(len(inputs)):
+            internal_pred = []; output_pred = []
+            for t in range(inputs[i].shape[0]):
+                state, output = self.compute_output(inputs_concat[i+t])
+                internal_pred.append(state)
+                output_pred.append(output)
+            all_states.append(np.asarray(internal_pred))
+            all_outputs.append(np.asarray(output_pred))
         
         # return all_outputs, all_int_states
-        return output_pred, internal_pred
+        return all_outputs, all_states
 
 
     def save(self, directory: str):

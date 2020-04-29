@@ -211,11 +211,6 @@ reservoir = ESNOnline(lr = leak_rate,
 internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], 
                                    wash_nr_time_step=initLen, verbose=False)
 
-# Get internal states
-start = 1 if input_bias else 0
-end = N + start
-internal_states = internal_trained[start:end]
-
 
 
 ########################################
@@ -229,7 +224,7 @@ output_pred, internal_pred = reservoir.run(inputs=[test_in,])
 
 # Print errors made on test set
 errorLen = len(test_out)
-mse = np.mean((test_out[:] - np.array(output_pred)[:])**2) # Mean Squared Error: see https://en.wikipedia.org/wiki/Mean_squared_error
+mse = np.mean((test_out[:] - output_pred[0])**2) # Mean Squared Error: see https://en.wikipedia.org/wiki/Mean_squared_error
 rmse = np.sqrt(mse) # Root Mean Squared Error: see https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
 nmrse_mean = abs(rmse / np.mean(test_out[:])) # Normalised RMSE (based on mean)
 nmrse_maxmin = rmse / abs(np.max(test_out[:]) - np.min(test_out[:])) # Normalised RMSE (based on max - min)
@@ -243,15 +238,15 @@ print("********************\n")
 
 # Plot activation of neurons inside reservoir
 plt.figure()
-plt.plot(np.array(internal_states)[:200,:,:12].reshape(200,12))
+plt.plot(internal_trained[0][:200,:12])
 plt.ylim([-1.1,1.1])
 plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 11 for 200 time steps')
 
 # Plot output prediction
 plt.figure(figsize=(12,4))
-plt.plot(output_pred, color='red', lw=1.5, label="output predictions")
+plt.plot(output_pred[0], color='red', lw=1.5, label="output predictions")
 plt.plot(test_out, lw=0.75, label="real timeseries")
-plt.title("Ouput predictions against real timeseries")
+plt.title("Output predictions against real timeseries")
 plt.legend()
 
 plt.show()
