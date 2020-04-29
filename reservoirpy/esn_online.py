@@ -307,30 +307,69 @@ class ESNOnline(object):
         Returns:
             Sequence[np.ndarray] -- All states computed, for all inputs.
         """
+        inputs_concat = [inp[t,:] for inp in inputs for t in range(inp.shape[0])]
+        teachers_concat = [tea[t,:] for tea in teachers for t in range(tea.shape[0])]
+
         ## Autochecks of inputs and outputs
-        self._autocheck_io(inputs=inputs, outputs=teachers)
+        self._autocheck_io(inputs=inputs_concat, outputs=teachers_concat)
         
         if verbose:
             steps = np.sum([i.shape[0] for i in inputs])
             print(f"Training on {len(inputs)} inputs ({steps} steps)-- wash: {wash_nr_time_step} steps")
 
-        i = 0; nb_inputs = len(inputs)
+        i = 0; nb_inputs = len(inputs_concat)
 
         # First 'warm up' the network
         while i < wash_nr_time_step:
-            self.compute_output(inputs[i])
+            self.compute_output(inputs_concat[i])
             i += 1
 
         # Train Wout on each input
         all_states = []
         while i < nb_inputs:
-            state, _ = self.compute_output(inputs[i])
-            self.train_from_current_state(teachers[i])
+            state, _ = self.compute_output(inputs_concat[i])
+            self.train_from_current_state(teachers_concat[i])
             all_states.append(state)
             i += 1
 
         # return all internal states
         return [st.T for st in all_states]
+
+
+    def run(self, 
+            inputs: Sequence[np.ndarray],
+            verbose: bool=False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
+        """Run the model on a sequence of inputs, and returned the states and 
+           readouts vectors.
+        
+        Arguments:
+            inputs {Sequence[np.ndarray]} -- Sequence of inputs.
+        
+        Keyword Arguments:
+            verbose {bool} -- if `True`, display progress in stdout.
+        
+        Returns:
+            Tuple[Sequence[np.ndarray], Sequence[np.ndarray]] -- All states and readouts, 
+                                                                 for all inputs.
+
+        """
+        
+        inputs_concat = [inp[t,:] for inp in inputs for t in range(inp.shape[0])]
+
+        steps = np.sum([i.shape[0] for i in inputs])
+        if verbose:
+            print(f"Running on {len(inputs)} inputs ({steps} steps)")
+        
+        ## Autochecks of inputs
+        self._autocheck_io(inputs=inputs_concat)
+        
+        internal_pred = [None]*steps
+        output_pred = [None]*steps
+        for i in range(steps):
+            internal_pred[i], output_pred[i] = self.compute_output(inputs_concat[i])
+        
+        # return all_outputs, all_int_states
+        return output_pred, internal_pred
 
 
     def save(self, directory: str):

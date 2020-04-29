@@ -83,11 +83,14 @@ plt.ylim([-1.1,1.1])
 plt.title('A sample of input data')
 
 # Split data
-data_darray = [np.array([data_point]) for data_point in data]
-train_in = data_darray[0:trainLen]
-train_out = data_darray[0+1:trainLen+1]
-test_in = data_darray[trainLen:trainLen+testLen]
-test_out = data_darray[trainLen+1:trainLen+testLen+1]
+train_in = data[None,0:trainLen]
+train_out = data[None,0+1:trainLen+1]
+test_in = data[None,trainLen:trainLen+testLen]
+test_out = data[None,trainLen+1:trainLen+testLen+1]
+
+# rearange inputs in correct dimensions
+train_in, train_out = train_in.T, train_out.T
+test_in, test_out = test_in.T, test_out.T
 
 # Plot to investigate the data
 plt.figure()
@@ -202,7 +205,8 @@ reservoir = ESNOnline(lr = leak_rate,
 ########################################
 
 # Train reservoir
-internal_trained = reservoir.train(inputs=train_in, teachers=train_out, wash_nr_time_step=initLen, verbose=False)
+internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], 
+                                   wash_nr_time_step=initLen, verbose=False)
 
 # Get internal states
 start = 1 if input_bias else 0
@@ -218,11 +222,7 @@ internal_states = internal_trained[start:end]
 ########################################
 
 # Run reservoir on test set
-nb_tests = len(test_in)
-output_pred = [None]*nb_tests
-internal_pred = [None]*nb_tests
-for i in range(nb_tests):
-    internal_pred[i], output_pred[i] = reservoir.compute_output(test_in[i])
+output_pred, internal_pred = reservoir.run(inputs=[test_in,])
 
 # Print errors made on test set
 errorLen = len(test_out)
