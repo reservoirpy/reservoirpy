@@ -185,11 +185,14 @@ print( "default spectral radius before scaling:", original_spectral_radius)
 W = W * (spectral_radius / original_spectral_radius)
 print( "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W))))
 
+nb_states = Win.shape[1] + N + 1 if use_raw_input else N + 1
+Wout = np.zeros((n_outputs, nb_states))
+
 # Init reservoir
 reservoir = ESNOnline(lr = leak_rate,
                      W = W,
                      Win = Win,
-                     output_size = n_outputs,
+                     Wout = Wout,
                      alpha_coef = alpha_coef,
                      use_raw_input = use_raw_input,
                      input_bias = input_bias,
