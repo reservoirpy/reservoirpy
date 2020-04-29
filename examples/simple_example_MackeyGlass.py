@@ -33,7 +33,7 @@ set_seed(seed) #random.seed(seed)
 ########################################
 ########################################
 # loading data
-data = np.loadtxt('examples/MackeyGlass_t17.txt')
+data = np.loadtxt('MackeyGlass_t17.txt')
 normalization_auto = True #False #True
 
 ## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
