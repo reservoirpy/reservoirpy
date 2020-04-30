@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-#from pyESN import ESN
+
+import sys
+sys.path.insert(0, '..')
 from reservoirpy import ESN
-# import ESNold as ESN
-# import reservoir as ESN
+
 
 def set_seed(seed=None):
     """Making the seed (for random values) variable if None"""
@@ -170,7 +171,7 @@ plt.title('train_in & train_out')
 # plt.plot(test_in)
 # plt.plot(test_out)
 # plt.ylim([-1.1,1.1])
-# plt.legend(['test_in','test_out']) 
+# plt.legend(['test_in','test_out'])
 # plt.title('test_in & test_out')
 
 init_state = np.zeros((N, 1))
