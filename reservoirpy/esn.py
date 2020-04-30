@@ -83,7 +83,7 @@ class ESN(object):
         self.typefloat = typefloat
         self.lr = lr # leaking rate
         
-        self.reg_model = self._set_regression_model(ridge, reg_model)
+        self.reg_model = self._get_regression_model(ridge, reg_model)
         self.fbfunc = fbfunc
         if self.Wfb is not None and self.fbfunc is None:
             raise ValueError(f"If a feedback matrix is provided, \
@@ -102,7 +102,7 @@ class ESN(object):
         return out
     
     
-    def _set_regression_model(self, ridge: float=None, sklearn_model: Callable=None):
+    def _get_regression_model(self, ridge: float=None, sklearn_model: Callable=None):
         """Set the type of regression used in the model. All regression models available
         for now are described in reservoipy.regression_models:
             - any scikit-learn linear regression model (like Lasso or Ridge)
@@ -134,7 +134,7 @@ class ESN(object):
 
     def _autocheck_nan(self):
         """ Auto-check to see if some important variables do not have a problem (e.g. NAN values). """
-        assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
+        #assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
         assert np.isnan(self.Win).any() == False, "Win matrix should not contain NaN values."
         if self.Wfb is not None:
             assert np.isnan(self.Wfb).any() == False, "Wfb matrix should not contain NaN values."
@@ -224,7 +224,7 @@ class ESN(object):
         
         # linear transformation
         x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1)) \
-            + np.dot(self.W, x)
+            + self.W.dot(x)
         
         # add feedback if requested
         if self.Wfb is not None:
@@ -382,7 +382,7 @@ class ESN(object):
     
     def compute_outputs(self, 
                         states: Sequence[np.ndarray],
-                        verbose: bool=True) -> Sequence[np.ndarray]:
+                        verbose: bool=False) -> Sequence[np.ndarray]:
         """Compute all readouts of a given sequence of states.
         
         Arguments:
@@ -426,8 +426,66 @@ class ESN(object):
         
         else:
             raise RuntimeError("Impossible to compute outputs: no readout matrix available.")
+    
+    
+    def fit_readout(self,
+                    states: Sequence,
+                    teachers: Sequence,
+                    reg_model: Callable=None,
+                    ridge: float=None,
+                    force_pinv: bool=False,
+                    verbose: bool=False) -> np.ndarray:
+        """Compute a readout matrix by fitting the states computed by the ESN
+        to the ground truth expected values, using the regression model defined
+        in the ESN.
+
+        Arguments:
+            states {Sequence} -- All states computed.
+            teachers {Sequence} -- All ground truth vectors.
+
+        Keyword Arguments:
+            reg_model {scikit-learn regression model} -- Use a scikit-learn regression model. (default: {None})
+            ridge {float} -- Use Tikhonov regression and set regularization parameter to ridge. (default: {None})
+            force_pinv -- Overwrite all previous parameters and force pseudo-inverse resolution. (default: {False})
+            verbose {bool} -- (default: {False})
+
+        Returns:
+            np.ndarray -- Readout matrix.
+        """
+        # switch the regression model used at instanciation if needed.
+        # WARNING: this change won't be saved by the save function.
+        if (ridge is not None) or (reg_model is not None):
+            reg_model = self._get_regression_model(ridge, reg_model)
+        elif force_pinv:
+            reg_model = self._get_regression_model(None, None)
+        else:
+            reg_model = self.reg_model
+            
+        # check if network responses are valid
+        check_values(array_or_list=states, value=None)
+
+        if verbose:
+            tic = time.time()
+            print("Linear regression...")
+        # concatenate the lists (along timestep axis)
+        X = np.hstack(states).astype(self.typefloat)
+        Y = np.hstack(teachers).astype(self.typefloat)
         
+        # Adding ones for regression with bias b in (y = a*x + b)
+        X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
+
+        # Building Wout with a linear regression model.
+        # saving the output matrix in the ESN object for later use
+        Wout = reg_model(X, Y)
+        
+        if verbose:
+            toc = time.time()
+            print(f"Linear regression done! (in {toc - tic} sec)")
+        
+        # return readout matrix
+        return Wout
       
+    
     def train(self, 
               inputs: Sequence[np.ndarray], 
               teachers: Sequence[np.ndarray], 
@@ -481,29 +539,11 @@ class ESN(object):
         
         all_teachers = [t[wash_nr_time_step:].T for t in teachers]
         
-        # check if network responses are valid
-        check_values(array_or_list=all_states, value=None)
-
-        if verbose:
-            tic = time.time()
-            print("Linear regression...")
-        # concatenate the lists (along timestep axis)
-        X = np.hstack(all_states).astype(self.typefloat)
-        Y = np.hstack(all_teachers).astype(self.typefloat)
-        
-        # Adding ones for regression with biais b in (y = a*x + b)
-        X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
-
-        # Building Wout with a linear regression model.
-        # saving the output matrix in the ESN object for later use
-        self.Wout = self.reg_model(X, Y)
+        # compute readout matrix
+        self.Wout = self.fit_readout(all_states, all_teachers, verbose=verbose)
         
         # save the expected dimension of outputs
         self.dim_out = self.Wout.shape[0]
-        
-        if verbose:
-            toc = time.time()
-            print(f"Linear regression done! (in {toc - tic} sec)")
         
         # return all internal states
         return [st.T for st in all_states]

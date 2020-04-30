@@ -163,6 +163,6 @@ def _new_from_save(base_cls, restored_attr):
     obj = object.__new__(base_cls)
     for name, attr in restored_attr.items():
         obj.__setattr__(name, attr)
-    obj.reg_model = obj._set_regression_model(obj.ridge, obj.reg_model)
+    obj.reg_model = obj._get_regression_model(obj.ridge, obj.reg_model)
     
     return obj
