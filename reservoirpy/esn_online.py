@@ -288,7 +288,6 @@ class ESNOnline(object):
     def train(self, 
               inputs: Sequence[np.ndarray], 
               teachers: Sequence[np.ndarray],
-              random_Wout: str=None,
               wash_nr_time_step: int=0,
               verbose: bool=False) -> Sequence[np.ndarray]:
         """Train the ESN model on a sequence of inputs.
@@ -298,8 +297,6 @@ class ESNOnline(object):
             teachers {Sequence[np.ndarray]} -- Training set of ground truth.
         
         Keyword Arguments:
-            random_Wout {str} -- Type of random initialization of Wout. 
-                                 (default: {None}, only support ['gaussian'|'uniform'] for now)
             wash_nr_time_step {int} -- Number of states to considered as transitory 
                             when training. (default: {0})
             verbose {bool} -- if `True`, display progress in stdout.
