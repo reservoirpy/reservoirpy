@@ -107,7 +107,7 @@ class ESNOnline(object):
 
     def _autocheck_nan(self):
         """ Auto-check to see if some important variables do not have a problem (e.g. NAN values). """
-        assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
+        # assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
         assert np.isnan(self.Win).any() == False, "Win matrix should not contain NaN values."
         if self.Wfb is not None:
             assert np.isnan(self.Wfb).any() == False, "Wfb matrix should not contain NaN values."
