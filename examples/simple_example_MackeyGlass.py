@@ -202,7 +202,7 @@ plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 11 for 200
 plt.figure(figsize=(12,4))
 plt.plot(output_pred[0], color='red', lw=1.5, label="output predictions")
 plt.plot(test_out, lw=0.75, label="real timeseries")
-plt.title("Ouput predictions against real timeseries")
+plt.title("Output predictions against real timeseries")
 plt.legend()
 # plt.ylim(-1.1,1.1)
 plt.show()
