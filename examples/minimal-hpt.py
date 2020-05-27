@@ -8,7 +8,7 @@ from reservoirpy.hyper import research, plot_hyperopt_report
 
 if __name__ == "__main__":
     
-    def loss_ESN(train_data, test_data, config, *, iss, N, sr, leak, ridge):
+    def objective(train_data, test_data, config, *, iss, N, sr, leak, ridge):
     
         # unpack train and test data, with target values.
         x_train, y_train = train_data
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     x_train, y_train = train_data
     
     # run the random search
-    best = research(loss_ESN, dataset, "examples/mackeyglass-config.json", "examples/report")
+    best = research(objective, dataset, "examples/mackeyglass-config.json", "examples/report")
     
     # plot the results (fetch results from the report directory)
     fig = plot_hyperopt_report("examples/report/hyperopt-mackeyglass", params=["sr", "leak", "ridge"])
