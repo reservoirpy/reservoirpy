@@ -3,6 +3,7 @@
     "hp_max_evals": 1000,
     "hp_method": "random",
     "seed": 42,
+    "instances_per_trial": 5,
     "hp_space": {
         "N": ["choice", 300],
         "sr": ["loguniform", 1e-6, 10],
