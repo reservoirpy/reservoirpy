@@ -21,7 +21,6 @@ def get_results(exp):
 
 def outliers_idx(values, max_deviation):
     mean = values.mean()
-    std = values.std()
     
     dist = abs(values - mean)
     corrected = dist < mean + max_deviation
@@ -101,15 +100,15 @@ def parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
     
     import matplotlib.pyplot as plt
     
-    y = np.log10(values[p].copy()[smaxs])
-    all_y = np.log10(values[p].copy())
+    y = values[p].copy()[smaxs]
+    all_y = values[p].copy()
     
-    # if log:
-    #     logscale_plot(ax, y, None)
+    if log:
+        y = np.log10(y)
+        all_y = np.log10(all_y)
 
     ax.get_yaxis().set_ticks([])
     ax.tick_params(axis='x', which='both')
-    
     
     ax.xaxis.set_major_locator(plt.MultipleLocator(1))
     
@@ -120,9 +119,7 @@ def parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
 
     ax.set_xlabel(p)
     ax.grid(True, which="both", ls="-", alpha=0.75)
-    #ax.set_xscale('log', basex=10)
     ax.set_xlim([np.min(all_y), np.max(all_y)])
-    
     
     violin = ax.violinplot(y, vert=False, showmeans=False, showextrema=False)
     
@@ -143,7 +140,7 @@ def parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
         ax.legend(loc=2)
 
 
-def plot_hyperopt_report(exp, params, metric, not_log=None, title=None):
+def plot_hyperopt_report(exp, params, metric='loss', not_log=None, max_deviation=None, title=None):
     """Cross paramater scatter plot of hyperopt trials.
     
     Installation of Matplotlib and Seaborn packages is required to use this tool.
@@ -151,10 +148,13 @@ def plot_hyperopt_report(exp, params, metric, not_log=None, title=None):
     Arguments:
         exp {str or Path} -- Report directory storing hyperopt trials results.
         params {Sequence} -- Parameters to plot.
-        metric {str} -- Metric to use as performance measure. May be different from loss metric.
         
     Keyword Arguments:
+        metric {str} -- Metric to use as performance measure, stored in the hyperopt trials results dictionnaries. 
+                        May be different from loss metric. By default, loss is used as performance metric. (default: {'loss'})
         not_log {Sequence} -- Parameters to plot with a linear scale. By default, all scales are logarithmic.
+        max_deviation {float} -- Maximum standard deviation expected from the loss mean. Useful to remove outliers. 
+                                 (default: {None})
         title {str} -- Optional title for the figure. (default: {None})
 
     Returns:
@@ -172,16 +172,18 @@ def plot_hyperopt_report(exp, params, metric, not_log=None, title=None):
     results = get_results(exp)
     
     loss = np.array([r['returned_dict']['loss'] for r in results])
-    scores = np.sqrt(np.array([r['returned_dict']['loss'] for r in results]))
+    scores = np.array([r['returned_dict'][metric] for r in results])
     
-    not_outliers = outliers_idx(loss, 10)
-    loss = loss[not_outliers]
-    scores = scores[not_outliers]
-    
+    if max_deviation is not None:
+        not_outliers = outliers_idx(loss, max_deviation)
+        loss = loss[not_outliers]
+        scores = scores[not_outliers]
+        values = {p: np.array([r['current_params'][p] for r in results])[not_outliers] for p in params}
+    else:
+        values = {p: np.array([r['current_params'][p] for r in results]) for p in params}
+        
     if scores.max() > 1.0:
         scores = 1 - scale(scores)
-        
-    values = {p: np.array([r['current_params'][p] for r in results])[not_outliers] for p in params}
         
     ## loss and f1 values
 
