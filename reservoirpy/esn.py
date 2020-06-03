@@ -660,3 +660,4 @@ class ESN(object):
                 "std": np.std(self.Wout)  
             }
         return desc
+

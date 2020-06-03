@@ -96,15 +96,13 @@ def research(objective, dataset, config_path, report_path=None):
     
     config = _get_conf_from_json(config_path)
     report_path = _get_report_path(config["exp"], report_path)
-    
-    train_data, test_data = dataset
 
     def objective_wrapper(kwargs):
         
         try:
             start = time.time()
             
-            returned_dict = objective(train_data, test_data, config, **kwargs)
+            returned_dict = objective(dataset, config, **kwargs)
             
             end = time.time()
             duration = end - start

@@ -8,9 +8,10 @@ from reservoirpy.hyper import research, plot_hyperopt_report
 
 if __name__ == "__main__":
     
-    def objective(train_data, test_data, config, *, iss, N, sr, leak, ridge):
-    
+    def objective(dataset, config, *, iss, N, sr, leak, ridge):
+        
         # unpack train and test data, with target values.
+        train_data, test_data = dataset
         x_train, y_train = train_data
         x_test, y_test = test_data
 
