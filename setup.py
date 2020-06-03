@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="reservoirpy",
-    version="0.1.0",
+    version="0.2.0",
     author="Xavier Hinaut",
     author_email="xavier.hinaut@inria.fr",
     description="A simple and flexible code for Reservoir Computing architectures like Echo State Networks.",
