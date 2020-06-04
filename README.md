@@ -130,3 +130,6 @@ If you want to have more information on all the steps and more option (for examp
 Tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
+
+## Cite
+Nathan Trouvain, Luca Pedrelli, Thanh Trung Dinh, Xavier Hinaut. ReservoirPy: an Efficient and User-Friendly Library to Design Echo State Networks. 2020. ⟨hal-02595026⟩ https://hal.inria.fr/hal-02595026
