@@ -1,11 +1,11 @@
 # ReservoirPy (v0.2)
 **A simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
-This toolbox works for Python 3 (and should be compatible for Python2). We just updated it from Python 2 to 3, so tell us if you have any issue with it.
+This library works for Python 3 (and should be compatible for Python2). We just updated it from Python 2 to 3, so tell us if you have any issue with it.
 
 ## Installation
 
-This toolbox is not yet available through PyPI, but can be installed with `pip` using a local clone of this repository:
+This library is not yet available through PyPI, but can be installed with `pip` using a local clone of this repository:
 
 ```bash
 # clone or download the repository
