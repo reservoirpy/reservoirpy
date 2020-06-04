@@ -22,7 +22,7 @@ pip install path/to/local/copy/reservoirpy/.
 Available versions and corresponding branch:
 - v0.1.x : `v0.1`
 - v0.2.x (last stable) : `master`
-- v0.2.x (dev) : `v0.2`
+- v0.2.x (dev) : `v0.2-dev`
 - (comming soon) v0.3.0 : `v0.3`
 
 ## Quick try
@@ -39,6 +39,9 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
     ```bash
     python minimalESN_MackeyGlass.py
     ```
+
+## Preprint with tutorials
+Tutorial on ReservoirPy can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
 ## How to use the ESN class
 You can generate and train a reservoir to predict the MackeyGlass timeseries in a few steps:
@@ -59,41 +62,13 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=n_inputs, input_scaling=1.0, proba=1.0, input_bias=input_bias)
     ```
 
-3. (instead of previous step) Define yourself the random input Win and recurrent W matrices (customize method):
-
-    ```python
-    import numpy as np
-
-    # Generating matrices Win and W
-    W = np.random.rand(N,N) - 0.5
-    if input_bias:
-        Win = np.random.rand(N,dim_inp+1) - 0.5
-    else:
-        Win = np.random.rand(N,dim_inp) - 0.5
-
-    # Apply mask to make matrices sparse
-    proba_non_zero_connec_W = 0.2 # set the probability of non-zero connections
-    mask = np.random.rand(N,N) # create a mask with Uniform[0;1] distribution
-    W[mask > proba_non_zero_connec_W] = 0 # apply mask on W: set to zero some connections given by the mask
-    mask = np.random.rand(N,Win.shape[1]) # Do the same for input matrix
-    Win[mask > proba_non_zero_connec_Win] = 0
-
-    # Scaling matrices Win and W
-    input_scaling = 1.0 # Define the scaling of the input matrix Win
-    Win = Win * input_scaling # Apply scaling
-    spectral_radius = 1.0 # Define the scaling of the recurrent matrix W
-    print 'Computing spectral radius ...',
-    original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
-    W = W * (spectral_radius / original_spectral_radius) # Rescale W to reach the requested spectral radius
-    ```
-
-4. Define the Echo State Network (ESN):
+3. Define the Echo State Network (ESN):
      ```python
      from reservoirpy import ESN
      reservoir = ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
      ```
 
-5. Define your input/output training and testing data:
+4. Define your input/output training and testing data:
 
     In this step, we load the dataset to perform the prediction of the chaotic MackeyGlass timeseries, and we split the data into the different subsets.
 
@@ -105,7 +80,7 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     test_out = data[None,trainLen+1:trainLen+testLen+1].T # output to be predicted (TESTING PHASE)
     ```
 
-6. Train the ESN:
+5. Train the ESN:
 
     Be careful to give lists for the input and output (i.e. teachers) training data. Here we are training with only one timeseries, but you actually can provide a list of timeseries segments to train from.
 
@@ -115,19 +90,19 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
     internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=100)
     ```
 
-7. Test the ESN (i.e. predict the next value in the timeseries):
+6. Test the ESN (i.e. predict the next value in the timeseries):
     ```python
     output_pred, internal_pred = reservoir.run(inputs=[test_in,])
     ```
 
-8. Compute the error made on test data:
+7. Compute the error made on test data:
 
     ```python
     print("\nRoot Mean Squared error:")
     print(np.sqrt(np.mean((output_pred[0] - test_out)**2))/testLen)
     ```
 
-9. Plot the internal states of the ESN and the outputs for test data.
+8. Plot the internal states of the ESN and the outputs for test data.
 
     If the training was sucessful, predicted output and real curves should overlap:
 
@@ -151,14 +126,7 @@ You can generate and train a reservoir to predict the MackeyGlass timeseries in 
 
 If you want to have more information on all the steps and more option (for example, have a reservoir with output feedback), please have a look at **simple_example_MackeyGlass.py**.
 
-## Explore which are optimum Hyper-Parameters for your task with Hyperopt
-1. Adapt hyperopt_explore.py to you own needs
-2. Run the exploration
-    ```python
-    python hyperapero.py -s your_simulation_name
-    ```
-3. Analyse the error vs. the hyperparameters
-    ```python
-    python hp_analyse_error.py -l -t your_folder_with_hp_exploration_files/hyperopt_trials.pkl
-          -o your_output_folder/error_vs_
-    ```
+## Explore Hyper-Parameters with Hyperopt
+Tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+
+More info on hyperopt: [Official website](hyperopt.github.io)
