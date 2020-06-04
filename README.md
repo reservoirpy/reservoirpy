@@ -1,4 +1,4 @@
-# ReservoirPy (v0.1)
+# ReservoirPy (v0.2)
 **A simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 This toolbox works for Python 3 (and should be compatible for Python2). We just updated it from Python 2 to 3, so tell us if you have any issue with it.
@@ -16,12 +16,14 @@ git clone https://github.com/neuronalX/reservoirpy.git
 pip install path/to/local/copy/reservoirpy/.
 ```
 
+## Versions
 **To enable last features of ReservoirPy, you migth want to download a specific Git branch.**
 
 Available versions and corresponding branch:
-- v0.1.0 : `master`
-- v0.2.0 and later : `parallelization`
-- Incoming v0.3.0 and later : `v0.3`
+- v0.1.x : `v0.1`
+- v0.2.x (last stable) : `master`
+- v0.2.x (dev) : `v0.2`
+- (comming soon) v0.3.0 : `v0.3`
 
 ## Quick try
 #### Chaotic timeseries prediction (MackeyGlass)
