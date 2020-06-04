@@ -129,4 +129,4 @@ If you want to have more information on all the steps and more option (for examp
 ## Explore Hyper-Parameters with Hyperopt
 Tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
-More info on hyperopt: [Official website](hyperopt.github.io)
+More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
