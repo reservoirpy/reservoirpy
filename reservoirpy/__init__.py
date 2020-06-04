@@ -7,4 +7,4 @@ from .esn import ESN
 from .esn_online import ESNOnline
 from .utils import load
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
