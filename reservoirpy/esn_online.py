@@ -250,7 +250,7 @@ class ESNOnline(object):
         state = self._get_next_state(single_input)
         output = self.compute_output_from_current_state()
         
-        return state, output
+        return output, state
     
     
     def reset_reservoir(self):
@@ -331,7 +331,7 @@ class ESNOnline(object):
 
             # Train Wout on each input
             while t < inputs[i].shape[0]:
-                state, _ = self.compute_output(inputs_concat[i+t])
+                _, state = self.compute_output(inputs_concat[i+t])
                 self.train_from_current_state(teachers_concat[i+t])
                 all_states_inp_i.append(state[start:end])
                 t += 1
@@ -375,7 +375,7 @@ class ESNOnline(object):
         for i in range(len(inputs)):
             internal_pred = []; output_pred = []
             for t in range(inputs[i].shape[0]):
-                state, output = self.compute_output(inputs_concat[i+t])
+                output, state = self.compute_output(inputs_concat[i+t])
                 internal_pred.append(state)
                 output_pred.append(output)
             all_states.append(np.asarray(internal_pred))

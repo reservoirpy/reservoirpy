@@ -49,7 +49,7 @@ if __name__ == "__main__":
                 'rmse': np.mean(rmse)}
     
     # 10,000 timesteps of Mackey-Glass timeseries
-    mackey_glass = np.loadtxt('examples/MackeyGlass_t17.txt').reshape(-1, 1)
+    mackey_glass = np.loadtxt('MackeyGlass_t17.txt').reshape(-1, 1)
     
     # split data
     train_frac = 0.6
@@ -65,9 +65,9 @@ if __name__ == "__main__":
     x_train, y_train = train_data
     
     # run the random search
-    best = research(objective, dataset, "examples/mackeyglass-config.json", "examples/report")
+    best = research(objective, dataset, "mackeyglass-config.json", "report")
     
     # plot the results (fetch results from the report directory)
-    fig = plot_hyperopt_report("examples/report/hyperopt-mackeyglass", params=["sr", "leak", "ridge"])
+    fig = plot_hyperopt_report("report/hyperopt-mackeyglass", params=["sr", "leak", "ridge"], metric='loss')
     
     fig.savefig("test.png")
