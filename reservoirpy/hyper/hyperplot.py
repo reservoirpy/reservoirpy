@@ -89,7 +89,7 @@ def loss_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p, log, legend):
     
     sc_l = ax.scatter(X[lmaxs], loss[lmaxs], scores[lmaxs]*100, color="orange")
     sc_s = ax.scatter(X[smaxs], loss[smaxs], scores[smaxs]*100, c=cmaxs, cmap="YlGn")
-    sc_m = ax.scatter(X[~(lmaxs)], loss.min(), scores[~(lmaxs)]*100, color="red", label="Loss min.")
+    sc_m = ax.scatter(X[~(lmaxs)], [loss.min()]*np.sum(~lmaxs), scores[~(lmaxs)]*100, color="red", label="Loss min.")
 
     if legend:
         ax.legend()
