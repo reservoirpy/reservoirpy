@@ -23,6 +23,9 @@ def set_seed(seed=None):
     print( "Seed used for random values:", seed)
     return seed
 
+def get_last_state(internal_trained):
+    return internal_trained[-1][-1:,:].T
+
 ## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
 # NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
 seed = 42 #None #42
@@ -79,7 +82,7 @@ n_reservoir = 300 # number of recurrent units
 leak_rate = 0.3 # leaking rate (=1/time_constant_of_neurons)
 spectral_radius = 1.25 # Scaling of recurrent matrix
 input_scaling = 1. # Scaling of input matrix
-proba_non_zero_connec_W = 0.2 # Sparsity of recurrent matrix: Perceptage of non-zero connections in W matrix
+proba_non_zero_connec_W = 0.2 # Sparsity of recurrent matrix W: % of non-zero connections
 proba_non_zero_connec_Win = 1. # Sparsity of input matrix
 proba_non_zero_connec_Wfb = 1. # Sparsity of feedback matrix
 regularization_coef =  1e-8
@@ -157,26 +160,20 @@ test_in, test_out = test_in.T, test_out.T
 print( "train_in, train_out dimensions", train_in.shape, train_out.shape)
 print( "test_in, test_out dimensions", test_in.shape, test_out.shape)
 
-plt.figure()
-plt.plot(train_in, train_out)
-plt.ylim([-1.1,1.1])
-plt.title('Recurrence plot of training data: input(t+1) vs. input(t)')
-plt.figure()
-plt.plot(train_in)
-plt.plot(train_out)
-plt.ylim([-1.1,1.1])
-plt.legend(['train_in','train_out'])
-plt.title('train_in & train_out')
-# plt.figure()
-# plt.plot(test_in)
-# plt.plot(test_out)
-# plt.ylim([-1.1,1.1])
-# plt.legend(['test_in','test_out'])
-# plt.title('test_in & test_out')
+#plt.figure()
+#plt.plot(train_in, train_out)
+#plt.ylim([-1.1,1.1])
+#plt.title('Recurrence plot of training data: input(t+1) vs. input(t)')
+#plt.figure()
+#plt.plot(train_in)
+#plt.plot(train_out)
+#plt.ylim([-1.1,1.1])
+#plt.legend(['train_in','train_out'])
+#plt.title('train_in & train_out')
 
-init_state = np.zeros((N, 1))
 internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=initLen, verbose=False)
-output_pred, internal_pred = reservoir.run(inputs=[test_in,], init_state=init_state)
+#output_pred, internal_pred = reservoir.run(inputs=[test_in,], init_state=np.zeros((N, 1)))
+output_pred, internal_pred = reservoir.run(inputs=[test_in], init_state=get_last_state(internal_trained))
 errorLen = len(test_out[:]) #testLen #2000
 
 ## printing errors made on test set
@@ -191,13 +188,13 @@ print("Errors computed over %d time steps" % (errorLen))
 print("\nMean Squared error (MSE):\t\t%.4e" % (mse) )
 print("Root Mean Squared error (RMSE):\t\t%.4e\n" % rmse )
 print("Normalized RMSE (based on mean):\t%.4e" % (nmrse_mean) )
-print("Normalized RMSE (based on max - min):\t%.4e" % (nmrse_maxmin) )
+print("Normalized RMSE (based on max - min):\t%.4e <<<" % (nmrse_maxmin) )
 print("********************\n")
 
 plt.figure()
-plt.plot( internal_trained[0][:200,:12])
+plt.plot( internal_trained[0][:200,:21])
 plt.ylim([-1.1,1.1])
-plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 11 for 200 time steps')
+plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 20 for 200 time steps')
 
 plt.figure(figsize=(12,4))
 plt.plot(output_pred[0], color='red', lw=1.5, label="output predictions")
