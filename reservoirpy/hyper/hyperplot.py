@@ -34,12 +34,12 @@ def logscale_plot(ax, xrange, yrange, base=10):
     if xrange is not None:
         ax.xaxis.set_minor_formatter(ticker.LogFormatter())
         ax.xaxis.set_major_formatter(ticker.LogFormatter())
-        ax.set_xscale("log", basex=base)
+        ax.set_xscale("log", base=base)
         ax.set_xlim([np.min(xrange), np.max(xrange)])
     if yrange is not None:
         ax.yaxis.set_minor_formatter(ticker.LogFormatter())
         ax.yaxis.set_major_formatter(ticker.LogFormatter())
-        ax.set_yscale("log", basey=base)
+        ax.set_yscale("log", base=base)
         ax.set_ylim([yrange.min() - 0.1*yrange.min(), yrange.max() + 0.1*yrange.min()])
 
 
@@ -47,15 +47,26 @@ def scale(x):
     return (x - x.min()) / (x.ptp())
 
 
-def cross_parameter_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p1, p2, log1, log2):
+def cross_parameter_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p1, p2, log1, log2, cat1, cat2):
     
     X = values[p2].copy()
     Y = values[p1].copy()
     
-    if log1:
-        logscale_plot(ax, X, None)
-    if log2:
-        logscale_plot(ax, None, Y)
+    to_log = []
+    if log1 and not cat2:
+        to_log.append(X)
+    else:
+        to_log.append(None)
+        if cat2:
+            ax.margins(x=0.05)
+    if log1 and not cat1:
+        to_log.append(Y)
+    else:
+        to_log.append(None)
+        
+    logscale_plot(ax, *to_log)
+    # if log2 and not cat2:
+    #     logscale_plot(ax, None, Y)
     
     ax.tick_params(axis='both', which='both')
     ax.tick_params(axis='both', labelsize="xx-small")
@@ -71,14 +82,16 @@ def cross_parameter_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p1, p2, 
     return sc_l, sc_s, sc_m
 
 
-def loss_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p, log, legend):
+def loss_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p, log, categorical, legend):
     
     X = values[p].copy()
     
-    if log:
+    if log and not(categorical):
         logscale_plot(ax, X, loss)
     else:
         logscale_plot(ax, None, loss)
+        if categorical:
+            ax.margins(x=0.05)
     
     ax.set_xlabel(p)
     ax.set_ylabel("loss")
@@ -95,6 +108,7 @@ def loss_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p, log, legend):
         ax.legend()
     
     return sc_l, sc_s, sc_m
+
 
 def parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
     
@@ -138,21 +152,38 @@ def parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
     
     if legend:
         ax.legend(loc=2)
+        
+        
+def parameter_bar(ax, values, scores, loss, smaxs, cmaxs, p, categories):
+    
+    import matplotlib.pyplot as plt
+    
+    y = values[p].copy()[smaxs]
+    
+    ax.set_xlabel(p)
+    ax.grid(True, which="both", ls="-", alpha=0.75)
+    
+    heights = []
+    for p in categories:
+        heights.append(y.tolist().count(p))
+    
+    bar = ax.bar(x=categories, height=heights, color="forestgreen", alpha=0.3)
 
 
-def plot_hyperopt_report(exp, params, metric='loss', not_log=None, max_deviation=None, title=None):
+def plot_hyperopt_report(exp, params, metric='loss', not_log=None, categorical=None, max_deviation=None, title=None):
     """Cross paramater scatter plot of hyperopt trials.
     
     Installation of Matplotlib and Seaborn packages is required to use this tool.
 
     Arguments:
         exp {str or Path} -- Report directory storing hyperopt trials results.
-        params {Sequence} -- Parameters to plot.
+        params {list} -- Parameters to plot.
         
     Keyword Arguments:
         metric {str} -- Metric to use as performance measure, stored in the hyperopt trials results dictionnaries. 
-                        May be different from loss metric. By default, loss is used as performance metric. (default: {'loss'})
-        not_log {Sequence} -- Parameters to plot with a linear scale. By default, all scales are logarithmic.
+                        May be different from loss metric. By default, loss is used as performance metric. (default: 'loss')
+        not_log {list} -- Parameters to plot with a linear scale. By default, all scales are logarithmic.
+        categorical {list} -- List of categorical parameters. (default: None)
         max_deviation {float} -- Maximum standard deviation expected from the loss mean. Useful to remove outliers. 
                                  (default: {None})
         title {str} -- Optional title for the figure. (default: {None})
@@ -181,6 +212,22 @@ def plot_hyperopt_report(exp, params, metric='loss', not_log=None, max_deviation
         values = {p: np.array([r['current_params'][p] for r in results])[not_outliers] for p in params}
     else:
         values = {p: np.array([r['current_params'][p] for r in results]) for p in params}
+        
+    for p in categorical:
+        values[p] = values[p].astype(str)
+    
+    # Sorting for categorical plotting
+    all_categorical = [val for p, val in values.items() if p in categorical]
+    all_numerical = [val for p, val in values.items() if p not in categorical]
+    
+    sorted_idx = np.lexsort((loss, scores, *all_numerical, *all_categorical))
+    
+    loss = np.array([loss[i] for i in sorted_idx])
+    scores = np.array([scores[i] for i in sorted_idx])
+    
+    for p, val in values.items():
+        values[p] = np.array([val[i] for i in sorted_idx])
+    
         
     if scores.max() > 1.0:
         scores = 1 - scale(scores)
@@ -218,11 +265,12 @@ def plot_hyperopt_report(exp, params, metric='loss', not_log=None, max_deviation
             if p1 == p2:
                 sc_l, sc_s, sc_m = loss_plot(ax, values, scores, loss, smaxs, 
                                              cmaxs, lmaxs, p2, not(p2 in not_log),
-                                             (i==0 and j==0))
+                                             p2 in categorical, (i==0 and j==0))
             else:
                 sc_l, sc_s, sc_m = cross_parameter_plot(ax, values, scores, loss, 
                                      smaxs, cmaxs, lmaxs, p1, p2, 
-                                     not(p1 in not_log), not(p2 in not_log))
+                                     not(p1 in not_log), not(p2 in not_log),
+                                     p1 in categorical, p2 in categorical)
 
     #legends
 
@@ -239,14 +287,28 @@ def plot_hyperopt_report(exp, params, metric='loss', not_log=None, max_deviation
     _ = f_cbar.ax.set_title(f"{metric} best population")
     _ = f_cbar.ax.set_xticklabels(["5% best", "2.5% best", "Best"])
 
-    # violinplots
+    #violinplots
 
+    legend = True
     for i, p in enumerate(params):
         ax = fig.add_subplot(gs1[-1, i])
-        legend = True if i == 0 else False
-        parameter_violin(ax, values, scores, 
-                         loss, smaxs, cmaxs, p, not(p in not_log), legend)
+        if p in categorical:
+            parameter_bar(ax, values, scores,
+                          loss, smaxs, cmaxs, p, sorted(list(set(values[p]))))
+        else:
+            parameter_violin(ax, values, scores, 
+                            loss, smaxs, cmaxs, p, not(p in not_log), legend)
+            legend = False
         if legend:
             ax.set_ylabel(f"5% best {metric}\nparameter distribution")
     return fig
     
+    
+if __name__ == "__main__":
+    
+    import matplotlib.pyplot as plt
+    
+    fig = plot_hyperopt_report("/home/nathan/Bureau/canary/16syll-decoder/hyperopt/16syll-ot-8e-noise-seed-ridge", 
+                         ["seed", "ridge"], metric='F1', not_log=None, categorical=["seed"], max_deviation=None, title=None)
+    
+    fig.savefig("test.png")

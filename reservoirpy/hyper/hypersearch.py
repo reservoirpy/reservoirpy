@@ -92,6 +92,25 @@ def _get_report_path(exp_name, base_path=None):
 
 
 def research(objective, dataset, config_path, report_path=None):
+    """
+    Wrapper for hyperopt fmin function. WIll run hyperopt fmin on the
+    objective function passed as argument, on the data stored in the 
+    dataset argument. 
+    
+    Arguments:
+        objective {Callable} -- Objective function defining the function to
+                                optimize. Must be able to receive the dataset argument and 
+                                all parameters sampled by hyperopt during the search. These 
+                                parameters must be keyword arguments only without default value
+                                (this can be achieve by separating them from the other arguments
+                                with an empty starred expression. See examples for more info.)
+        dataset {Any} -- Argument used to pass data to the objective function during the hyperopt run.
+        config_path {str or Path} -- Path to the hyperopt experimentation configuration file used to
+                                     define this run.
+    Keywords arguments:
+        report_path {str} -- Path to the directory where to store the results of the run. By default,
+                             this directory is set to be {name of the experiment}/results/. [default: None]
+    """
     
     import hyperopt as hopt
     
