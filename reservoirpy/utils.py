@@ -7,6 +7,8 @@ from typing import Sequence, Union, Any
 import dill
 import numpy as np
 
+from scipy import sparse
+
 import reservoirpy
 
 
@@ -39,12 +41,16 @@ def _save(esn, directory: str):
     current_time = time.time()    
     
     # store matrices
-    W_path = f"esn-W-{current_time}.npy"
     Win_path = f"esn-Win-{current_time}.npy"
     Wout_path = None
     Wfb_path = None
     
-    np.save(os.path.join(savedir, W_path), esn.W)
+    if sparse.issparse(esn.W):
+        W_path = f"esn-W-{current_time}.npz"
+        sparse.save_npz(os.path.join(savedir, W_path), esn.W)
+    else:
+        W_path = f"esn-W-{current_time}.npy"
+        np.save(os.path.join(savedir, W_path), esn.W)
     np.save(os.path.join(savedir, Win_path), esn.Win)
     
     dim_out = None
@@ -126,7 +132,11 @@ def load(directory: str):
 
     model_attr = attr["attr"]
     
-    model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
+    if os.path.splitext(model_attr["W"])[1] == "npy":
+        model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
+    else:
+        model_attr["W"] = sparse.load_npz(os.path.join(directory, model_attr["W"]))
+        
     model_attr["Win"] = np.load(os.path.join(directory, model_attr["Win"]))
     
     if model_attr["Wout"] is not None:
@@ -147,8 +157,8 @@ def load(directory: str):
     else:
         model_attr["reg_model"] = None
         model_attr["ridge"] = None
-            
-    model_attr["typefloat"] = type(model_attr["W"][0,0]) 
+    
+    model_attr["typefloat"] = np.float64
     
     with open(os.path.join(directory, attr["cls_bin"]), 'rb') as f:
         base_cls = dill.load(f)
