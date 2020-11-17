@@ -288,7 +288,7 @@ class ESN(object):
         if init_state is None:
             current_state = np.zeros((self.N, 1),dtype=self.typefloat)
         else:
-            current_state = init_state.copy()
+            current_state = init_state.copy().reshape(-1, 1)
             
         # for each time step in the input
         for t in range(input.shape[0]):
