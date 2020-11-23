@@ -132,7 +132,7 @@ def load(directory: str):
 
     model_attr = attr["attr"]
     
-    if os.path.splitext(model_attr["W"])[1] == "npy":
+    if os.path.splitext(model_attr["W"])[1] == ".npy":
         model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
     else:
         model_attr["W"] = sparse.load_npz(os.path.join(directory, model_attr["W"]))
