@@ -681,6 +681,7 @@ class ESN(object):
         """
         _save(self, directory)
 
+    #? maybe remove this in the future: unused
     def describe(self) -> Dict:
         """
         Provide descriptive stats about ESN matrices.

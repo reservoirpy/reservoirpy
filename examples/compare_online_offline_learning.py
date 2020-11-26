@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, '..')
 
 from reservoirpy import ESN, ESNOnline
-from reservoirpy.mat_gen import generate_internal_weights, generate_input_weights, fast_spectra_initialization
+from reservoirpy.mat_gen import generate_internal_weights, generate_input_weights, fast_spectral_initialization
 
 
 def init_esn(training_type):
@@ -21,7 +21,7 @@ def init_esn(training_type):
     input_scaling = 1. # Scaling of input matrix
     regularization_coef = 0.02
 
-    W = fast_spectra_initialization(n_reservoir, spectral_radius=spectral_radius)
+    W = fast_spectral_initialization(n_reservoir, spectral_radius=spectral_radius)
     Win = generate_input_weights(n_reservoir, n_inputs, input_scaling=input_scaling, input_bias=input_bias)
 
     if training_type == 'online':

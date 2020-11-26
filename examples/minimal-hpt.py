@@ -25,7 +25,7 @@ if __name__ == "__main__":
         losses = []; rmse = [];
         for n in range(instances):
             # builds an ESN given the input parameters
-            W = mat_gen.fast_spectra_initialization(N=N, spectral_radius=sr)
+            W = mat_gen.fast_spectral_initialization(N=N, spectral_radius=sr)
         
             Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=nb_features, 
                                                 input_bias=True, input_scaling=iss)
