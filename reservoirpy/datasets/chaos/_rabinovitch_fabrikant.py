@@ -7,7 +7,7 @@ from scipy.integrate import solve_ivp
 
 
 def rabinovich_fabrikant(n_timesteps: int, state0: list=[-1, 0, 0.5], 
-                         gamma: float=0.89, alpha: float=1.1, h: float=0.01)-> Tuple[np.ndarray, np.ndarray]:
+                         gamma: float=0.89, alpha: float=1.1, h: float=0.05)-> Tuple[np.ndarray, np.ndarray]:
     """Rabinovitch-Fabrikant equations timeseries.
     .. math::
         \dv{x}{t} = y(z - 1 + x^2) + \gamma x
@@ -20,7 +20,7 @@ def rabinovich_fabrikant(n_timesteps: int, state0: list=[-1, 0, 0.5],
         state0 (list, optional): Initial conditions of the system. Defaults to [-1, 0, 0.5].
         gamma (float, optional): Gamma parameter of the equations. Defaults to 0.89.
         alpha (float, optional): Alpha parameter of the equations. Defaults to 1.1.
-        h (float, optional): Control the time delta between two timesteps. Defaults to 0.01.
+        h (float, optional): Control the time delta between two timesteps. Defaults to 0.05.
     Returns:
         Tuple[np.ndarray, np.ndarray]: Generated timeseries and timesteps.
     """

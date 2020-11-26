@@ -14,7 +14,7 @@ def henon_map(n_timesteps: int, a: float=1.4, b: float=0.3, state0: list=[0.0, 0
         state0 (list, optional): Initial condition of the timeseries. Defaults to [0.5, 0.5].
         
     Returns:
-        np.ndarray: Logistic map timeseries.
+        np.ndarray: Hénon map timeseries.
     """
     states = np.zeros((n_timesteps, 2))
     states[0] = np.asarray(state0)
