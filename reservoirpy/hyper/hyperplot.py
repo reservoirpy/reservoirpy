@@ -274,7 +274,8 @@ def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss", loss_be
             if p1 == p2:
                 sc_l, sc_s, sc_m = loss_plot(ax, values, scores, loss, smaxs,
                                              cmaxs, lmaxs, p2, not(p2 in not_log),
-                                             p2 in categorical, (i==0 and j==0))
+                                             p2 in categorical, (i==0 and j==0), 
+                                             loss_behaviour)
             else:
                 sc_l, sc_s, sc_m = cross_parameter_plot(ax, values, scores, loss,
                                      smaxs, cmaxs, lmaxs, p1, p2,
@@ -318,6 +319,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     fig = plot_hyperopt_report("/home/nathan/Bureau/canary/16syll-decoder/hyperopt/16syll-ot-8e-noise-seed-ridge",
-                         ["seed", "ridge"], metric='F1', not_log=None, categorical=["seed"], max_deviation=None, title=None)
+                         ["seed", "ridge"], metric='F1', not_log=None, categorical=["seed"], max_deviation=None, title=None,
+                         loss_behaviour="max")
 
     fig.savefig("test.png")
