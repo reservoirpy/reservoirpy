@@ -620,6 +620,7 @@ class ESN(object):
                  init_inputs: np.ndarray,
                  init_state: np.ndarray = None,
                  init_fb: np.ndarray = None,
+                 return_init: bool = False,
                  verbose: bool = False
                  ) -> np.ndarray:
         """Run the ESN on a generative mode.
@@ -642,10 +643,11 @@ class ESN(object):
             print("Computing initial states...")
 
         _, init_states = self._compute_states(init_inputs, init_state=init_state,
-                                                init_fb=init_fb)
+                                              init_fb=init_fb)
 
         s0 = init_states[:, -1].reshape(-1, 1)
-        u0 = self.compute_outputs([s0])[0].reshape(1, -1)
+        init_outputs = self.compute_outputs([init_states])[0]
+        u0 = init_outputs[:, -1].reshape(1, -1)
 
         if init_fb is not None:
             fb0 = self.compute_outputs([init_states[:, -2]])[0]
@@ -671,7 +673,14 @@ class ESN(object):
             u0 = u[0].reshape(1, -1)
             outputs[i] = u0.reshape(self.dim_inp - self.in_bias)
 
-        return np.array(outputs), np.array(states)
+        outputs = np.array(outputs)
+        states = np.array(states)
+
+        if return_init:
+            outputs = np.vstack([init_outputs.T, outputs])
+            states = np.vstack([init_states.T, states])
+
+        return outputs, states
 
     def save(self, directory: str):
         """Save the ESN to disk.
