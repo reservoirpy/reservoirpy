@@ -173,7 +173,9 @@ def parameter_bar(ax, values, scores, loss, smaxs, cmaxs, p, categories):
     bar = ax.bar(x=categories, height=heights, color="forestgreen", alpha=0.3)
 
 
-def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss", loss_behaviour="min", not_log=None, categorical=None, max_deviation=None, title=None):
+def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss",
+                         loss_behaviour="min", not_log=None, categorical=None,
+                         max_deviation=None, title=None):
     """Cross paramater scatter plot of hyperopt trials.
 
     Installation of Matplotlib and Seaborn packages is required to use this tool.
@@ -233,9 +235,7 @@ def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss", loss_be
     for p, val in values.items():
         values[p] = np.array([val[i] for i in sorted_idx])
 
-
-    if scores.max() > 1.0:
-        scores = 1 - scale(scores)
+    scores = scale_scores(scores)
 
     ## loss and f1 values
 
@@ -313,6 +313,8 @@ def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss", loss_be
             ax.set_ylabel(f"5% best {metric}\nparameter distribution")
     return fig
 
+def scale_scores(s):
+    return s.max() * (s - s.min()) / (s.max() - s.min())
 
 if __name__ == "__main__":
 
