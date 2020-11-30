@@ -1,7 +1,9 @@
 import numpy as np
 
+# TODO: major refactorization: module name, backend handler, doc
 
-def get_function(name):
+
+def get_function(name):  # pragma: no cover
     index = {
         "softmax": softmax,
         "softplus": softplus,
@@ -17,33 +19,51 @@ def get_function(name):
         "id": identity,
         "re": relu,
     }
-    
+
     if index.get(name) is None:
         raise ValueError(f"Function name must be one of {[k for k in index.keys()]}")
     else:
         return index[name]
 
-def softmax(x):
-    return np.exp(x) / np.sum(np.exp(x))
 
+def elementwise(func):
+    vect = np.vectorize(func)
+
+    def vect_wrapper(x):
+        u = np.asanyarray(x)
+        return vect(u)
+
+    return vect_wrapper
+
+
+def softmax(x):
+    return np.exp(x) / np.exp(x).sum()
+
+
+@elementwise
 def softplus(x):
     return np.log(1 + np.exp(x))
 
+
+@elementwise
 def sigmoid(x):
+    if x < 0:
+        u = np.exp(x)
+        return u / (u + 1)
     return 1 / (1 + np.exp(-x))
+
 
 def tanh(x):
     return np.tanh(x)
 
-def maxout(x):
-    y = np.zeros_like(x)
-    y[x.argmax()] = x.max()
-    return y
 
+@elementwise
 def identity(x):
-    return x.copy()
+    return x
 
+
+@elementwise
 def relu(x):
-    y = x.copy()
-    y[x < 0] = 0
-    return y
+    if x < 0:
+        return 0
+    return x
