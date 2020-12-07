@@ -1,4 +1,5 @@
-# ReservoirPy examples and tutorials
+
+# ReservoirPy examples and tutorials
 
 Here, you can find everything you need to dive into Reservoir Computing with simple examples written with ReservoirPy API.
 
@@ -16,7 +17,7 @@ How to combine *hyperopt* with ReservoirPy to find the bests parameters for a mo
 
 A presentation of some other learning rules that can be appliyed to ESN, allowing to perform things like online learning.
 
-## Getting started
+## Getting started
 
 Each tutorial may have its own dependencies, and therefore require some installation.
 In general, you will need :
