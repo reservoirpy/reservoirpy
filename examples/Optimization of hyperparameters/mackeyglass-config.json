@@ -1,0 +1,14 @@
+{
+    "exp": "hyperopt-mackeyglass",
+    "hp_max_evals": 1000,
+    "hp_method": "random",
+    "seed": 42,
+    "instances_per_trial": 5,
+    "hp_space": {
+        "N": ["choice", 300],
+        "sr": ["loguniform", 1e-6, 10],
+        "leak": ["loguniform", 1e-3, 1],
+        "iss": ["choice", 1.0],
+        "ridge": ["loguniform", 1e-8, 1]
+    }
+}
