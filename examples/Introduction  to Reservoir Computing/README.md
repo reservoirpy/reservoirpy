@@ -37,7 +37,7 @@ You will also need Pandas, Matplotlib and requests:
 pip install pandas matplotlib requests
 ```
 
-Of course, you will also need to install ReservoirPy. Since there is not yet a stable release of ReservoirPy on PiPy, we still recommend cloning the respository and installing it in editable mode.
+Of course, you will also need to install ReservoirPy. Since there is not yet a stable release of ReservoirPy on PyPi, we still recommend cloning the respository and installing it in editable mode.
 
 ```bash
 git clone https://github.com/neuronalx/reservoirpy.git
