@@ -1,7 +1,7 @@
 # ReservoirPy (v0.2)
 **A simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
-ReservoriPy is a simple user-friendly library based on Python scientific modules. It provides a flexible interface to implement efficient Reservoir Computing (RC) architectures with a particular focus on Echo State Networks (ESN). Advanced features of ReservoirPy allow to improve computation time efficiency on a simple laptop compared to basic Python implementation. Some of its features are: offline and online training, parallel implementation, sparse matrix computation, fast spectral initialization, etc. Moreover, graphical tools are included to easily explore hyperparameters with the help of the hyperopt library.          
+ReservoriPy is a simple user-friendly library based on Python scientific modules. It provides a flexible interface to implement efficient Reservoir Computing (RC) architectures with a particular focus on Echo State Networks (ESN). Advanced features of ReservoirPy allow to improve computation time efficiency on a simple laptop compared to basic Python implementation. Some of its features are: offline and online training, parallel implementation, sparse matrix computation, fast spectral initialization, etc. Moreover, graphical tools are included to easily explore hyperparameters with the help of the hyperopt library.
 
 This library works for Python 3 (and should be compatible for Python2). We just updated it from Python 2 to 3, so tell us if you have any issue with it.
 
@@ -29,6 +29,7 @@ Available versions and corresponding branch:
 
 ## Quick try
 #### Chaotic timeseries prediction (MackeyGlass)
+
 Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
 

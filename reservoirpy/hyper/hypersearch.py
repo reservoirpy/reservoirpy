@@ -1,7 +1,5 @@
 import os
-import gc
 import time
-import math
 import json
 import warnings
 from os import path
@@ -22,14 +20,14 @@ def _get_conf_from_json(confpath):
 
 
 def _parse_config(config):
-    
+
     import hyperopt as hopt
-    
+
     required_args = ["exp", "hp_max_evals", "hp_method", "hp_space"]
-    for arg in required_args:     
+    for arg in required_args:
         if config.get(arg) is None:
             raise ValueError(f"No {arg} argument found in config file.")
-    
+
     if config["hp_method"] not in ["tpe", "random"]:
         raise ValueError(f"Unknow hyperopt algorithm: {config['hp_method']}. Available algs: random, tpe.")
     else:
@@ -37,20 +35,20 @@ def _parse_config(config):
             config["hp_method"] = partial(hopt.rand.suggest)
         if config["hp_method"] == "tpe":
             config["hp_method"] = partial(hopt.tpe.suggest)
-    
+
     space = {}
     for arg, specs in config["hp_space"].items():
         space[arg] = _parse_hyperopt_searchspace(arg, specs)
-        
+
     config["hp_space"] = space
-    
+
     return config
-        
-        
+
+
 def _parse_hyperopt_searchspace(arg, specs):
-    
+
     import hyperopt as hopt
-    
+
     if specs[0] == "choice":
         return hopt.hp.choice(arg, specs[1:])
     if specs[0] == "randint":
@@ -74,9 +72,9 @@ def _parse_hyperopt_searchspace(arg, specs):
 
 
 def _get_report_path(exp_name, base_path=None):
-    
-    base_dir = base_path or '.'
-    
+
+    base_path = '.' if base_path is None else base_path
+
     report_path = path.join(base_path, exp_name, 'results')
 
     if not(path.isdir(base_path)):
@@ -84,23 +82,24 @@ def _get_report_path(exp_name, base_path=None):
 
     if not(path.isdir(path.join(base_path, exp_name))):
         os.mkdir(path.join(base_path, exp_name))
-    
+
     if not(path.isdir(report_path)):
         os.mkdir(report_path)
-        
+
     return report_path
 
 
 def research(objective, dataset, config_path, report_path=None):
     """
-    Wrapper for hyperopt fmin function. WIll run hyperopt fmin on the
-    objective function passed as argument, on the data stored in the 
-    dataset argument. 
-    
+    Wrapper for hyperopt fmin function. Will run hyperopt fmin on the
+    objective function passed as argument, on the data stored in the
+    dataset argument.
+
     Arguments:
+    ----------
         objective {Callable} -- Objective function defining the function to
-                                optimize. Must be able to receive the dataset argument and 
-                                all parameters sampled by hyperopt during the search. These 
+                                optimize. Must be able to receive the dataset argument and
+                                all parameters sampled by hyperopt during the search. These
                                 parameters must be keyword arguments only without default value
                                 (this can be achieve by separating them from the other arguments
                                 with an empty starred expression. See examples for more info.)
@@ -108,43 +107,43 @@ def research(objective, dataset, config_path, report_path=None):
         config_path {str or Path} -- Path to the hyperopt experimentation configuration file used to
                                      define this run.
     Keywords arguments:
+    -------------------
         report_path {str} -- Path to the directory where to store the results of the run. By default,
                              this directory is set to be {name of the experiment}/results/. [default: None]
     """
-    
     import hyperopt as hopt
-    
+
     config = _get_conf_from_json(config_path)
     report_path = _get_report_path(config["exp"], report_path)
 
     def objective_wrapper(kwargs):
-        
+
         try:
             start = time.time()
-            
+
             returned_dict = objective(dataset, config, **kwargs)
-            
+
             end = time.time()
             duration = end - start
-            
+
             returned_dict['status'] = hopt.STATUS_OK
             returned_dict['start_time'] = start
             returned_dict['duration'] = duration
-            
-            save_file = f"{returned_dict['loss']:.6f}_hyperopt_results"
-            
+
+            save_file = f"{returned_dict['loss']:.7f}_hyperopt_results"
+
         except Exception as e:
             raise e
             start = time.time()
-            
+
             returned_dict = {
                 'status': hopt.STATUS_FAIL,
                 'start_time': start,
                 'error': str(e),
             }
-            
+
             save_file = f"ERR{start}_hyperopt_results"
-            
+
         try:
             json_dict = {'returned_dict': returned_dict, 'current_params': kwargs}
             save_file = path.join(report_path, save_file)
@@ -153,19 +152,26 @@ def research(objective, dataset, config_path, report_path=None):
             with open(save_file, "w+") as f:
                 json.dump(json_dict, f)
         except Exception as e:
-            warnings.warn("Results of current simulation were NOT saved correctly to JSON file.")
+            warnings.warn("Results of current simulation were NOT saved "
+                          "correctly to JSON file.")
             warnings.warn(str(e))
-            
+
         return returned_dict
 
     search_space = config["hp_space"]
 
     trials = hopt.Trials()
 
+    if config.get("seed") is None:
+        rs = np.random.RandomState()
+    else:
+        rs = np.random.RandomState(config["seed"])
+
     best = hopt.fmin(objective_wrapper,
-            space=search_space,
-            algo=config["hp_method"],
-            max_evals=config['hp_max_evals'],
-            trials=trials)
-    
+                     space=search_space,
+                     algo=config["hp_method"],
+                     max_evals=config['hp_max_evals'],
+                     trials=trials,
+                     rstate=rs)
+
     return best, trials

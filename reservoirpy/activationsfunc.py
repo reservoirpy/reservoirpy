@@ -9,13 +9,11 @@ def get_function(name):  # pragma: no cover
         "softplus": softplus,
         "sigmoid": sigmoid,
         "tanh": tanh,
-        "maxout": maxout,
         "identity": identity,
         "relu": relu,
         "smax": softmax,
         "sp": softplus,
         "sig": sigmoid,
-        "max": maxout,
         "id": identity,
         "re": relu,
     }

@@ -235,7 +235,7 @@ def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss",
     for p, val in values.items():
         values[p] = np.array([val[i] for i in sorted_idx])
 
-    scores = scale_scores(scores)
+    scores = scale(scores)
 
     ## loss and f1 values
 
@@ -258,7 +258,6 @@ def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss",
 
     gs0 = gs[0].subgridspec(1, 3)
     gs1 = gs[1].subgridspec(N + 1, N)
-
 
     lbar_ax = fig.add_subplot(gs0[0, 0])
     fbar_ax = fig.add_subplot(gs0[0, 1])
@@ -312,9 +311,6 @@ def plot_hyperopt_report(exp, params, metric='loss', loss_metric="loss",
         if legend:
             ax.set_ylabel(f"5% best {metric}\nparameter distribution")
     return fig
-
-def scale_scores(s):
-    return s.max() * (s - s.min()) / (s.max() - s.min())
 
 if __name__ == "__main__":
 

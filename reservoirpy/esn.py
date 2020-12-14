@@ -13,7 +13,10 @@ http://minds.jacobs-university.de/mantas/code
 """
 import time
 import warnings
+
 from typing import Sequence, Callable, Tuple, Union, Dict
+from tempfile import mkdtemp
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -29,6 +32,9 @@ from .regression_models import pseudo_inverse_linear_model
 # TODO: base class for ESN objects
 # TODO: add logging function, delete some prints
 class ESN(object):
+
+    _tempstates = Path(mkdtemp(), "states.dat")
+    _tempteach = Path(mkdtemp(), "teachers.dat")
 
     # TODO: instanciation of matrices within the ESN object
     def __init__(self,
@@ -246,7 +252,9 @@ class ESN(object):
                         init_state: np.ndarray = None,
                         init_fb: np.ndarray = None,
                         wash_nr_time_step: int = 0,
-                        input_id: int = None
+                        input_id: int = None,
+                        memmap: np.memmap = None,
+                        input_pos: int = None
                         )-> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Compute all states generated from a single sequence of inputs.
 
@@ -316,6 +324,12 @@ class ESN(object):
 
         if input_id is None:
             return 0, states
+
+        if memmap is not None:
+            memmap[:, input_pos[0]: input_pos[1]] = np.vstack(
+                (np.ones((1, states.shape[1]), dtype=self.typefloat),
+                 states))
+
         return input_id, states
 
     def compute_all_states(self,
@@ -326,7 +340,8 @@ class ESN(object):
                            wash_nr_time_step: int = 0,
                            workers: int = -1,
                            backend: str = "threading",
-                           verbose: bool = True
+                           verbose: bool = True,
+                           memmap: np.memmap = None,
                            ) -> Sequence[np.ndarray]:
         """Compute all states generated from sequences of inputs.
 
@@ -369,15 +384,29 @@ class ESN(object):
             def track(x, text):
                 return x
 
+        inputs_ends = np.cumsum([i.shape[0] for i in inputs])
+        inputs_starts = [end - i.shape[0] for i, end in zip(inputs, inputs_ends)]
+
         # no feedback training or running
         if forced_teachers is None:
-            all_states = loop(delayed_states(inputs[i], wash_nr_time_step=wash_nr_time_step, input_id=i,
-                                             init_state=init_state, init_fb=init_fb)
+            all_states = loop(delayed_states(inputs[i],
+                                             wash_nr_time_step=wash_nr_time_step,
+                                             input_id=i,
+                                             init_state=init_state,
+                                             init_fb=init_fb,
+                                             memmap=memmap,
+                                             input_pos=(inputs_starts[i], inputs_ends[i]))
                               for i in track(range(len(inputs)), "Computing states"))
         # feedback training
         else:
-            all_states = loop(delayed_states(inputs[i], forced_teachers[i], wash_nr_time_step=wash_nr_time_step,
-                                             input_id=i, init_state=init_state, init_fb=init_fb)
+            all_states = loop(delayed_states(inputs[i],
+                                             forced_teachers[i],
+                                             wash_nr_time_step=wash_nr_time_step,
+                                             input_id=i,
+                                             init_state=init_state,
+                                             init_fb=init_fb,
+                                             memmap=memmap,
+                                             input_pos=(inputs_starts[i], inputs_ends[i]))
                               for i in track(range(len(inputs)), "Computing states"))
 
         # input ids are used to make sure that the returned states are in the same order
@@ -443,7 +472,8 @@ class ESN(object):
                     reg_model: Callable=None,
                     ridge: float=None,
                     force_pinv: bool=False,
-                    verbose: bool=False) -> np.ndarray:
+                    verbose: bool=False,
+                    use_memmap: bool = False) -> np.ndarray:
         """Compute a readout matrix by fitting the states computed by the ESN
         to the ground truth expected values, using the regression model defined
         in the ESN.
@@ -477,15 +507,21 @@ class ESN(object):
             tic = time.time()
             print("Linear regression...")
         # concatenate the lists (along timestep axis)
-        X = np.hstack(states).astype(self.typefloat)
-        Y = np.hstack(teachers).astype(self.typefloat)
+        if not use_memmap:
+            X = np.hstack(states).astype(self.typefloat)
+            Y = np.hstack(teachers).astype(self.typefloat)
 
-        # Adding ones for regression with bias b in (y = a*x + b)
-        X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
+            # Adding ones for regression with bias b in (y = a*x + b)
+            X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
 
-        # Building Wout with a linear regression model.
-        # saving the output matrix in the ESN object for later use
-        Wout = reg_model(X, Y)
+            # Building Wout with a linear regression model.
+            # saving the output matrix in the ESN object for later use
+            Wout = reg_model(X, Y)
+
+        else:
+            Wout = reg_model(states, teachers)
+            del states
+            del teachers
 
         if verbose:
             toc = time.time()
@@ -500,7 +536,8 @@ class ESN(object):
               wash_nr_time_step: int=0,
               workers: int=-1,
               backend: str="threading",
-              verbose: bool=False) -> Sequence[np.ndarray]:
+              verbose: bool=False,
+              use_memmap: bool=False) -> Sequence[np.ndarray]:
         """Train the ESN model on a sequence of inputs.
 
         Arguments:
@@ -533,9 +570,14 @@ class ESN(object):
         ## Autochecks of inputs and outputs
         self._autocheck_io(inputs=inputs, outputs=teachers)
 
+        steps = np.sum([i.shape[0] for i in inputs])
         if verbose:
-            steps = np.sum([i.shape[0] for i in inputs])
             print(f"Training on {len(inputs)} inputs ({steps} steps)-- wash: {wash_nr_time_step} steps")
+
+        memstates = None
+        if use_memmap:
+            memstates = np.memmap(self._tempstates, dtype=self.typefloat, mode="w+",
+                                  shape=(self.N + 1, steps))
 
         # compute all states
         all_states = self.compute_all_states(inputs,
@@ -543,12 +585,19 @@ class ESN(object):
                                              wash_nr_time_step=wash_nr_time_step,
                                              workers=workers,
                                              backend=backend,
-                                             verbose=verbose)
+                                             verbose=verbose,
+                                             memmap=memstates)
 
         all_teachers = [t[wash_nr_time_step:].T for t in teachers]
 
         # compute readout matrix
-        self.Wout = self.fit_readout(all_states, all_teachers, verbose=verbose)
+        if use_memmap:
+            memteachers = np.memmap(self._tempteach, dtype=self.typefloat, mode="w+",
+                                    shape=(all_teachers[0].shape[0], steps))
+            memteachers[:] = np.hstack(all_teachers)
+            self.Wout = self.fit_readout(memstates, memteachers, use_memmap=True, verbose=verbose)
+        else:
+            self.Wout = self.fit_readout(all_states, all_teachers, verbose=verbose)
 
         # save the expected dimension of outputs
         self.dim_out = self.Wout.shape[0]
