@@ -23,10 +23,12 @@ Each tutorial may have its own dependencies, and therefore require some installa
 In general, you will need :
 - Matplotlib and Seaborn, for visualization
 - Pandas, to work with timeseries and high dimensional data
-- Jupyter, to benefits from the power of Jupyter notebooks.
+- Jupyter, to benefits from the power of Jupyter notebooks
+- Sklearn, to have metrics from scikit-learn
+- Hyperopt, to optimise hyperparameters
 
 ```bash
-pip install matplotlib seaborn pandas jupyter
+pip install matplotlib seaborn pandas jupyter sklearn hyperopt
 ```
 
 And of course, you will need to install ReservoirPy. As there is no stable realease of the library on PyPi yet, we advise to clone this repostiory and perform an editable installation with `pip` to install ReservoirPy:
