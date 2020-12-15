@@ -9,7 +9,7 @@ Here, you can find everything you need to dive into Reservoir Computing with sim
 
 An easy way to discover Reservoir Computing, with nice visualizations on a Jupyter notebook. Gives an extensive presentation of ReservoirPy main functionnalities.
 
-2. **Opitmization of hyperparameters**
+2. **Optimization of hyperparameters**
 
 How to combine *hyperopt* with ReservoirPy to find the bests parameters for a model.
 
