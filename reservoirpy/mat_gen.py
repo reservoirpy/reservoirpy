@@ -146,6 +146,7 @@ def generate_internal_weights(N: int,
     # TODO: put this in a function
     if sparsity_type is not None:
         w = sparse.random(N, N, density=proba, format=sparsity_type,
+                          random_state=rs,
                           data_rvs=lambda s: rs.uniform(-1, 1, size=s))
         rhoW = max(abs(eigs(w, k=1, which='LM', return_eigenvectors=False)))
     else:
@@ -216,8 +217,8 @@ def generate_input_weights(nbr_neuron,
 
     # ? remove this in future versions ?
     if randomize_seed_afterwards:  # pragma: no cover
-        warnings.warn("Have to check if you really want to randomize the seed, \
-                      because this makes the whole experiment not reproducible.", \
+        warnings.warn("Have to check if you really want to randomize the seed, "
+                      "because this makes the whole experiment not reproducible.",
                       UserWarning)
         np.random.seed(int(time.time()*10**6))
 
@@ -226,8 +227,3 @@ def generate_input_weights(nbr_neuron,
 
 def _is_probability(proba):
     return 1. - proba >= 0. and proba >= 0.
-
-
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
