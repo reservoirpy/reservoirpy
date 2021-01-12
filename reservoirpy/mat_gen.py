@@ -147,7 +147,7 @@ def generate_internal_weights(N: int,
     if sparsity_type is not None:
         w = sparse.random(N, N, density=proba, format=sparsity_type,
                           random_state=rs,
-                          data_rvs=lambda s: rs.uniform(-1, 1, size=s))
+                          data_rvs=lambda s: rs.normal(0, Wstd, size=s))
         rhoW = max(abs(eigs(w, k=1, which='LM', return_eigenvectors=False)))
     else:
         mask = 1 * (rs.rand(N, N) < proba)
