@@ -23,7 +23,7 @@ A presentation of some other learning rules that can be appliyed to ESN, allowin
 
 4. **[Simple example on chaotic timeseries prediction](Simple%20Examples%20with%20Mackey-Glass)**
 
-Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation. The directory include both the minimal example of Mantas (not using ReservoiPy) and the equivalent simple example using ReservoirPy.
+Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation. The directory includes both the minimal ESN of Mantas (not using ReservoiPy) and the equivalent simple example using ReservoirPy.
 
 ## Getting started
 
