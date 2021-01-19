@@ -40,7 +40,7 @@ Tutorial on ReservoirPy can be found in this [preprint (Trouvain et al. 2020)](h
 ## Explore Hyper-Parameters with Hyperopt
 Tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
-[Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization of hyperparameters)
+[Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization%20of%20hyperparameters)
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
