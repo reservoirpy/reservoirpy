@@ -7,7 +7,7 @@ This library works for Python 3 (and should be compatible for Python2). We just 
 
 ## Installation, examples and tutorials
 
-[Go to the dedicated README.md](./examples/README.md) for intallation, examples, tutorials and Jupyter Notebooks.
+[Go to the examples folder](./examples/) for intallation, examples, tutorials and Jupyter Notebooks.
 
 ## Versions
 **To enable last features of ReservoirPy, you migth want to download a specific Git branch.**
