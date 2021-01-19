@@ -5,7 +5,7 @@ Here, you can find everything you need to dive into Reservoir Computing with sim
 
 ## Summary
 
-1. **Introduction to Reservoir Computing**
+1. **[Introduction to Reservoir Computing](./Introduction%20to%20Reservoir%20Computing)**
 
 An easy way to discover Reservoir Computing, with nice visualizations on a Jupyter notebook. Gives an extensive presentation of ReservoirPy main functionnalities.
 
