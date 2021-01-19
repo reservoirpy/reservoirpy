@@ -1,18 +1,16 @@
-# -*- coding: utf-8 -*-
-#!/usr/bin/env python -W ignore::DeprecationWarning
-"""reservoirpy/ESN
-
-Simple, parallelizable implementation of Echo State Networks.
-
-@author: Xavier HINAUT
-xavier.hinaut@inria.fr
-Copyright Xavier Hinaut 2018
-
-I would like to thank Mantas Lukosevicius for his code that was used as inspiration for this code:
-http://minds.jacobs-university.de/mantas/code
+"""Simple, fast, parallelizable and object-oriented
+implementation of Echo State Networks, using offline
+learning methods.
 """
+
+# @author: Xavier HINAUT
+# xavier.hinaut@inria.fr
+# Copyright Xavier Hinaut 2018
+# We would like to thank Mantas Lukosevicius for his code that
+# was used as inspiration for this code:
+# http://minds.jacobs-university.de/mantas/code
+
 import time
-import warnings
 
 from typing import Sequence, Callable, Tuple, Union, Dict
 from tempfile import mkdtemp
@@ -29,14 +27,62 @@ from .regression_models import ridge_linear_model
 from .regression_models import pseudo_inverse_linear_model
 
 
-# TODO: base class for ESN objects
-# TODO: add logging function, delete some prints
-class ESN(object):
+class ESN:
+    """Base class of Echo State Networks.
 
+    The :py:class:`.ESN` class is the angular stone of ReservoirPy
+    offline learning methods using reservoir computing.
+    Echo State Networks allows one to:
+        - quickly build ESNs, using the :py:mod:`reservoirpy.mat_gen` module
+        to initialize weights,
+        - train and test ESNs on the task of your choice,
+        - use the trained ESNs on the task of your choice, either in
+        predictive mode or generative mode.
+
+    Parameters
+    ----------
+        lr: float
+            Leaking rate
+        W: np.ndarray
+            Reservoir weights matrix
+        Win: np.ndarray
+            Input weights matrix
+        input_bias: bool, optional
+            If True, will add a constant bias
+            to the input vector (default: {True})
+        reg_model: Callable, optional
+            A scikit-learn linear model function to use for
+            regression. Should be None if ridge is used. (default: {None})
+        ridge: float, optional
+            Ridge regularization coefficient for Tikonov regression.
+            Should be None if reg_model is used. (default: {None})
+        Wfb: np.array, optional
+            Feedback weights matrix. (default: {None})
+        fbfunc: Callable, optional
+            Feedback activation function. (default: {None})
+        typefloat: numpy.dtype, optional
+
+    Attributes
+    ----------
+        Wout: np.ndarray
+            Readout matrix
+        dim_out: int
+            Output dimension
+        dim_inp: int
+            Input dimension
+        N: int
+            Number of neuronal units
+
+    See also
+    --------
+        reservoirpy.ESNOnline for ESN with online learning using FORCE.
+
+    """
+    # memmap temporay storage
+    # is cleaned after training/running
     _tempstates = Path(mkdtemp(), "states.dat")
     _tempteach = Path(mkdtemp(), "teachers.dat")
 
-    # TODO: instanciation of matrices within the ESN object
     def __init__(self,
                  lr: float,
                  W: np.ndarray,
@@ -47,29 +93,6 @@ class ESN(object):
                  Wfb: np.ndarray = None,
                  fbfunc: Callable = None,
                  typefloat: np.dtype = np.float64):
-        """Base class of Echo State Networks
-
-        Arguments:
-            lr {float} -- Leaking rate
-            W {np.ndarray} -- Reservoir weights matrix
-            Win {np.ndarray} -- Input weights matrix
-
-        Keyword Arguments:
-            input_bias {bool} -- If True, will add a constant bias
-                                 to the input vector (default: {True})
-            reg_model {Callable} -- A scikit-learn linear model function to use for regression. Should
-                                   be None if ridge is used. (default: {None})
-            ridge {float} -- Ridge regularization coefficient for Tikonov regression. Should be None
-                             if reg_model is used. (default: {None})
-            Wfb {np.array} -- Feedback weights matrix. (default: {None})
-            fbfunc {Callable} -- Feedback activation function. (default: {None})
-            typefloat {np.dtype} -- Float precision to use (default: {np.float32})
-
-        Raises:
-            ValueError: If a feedback matrix is passed without activation function.
-            NotImplementedError: If trying to set input_bias to False. This is not
-                                 implemented yet.
-        """
 
         self.W = W
         self.Win = Win
@@ -81,12 +104,15 @@ class ESN(object):
         self._autocheck_dimensions()
         self._autocheck_nan()
 
-        self.N = self.W.shape[1]  # number of neurons
+        # number of neurons
+        self.N = self.W.shape[1]
         self.in_bias = input_bias
-        self.dim_inp = self.Win.shape[1]  # dimension of inputs (including the bias at 1)
+        # dimension of inputs (including the bias at 1)
+        self.dim_inp = self.Win.shape[1]
         self.dim_out = None
         if self.Wfb is not None:
-            self.dim_out = self.Wfb.shape[1]  # dimension of outputs
+            # dimension of outputs
+            self.dim_out = self.Wfb.shape[1]
 
         self.typefloat = typefloat
         self.lr = lr  # leaking rate
@@ -94,16 +120,15 @@ class ESN(object):
         self.reg_model = self._get_regression_model(ridge, reg_model)
         self.fbfunc = fbfunc
         if self.Wfb is not None and self.fbfunc is None:
-            raise ValueError(f"If a feedback matrix is provided, \
-                fbfunc must be a callable object, not {self.fbfunc}.")
+            raise ValueError("If a feedback matrix is provided, fbfunc must"
+                             f"be a callable object, not {self.fbfunc}.")
 
     def __repr__(self):
         trained = True
         if self.Wout is None:
             trained = False
-        fb = True
-        if self.Wfb is None:
-            fb=False
+        fb = self.Wfb is not None
+
         out = f"ESN(trained={trained}, feedback={fb}, N={self.N}, "
         out += f"lr={self.lr}, input_bias={self.in_bias}, input_dim={self.N})"
         return out
@@ -111,24 +136,16 @@ class ESN(object):
     # TODO: simplify this with a dict
     def _get_regression_model(self,
                               ridge: float = None,
-                              sklearn_model: Callable=None):
+                              sklearn_model: Callable = None):
         """Set the type of regression used in the model. All regression models available
         for now are described in reservoipy.regression_models:
             - any scikit-learn linear regression model (like Lasso or Ridge)
             - Tikhonov linear regression (l1 regularization)
             - Solving system with pseudo-inverse matrix
-        Keyword Arguments:
-            ridge {[float]} -- Ridge regularization coefficient. (default: {None})
-            sklearn_model {[Callable]} -- scikit-learn regression model to use. (default: {None})
-
-        Raises:
-            ValueError: if ridge and scikit-learn models are requested at the same time.
-
-        Returns:
-            [Callable] -- A linear regression function.
         """
         if ridge is not None and sklearn_model is not None:
-            raise ValueError("ridge and sklearn_model can't be defined at the same time.")
+            raise ValueError("ridge and sklearn_model can not be"
+                             "defined at the same time.")
 
         elif ridge is not None:
             self.ridge = ridge
@@ -142,17 +159,16 @@ class ESN(object):
             return pseudo_inverse_linear_model()
 
     def _autocheck_nan(self):
-        """ Auto-check to see if some important variables do not have a problem (e.g. NAN values). """
-        #assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
+        """ Auto-check to see if some important variables do not have
+        a problem (e.g. NAN values).
+        """
         assert np.isnan(self.Win).any() == False, \
             "Win matrix should not contain NaN values."
         if self.Wfb is not None:
             assert np.isnan(self.Wfb).any() == False, \
                 "Wfb matrix should not contain NaN values."
 
-    # TODO: better check, clearer infos
     def _autocheck_dimensions(self):
-        """ Auto-check to see if ESN matrices have correct dimensions."""
         # W dimensions check list
         assert len(self.W.shape) == 2, f"W shape should be (N, N) but is {self.W.shape}."
         assert self.W.shape[0] == self.W.shape[1], f"W shape should be (N, N) but is {self.W.shape}."
@@ -162,11 +178,7 @@ class ESN(object):
         err = f"Win shape should be ({self.W.shape[1]}, input) but is {self.Win.shape}."
         assert self.Win.shape[0] == self.W.shape[0], err
 
-    # TODO: better check, clearer infos
-    def _autocheck_io(self,
-                      inputs,
-                      outputs = None):
-
+    def _autocheck_io(self, inputs, outputs=None):
         # Check if inputs and outputs are lists
         assert type(inputs) is list, "Inputs should be a list of numpy arrays"
         if outputs is not None:
@@ -193,36 +205,36 @@ class ESN(object):
                         single_input: np.ndarray,
                         feedback: np.ndarray = None,
                         last_state: np.ndarray = None) -> np.ndarray:
-        """Given a state vector x(t) and an input vector u(t), compute the state vector x(t+1).
+        """Given a state vector x(t) and an input vector u(t),
+        compute the state vector x(t+1).
 
-        Arguments:
-            single_input {np.ndarray} -- Input vector u(t).
+        Parameters
+        ----------
+            single_input: np.ndarray
+                Input vector u(t)
 
-        Keyword Arguments:
-            feedback {np.ndarray} -- Feedback vector if enabled. (default: {None})
-            last_state {np.ndarray} -- Current state to update x(t). If None,
-                                       state is initialized to 0. (default: {None})
+            feedback: numpy.ndarray, optional
+                Feedback vector if enabled.
+            last_state: numpy.ndarray, optional
+                Current state to update x(t). Default to 0 vector.
 
-        Raises:
+        Raises
+        ------
             RuntimeError: feedback is enabled but no feedback vector is available.
 
-        Returns:
-            np.ndarray -- Next state x(t+1).
+        Returns
+        -------
+            numpy.ndarray
+                Next state x(t+1)
         """
 
         # check if the user is trying to add empty feedback
         if self.Wfb is not None and feedback is None:
             raise RuntimeError("Missing a feedback vector.")
 
-        # warn if the user is adding a feedback vector when feedback is not available
-        # (might have forgotten the feedback weights matrix)
-        if self.Wfb is None and feedback is not None:
-            warnings.warn("Feedback vector should not be passed to update_state if no feedback matrix is provided.", UserWarning)
-
         # first initialize the current state of the ESN
         if last_state is None:
-            x = np.zeros((self.N,1),dtype=self.typefloat)
-            warnings.warn("No previous state was passed for computation of next state. Will assume a 0 vector as initial state to compute the update.", UserWarning)
+            x = np.zeros((self.N, 1), dtype=self.typefloat)
         else:
             x = last_state
 
@@ -255,10 +267,10 @@ class ESN(object):
                         input_id: int = None,
                         memmap: np.memmap = None,
                         input_pos: int = None
-                        )-> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+                        ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Compute all states generated from a single sequence of inputs.
 
-        Arguments:
+        Parameters
             input {np.ndarray} -- Sequence of inputs.
 
         Keyword Arguments:
@@ -281,7 +293,8 @@ class ESN(object):
         """
 
         if self.Wfb is not None and forced_teacher is None and self.Wout is None:
-            raise RuntimeError("Impossible to use feedback without readout matrix or teacher forcing.")
+            raise RuntimeError("Impossible to use feedback without readout"
+                               "matrix or teacher forcing.")
 
         # to track successives internal states of the reservoir
         states = np.zeros((self.N, len(input)-wash_nr_time_step), dtype=self.typefloat)
@@ -305,16 +318,20 @@ class ESN(object):
         # for each time step in the input
         for t in range(input.shape[0]):
             # compute next state from current state
-            current_state = self._get_next_state(input[t, :], feedback=last_feedback, last_state=current_state)
+            current_state = self._get_next_state(input[t, :],
+                                                 feedback=last_feedback,
+                                                 last_state=current_state)
 
             # compute last feedback
             if self.Wfb is not None:
                 # during training outputs are equal to teachers for feedback
                 if forced_teacher is not None:
-                    last_feedback = forced_teacher[t,:].reshape(forced_teacher.shape[1], 1).astype(self.typefloat)
+                    last_feedback = forced_teacher[t,:].reshape(
+                        forced_teacher.shape[1], 1).astype(self.typefloat)
                 # feedback of outputs, computed with Wout
                 else:
-                    last_feedback = np.dot(self.Wout, np.vstack((1,current_state))).astype(self.typefloat)
+                    last_feedback = np.dot(self.Wout,
+                                           np.vstack((1, current_state))).astype(self.typefloat)
                 last_feedback = last_feedback.reshape(self.dim_out, 1)
 
             # will track all internal states during inference, and only the
@@ -345,32 +362,48 @@ class ESN(object):
                            ) -> Sequence[np.ndarray]:
         """Compute all states generated from sequences of inputs.
 
-        Arguments:
-            inputs {Sequence[np.ndarray]} -- Sequence of input sequences.
+        Parameters
+        ----------
+            inputs: list or array of numpy.array
+                All sequences of inputs used for internal state computation.
+                Note that it should always be a list of sequences, i.e. if
+                only one sequence of inputs is used, it should be alone in a
+                list
 
-        Keyword Arguments:
-            forced_teachers {Sequence[np.ndarray]} -- Sequence of ground truth
-                                                      sequences, for training with
-                                                      feedback. (default: {None})
-            init_state {np.ndarray} -- State initialization vector
-                                       for all inputs. (default: {None})
-            init_fb {np.ndarray} -- Feedback initialization vector
-                                    for all inputs, if feedback is
-                                    enabled. (default: {None})
-            wash_nr_time_step {int} -- Number of states to considered as transitory
-                            when training. (default: {0})
-            workers {int} -- if n >= 1, will enable parallelization of
-                             states computation with n threads/processes, if possible.
-                             if n = -1, will use all available resources for
-                             parallelization. (default: {-1})
-            backend {str} -- Backend used for parallelization of
-                             states computations. Available backends are
-                             `threadings`(recommended, see `train` Note), `multiprocessing`,
-                             `loky` (default: {"threading"}).
-            verbose {bool} -- if `True`, display progress in stdout.
+            forced_teachers: list or array of numpy.array, optional
+                Sequence of ground truths, for computation with feedback without
+                any trained readout. Note that is should always be a list of
+                sequences of the same length than the `inputs`, i.e. if
+                only one sequence of inputs is used, it should be alone in a
+                list.
+
+            init_state: np.ndarray, optional
+                State initialization vector for all inputs. By default, state
+                is initialized at 0.
+
+            init_fb: np.ndarray, optional
+                Feedback initialization vector for all inputs, if feedback is
+                enabled. By default, feedback is initialized at 0.
+
+            wash_nr_time_step: int, optional
+                Number of states to consider as transient when training, and to
+                remove when computing the readout weights. By default, no states are
+                removed.
+
+            workers: int, optional
+                If n >= 1, will enable parallelization of states computation with
+                n threads/processes, if possible. If n = -1, will use all available
+                resources for parallelization. By default, -1.
+
+            backend: {"threadings", "multiprocessing", "loki"}, optional
+                Backend used for parallelization of states computations.
+                By default, "threading".
+
+            verbose: bool
 
         Returns:
-            Sequence[np.ndarray] -- All computed states.
+            list of np.ndarray
+                All computed states.
         """
 
         # initialization of workers
@@ -417,36 +450,33 @@ class ESN(object):
                         states: Sequence[np.ndarray],
                         verbose: bool = False
                         ) -> Sequence[np.ndarray]:
-        """Compute all readouts of a given sequence of states.
+        """Compute all readouts of a given sequence of states,
+        when a readout matrix is available (i.e. after training).
 
-        Arguments:
-            states {Sequence[np.ndarray]} -- Sequence of states.
+        Parameters
+        ----------
+            states: list of numpy.array
+                All sequences of states used for readout.
 
-        Keyword Arguments:
-            verbose {bool} -- Set verbosity.
+            verbose: bool
 
-        Raises:
+        Raises
+        ------
             RuntimeError: no readout matrix Wout is available.
             Consider training model first, or load an existing matrix.
 
-        Returns:
-            Sequence[np.ndarray] -- All outputs of readout matrix.
+        Returns
+        -------
+            list of numpy.arrays
+                All outputs of readout matrix.
         """
         # because all states and readouts will be concatenated,
         # first save the indexes of each inputs states in the concatenated vector.
         if self.Wout is not None:
-            # idx = [None] * len(states)
-            # c = 0
-            # for i, s in enumerate(states):
-            #     idx[i] = [j for j in range(c, c+s.shape[1])]
-            #     c += s.shape[1]
 
             if verbose:
                 print("Computing outputs...")
                 tic = time.time()
-
-            # x = np.hstack(states)
-            # x = np.vstack((np.ones((x.shape[1],), dtype=self.typefloat), x))
 
             outputs = [None] * len(states)
             for i, s in enumerate(states):
@@ -458,9 +488,6 @@ class ESN(object):
                 toc = time.time()
                 print(f"Outputs computed! (in {toc - tic}sec)")
 
-            # return separated readouts vectors corresponding to the saved
-            # indexes built with input states.
-           # return [y[:, i] for i in idx]
             return outputs
 
         else:
@@ -469,27 +496,41 @@ class ESN(object):
     def fit_readout(self,
                     states: Sequence,
                     teachers: Sequence,
-                    reg_model: Callable=None,
-                    ridge: float=None,
-                    force_pinv: bool=False,
-                    verbose: bool=False,
+                    reg_model: Callable = None,
+                    ridge: float = None,
+                    force_pinv: bool = False,
+                    verbose: bool = False,
                     use_memmap: bool = False) -> np.ndarray:
         """Compute a readout matrix by fitting the states computed by the ESN
-        to the ground truth expected values, using the regression model defined
+        to the expected values, using the regression model defined
         in the ESN.
 
-        Arguments:
-            states {Sequence} -- All states computed.
-            teachers {Sequence} -- All ground truth vectors.
+        Parameters
+        ----------
+            states: list of numpy.ndarray
+                All states computed.
 
-        Keyword Arguments:
-            reg_model {scikit-learn regression model} -- Use a scikit-learn regression model. (default: {None})
-            ridge {float} -- Use Tikhonov regression and set regularization parameter to ridge. (default: {None})
-            force_pinv -- Overwrite all previous parameters and force pseudo-inverse resolution. (default: {False})
-            verbose {bool} -- (default: {False})
+            teachers: list of numpy.ndarray
+                All ground truth vectors.
 
-        Returns:
-            np.ndarray -- Readout matrix.
+            reg_model: scikit-learn regression model, optional
+                A scikit-learn regression model to use for readout
+                weights computation.
+
+            ridge: float, optional
+                Use Tikhonov regression for readout weights computation
+                and set regularization parameter to the parameter value.
+
+            force_pinv: bool, optional
+                Overwrite all previous parameters and
+                force computation of readout using pseudo-inversion.
+
+            verbose: bool
+
+        Returns
+        -------
+            numpy.ndarray
+                Readout matrix.
         """
         # switch the regression model used at instanciation if needed.
         # WARNING: this change won't be saved by the save function.
@@ -512,7 +553,7 @@ class ESN(object):
             Y = np.hstack(teachers).astype(self.typefloat)
 
             # Adding ones for regression with bias b in (y = a*x + b)
-            X = np.vstack((np.ones((1, X.shape[1]),dtype=self.typefloat), X))
+            X = np.vstack((np.ones((1, X.shape[1]), dtype=self.typefloat), X))
 
             # Building Wout with a linear regression model.
             # saving the output matrix in the ESN object for later use
@@ -533,34 +574,51 @@ class ESN(object):
     def train(self,
               inputs: Sequence[np.ndarray],
               teachers: Sequence[np.ndarray],
-              wash_nr_time_step: int=0,
-              workers: int=-1,
-              backend: str="threading",
-              verbose: bool=False,
-              use_memmap: bool=False) -> Sequence[np.ndarray]:
-        """Train the ESN model on a sequence of inputs.
+              wash_nr_time_step: int = 0,
+              workers: int = -1,
+              backend: str = "threading",
+              verbose: bool = False,
+              use_memmap: bool = False) -> Sequence[np.ndarray]:
+        """Train the ESN model on set of input sequences.
 
-        Arguments:
-            inputs {Sequence[np.ndarray]} -- Training set of inputs.
-            teachers {Sequence[np.ndarray]} -- Training set of ground truth.
+        Arguments
+        ---------
+            inputs: list of numpy.ndarray
+                List of inputs.
+                Note that it should always be a list of sequences, i.e. if
+                only one sequence of inputs is used, it should be alone in a
+                list.
 
-        Keyword Arguments:
-            wash_nr_time_step {int} -- Number of states to considered as transitory
-                            when training. (default: {0})
-            workers {int} -- if n >= 1, will enable parallelization of
-                             states computation with n threads/processes, if possible.
-                             if n = -1, will use all available resources for
-                             parallelization.
-            backend {str} -- Backend used for parallelization of
-                             states computations. Available backends are
-                             `threadings`(recommended, see Note), `multiprocess`,
-                             `loky` (default: {"threading"}).
-            verbose {bool} -- if `True`, display progress in stdout.
+            teachers: list of numpy.ndarray
+                List of ground truths.
+                Note that is should always be a list of
+                sequences of the same length than the `inputs`, i.e. if
+                only one sequence of inputs is used, it should be alone in a
+                list.
 
-        Returns:
-            Sequence[np.ndarray] -- All states computed, for all inputs.
+            wash_nr_time_step: int
+                Number of states to considered as transient when training. Transient
+                states will be discarded when computing readout matrix. By default,
+                no states are removes.
 
-        Note:
+            workers: int, optional
+                If n >= 1, will enable parallelization of states computation with
+                n threads/processes, if possible. If n = -1, will use all available
+                resources for parallelization. By default, -1.
+
+            backend: {"threadings", "multiprocessing", "loki"}, optional
+                Backend used for parallelization of states computations.
+                By default, "threading".
+
+            verbose: bool
+
+        Returns
+        -------
+            list of numpy.ndarray
+                All states computed, for all inputs.
+
+        Note
+        ----
             If only one input sequence is provided ("continuous time" inputs), workers should be 1,
             because parallelization is impossible. In other cases, if using large NumPy arrays during
             computation (which is often the case), prefer using `threading` backend to avoid huge
