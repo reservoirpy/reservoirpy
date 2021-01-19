@@ -5,17 +5,25 @@ Here, you can find everything you need to dive into Reservoir Computing with sim
 
 ## Summary
 
+0. **Installation**
+
+See below the "Getting started" section.
+
 1. **[Introduction to Reservoir Computing](./Introduction%20%20to%20Reservoir%20Computing)**
 
 An easy way to discover Reservoir Computing, with nice visualizations on a Jupyter notebook. Gives an extensive presentation of ReservoirPy main functionnalities.
 
-2. **Optimization of hyperparameters**
+2. **[Optimization of hyperparameters](Optimization%20of%20hyperparameters)**
 
 How to combine *hyperopt* with ReservoirPy to find the bests parameters for a model.
 
-3. **Online learning**
+3. **[Online learning](Online%20learning)**
 
 A presentation of some other learning rules that can be appliyed to ESN, allowing to perform things like online learning.
+
+4. **[Simple example on chaotic timeseries prediction](Simple%20Examples%20with%20Mackey-Glass)**
+
+Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation. The directory include both the minimal example of Mantas (not using ReservoiPy) and the equivalent simple example using ReservoirPy.
 
 ## Getting started
 
