@@ -5,13 +5,14 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="reservoirpy",
-    version="0.2.0",
+    version="0.2.1",
     author="Xavier Hinaut",
     author_email="xavier.hinaut@inria.fr",
     description="A simple and flexible code for Reservoir Computing architectures like Echo State Networks.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/neuronalX/reservoirpy",
+    url="https://github.com/reservoirpy/reservoirpy",
+    download_url='https://github.com/reservoirpy/reservoirpy/archive/v0.2.1.tar.gz',
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
