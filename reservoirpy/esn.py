@@ -43,23 +43,32 @@ class ESN:
     ----------
         lr: float
             Leaking rate
+
         W: np.ndarray
             Reservoir weights matrix
+
         Win: np.ndarray
             Input weights matrix
+
         input_bias: bool, optional
             If True, will add a constant bias
-            to the input vector (default: {True})
+            to the input vector. By default, True.
+
         reg_model: Callable, optional
             A scikit-learn linear model function to use for
-            regression. Should be None if ridge is used. (default: {None})
+            regression. Should be None if ridge is used.
+
         ridge: float, optional
             Ridge regularization coefficient for Tikonov regression.
-            Should be None if reg_model is used. (default: {None})
+            Should be None if reg_model is used. By default, pseudo-inversion
+            of internal states and teacher signals is used.
+
         Wfb: np.array, optional
-            Feedback weights matrix. (default: {None})
+            Feedback weights matrix.
+
         fbfunc: Callable, optional
-            Feedback activation function. (default: {None})
+            Feedback activation function.
+
         typefloat: numpy.dtype, optional
 
     Attributes
@@ -399,7 +408,7 @@ class ESN:
                 Backend used for parallelization of states computations.
                 By default, "threading".
 
-            verbose: bool
+            verbose: bool, optional
 
         Returns:
             list of np.ndarray
@@ -428,7 +437,10 @@ class ESN:
                                              init_state=init_state,
                                              init_fb=init_fb,
                                              memmap=memmap,
-                                             input_pos=(inputs_starts[i], inputs_ends[i]))
+                                             input_pos=(
+                                                 inputs_starts[i],
+                                                 inputs_ends[i])
+                                             )
                               for i in track(range(len(inputs)), "Computing states"))
         # feedback training
         else:
@@ -439,7 +451,10 @@ class ESN:
                                              init_state=init_state,
                                              init_fb=init_fb,
                                              memmap=memmap,
-                                             input_pos=(inputs_starts[i], inputs_ends[i]))
+                                             input_pos=(
+                                                 inputs_starts[i],
+                                                 inputs_ends[i])
+                                             )
                               for i in track(range(len(inputs)), "Computing states"))
 
         # input ids are used to make sure that the returned states are in the same order
@@ -458,7 +473,7 @@ class ESN:
             states: list of numpy.array
                 All sequences of states used for readout.
 
-            verbose: bool
+            verbose: bool, optional
 
         Raises
         ------
@@ -491,7 +506,8 @@ class ESN:
             return outputs
 
         else:
-            raise RuntimeError("Impossible to compute outputs: no readout matrix available.")
+            raise RuntimeError("Impossible to compute outputs: "
+                               "no readout matrix available.")
 
     def fit_readout(self,
                     states: Sequence,
@@ -525,7 +541,7 @@ class ESN:
                 Overwrite all previous parameters and
                 force computation of readout using pseudo-inversion.
 
-            verbose: bool
+            verbose: bool, optional
 
         Returns
         -------
@@ -581,13 +597,13 @@ class ESN:
               use_memmap: bool = False) -> Sequence[np.ndarray]:
         """Train the ESN model on set of input sequences.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
             inputs: list of numpy.ndarray
                 List of inputs.
                 Note that it should always be a list of sequences, i.e. if
-                only one sequence of inputs is used, it should be alone in a
-                list.
+                only one sequence (array with rows representing time axis)
+                of inputs is used, it should be alone in a list.
 
             teachers: list of numpy.ndarray
                 List of ground truths.
@@ -610,7 +626,7 @@ class ESN:
                 Backend used for parallelization of states computations.
                 By default, "threading".
 
-            verbose: bool
+            verbose: bool, optional
 
         Returns
         -------
@@ -619,18 +635,20 @@ class ESN:
 
         Note
         ----
-            If only one input sequence is provided ("continuous time" inputs), workers should be 1,
-            because parallelization is impossible. In other cases, if using large NumPy arrays during
-            computation (which is often the case), prefer using `threading` backend to avoid huge
-            overhead. Multiprocess is a good idea only in very specific cases, and this code is not
-            (yet) well suited for this.
+            If only one input sequence is provided ("continuous time" inputs),
+            workers should be 1, because parallelization is impossible. In other
+            cases, if using large NumPy arrays during computation (which is often
+            the case), prefer using `threading` backend to avoid huge overhead.
+            Multiprocess is a good idea only in very specific cases, and this code
+            is not (yet) well suited for this.
         """
-        ## Autochecks of inputs and outputs
+        # autochecks of inputs and outputs
         self._autocheck_io(inputs=inputs, outputs=teachers)
 
         steps = np.sum([i.shape[0] for i in inputs])
         if verbose:
-            print(f"Training on {len(inputs)} inputs ({steps} steps)-- wash: {wash_nr_time_step} steps")
+            print(f"Training on {len(inputs)} inputs ({steps} steps) "
+                  f"-- wash: {wash_nr_time_step} steps")
 
         memstates = None
         if use_memmap:
@@ -650,14 +668,25 @@ class ESN:
 
         # compute readout matrix
         if use_memmap:
-            memteachers = np.memmap(self._tempteach, dtype=self.typefloat, mode="w+",
-                                    shape=(all_teachers[0].shape[0], steps))
-            memteachers[:] = np.hstack(all_teachers)
-            self.Wout = self.fit_readout(memstates, memteachers, use_memmap=True, verbose=verbose)
-        else:
-            self.Wout = self.fit_readout(all_states, all_teachers, verbose=verbose)
+            memteachers = np.memmap(self._tempteach,
+                                    dtype=self.typefloat,
+                                    mode="w+",
+                                    shape=(
+                                        all_teachers[0].shape[0],
+                                        steps))
 
-        # save the expected dimension of outputs
+            memteachers[:] = np.hstack(all_teachers)
+
+            self.Wout = self.fit_readout(memstates,
+                                         memteachers,
+                                         use_memmap=True,
+                                         verbose=verbose)
+        else:
+            self.Wout = self.fit_readout(all_states,
+                                         all_teachers,
+                                         verbose=verbose)
+
+        # save the expected dimension of outputs
         self.dim_out = self.Wout.shape[0]
 
         # return all internal states
@@ -665,50 +694,62 @@ class ESN:
 
     def run(self,
             inputs: Sequence[np.ndarray],
-            init_state: np.ndarray=None,
-            init_fb: np.ndarray=None,
-            workers: int=-1,
-            backend: str="threading",
-            verbose: bool=False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
+            init_state: np.ndarray = None,
+            init_fb: np.ndarray = None,
+            workers: int = -1,
+            backend: str = "threading",
+            verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
            readouts vectors.
 
-        Arguments:
-            inputs {Sequence[np.ndarray]} -- Sequence of inputs.
+        Parameters
+        ----------
+            inputs: list of numpy.ndarray
+                List of inputs.
+                Note that it should always be a list of sequences, i.e. if
+                only one sequence (array with rows representing time axis)
+                of inputs is used, it should be alone in a list.
 
-        Keyword Arguments:
-            init_state {np.ndarray} -- State initialization vector
-                                       for all inputs. (default: {None})
-            init_fb {np.ndarray} -- Feedback initialization vector
-                                    for all inputs, if feedback is
-                                    enabled. (default: {None})
-            workers {int} -- if n >= 1, will enable parallelization of
-                             states computation with n threads/processes, if possible.
-                             if n = -1, will use all available resources for
-                             parallelization.
-            backend {str} -- Backend used for parallelization of
-                             states computations. Available backends are
-                             `threadings`(recommended, see Note), `multiprocess`,
-                             `loky` (default: {"threading"}).
-            verbose {bool} -- if `True`, display progress in stdout.
+            init_state: numpy.ndarray
+                State initialization vector for all inputs. By default, internal
+                state of the reservoir is initialized to 0.
 
-        Returns:
-            Tuple[Sequence[np.ndarray], Sequence[np.ndarray]] -- All states and readouts,
-                                                                 for all inputs.
+            init_fb: numpy.ndarray
+                Feedback initialization vector for all inputs, if feedback is
+                enabled. By default, feedback is initialized to 0.
 
-        Note:
-            If only one input sequence is provided ("continuous time" inputs), workers should be 1,
-            because parallelization is impossible. In other cases, if using large NumPy arrays during
-            computation (which is often the case), prefer using `threading` backend to avoid huge
-            overhead. Multiprocess is a good idea only in very specific cases, and this code is not
-            (yet) well suited for this.
+           workers: int, optional
+                If n >= 1, will enable parallelization of states computation with
+                n threads/processes, if possible. If n = -1, will use all available
+                resources for parallelization. By default, -1.
+
+            backend: {"threadings", "multiprocessing", "loki"}, optional
+                Backend used for parallelization of states computations.
+                By default, "threading".
+
+            verbose: bool, optional
+
+        Returns
+        -------
+            outputs: list of numpy.ndarray, states: list of numpy.ndarray
+                All outputs computed from readout and all corresponding internal states,
+                for all inputs.
+
+        Note
+        ----
+            If only one input sequence is provided ("continuous time" inputs),
+            workers should be 1, because parallelization is impossible. In other
+            cases, if using large NumPy arrays during computation (which is often
+            the case), prefer using `threading` backend to avoid huge overhead.
+            Multiprocess is a good idea only in very specific cases, and this code
+            is not (yet) well suited for this.
         """
 
         if verbose:
             steps = np.sum([i.shape[0] for i in inputs])
             print(f"Running on {len(inputs)} inputs ({steps} steps)")
 
-        ## Autochecks of inputs
+        # autochecks of inputs
         self._autocheck_io(inputs=inputs)
 
         all_states = self.compute_all_states(inputs,
@@ -731,22 +772,50 @@ class ESN:
                  verbose: bool = False
                  ) -> np.ndarray:
         """Run the ESN on a generative mode.
+
         After the init_inputs are consumed, new outputs are
-        used as inputs for the next nb_timesteps.
+        used as inputs for the next nb_timesteps, i.e. the
+        ESN is feeding himself with its own outputs.
 
-        Args:
-            nb_timesteps (int): [description]
-            init_inputs (np.ndarray): [description]
-            init_state (np.ndarray, optional): [description]. Defaults to None.
-            init_fb (np.ndarray, optional): [description]. Defaults to None.
-            verbose (bool, optional): [description]. Defaults to False.
+        Note that this mode can only work if the ESN is trained
+        on a regression task. The outputs of the ESN must be
+        the same kind of data as its input.
 
-        Returns:
+        To train an ESN on generative mode, use the ESN.train
+        method to train the ESN on a regression task (for
+        instance, predict the future data point t+1 of a timeseries
+        give the data at time t).
+
+        Parameters
+        ----------
+            nb_timesteps: int
+                Number of timesteps of data to generate
+                from the intial input.
+
+            init_inputs: numpy.ndarray
+                Input data used to initiate generative mode.
+                This data is meant to "seed" the ESN internal
+                states with some real information, before it runs
+                on its own created outputs.
+
+            init_state: numpy.ndarray, optional:
+                State initialization vector for the reservoir.
+                By default, internal state of the reservoir is initialized to 0.
+
+            init_fb: numpy.ndarray, optional
+                Feedback initialization vector for the reservoir, if feedback is
+                enabled. By default, feedback is initialized to 0.
+
+            verbose: bool, optional
+
+        Returns
+        -------
             np.ndarray: [description]
         """
 
         if verbose:
-            print(f"Generating {nb_timesteps} timesteps from {init_inputs.shape[0]} inputs.")
+            print(f"Generating {nb_timesteps} timesteps from "
+                  f"{init_inputs.shape[0]} inputs.")
             print("Computing initial states...")
 
         _, init_states = self._compute_states(init_inputs, init_state=init_state,
@@ -792,51 +861,9 @@ class ESN:
     def save(self, directory: str):
         """Save the ESN to disk.
 
-        Arguments:
-            directory {str or Path} -- Directory of the saved model.
+        Parameters
+        ----------
+            directory: str or Path
+                Directory where to save the model.
         """
         _save(self, directory)
-
-    #? maybe remove this in the future: unused
-    def describe(self) -> Dict:
-        """
-        Provide descriptive stats about ESN matrices.
-
-        Returns:
-            Dict -- Descriptive data.
-        """
-
-        desc = {
-            "Win": {
-                "max": np.max(self.Win),
-                "min": np.min(self.Win),
-                "mean": np.mean(self.Win),
-                "median": np.median(self.Win),
-                "std": np.std(self.Win)
-            },
-            "W": {
-                "max": np.max(self.W),
-                "min": np.min(self.W),
-                "mean": np.mean(self.W),
-                "median": np.median(self.W),
-                "std": np.std(self.W),
-                "sr": max(abs(linalg.eig(self.W)[0]))
-            }
-        }
-        if self.Wfb is not None:
-            desc["Wfb"] = {
-                "max": np.max(self.Wfb),
-                "min": np.min(self.Wfb),
-                "mean": np.mean(self.Wfb),
-                "median": np.median(self.Wfb),
-                "std": np.std(self.Wfb)
-            }
-        if self.Wout is not None:
-            desc["Wout"] = {
-                "max": np.max(self.Wout),
-                "min": np.min(self.Wout),
-                "mean": np.mean(self.Wout),
-                "median": np.median(self.Wout),
-                "std": np.std(self.Wout)
-            }
-        return desc
