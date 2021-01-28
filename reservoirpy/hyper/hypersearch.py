@@ -1,7 +1,11 @@
+"""*Hyperopt* wrapper tools for hyperparameters optimization.
+
+"""
 import os
 import time
 import json
 import warnings
+
 from os import path
 from functools import partial
 from glob import glob
@@ -29,7 +33,8 @@ def _parse_config(config):
             raise ValueError(f"No {arg} argument found in config file.")
 
     if config["hp_method"] not in ["tpe", "random"]:
-        raise ValueError(f"Unknow hyperopt algorithm: {config['hp_method']}. Available algs: random, tpe.")
+        raise ValueError(f"Unknow hyperopt algorithm: {config['hp_method']}. "
+                         "Available algorithms: 'random', 'tpe'.")
     else:
         if config["hp_method"] == "random":
             config["hp_method"] = partial(hopt.rand.suggest)
@@ -95,21 +100,28 @@ def research(objective, dataset, config_path, report_path=None):
     objective function passed as argument, on the data stored in the
     dataset argument.
 
-    Arguments:
+    Parameters
     ----------
-        objective {Callable} -- Objective function defining the function to
-                                optimize. Must be able to receive the dataset argument and
-                                all parameters sampled by hyperopt during the search. These
-                                parameters must be keyword arguments only without default value
-                                (this can be achieve by separating them from the other arguments
-                                with an empty starred expression. See examples for more info.)
-        dataset {Any} -- Argument used to pass data to the objective function during the hyperopt run.
-        config_path {str or Path} -- Path to the hyperopt experimentation configuration file used to
-                                     define this run.
-    Keywords arguments:
-    -------------------
-        report_path {str} -- Path to the directory where to store the results of the run. By default,
-                             this directory is set to be {name of the experiment}/results/. [default: None]
+        objective : Callable
+            Objective function defining the function to
+            optimize. Must be able to receive the dataset argument and
+            all parameters sampled by hyperopt during the search. These
+            parameters must be keyword arguments only without default value
+            (this can be achieve by separating them from the other arguments
+            with an empty starred expression. See examples for more info.)
+
+        dataset : tuple or lists or arrays of data
+            Argument used to pass data to the objective function during
+            the hyperopt run. It will be passed as is to the objective
+            function : it can be in whatever format.
+
+        config_path : str or Path
+            Path to the hyperopt experimentation configuration file used to
+            define this run.
+
+        report_path : str, optional
+            Path to the directory where to store the results of the run. By default,
+            this directory is set to be {name of the experiment}/results/.
     """
     import hyperopt as hopt
 

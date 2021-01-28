@@ -9,7 +9,6 @@ Subpackages
 
    reservoirpy.datasets
    reservoirpy.hyper
-   reservoirpy.tests
 
 Submodules
 ----------
@@ -58,14 +57,6 @@ reservoirpy.regression\_models module
 -------------------------------------
 
 .. automodule:: reservoirpy.regression_models
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-reservoirpy.utils module
-------------------------
-
-.. automodule:: reservoirpy.utils
    :members:
    :undoc-members:
    :show-inheritance:

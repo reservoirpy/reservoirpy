@@ -1,3 +1,15 @@
+"""Utility module for optimization of hyperparameters
+using *hyperopt*.
+
+Note
+----
+
+This module is meant to be used alongside *hyperopt*
+and *Matplotlib* packages, which are not installed
+with ReservoirPy by default. Before using the
+:py:mod:`reservoirpy.hyper` module, consider installing
+these packages if they are not already installed.
+"""
 from .hypersearch import research
 from .hyperplot import plot_hyperopt_report
 

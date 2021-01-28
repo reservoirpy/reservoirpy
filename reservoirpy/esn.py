@@ -4,24 +4,23 @@ learning methods.
 """
 
 # @author: Xavier HINAUT
-# xavier.hinaut@inria.fr
+# xavier.hinaut@inria.fr
 # Copyright Xavier Hinaut 2018
 # We would like to thank Mantas Lukosevicius for his code that
 # was used as inspiration for this code:
-# http://minds.jacobs-university.de/mantas/code
+# # http://minds.jacobs-university.de/mantas/code
 
 import time
 
-from typing import Sequence, Callable, Tuple, Union, Dict
+from typing import Sequence, Callable, Tuple, Union
 from tempfile import mkdtemp
 from pathlib import Path
 
 import joblib
 import numpy as np
-from scipy import linalg
 from tqdm import tqdm
 
-from .utils import check_values, _save
+from ._utils import _check_values, _save
 from .regression_models import sklearn_linear_model
 from .regression_models import ridge_linear_model
 from .regression_models import pseudo_inverse_linear_model
@@ -142,7 +141,6 @@ class ESN:
         out += f"lr={self.lr}, input_bias={self.in_bias}, input_dim={self.N})"
         return out
 
-    # TODO: simplify this with a dict
     def _get_regression_model(self,
                               ridge: float = None,
                               sklearn_model: Callable = None):
@@ -179,7 +177,10 @@ class ESN:
 
     def _autocheck_dimensions(self):
         # W dimensions check list
-        assert len(self.W.shape) == 2, f"W shape should be (N, N) but is {self.W.shape}."
+        assert len(self.W.shape) == 2, ("W shape should be 2-dimensional "
+                                        f"but is {len(self.W.shape)}-dimensional "
+                                        f"({self.W.shape}).")
+
         assert self.W.shape[0] == self.W.shape[1], f"W shape should be (N, N) but is {self.W.shape}."
 
         # Win dimensions check list
@@ -286,18 +287,22 @@ class ESN:
             forced_teacher {np.ndarray} -- Ground truth vectors to use as feedback
                                            during training, if feedback is enabled.
                                            (default: {None})
-            init_state {np.ndarray} -- Initialization vector for states. (default: {None})
-            init_fb {np.ndarray} -- Initialization vector for feedback. (default: {None})
+            init_state {np.ndarray} -- Initialization vector for states.
+            (default: {None})
+            init_fb {np.ndarray} -- Initialization vector for feedback.
+            (default: {None})
             wash_nr_time_step {int} -- Number of states to considered as transitory
                             when training. (default: {0})
             input_id {int} -- Index of the input in the queue. Used for parallelization
                               of computations. (default: {None})
 
         Raises:
-            RuntimeError: raised if no teachers are specifiyed for training with feedback.
+            RuntimeError: raised if no teachers are specifiyed for training
+            with feedback.
 
         Returns:
-            Union[Tuple[np.ndarray, np.ndarray], np.ndarray] -- Index of the input in queue
+            Union[Tuple[np.ndarray, np.ndarray], np.ndarray] -- Index of the
+            input in queue
             and computed states, or just states if no index is provided.
         """
 
@@ -558,7 +563,7 @@ class ESN:
             reg_model = self.reg_model
 
         # check if network responses are valid
-        check_values(array_or_list=states, value=None)
+        _check_values(array_or_list=states, value=None)
 
         if verbose:
             tic = time.time()

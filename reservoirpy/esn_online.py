@@ -14,7 +14,7 @@ import numpy as np
 from scipy import linalg
 from tqdm import tqdm
 
-from .utils import check_values, _save
+from ._utils import _check_values, _save
 
 
 

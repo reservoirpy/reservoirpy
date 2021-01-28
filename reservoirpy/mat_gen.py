@@ -157,21 +157,27 @@ def generate_internal_weights(N: int,
     N : int
         Number of reservoir units, i.e. dimension of
         the square weights matrix.
+
     spectral_radius : float, optional
         Maximum desired eigenvalue of the
         reservoir weights matrix, by default None
+
     proba : float, optional
         Probability of non zero connection,
         density of the weight matrix, by default 0.1
+
     Wstd : float, optional
         Standard deviation of internal weights, by default 1.0
+
     sparsity_type : str, optional
         If set ot one of the scipy.sparse matrix format,
         will generate internal weights matrix in a sparse
         format, by default None
+
     seed : int or RandomState, optional
         Random state generator seed, for reproducibility,
         by default None
+
     verbose : bool, optional
     typefloat : numpy.dtype, optional
 

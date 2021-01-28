@@ -1,9 +1,42 @@
+"""Activations functions for reservoir, feedback and output.
+"""
+from typing import Callable
+from functools import wraps
+
 import numpy as np
 
-# TODO: major refactorization: module name, backend handler, doc
+
+def _elementwise(func):
+    """Vectorize a function to apply it
+    on arrays.
+    """
+    vect = np.vectorize(func)
+
+    @wraps(func)
+    def vect_wrapper(*args, **kwargs):
+        u = np.asanyarray(args)
+        return vect(u)
+
+    return vect_wrapper
 
 
-def get_function(name):  # pragma: no cover
+def get_function(name: str) -> Callable:  # pragma: no cover
+    """Return an activation function from name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the activation function.
+        Can be one of {'softmax', 'softplus',
+        'sigmoid', 'tanh', 'identity', 'relu'} or
+        their respective short names {'smax', 'sp',
+        'sig', 'id', 're'}.
+
+    Returns
+    -------
+    Callable
+        An activation function.
+    """
     index = {
         "softmax": softmax,
         "softplus": softplus,
@@ -24,44 +57,122 @@ def get_function(name):  # pragma: no cover
         return index[name]
 
 
-def elementwise(func):
-    vect = np.vectorize(func)
+def softmax(x: np.ndarray) -> np.ndarray:
+    """Softmax activation function:
 
-    def vect_wrapper(x):
-        u = np.asanyarray(x)
-        return vect(u)
+    .. math::
 
-    return vect_wrapper
+        y_k = \\frac{e^{x_k}}{\\sum_{i=1}^{n} e^{x_i}}
 
+    Parameters
+    ----------
+    x : numpy.ndarray
 
-def softmax(x):
+    Returns
+    -------
+    numpy.ndarray
+    """
     return np.exp(x) / np.exp(x).sum()
 
 
-@elementwise
-def softplus(x):
+@_elementwise
+def softplus(x: np.ndarray) -> np.ndarray:
+    """Softplus acctivation function:
+
+    .. math::
+
+        f(x) = \\mathrm{ln}(1 + e^{x})
+
+    Can be used as a smooth version of ReLU.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+    """
     return np.log(1 + np.exp(x))
 
 
-@elementwise
-def sigmoid(x):
+@_elementwise
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    """Sigmoïde activation function:
+
+    .. math::
+
+        f(x) = \\frac{1}{1 + e^{-x}}
+
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+    """
     if x < 0:
         u = np.exp(x)
         return u / (u + 1)
     return 1 / (1 + np.exp(-x))
 
 
-def tanh(x):
+def tanh(x: np.ndarray) -> np.ndarray:
+    """Hyperbolic tangent activation function:
+
+    ..math ::
+
+        f(x) = \\frac{e^x - e^{-x}}{e^x + e^{-x}}
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+    """
     return np.tanh(x)
 
 
-@elementwise
-def identity(x):
+@_elementwise
+def identity(x: np.ndarray) -> np.ndarray:
+    """Identity function :
+
+    .. math::
+
+        f(x) = x
+
+    Provided for convenience.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+    """
     return x
 
 
-@elementwise
-def relu(x):
+@_elementwise
+def relu(x: np.ndarray) -> np.ndarray:
+    """ReLU activation function:
+
+    .. math::
+        f(x) = x ~~ \\matrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+    """
     if x < 0:
         return 0
     return x

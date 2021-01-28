@@ -14,15 +14,16 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../reservoirpy'))
 
+from reservoirpy import __version__
 
 # -- Project information -----------------------------------------------------
 
 project = 'ReservoirPy'
-copyright = '2021, Nathan Trouvain, Xavier Hinaut'
-author = 'Nathan Trouvain, Xavier Hinaut'
+copyright = '2021, Xavier Hinaut, Nathan Trouvain'
+author = 'Xavier Hinaut, Nathan Trouvain'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
