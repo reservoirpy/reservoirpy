@@ -15,7 +15,8 @@ def _elementwise(func):
     @wraps(func)
     def vect_wrapper(*args, **kwargs):
         u = np.asanyarray(args)
-        return vect(u)
+        v = vect(u)
+        return v[0]
 
     return vect_wrapper
 
@@ -122,7 +123,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 def tanh(x: np.ndarray) -> np.ndarray:
     """Hyperbolic tangent activation function:
 
-    ..math ::
+    .. math::
 
         f(x) = \\frac{e^x - e^{-x}}{e^x + e^{-x}}
 
@@ -163,7 +164,7 @@ def relu(x: np.ndarray) -> np.ndarray:
     """ReLU activation function:
 
     .. math::
-        f(x) = x ~~ \\matrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
+        f(x) = x ~~ \\mathrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
 
     Parameters
     ----------

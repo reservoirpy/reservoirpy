@@ -4,8 +4,6 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 from numpy.testing import assert_array_almost_equal
 
-from reservoirpy.activationsfunc import get_function
-
 from reservoirpy.activationsfunc import softmax
 from reservoirpy.activationsfunc import softplus
 from reservoirpy.activationsfunc import identity
@@ -15,7 +13,7 @@ from reservoirpy.activationsfunc import relu
 
 
 @pytest.mark.parametrize("value, expected", [
-    ([1, 2, 3], np.exp([1, 2, 3])/ np.sum(np.exp([1, 2, 3]))),
+    ([1, 2, 3], np.exp([1, 2, 3]) / np.sum(np.exp([1, 2, 3]))),
     (1, np.exp(1) / np.sum(np.exp(1))),
     ([0, 0], [0.5, 0.5])
 ])
@@ -38,7 +36,7 @@ def test_softplus(value, expected):
     assert_array_almost_equal(result, expected)
 
 
-@pytest.mark.parametrize("value",[
+@pytest.mark.parametrize("value", [
     ([1, 2, 3]),
     ([1]),
     (0),
@@ -74,7 +72,8 @@ def test_sigmoid(value, expected):
 @pytest.mark.parametrize("value, expected", [
     ([1, 2, 3], np.array([1, 2, 3])),
     ([-1, -10, 5], np.array([0, 0, 5])),
-    (0, np.array(0))
+    (0, np.array(0)),
+    ([[1, 2, 3], [-1, 2, 3]], np.array([[1, 2, 3], [0, 2, 3]]))
 ])
 def test_relu(value, expected):
     result = relu(value)
