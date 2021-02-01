@@ -27,7 +27,7 @@ Example
     # compute the readout
     Wout = model(states, teachers)
 
-Using scikit-learn API:
+Using scikit-learn API (for instance, the `Lasso` regression model):
 
 .. code-block:: python
 
@@ -82,9 +82,9 @@ def ridge_linear_model(ridge=0., typefloat=np.float32):
 
     The ridge regression is performed following this equation:
 
-    ..math ::
+    .. math::
 
-        W_{out} = YX^{T} \cdot (XX^{T} + \mathrm{ridge} \mathrm{Id}_{N})
+        W_{out} = YX^{T} \cdot (XX^{T} + \mathrm{ridge} \\times \mathrm{Id}_{N})
 
     where :math:`W_out` is the readout matrix learnt through this regression,
     :math:`X` are the internal states, :math:`Y` are the ground truth vectors,
@@ -113,7 +113,7 @@ def pseudo_inverse_linear_model():
 
     The regression is performed following this equation:
 
-    ..math ::
+    .. math::
 
         W_{out} = YX^{T}
 
