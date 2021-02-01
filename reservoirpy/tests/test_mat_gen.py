@@ -83,8 +83,9 @@ def test_generate_internal_shape(N, expected):
 ])
 def test_generate_internal_features(sr, proba):
 
-    W = generate_internal_weights(100, spectral_radius=sr,
-                                  proba=proba, seed=1234)
+    W = generate_internal_weights(100, sr=sr,
+                                  proba=proba, seed=1234,
+                                  sparsity_type='dense')
 
     assert_almost_equal(max(abs(linalg.eig(W)[0])), sr, decimal=2)
     assert_almost_equal(np.sum(W != 0.0) / W.size, proba, decimal=1)
@@ -96,10 +97,12 @@ def test_generate_internal_features(sr, proba):
 ])
 def test_generate_internal_sparse(sr, proba):
 
-    W = generate_internal_weights(100, spectral_radius=sr,
+    W = generate_internal_weights(100, sr=sr,
                                   proba=proba, sparsity_type="csr")
 
-    rho = max(abs(sparse.linalg.eigs(W, k=1, which='LM', return_eigenvectors=False)))
+    rho = max(abs(sparse.linalg.eigs(W, k=1, which='LM',
+                                     maxiter=20*W.shape[0],
+                                     return_eigenvectors=False)))
     assert_almost_equal(rho, sr, decimal=2)
 
     if sparse.issparse(W):
@@ -116,7 +119,7 @@ def test_generate_internal_sparse(sr, proba):
 ])
 def test_generate_internal_features_exception(sr, proba):
     with pytest.raises(Exception):
-        generate_internal_weights(100, spectral_radius=sr,
+        generate_internal_weights(100, sr=sr,
                                   proba=proba)
 
 
@@ -141,10 +144,16 @@ def test_fast_spectral_shape(N, expected):
     (1., 0.0)
 ])
 def test_fast_spectral_features(sr, proba):
-    W = fast_spectral_initialization(1000, spectral_radius=sr,
+    W = fast_spectral_initialization(1000, sr=sr,
                                      proba=proba, seed=1234)
 
-    rho = max(abs(sparse.linalg.eigs(W, k=1, which='LM', return_eigenvectors=False)))
+    if sparse.issparse(W):
+        rho = max(abs(sparse.linalg.eigs(W, k=1, which='LM',
+                                         maxiter=20*W.shape[0],
+                                         return_eigenvectors=False)))
+    else:
+        rho = max(abs(linalg.eig(W)[0]))
+
     assert_almost_equal(rho, sr, decimal=0)
 
     if 1. - proba < 1e-5:
@@ -163,5 +172,5 @@ def test_fast_spectral_features(sr, proba):
 ])
 def test_fast_spectral_features_exception(sr, proba):
     with pytest.raises(Exception):
-        fast_spectral_initialization(100, spectral_radius=sr,
+        fast_spectral_initialization(100, sr=sr,
                                      proba=proba)
