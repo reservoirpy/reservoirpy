@@ -12,9 +12,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../reservoirpy'))
+sys.path.insert(0, os.path.abspath('..'))
 
-from reservoirpy import __version__
 
 # -- Project information -----------------------------------------------------
 
@@ -23,7 +22,7 @@ copyright = '2021, Xavier Hinaut, Nathan Trouvain'
 author = 'Xavier Hinaut, Nathan Trouvain'
 
 # The full version, including alpha/beta/rc tags
-release = __version__
+release = '0.2.2'
 
 
 # -- General configuration ---------------------------------------------------
@@ -31,9 +30,10 @@ release = __version__
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc",
-              "sphinx.ext.napoleon",
-              "sphinx.ext.doctest"
+extensions = [
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.doctest'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

@@ -1,5 +1,5 @@
 .. ReservoirPy documentation master file, created by
-   sphinx-quickstart on Thu Jan 14 09:17:42 2021.
+   sphinx-quickstart on Fri Jan 29 09:46:50 2021.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -11,7 +11,6 @@ Welcome to ReservoirPy's documentation!
    :caption: Contents:
 
    modules
-
 
 Indices and tables
 ==================
