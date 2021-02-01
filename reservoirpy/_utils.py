@@ -120,6 +120,16 @@ def _save(esn, directory: str):
         json.dump(attr, f)
 
 
+def _new_from_save(base_cls, restored_attr):
+
+    obj = object.__new__(base_cls)
+    for name, attr in restored_attr.items():
+        obj.__setattr__(name, attr)
+    obj.reg_model = obj._get_regression_model(obj.ridge, obj.reg_model)
+
+    return obj
+
+
 def load(directory: str):
     """Load an ESN model.
 
@@ -171,13 +181,3 @@ def load(directory: str):
     model = _new_from_save(base_cls, model_attr)
 
     return model
-
-
-def _new_from_save(base_cls, restored_attr):
-
-    obj = object.__new__(base_cls)
-    for name, attr in restored_attr.items():
-        obj.__setattr__(name, attr)
-    obj.reg_model = obj._get_regression_model(obj.ridge, obj.reg_model)
-
-    return obj
