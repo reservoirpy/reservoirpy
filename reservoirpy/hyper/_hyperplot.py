@@ -1,5 +1,6 @@
 """*Matplotlib* wrapper tools for optimization of
 hyperparameters results display and analysis.
+
 """
 import os
 import math

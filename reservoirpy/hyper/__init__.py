@@ -10,7 +10,7 @@ with ReservoirPy by default. Before using the
 :py:mod:`reservoirpy.hyper` module, consider installing
 these packages if they are not already installed.
 """
-from .hypersearch import research
-from .hyperplot import plot_hyperopt_report
+from ._hypersearch import research
+from ._hyperplot import plot_hyperopt_report
 
 __all__ = ["research", "plot_hyperopt_report"]
