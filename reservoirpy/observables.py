@@ -1,10 +1,21 @@
 import numpy as np
-from scipy import linalg
 
-def get_spectral_radius(W):
+from scipy import linalg
+from scipy.sparse import issparse
+from scipy.sparse.linalg import eigs
+
+
+def spectral_radius(W):
     """Given a squarred weight matrix (e.g. the recurrent reservoir matrix),
     returns the spectral radius"""
+    if issparse(W):
+        return max(abs(eigs(W,
+                            k=1,
+                            which='LM',
+                            maxiter=W.shape[0] * 20,
+                            return_eigenvectors=False)))
     return max(abs(linalg.eig(W)[0]))
+
 
 def compute_error_NRMSE(teacher_signal, predicted_signal, verbose=False):
     """ Computes Normalized Root-Mean-Squarred Error between a teacher signal and a predicted signal

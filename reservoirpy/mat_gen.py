@@ -6,10 +6,12 @@ internal weights, input scaling and sparsity are fully parametrizable.
 
 Because most of the architectures developped in *reservoir computing*
 involve sparsely-connected neuronal units, the prefered format for all
-generated matrices is a `scipy.sparse` format (in most cases *csr*).
+generated matrices is a
+`scipy.sparse <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_
+format (in most cases *csr*).
 Sparse arrays allow fast computations and compact representations of
 weights matrices, and remains easily readable. They can be parsed back to
-simple Numpy arrays just by calling their `toarray()`̀ method.
+simple Numpy arrays just by calling their ``toarray()`` method.
 
 All functions can take as paramater a `numpy.random.RandomState`
 instance, or a seed number, to ensure reproducibility. Both distribution
@@ -34,9 +36,9 @@ from typing import Union
 import numpy as np
 
 from numpy.random import RandomState
-from scipy import linalg
 from scipy import sparse
-from scipy.sparse.linalg import eigs
+
+from .observables import spectral_radius
 
 __all__ = [
     "fast_spectral_initialization",
@@ -57,14 +59,14 @@ def _get_random_state(seed):
 
 
 def fast_spectral_initialization(N: int,
-                                 spectral_radius: float = None,
+                                 sr: float = None,
                                  proba: float = 0.1,
                                  seed: Union[int, RandomState] = None,
                                  verbose: bool = False,
                                  sparsity_type: str = 'csr',
                                  typefloat=np.float64):
-    """The fast spectral radius (FSI) approach for weights
-    initialization introduced in [1].
+    """Fast spectral radius (FSI) approach for weights
+    initialization[#]_.
 
     This method is well suited for computation and rescaling of
     very large weights matrices, with a number of neurons typically
@@ -75,8 +77,8 @@ def fast_spectral_initialization(N: int,
     N : int
         Number of reservoir units, i.e. dimension of
         the square weights matrix.
-    spectral_radius : float, optional
-        Maximum desired eigenvalue of the
+    sr : float, optional
+        Spectral radius, i.e. maximum desired eigenvalue of the
         reservoir weights matrix, by default None.
     proba : float, optional
         Probability of non zero connection,
@@ -85,8 +87,10 @@ def fast_spectral_initialization(N: int,
         Random state generator seed, for reproducibility,
         by default None
     verbose : bool, optional
-    sparsity_type : {"csr", "csc", "coo"} optional
-        Scipy sparse matrix format. "csr" by default.
+    sparsity_type : {"csr", "csc", "coo", "dense"} optional
+        Scipy sparse matrix format. "csr" by default. If "dense"
+        is chosen, the matrix will be a Numpy array and not a
+        Scipy sparse matrix.
     typefloat : np.dtype, optional
 
     Returns
@@ -102,9 +106,11 @@ def fast_spectral_initialization(N: int,
     References
     -----------
 
-        [1] C. Gallicchio, A. Micheli, L. Pedrelli.
-        Fast Spectral Radius Initialization for Recurrent
-        Neural Networks. (2020)
+        .. [1] C. Gallicchio, A. Micheli, and L. Pedrelli,
+               ‘Fast Spectral Radius Initialization for Recurrent
+               Neural Networks’, in Recent Advances in Big Data and
+               Deep Learning, Cham, 2020, pp. 380–390,
+               doi: 10.1007/978-3-030-16841-4_39.
 
     Example
     -------
@@ -123,12 +129,12 @@ def fast_spectral_initialization(N: int,
 
     rs = _get_random_state(seed)
 
-    if spectral_radius is None or proba == 0.:
+    if sr is None or proba == 0.:
         a = 1
     else:
-        a = -(6 * spectral_radius) / (np.sqrt(12) * np.sqrt((proba * N)))
+        a = -(6 * sr) / (np.sqrt(12) * np.sqrt((proba * N)))
 
-    if proba < 1:
+    if proba < 1 and sparsity_type != "dense":
         return sparse.random(N, N, density=proba,
                              random_state=rs, format=sparsity_type,
                              data_rvs=lambda s: rs.uniform(a, -a, size=s))
@@ -138,12 +144,11 @@ def fast_spectral_initialization(N: int,
 
 
 def generate_internal_weights(N: int,
-                              spectral_radius: float = None,
+                              sr: float = None,
                               proba: float = 0.1,
                               Wstd: float = 1.0,
                               sparsity_type: str = 'csr',
                               seed: Union[int, RandomState] = None,
-                              verbose: bool = False,
                               typefloat=np.float64):
     """Method that generate the weight matrix that will be used
     for the internal connections of the reservoir.
@@ -157,28 +162,21 @@ def generate_internal_weights(N: int,
     N : int
         Number of reservoir units, i.e. dimension of
         the square weights matrix.
-
-    spectral_radius : float, optional
-        Maximum desired eigenvalue of the
+    sr : float, optional
+        Spectral_radius, i.e. maximum desired eigenvalue of the
         reservoir weights matrix, by default None
-
     proba : float, optional
         Probability of non zero connection,
         density of the weight matrix, by default 0.1
-
     Wstd : float, optional
         Standard deviation of internal weights, by default 1.0
-
-    sparsity_type : str, optional
-        If set ot one of the scipy.sparse matrix format,
-        will generate internal weights matrix in a sparse
-        format, by default None
-
+    sparsity_type : {"csr", "csc", "coo", "dense"} optional
+        Scipy sparse matrix format. "csr" by default. If "dense"
+        is chosen, the matrix will be a Numpy array and not a
+        Scipy sparse matrix.
     seed : int or RandomState, optional
         Random state generator seed, for reproducibility,
         by default None
-
-    verbose : bool, optional
     typefloat : numpy.dtype, optional
 
     Returns
@@ -208,35 +206,21 @@ def generate_internal_weights(N: int,
 
     rs = _get_random_state(seed)
 
-    if sparsity_type is not None:
+    # sparse format (default)
+    if sparsity_type != "dense":
         w = sparse.random(N, N, density=proba, format=sparsity_type,
                           random_state=rs,
                           data_rvs=lambda s: rs.normal(0, Wstd, size=s))
-        rhoW = max(abs(eigs(w, k=1, which='LM', return_eigenvectors=False)))
+    # dense format
     else:
         mask = 1 * (rs.rand(N, N) < proba)
         mat = rs.normal(0, Wstd, (N, N))
         w = np.multiply(mat, mask, dtype=typefloat)
 
-        # Computing the spectral radius of W matrix
-        rhoW = max(abs(linalg.eig(w)[0]))
+    current_sr = spectral_radius(w)
 
-    if verbose:
-        print("Spectra radius of generated matrix before "
-              "applying another spectral radius: " + str(rhoW))
-
-    if spectral_radius is not None:
-        w *= spectral_radius / rhoW
-        if verbose:
-            if sparse.issparse(w):
-                rhoW_after = max(abs(sparse.linalg.eigs(w,
-                                                        k=1,
-                                                        which='LM',
-                                                        return_eigenvectors=False)))
-            else:
-                rhoW_after = max(abs(linalg.eig(w)[0]))
-            print("Spectra radius matrix after applying "
-                  "another spectral radius: " + str(rhoW_after))
+    if sr is not None:
+        w *= sr / current_sr
 
     return w
 
@@ -247,7 +231,6 @@ def generate_input_weights(N: int,
                            proba: float = 0.1,
                            input_bias: bool = False,
                            seed: Union[int, RandomState] = None,
-                           verbose: bool = False,
                            typefloat=np.float64):
     """
     Generate input or feedback weights for the reservoir.
@@ -275,7 +258,6 @@ def generate_input_weights(N: int,
         seed : int or RandomState, optional
             Random state generator seed, for reproducibility,
             by default None
-        verbose : bool, optional
         typefloat : numpy.dtype, optional
     Returns
     -------
@@ -312,9 +294,11 @@ def generate_input_weights(N: int,
 
     if input_bias:
         dim_input += 1
+
     mask = 1 * (rs.rand(N, dim_input) < proba)
     mat = rs.randint(0, 2, (N, dim_input)) * 2 - 1
     w = np.multiply(mat, mask, dtype=typefloat)
+
     if input_scaling is not None:
         w = input_scaling * w
 
