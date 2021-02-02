@@ -11,22 +11,22 @@ Chaotic timeseries
 
     Available chaotic attractors:
 
-    Discrete timeseries
-    *******************
-        :py:func:`logistic_map`: Logistic map timeseries.
+    **Discrete timeseries**
 
-        :py:func:`henon_map`: Hénon map timeseries.
+    - :py:func:`logistic_map`: Logistic map timeseries.
 
-    Approximations of continuous timeseries
-    ***************************************
-        :py:func:`mackey_glass`: Mackey-Glass delayed differential equations timeseries.
+    - :py:func:`henon_map`: Hénon map timeseries.
 
-        :py:func:`lorenz`: Lorenz system timeseries.
+    **Approximations of continuous timeseries**
 
-        :py:func:`multiscroll`: Double scroll attractor timeseries.
+    - :py:func:`mackey_glass`: Mackey-Glass delayed differential equations timeseries.
 
-        :py:func:`rabinovitch_fabrikant`: Rabinovitch-Fabrikant differential
-        equations timeseries.
+    :- py:func:`lorenz`: Lorenz system timeseries.
+
+    - :py:func:`multiscroll`: Double scroll attractor timeseries.
+
+    - :py:func:`rabinovitch_fabrikant`: Rabinovitch-Fabrikant differential
+      equations timeseries.
 
 References
 ----------

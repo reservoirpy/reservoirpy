@@ -66,7 +66,7 @@ def fast_spectral_initialization(N: int,
                                  sparsity_type: str = 'csr',
                                  typefloat=np.float64):
     """Fast spectral radius (FSI) approach for weights
-    initialization[#]_.
+    initialization [#]_.
 
     This method is well suited for computation and rescaling of
     very large weights matrices, with a number of neurons typically
@@ -106,7 +106,7 @@ def fast_spectral_initialization(N: int,
     References
     -----------
 
-        .. [1] C. Gallicchio, A. Micheli, and L. Pedrelli,
+        .. [#] C. Gallicchio, A. Micheli, and L. Pedrelli,
                ‘Fast Spectral Radius Initialization for Recurrent
                Neural Networks’, in Recent Advances in Big Data and
                Deep Learning, Cham, 2020, pp. 380–390,

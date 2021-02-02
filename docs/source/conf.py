@@ -33,7 +33,8 @@ release = '0.2.2'
 extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest'
+    'sphinx.ext.doctest',
+    'sphinx_copybutton'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

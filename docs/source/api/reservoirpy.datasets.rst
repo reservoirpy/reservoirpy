@@ -1,8 +1,5 @@
-reservoirpy.datasets package
-============================
-
-Module contents
----------------
+reservoirpy.datasets
+====================
 
 .. automodule:: reservoirpy.datasets
    :members:

@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 NAME = "reservoirpy"
 
 __version__ = None
-version_file = os.path.join("reservoirpy", "__init__.py")
+version_file = os.path.join("reservoirpy", "_version.py")
 with open(version_file) as f:
     exec(f.read())
 

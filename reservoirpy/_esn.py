@@ -1,11 +1,11 @@
 """Simple, fast, parallelizable and object-oriented
 implementation of Echo State Networks, using offline
 learning methods.
-"""
 
+"""
 # @author: Xavier HINAUT
 # xavier.hinaut@inria.fr
-# Copyright Xavier Hinaut 2018
+# Copyright Xavier Hinaut 2018
 # We would like to thank Mantas Lukosevicius for his code that
 # was used as inspiration for this code:
 # # http://minds.jacobs-university.de/mantas/code
@@ -33,10 +33,10 @@ class ESN:
     offline learning methods using reservoir computing.
     Echo State Networks allows one to:
         - quickly build ESNs, using the :py:mod:`reservoirpy.mat_gen` module
-        to initialize weights,
+          to initialize weights,
         - train and test ESNs on the task of your choice,
         - use the trained ESNs on the task of your choice, either in
-        predictive mode or generative mode.
+          predictive mode or generative mode.
 
     Parameters
     ----------
@@ -242,7 +242,7 @@ class ESN:
         if self.Wfb is not None and feedback is None:
             raise RuntimeError("Missing a feedback vector.")
 
-        # first initialize the current state of the ESN
+        # first initialize the current state of the ESN
         if last_state is None:
             x = np.zeros((self.N, 1), dtype=self.typefloat)
         else:
@@ -254,7 +254,7 @@ class ESN:
         else:
             u = single_input
 
-        # linear transformation
+        # linear transformation
         x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1)) \
             + self.W.dot(x)
 
@@ -671,7 +671,7 @@ class ESN:
 
         all_teachers = [t[wash_nr_time_step:].T for t in teachers]
 
-        # compute readout matrix
+        # compute readout matrix
         if use_memmap:
             memteachers = np.memmap(self._tempteach,
                                     dtype=self.typefloat,
@@ -770,15 +770,14 @@ class ESN:
 
     def generate(self,
                  nb_timesteps: int,
-                 init_inputs: np.ndarray,
+                 warming_inputs: np.ndarray = None,
                  init_state: np.ndarray = None,
                  init_fb: np.ndarray = None,
-                 return_init: bool = False,
                  verbose: bool = False
-                 ) -> np.ndarray:
-        """Run the ESN on a generative mode.
+                 ) -> Tuple[np.ndarray, np.ndarray]:
+        """Run the ESN on generative mode.
 
-        After the init_inputs are consumed, new outputs are
+        After the `̀warming_inputs` are consumed, new outputs are
         used as inputs for the next nb_timesteps, i.e. the
         ESN is feeding himself with its own outputs.
 
@@ -786,7 +785,7 @@ class ESN:
         on a regression task. The outputs of the ESN must be
         the same kind of data as its input.
 
-        To train an ESN on generative mode, use the ESN.train
+        To train an ESN on generative mode, use the :py:func:`ESN.train`
         method to train the ESN on a regression task (for
         instance, predict the future data point t+1 of a timeseries
         give the data at time t).
@@ -796,72 +795,86 @@ class ESN:
             nb_timesteps: int
                 Number of timesteps of data to generate
                 from the intial input.
-
-            init_inputs: numpy.ndarray
+            warming_inputs: numpy.ndarray
                 Input data used to initiate generative mode.
                 This data is meant to "seed" the ESN internal
                 states with some real information, before it runs
                 on its own created outputs.
-
             init_state: numpy.ndarray, optional:
                 State initialization vector for the reservoir.
                 By default, internal state of the reservoir is initialized to 0.
-
             init_fb: numpy.ndarray, optional
                 Feedback initialization vector for the reservoir, if feedback is
                 enabled. By default, feedback is initialized to 0.
-
             verbose: bool, optional
 
         Returns
         -------
-            np.ndarray: [description]
+            tuple of numpy.ndarray
+                Generated outputs, generated states, warming outputs, warming states
+
+                Generated outputs are the timeseries predicted by the ESN from
+                its own predictions over time. Generated states are the
+                corresponding internal states.
+
+                Warming outputs are the predictions made by the ESN based on the
+                warming inputs passed as parameters. These predictions are prior
+                to the generated outputs. Warming states are the corresponding
+                internal states. In the case no warming inputs are provided, warming
+                outputs and warming states are None.
+
         """
+        if warming_inputs is not None:
 
-        if verbose:
-            print(f"Generating {nb_timesteps} timesteps from "
-                  f"{init_inputs.shape[0]} inputs.")
-            print("Computing initial states...")
+            if verbose:
+                print(f"Generating {nb_timesteps} timesteps from "
+                      f"{warming_inputs.shape[0]} inputs.")
+                print("Computing initial states...")
 
-        _, init_states = self._compute_states(init_inputs, init_state=init_state,
-                                              init_fb=init_fb)
+            _, warming_states = self._compute_states(warming_inputs,
+                                                     init_state=init_state,
+                                                     init_fb=init_fb)
 
-        s0 = init_states[:, -1].reshape(-1, 1)
-        init_outputs = self.compute_outputs([init_states])[0]
-        u0 = init_outputs[:, -1].reshape(1, -1)
+            # initial state (at begining of generation)
+            s0 = warming_states[:, -1].reshape(-1, 1)
+            warming_outputs = self.compute_outputs([warming_states])[0]
+            # intial input (at begining of generation)
+            u1 = warming_outputs[:, -1].reshape(1, -1)
 
-        if init_fb is not None:
-            fb0 = self.compute_outputs([init_states[:, -2]])[0]
+            if init_fb is not None:
+                # initial feedback (at begining of generation)
+                fb0 = warming_outputs[:, -2].reshape(1, -1)
+            else:
+                fb0 = None
         else:
-            fb0 = None
+            warming_outputs, warming_states = None, None
+            s0 = init_state
+            fb0 = init_fb
+            u1 = self.compute_outputs([s0])[0][:, -1].reshape(1, -1)
+
+        states = np.zeros(nb_timesteps, self.N)
+        outputs = np.zeros(nb_timesteps, self.dim_out)
 
         if verbose:
             track = tqdm
         else:
-            track = lambda x, text: x
+            def track(x, text): return x
 
-        states = [None] * nb_timesteps
-        outputs = [None] * nb_timesteps
         for i in track(range(nb_timesteps), "Generating"):
-            _, s = self._compute_states(u0, init_state=s0, init_fb=fb0)
-            s0 = s[:, -1].reshape(-1, 1)
-            states[i] = s0.reshape(self.N)
+            # from new input u1 and previous state s0
+            # compute next state s1 -> s0
+            _, s1 = self._compute_states(u1, init_state=s0, init_fb=fb0)
+            s0 = s1[:, -1].reshape(-1, 1)
+            states[i, :] = s0
 
             if fb0 is not None:
-                fb0 = u0.copy()
+                fb0 = u1.copy()
 
-            u = self.compute_outputs([s0])
-            u0 = u[0].reshape(1, -1)
-            outputs[i] = u0.reshape(self.dim_inp - self.in_bias)
+            # from new state s1 compute next input u2 -> u1
+            u1 = self.compute_outputs([s0]).reshape(1, -1)
+            outputs[i, :] = u1
 
-        outputs = np.array(outputs)
-        states = np.array(states)
-
-        if return_init:
-            outputs = np.vstack([init_outputs.T, outputs])
-            states = np.vstack([init_states.T, states])
-
-        return outputs, states
+        return outputs, states, warming_outputs, warming_states
 
     def save(self, directory: str):
         """Save the ESN to disk.

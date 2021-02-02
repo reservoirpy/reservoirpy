@@ -1,13 +1,6 @@
-# -*- coding: utf-8 -*-
-#!/usr/bin/env python -W ignore::DeprecationWarning
-"""reservoirpy/esn_online
+"""Echo State Networks with online learning (FORCE learning)
 
-Echo State Networks with online learning (FORCE learning)
 """
-import os
-import time
-import warnings
-import pickle
 from typing import Sequence, Callable, Tuple, Union, Dict
 
 import numpy as np
@@ -17,21 +10,19 @@ from tqdm import tqdm
 from ._utils import _check_values, _save
 
 
-
-
 class ESNOnline(object):
 
     def __init__(self,
                  lr: float,
                  W: np.ndarray,
                  Win: np.ndarray,
-                 Wout: np.ndarray,
-                 alpha_coef: float=1e-6,
-                 use_raw_input: bool=False,
-                 input_bias: bool=True,
-                 Wfb: np.ndarray=None,
-                 fbfunc: Callable=None,
-                 typefloat: np.dtype=np.float64):
+                 Wout: np.ndarray = None,
+                 alpha_coef: float = 1e-6,
+                 use_raw_input: bool = False,
+                 input_bias: bool = True,
+                 Wfb: np.ndarray = None,
+                 fbfunc: Callable = None,
+                 typefloat: np.dtype = np.float64):
         """Base class of Echo State Networks
 
         Arguments:

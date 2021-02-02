@@ -8,8 +8,8 @@ from . import regression_models
 from . import activationsfunc
 from . import hyper
 
-from .esn import ESN
-from .esn_online import ESNOnline
+from ._esn import ESN
+from ._esn_online import ESNOnline
 
 __all__ = [
     "__version__",

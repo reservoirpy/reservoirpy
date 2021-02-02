@@ -10,7 +10,11 @@ Welcome to ReservoirPy's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   modules
+   installation
+   whats_rc
+   getting_started
+   using_reservoirpy
+   api/api
 
 Indices and tables
 ==================
