@@ -47,6 +47,7 @@ setup(
     maintainer=MAINTAINERS,
     maintainer_email=MAINTAINERS_EMAIL,
     description=DESCRIPTION,
+    long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     url=URL,
     project_urls=PROJECT_URLS,
@@ -60,7 +61,6 @@ setup(
         'Topic :: Scientific/Engineering',
         ('Topic :: Scientific/Engineering :: '
          'Artificial Intelligence'),
-        'Development Status :: 4  - Beta',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX',
         'Operating System :: Unix',
