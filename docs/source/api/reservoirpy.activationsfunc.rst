@@ -1,3 +1,5 @@
+.. _`reservoirpy.activationsfunc`:
+
 reservoirpy.activationsfunc
 ===========================
 

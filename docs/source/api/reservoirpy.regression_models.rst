@@ -1,3 +1,5 @@
+.. _`reservoirpy.regression_models`:
+
 reservoirpy.regression_models
 =============================
 

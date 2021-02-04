@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import sys
-sys.path.insert(0, '..')
 from reservoirpy import ESN
+from reservoirpy.datasets import mackey_glass
 
 
 def set_seed(seed=None):
@@ -37,7 +36,9 @@ set_seed(seed) #random.seed(seed)
 ########################################
 ########################################
 # loading data
-data = np.loadtxt('MackeyGlass_t17.txt')
+#data = np.loadtxt('MackeyGlass_t17.txt')
+data = mackey_glass(10000)
+
 normalization_auto = True #False #True
 
 ## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
@@ -71,7 +72,6 @@ if normalization_auto:
 # plot some of it
 plt.figure(0)
 plt.plot(data[0:1000])
-plt.ylim([-1.1,1.1])
 plt.title('A sample of input data')
 
 # generate the ESN reservoir
@@ -171,7 +171,7 @@ print( "test_in, test_out dimensions", test_in.shape, test_out.shape)
 #plt.legend(['train_in','train_out'])
 #plt.title('train_in & train_out')
 
-internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], wash_nr_time_step=initLen, verbose=False)
+internal_trained = reservoir.train(inputs=[train_in], teachers=[train_out], wash_nr_time_step=initLen, verbose=False)
 #output_pred, internal_pred = reservoir.run(inputs=[test_in,], init_state=np.zeros((N, 1)))
 output_pred, internal_pred = reservoir.run(inputs=[test_in], init_state=get_last_state(internal_trained))
 errorLen = len(test_out[:]) #testLen #2000
@@ -193,7 +193,6 @@ print("********************\n")
 
 plt.figure()
 plt.plot( internal_trained[0][:200,:21])
-plt.ylim([-1.1,1.1])
 plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 20 for 200 time steps')
 
 plt.figure(figsize=(12,4))

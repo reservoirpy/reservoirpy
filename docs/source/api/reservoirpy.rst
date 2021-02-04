@@ -7,20 +7,29 @@ ReservoirPy package
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 4
+  .. list-table::
+      :widths: 50 50
+      :header-rows: 0
 
-   reservoirpy.esn
-   reservoirpy.mat_gen
-   reservoirpy.regression_models
-   reservoirpy.activationsfunc
-   reservoirpy.observables
+      * - :ref:`reservoirpy.esn`
+        - Object-oriented API for Echo State Networks design
+      * - :ref:`reservoirpy.mat_gen`
+        - Tools for weight matrices initialization
+      * - :ref:`reservoirpy.regression_models`
+        - Simple linear models and handled for `scikit-learn` linear regressors
+      * - :ref:`reservoirpy.activationsfunc`
+        - Activations functions for reservoirs, feedbacks, etc.
+      * - :ref:`reservoirpy.observables`
+        - Metrics and measures
 
 Subpackages
 -----------
 
-.. toctree::
-   :maxdepth: 4
+ .. list-table::
+      :widths: 50 50
+      :header-rows: 0
 
-   reservoirpy.hyper
-   reservoirpy.datasets
+      * - :ref:`reservoirpy.hyper`
+        - Tools for hyperparameters optimization with `hyperopt`
+      * - :ref:`reservoirpy.datasets`
+        - Ready-to-use datasets for model evaluation

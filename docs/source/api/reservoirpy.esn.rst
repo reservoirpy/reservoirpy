@@ -1,8 +1,12 @@
+.. _`reservoirpy.esn`:
+
 reservoirpy.ESN and reservoirpy.ESNOnline
 =========================================
 
 reservoirpy.ESN
 ---------------
+
+.. automodule:: reservoirpy._esn
 
 .. autoclass:: reservoirpy.ESN
    :members:
@@ -11,6 +15,8 @@ reservoirpy.ESN
 
 reservoirpy.ESNOnline
 ---------------------
+
+.. automodule:: reservoirpy._esn_online
 
 .. autoclass:: reservoirpy.ESNOnline
    :members:

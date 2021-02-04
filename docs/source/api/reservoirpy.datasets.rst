@@ -1,3 +1,5 @@
+.. _`reservoirpy.datasets`:
+
 reservoirpy.datasets
 ====================
 

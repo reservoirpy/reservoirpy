@@ -1,3 +1,5 @@
+.. _`reservoirpy.observables`:
+
 reservoirpy.observables
 =======================
 

@@ -1,14 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import sys
-sys.path.insert(0, '..')
-
 from reservoirpy import ESNOnline
-from reservoirpy.mat_gen import generate_internal_weights, generate_input_weights
-
-
-
+from reservoirpy.mat_gen import generate_internal_weights
+from reservoirpy.mat_gen import generate_input_weights
+from reservoirpy.datasets import mackey_glass
 
 ########################################
 ########################################
@@ -48,7 +44,7 @@ set_seed(seed) #random.seed(seed)
 ########################################
 
 # Load data
-data = np.loadtxt('MackeyGlass_t17.txt')
+data = mackey_glass(10000)
 normalization_auto = True #False #True
 
 ## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
@@ -71,22 +67,21 @@ if normalization_auto:
     data = data / (data.max() - data.min())
     if verbose_mode:
         print("data normalized",data)
-        print("max",data.max())
-        print("min",data.min())
-        print("mean",data.mean())
-        print("std",data.std())
+        print("max", data.max())
+        print("min", data.min())
+        print("mean", data.mean())
+        print("std", data.std())
 
 # plot some of it
 plt.figure(0)
 plt.plot(data[0:1000])
-plt.ylim([-1.1,1.1])
 plt.title('A sample of input data')
 
 # Split data
-train_in = data[None,0:trainLen]
-train_out = data[None,0+1:trainLen+1]
-test_in = data[None,trainLen:trainLen+testLen]
-test_out = data[None,trainLen+1:trainLen+testLen+1]
+train_in = data[None, 0:trainLen]
+train_out = data[None, 0+1:trainLen+1]
+test_in = data[None, trainLen:trainLen+testLen]
+test_out = data[None, trainLen+1:trainLen+testLen+1]
 
 # rearange inputs in correct dimensions
 train_in, train_out = train_in.T, train_out.T
@@ -95,13 +90,11 @@ test_in, test_out = test_in.T, test_out.T
 # Plot to investigate the data
 plt.figure()
 plt.plot(train_in, train_out)
-plt.ylim([-1.1,1.1])
 plt.title('Recurrence plot of training data: input(t+1) vs. input(t)')
 
 plt.figure()
 plt.plot(train_in)
 plt.plot(train_out)
-plt.ylim([-1.1,1.1])
 plt.legend(['train_in','train_out'])
 plt.title('train_in & train_out')
 
@@ -109,12 +102,10 @@ plt.title('train_in & train_out')
 # plt.plot(test_in)
 # plt.plot(test_out)
 # plt.ylim([-1.1,1.1])
-# plt.legend(['test_in','test_out']) 
+# plt.legend(['test_in','test_out'])
 # plt.title('test_in & test_out')
 
 plt.show()
-
-
 
 ########################################
 ########################################
@@ -153,21 +144,21 @@ dim_inp = n_inputs
 #                                 input_scaling=self.fbscale, proba=self.fbproba, input_bias=None, seed=current_seed, verbose=verbose)
 
 ### Generating random weight matrices with custom method
-W = np.random.rand(N,N) - 0.5
+W = np.random.rand(N, N) - 0.5
 if input_bias:
-    Win = np.random.rand(N,dim_inp+1) - 0.5
+    Win = np.random.rand(N, dim_inp+1) - 0.5
 else:
-    Win = np.random.rand(N,dim_inp) - 0.5
-Wfb = np.random.rand(N,n_outputs) - 0.5
+    Win = np.random.rand(N, dim_inp) - 0.5
+Wfb = np.random.rand(N, n_outputs) - 0.5
 
 # # Mantas way
 # Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
 # W = np.random.rand(N,N)-0.5
 
 ## delete the fraction of connections given the sparsity (i.e. proba of non-zero connections):
-mask = np.random.rand(N,N) # create a mask Uniform[0;1]
+mask = np.random.rand(N, N) # create a mask Uniform[0;1]
 W[mask > proba_non_zero_connec_W] = 0 # set to zero some connections given by the mask
-mask = np.random.rand(N,Win.shape[1])
+mask = np.random.rand(N, Win.shape[1])
 Win[mask > proba_non_zero_connec_Win] = 0
 # mask = np.random.rand(N,Wfb.shape[1])
 # Wfb[mask > proba_non_zero_connec_Wfb] = 0
@@ -189,17 +180,15 @@ nb_states = Win.shape[1] + N + 1 if use_raw_input else N + 1
 Wout = np.zeros((n_outputs, nb_states))
 
 # Init reservoir
-reservoir = ESNOnline(lr = leak_rate,
-                     W = W,
-                     Win = Win,
-                     Wout = Wout,
-                     alpha_coef = alpha_coef,
-                     use_raw_input = use_raw_input,
-                     input_bias = input_bias,
-                     Wfb = Wfb,
-                     fbfunc = fbfunc)
-
-
+reservoir = ESNOnline(lr=leak_rate,
+                      W=W,
+                      Win=Win,
+                      Wout=Wout,
+                      alpha_coef=alpha_coef,
+                      use_raw_input=use_raw_input,
+                      input_bias=input_bias,
+                      Wfb=Wfb,
+                      fbfunc=fbfunc)
 
 ########################################
 ########################################
@@ -208,10 +197,8 @@ reservoir = ESNOnline(lr = leak_rate,
 ########################################
 
 # Train reservoir
-internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,], 
+internal_trained = reservoir.train(inputs=[train_in], teachers=[train_out],
                                    wash_nr_time_step=initLen, verbose=False)
-
-
 
 ########################################
 ########################################
@@ -220,7 +207,7 @@ internal_trained = reservoir.train(inputs=[train_in,], teachers=[train_out,],
 ########################################
 
 # Run reservoir on test set
-output_pred, internal_pred = reservoir.run(inputs=[test_in,])
+output_pred, internal_pred = reservoir.run(inputs=[test_in])
 
 # Print errors made on test set
 errorLen = len(test_out)

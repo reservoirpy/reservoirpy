@@ -31,6 +31,8 @@ connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
     W = fast_spectral_initialization(1000, spectral_radius=0.5)
     Win = generate_input_weights(1000, 5, input_scaling=0.9)
 """
+import warnings
+
 from typing import Union
 
 import numpy as np
@@ -64,7 +66,8 @@ def fast_spectral_initialization(N: int,
                                  seed: Union[int, RandomState] = None,
                                  verbose: bool = False,
                                  sparsity_type: str = 'csr',
-                                 typefloat=np.float64):
+                                 typefloat=np.float64,
+                                 **kwargs,):
     """Fast spectral radius (FSI) approach for weights
     initialization [#]_.
 
@@ -92,6 +95,9 @@ def fast_spectral_initialization(N: int,
         is chosen, the matrix will be a Numpy array and not a
         Scipy sparse matrix.
     typefloat : np.dtype, optional
+    spectral_radius: float, optional
+        Same as ``sr``. It is deprecated since version 0.2.2
+        and will be removed soon.
 
     Returns
     -------
@@ -124,6 +130,12 @@ def fast_spectral_initialization(N: int,
                [ 0.        ,  0.39151551,  0.4157107 ,  0.        ,  0.41754172],
                [ 0.        ,  0.72101228,  0.        ,  0.        ,  0.        ]])
     """
+    if kwargs.get("spectral_radius") is not None:
+        warnings.warn("Deprecation warning: spectral_radius parameter "
+                      "is deprecated since 0.2.2 and will be removed. "
+                      "Please use sr instead.")
+        sr = kwargs.get("spectral_radius")
+
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
@@ -149,7 +161,8 @@ def generate_internal_weights(N: int,
                               Wstd: float = 1.0,
                               sparsity_type: str = 'csr',
                               seed: Union[int, RandomState] = None,
-                              typefloat=np.float64):
+                              typefloat=np.float64,
+                              **kwargs):
     """Method that generate the weight matrix that will be used
     for the internal connections of the reservoir.
 
@@ -178,6 +191,9 @@ def generate_internal_weights(N: int,
         Random state generator seed, for reproducibility,
         by default None
     typefloat : numpy.dtype, optional
+    spectral_radius: float, optional
+        Same as ``sr``. It is deprecated since version 0.2.2
+        and will be removed soon.
 
     Returns
     -------
@@ -201,6 +217,12 @@ def generate_internal_weights(N: int,
                [ 0.        ,  0.24196227, -0.90802408,  0.        , -0.56228753],
                [ 0.        ,  0.31424733,  0.        ,  0.        ,  0.        ]])
     """
+    if kwargs.get("spectral_radius") is not None:
+        warnings.warn("Deprecation warning: spectral_radius parameter "
+                      "is deprecated since 0.2.2 and will be removed. "
+                      "Please use sr instead.")
+        sr = kwargs.get("spectral_radius")
+
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 

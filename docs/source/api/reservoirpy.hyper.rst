@@ -1,3 +1,5 @@
+.. _`reservoirpy.hyper`:
+
 reservoirpy.hyper
 =================
 

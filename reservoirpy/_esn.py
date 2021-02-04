@@ -1,6 +1,15 @@
 """Simple, fast, parallelizable and object-oriented
-implementation of Echo State Networks, using offline
+implementation of Echo State Networks [#]_ [#]_, using offline
 learning methods.
+
+References
+----------
+
+    .. [#] H. Jaeger, ‘The “echo state” approach to analysing
+           and training recurrent neural networks – with an
+           Erratum note’, p. 48.
+    .. [#] M. Lukoševičius, ‘A Practical Guide to Applying Echo
+           State Networks’, Jan. 2012, doi: 10.1007/978-3-642-35289-8_36.
 
 """
 # @author: Xavier HINAUT
@@ -11,6 +20,7 @@ learning methods.
 # # http://minds.jacobs-university.de/mantas/code
 
 import time
+import warnings
 
 from typing import Sequence, Callable, Tuple, Union
 from tempfile import mkdtemp
@@ -29,9 +39,9 @@ from .regression_models import pseudo_inverse_linear_model
 class ESN:
     """Base class of Echo State Networks.
 
-    The :py:class:`.ESN` class is the angular stone of ReservoirPy
+    The :py:class:`reservoirpy.ESN` class is the angular stone of ReservoirPy
     offline learning methods using reservoir computing.
-    Echo State Networks allows one to:
+    Echo State Network allows one to:
         - quickly build ESNs, using the :py:mod:`reservoirpy.mat_gen` module
           to initialize weights,
         - train and test ESNs on the task of your choice,
@@ -609,28 +619,23 @@ class ESN:
                 Note that it should always be a list of sequences, i.e. if
                 only one sequence (array with rows representing time axis)
                 of inputs is used, it should be alone in a list.
-
             teachers: list of numpy.ndarray
                 List of ground truths.
                 Note that is should always be a list of
                 sequences of the same length than the `inputs`, i.e. if
                 only one sequence of inputs is used, it should be alone in a
                 list.
-
             wash_nr_time_step: int
                 Number of states to considered as transient when training. Transient
                 states will be discarded when computing readout matrix. By default,
                 no states are removes.
-
             workers: int, optional
                 If n >= 1, will enable parallelization of states computation with
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
-
             backend: {"threadings", "multiprocessing", "loki"}, optional
                 Backend used for parallelization of states computations.
                 By default, "threading".
-
             verbose: bool, optional
 
         Returns
@@ -736,7 +741,7 @@ class ESN:
 
         Returns
         -------
-            outputs: list of numpy.ndarray, states: list of numpy.ndarray
+            list of numpy.ndarray, list of numpy.ndarray
                 All outputs computed from readout and all corresponding internal states,
                 for all inputs.
 
@@ -773,7 +778,9 @@ class ESN:
                  warming_inputs: np.ndarray = None,
                  init_state: np.ndarray = None,
                  init_fb: np.ndarray = None,
-                 verbose: bool = False
+                 verbose: bool = False,
+                 init_inputs: np.ndarray = None,
+                 return_init: bool = None
                  ) -> Tuple[np.ndarray, np.ndarray]:
         """Run the ESN on generative mode.
 
@@ -807,6 +814,13 @@ class ESN:
                 Feedback initialization vector for the reservoir, if feedback is
                 enabled. By default, feedback is initialized to 0.
             verbose: bool, optional
+            init_intputs: list of numpy.ndarray, optional
+                Same as ``warming_inputs̀``.
+                Kept for compatibility with previous version. Deprecated
+                since 0.2.2, will be removed soon.
+            return_init: bool, optional
+                Kept for compatibility with previous version. Deprecated
+                since 0.2.2, will be removed soon.
 
         Returns
         -------
@@ -824,7 +838,21 @@ class ESN:
                 outputs and warming states are None.
 
         """
-        if warming_inputs is not None:
+        if warming_inputs is None and init_state is None and init_inputs is None:
+            raise ValueError("at least one of the parameter 'warming_input' "
+                             "or 'init_state' must not be None. Impossible "
+                             "to generate from scratch.")
+
+        if return_init is not None:
+            warnings.warn("Deprecation warning : return_init parameter "
+                          "is deprecated since 0.2.2 and will be removed.")
+
+        if warming_inputs is not None or init_inputs is not None:
+            if init_inputs is not None:
+                warnings.warn("Deprecation warning : init_inputs parameter "
+                              "is deprecated since 0.2.2 and will be removed. "
+                              "Please use warming_inputs instead.")
+                warming_inputs = init_inputs
 
             if verbose:
                 print(f"Generating {nb_timesteps} timesteps from "
@@ -848,12 +876,19 @@ class ESN:
                 fb0 = None
         else:
             warming_outputs, warming_states = None, None
-            s0 = init_state
-            fb0 = init_fb
+            # time is often first axis but compute_outputs await
+            # for time in second axis, so the reshape :
+            s0 = init_state.reshape(-1, 1)
+
+            if init_fb is not None:
+                fb0 = init_fb.reshape(-1, 1)
+            else:
+                fb0 = None
+
             u1 = self.compute_outputs([s0])[0][:, -1].reshape(1, -1)
 
-        states = np.zeros(nb_timesteps, self.N)
-        outputs = np.zeros(nb_timesteps, self.dim_out)
+        states = np.zeros((nb_timesteps, self.N))
+        outputs = np.zeros((nb_timesteps, self.dim_out))
 
         if verbose:
             track = tqdm
@@ -865,14 +900,14 @@ class ESN:
             # compute next state s1 -> s0
             _, s1 = self._compute_states(u1, init_state=s0, init_fb=fb0)
             s0 = s1[:, -1].reshape(-1, 1)
-            states[i, :] = s0
+            states[i, :] = s0.flatten()
 
             if fb0 is not None:
                 fb0 = u1.copy()
 
             # from new state s1 compute next input u2 -> u1
-            u1 = self.compute_outputs([s0]).reshape(1, -1)
-            outputs[i, :] = u1
+            u1 = self.compute_outputs([s0])[0][:, -1].reshape(1, -1)
+            outputs[i, :] = u1.flatten()
 
         return outputs, states, warming_outputs, warming_states
 
