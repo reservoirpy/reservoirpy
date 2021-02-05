@@ -2,17 +2,17 @@
 Getting started
 ===============
 
-Let's have a look at ReservoirPy's main functionnalities and features.
+Let's have a look at ReservoirPy's main functionalities and features.
 
 Before getting started to use ReservoirPy, make sure you have correctly installed
 the package and all its dependencies by looking at the :ref:`installation guide`.
 
 ReservoirPy is an open-source project which aims to develop a simple yet performant
 *reservoir computing* tool, written in scientific Python and without using any
-heavy machine learning library.
+heavy machine learning library or framework.
 
 To learn more about the theoretical aspects of reservoir computing, you can read the
-page :ref:`whats rc`.
+page :ref:`whats rc`
 
 Back to basics: scientific Python and linear regressions
 ========================================================
@@ -56,8 +56,7 @@ Building your first Echo State Nertwork
     the inputs.
 
     In a more realistc context, you will probably need to quickly define these matrices and to
-    tune some of their parameters. You can use the :py:mod:`reservoirpy.mat_gen` to achieve this:
-
+    tune some of their parameters. You can use the :py:mod:`reservoirpy.mat_gen` module to achieve this:
 
     .. doctest::
 
@@ -66,9 +65,9 @@ Building your first Echo State Nertwork
 
     ``W`` is now a sparse array of shape ``(100, 100)``, i.e. represents a reservoir network of 100 neuronal
     units, where only 20% (``proba=0.2``) of all possible connections between the neurons are non-zero,
-    and with a spectral radius (``sr=0.9``) equals to $0.9$.
+    and with a spectral radius (``sr=0.9``) equals to :math:`0.9`.
 
-    It is also possible to define the input matrix ``Win`` using :py:mod:`reservoirpy.mat_gen` :
+    It is also possible to define the input matrix ``Win`` using :py:mod:`reservoirpy.mat_gen` module:
 
     .. doctest::
 
@@ -78,15 +77,15 @@ Building your first Echo State Nertwork
     Here, we created a dense (``proba=1.``) input matrix able to connect a 2-dimensional input to a
     reservoir composed of 100 neuronal units, without adding a constant bias.
 
-    For the next steps of this tutorial, we will keep using the first two "dummy" matrices that we
+    For the next steps of this tutorial, we will keep using the first two "dummy" matrices we
     defined in the first place.
 
 Training your ESN
 -----------------
 
     ESNs can then be trained on sequential data, for instance text, sound, speech, or any kind
-    of timeseries, especially chaotic ones. Let's build some dummy sequential data, like simple
-    oscillations flowing through time:
+    of timeseries, especially chaotic ones. Let's build some simple sinusoidal sequential data,
+    for instance simple oscillations flowing through time:
 
     .. doctest::
 
@@ -96,7 +95,7 @@ Training your ESN
         >>> Xn1 = np.array([[sin(x), cos(x)] for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 500)])
 
     The result is displayed below: two timeseries based on cosinus and sinus functions.
-    The ESN will have two predict their values :math:`\frac{\pi}{4}` timesteps away from
+    The ESN will have to predict their future values :math:`\frac{\pi}{4}` timesteps towards
     their current values, simultaneously:
 
     .. image:: _static/img/getting_started_sinus.svg

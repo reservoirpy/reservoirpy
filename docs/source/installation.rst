@@ -35,7 +35,7 @@ therefore be installed using `pip` on Linux/MacOS/Windows (in the latter case, h
 `Anaconda <https://www.anaconda.com/products/individual>`_ distribution installed
 on your computer may be necessary).
 
-To install ReservoirPy using `pip`, simply run th following command in a terminal:
+To install ReservoirPy using `pip`, simply run the following command in a terminal:
 
 .. code-block:: bash
 
@@ -86,7 +86,7 @@ Additional dependencies and requirements
 
   .. code-block::
 
-      pip install hyperopt matplotlib
+      pip install hyperopt matplotlib seaborn
 
   **Development tools**
 
@@ -142,6 +142,12 @@ Additional dependencies and requirements
         - tests
       * - sphinx
         - 3.3.1
+        - docs
+      * - sphinx-rtd-theme
+        - 0.5.1
+        - docs
+      * - sphinx-copybutton
+        - 0.3.1
         - docs
       * - numpydoc
         - 1.1.0
