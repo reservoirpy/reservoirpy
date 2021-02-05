@@ -9,6 +9,11 @@ ReservoirPy
 
 **A simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
+.. image:: https://badge.fury.io/py/reservoirpy.svg
+    :target: https://badge.fury.io/py/reservoirpy
+.. image:: https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master
+    :target: https://travis-ci.org/reservoirpy/reservoirpy
+
 ReservoirPy is a simple user-friendly library based on Python scientific modules.
 It provides a flexible interface to implement efficient Reservoir Computing (RC)
 architectures with a particular focus on Echo State Networks (ESN). Advanced features of
