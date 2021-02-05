@@ -35,7 +35,7 @@ INSTALL_REQUIRES = [
 
 PROJECT_URLS = {
     'Bug Tracker': 'https://github.com/reservoirpy/reservoirpy/issues',
-    'Documentation': 'https://github.com/reservoirpy/reservoirpy',
+    'Documentation': 'https://reservoirpy.readthedocs.io/en/latest/index.html',
     'Source Code': URL
 }
 
