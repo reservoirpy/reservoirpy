@@ -21,11 +21,11 @@ Chaotic timeseries
 
     - :py:func:`mackey_glass`: Mackey-Glass delayed differential equations timeseries.
 
-    :- py:func:`lorenz`: Lorenz system timeseries.
+    - py:func:`lorenz`: Lorenz system timeseries.
 
     - :py:func:`multiscroll`: Double scroll attractor timeseries.
 
-    - :py:func:`rabinovitch_fabrikant`: Rabinovitch-Fabrikant differential
+    - :py:func:`rabinovich_fabrikant`: Rabinovitch-Fabrikant differential
       equations timeseries.
 
 References
