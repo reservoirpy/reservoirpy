@@ -13,7 +13,7 @@ Sparse arrays allow fast computations and compact representations of
 weights matrices, and remains easily readable. They can be parsed back to
 simple Numpy arrays just by calling their ``toarray()`` method.
 
-All functions can take as paramater a `numpy.random.RandomState`
+All functions can take as paramater a `numpy.random.Generator`
 instance, or a seed number, to ensure reproducibility. Both distribution
 of weights and distribution of non-zero connections are controled with the
 seed.
@@ -33,11 +33,13 @@ connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
 """
 import warnings
 
-from typing import Union
+from functools import partial
+from typing import Union, Callable
 
+from scipy import stats
 import numpy as np
 
-from numpy.random import RandomState
+from numpy.random import Generator, default_rng
 from scipy import sparse
 
 from .observables import spectral_radius
@@ -49,21 +51,50 @@ __all__ = [
 ]
 
 
-def _is_probability(proba):
+def _is_probability(proba: float) -> bool:
     return 1. - proba >= 0. and proba >= 0.
 
 
-def _get_random_state(seed):
-    if isinstance(seed, RandomState):
+def _get_generator(seed: Union[int, Generator]) -> Generator:
+    if isinstance(seed, Generator):
         return seed
     else:
-        return RandomState(seed)
+        return default_rng(seed)
+
+
+def _get_rvs(dist: str,
+             random_state: Generator,
+             **kwargs) -> Callable:
+    if dist in dir(stats):
+        distribution = getattr(stats, dist)
+        return partial(distribution(**kwargs).rvs,
+                       random_state=random_state)
+    elif dist == "bimodal":
+        return _bimodal_discrete_rvs(**kwargs,
+                                     random_state=random_state)
+    else:
+        raise ValueError(f"'{dist}' is not a valid distribution name. "
+                         "See 'scipy.stats' for all available distributions.")
+
+
+def _bimodal_discrete_rvs(value: float = 1.,
+                          random_state: Union[Generator, int] = None) -> Callable:
+
+    if isinstance(random_state, Generator):
+        rg = random_state
+    else:
+        rg = default_rng(random_state)
+
+    def rvs(size: int = 1):
+        return rg.choice([value, -value], replace=True, size=size)
+
+    return rvs
 
 
 def fast_spectral_initialization(N: int,
                                  sr: float = None,
                                  proba: float = 0.1,
-                                 seed: Union[int, RandomState] = None,
+                                 seed: Union[int, Generator] = None,
                                  verbose: bool = False,
                                  sparsity_type: str = 'csr',
                                  typefloat=np.float64,
@@ -139,35 +170,43 @@ def fast_spectral_initialization(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rs = _get_random_state(seed)
+    rg = _get_generator(seed)
 
-    if sr is None or proba == 0.:
+    if sr is None or proba <= 0.:
         a = 1
     else:
         a = -(6 * sr) / (np.sqrt(12) * np.sqrt((proba * N)))
 
+    # scipy.stats.uniform takes very specific args:
+    # U[a, b] is defined as U(loc=a, scale=b-a)
+    # therefore U[-a, a] is U(loc=-a, scale=2*a)
+    rvs = _get_rvs("uniform",
+                   loc=min(-a, a),
+                   scale=2*abs(a),
+                   random_state=rg)
+
     if proba < 1 and sparsity_type != "dense":
         return sparse.random(N, N, density=proba,
-                             random_state=rs, format=sparsity_type,
-                             data_rvs=lambda s: rs.uniform(a, -a, size=s))
-
+                             random_state=rg, format=sparsity_type,
+                             data_rvs=rvs)
     else:
-        return np.random.uniform(a, -a, size=(N, N))
+        return rvs(size=(N, N))
 
 
 def generate_internal_weights(N: int,
                               sr: float = None,
                               proba: float = 0.1,
                               Wstd: float = 1.0,
+                              dist: str = "norm",
                               sparsity_type: str = 'csr',
-                              seed: Union[int, RandomState] = None,
+                              seed: Union[int, Generator] = None,
                               typefloat=np.float64,
                               **kwargs):
     """Method that generate the weight matrix that will be used
     for the internal connections of the reservoir.
 
-    Weights will follow a normal distribution of mean 0 and
-    scale `Wstd` (by default 1), and can then be rescale to
+    Weights will follow a normal distribution  by default,
+    of mean 0 and scale `Wstd` (by default 1), and can then be rescale to
     reach a specific spectral radius.
 
     Parameters
@@ -183,6 +222,20 @@ def generate_internal_weights(N: int,
         density of the weight matrix, by default 0.1
     Wstd : float, optional
         Standard deviation of internal weights, by default 1.0
+    dist: str, optional
+        A distribution name from `scipy.stats
+        <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+        module. Parameters like ``loc`` and ``scale``
+        can be passed to the distribution functions
+        as keyword arguments to this function.
+
+        Usual distributions for internal weights
+        are ``'norm'`` with parameters ``loc=0`` and
+        ``scale=Wstd`` to obtain weights following
+        the standard normal distribution, or ``'uniform'``
+        with parameters ``loc=-1`` and ``scale=2`` to
+        obtain weights uniformly distributed between -1 and 1.
+        Default set to ``'norm'``.
     sparsity_type : {"csr", "csc", "coo", "dense"} optional
         Scipy sparse matrix format. "csr" by default. If "dense"
         is chosen, the matrix will be a Numpy array and not a
@@ -226,17 +279,23 @@ def generate_internal_weights(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rs = _get_random_state(seed)
+    rg = _get_generator(seed)
+
+    rvs = _get_rvs(dist,
+                   random_state=rg,
+                   loc=kwargs.get("loc", 0),
+                   scale=kwargs.get("scale", Wstd))
 
     # sparse format (default)
     if sparsity_type != "dense":
-        w = sparse.random(N, N, density=proba, format=sparsity_type,
-                          random_state=rs,
-                          data_rvs=lambda s: rs.normal(0, Wstd, size=s))
+        w = sparse.random(N, N, density=proba,
+                          format=sparsity_type,
+                          random_state=rg,
+                          data_rvs=rvs)
     # dense format
     else:
-        mask = 1 * (rs.rand(N, N) < proba)
-        mat = rs.normal(0, Wstd, (N, N))
+        mask = 1 * (rg.random((N, N)) < proba)
+        mat = rvs(size=(N, N))
         w = np.multiply(mat, mask, dtype=typefloat)
 
     current_sr = spectral_radius(w)
@@ -249,17 +308,20 @@ def generate_internal_weights(N: int,
 
 def generate_input_weights(N: int,
                            dim_input: int,
-                           input_scaling: float = None,
+                           input_scaling: float = 1.,
                            proba: float = 0.1,
                            input_bias: bool = False,
-                           seed: Union[int, RandomState] = None,
-                           typefloat=np.float64):
+                           dist: str = "bimodal",
+                           seed: Union[int, Generator] = None,
+                           typefloat=np.float64,
+                           **kwargs):
     """
     Generate input or feedback weights for the reservoir.
 
-    Weights are drawn from a discrete bimodal distribution,
-    i.e. are always equal to 1 or -1. Then, they can be rescaled
-    to a specific constant using the `input_scaling` parameter.
+    Weights are drawn by default from a discrete ``'bimodal'``
+    distribution, i.e. are always equal to 1 or -1.
+    Then, they can be rescaled to a specific constant using
+    the `input_scaling` parameter.
 
     Parameters
     ----------
@@ -277,7 +339,20 @@ def generate_input_weights(N: int,
         proba: float, optional
             Probability of non-zero connections, density of
             the matrix, by default 0.1.
-        seed : int or RandomState, optional
+        dist: str, optional
+            A distribution name from `scipy.stats
+            <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+            module. Parameters like ``loc`` and ``scale``
+            can be passed to the distribution functions
+            as keyword arguments to this function.
+
+            Usual distributions for input and feedback weights
+            are ``'uniform'`` with parameters ``loc=-1`` and
+            ``scale=2`` to obtain weights uniformly distributed
+            between -1 and 1, or ``'bimodal'`` to obtain weights
+            with value randomly set to 1 or -1 only. Default set
+            to ``'bimodal'``.
+        seed : int or Generator, optional
             Random state generator seed, for reproducibility,
             by default None
         typefloat : numpy.dtype, optional
@@ -312,16 +387,18 @@ def generate_input_weights(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rs = _get_random_state(seed)
-
     if input_bias:
         dim_input += 1
 
-    mask = 1 * (rs.rand(N, dim_input) < proba)
-    mat = rs.randint(0, 2, (N, dim_input)) * 2 - 1
-    w = np.multiply(mat, mask, dtype=typefloat)
+    rg = _get_generator(seed)
 
-    if input_scaling is not None:
-        w = input_scaling * w
+    rvs = _get_rvs(dist,
+                   **kwargs,
+                   random_state=rg)
+
+    mat = rvs(size=(N, dim_input))
+    mask = 1 * (rg.random((N, dim_input)) < proba)
+    w = np.multiply(mat, mask, dtype=typefloat)
+    w = input_scaling * w
 
     return w

@@ -1,14 +1,18 @@
 import pytest
 import numpy as np
 
+from numpy.random import default_rng
 from numpy.testing import assert_almost_equal
 from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_raises
 from scipy import linalg
 from scipy import sparse
 
 from reservoirpy.mat_gen import fast_spectral_initialization
 from reservoirpy.mat_gen import generate_input_weights
 from reservoirpy.mat_gen import generate_internal_weights
+from reservoirpy.mat_gen import _get_rvs
+from reservoirpy.mat_gen import _get_generator
 
 
 @pytest.mark.parametrize("N,dim_input,input_bias,expected", [
@@ -174,3 +178,84 @@ def test_fast_spectral_features_exception(sr, proba):
     with pytest.raises(Exception):
         fast_spectral_initialization(100, sr=sr,
                                      proba=proba)
+
+
+def test_reproducibility_W():
+
+    seed0 = default_rng(78946312)
+    W0 = generate_internal_weights(N=100,
+                                   sr=1.2,
+                                   proba=0.4,
+                                   dist="uniform",
+                                   loc=-1,
+                                   scale=2,
+                                   seed=seed0).toarray()
+
+    seed1 = default_rng(78946312)
+    W1 = generate_internal_weights(N=100,
+                                   sr=1.2,
+                                   proba=0.4,
+                                   dist="uniform",
+                                   loc=-1,
+                                   scale=2,
+                                   seed=seed1).toarray()
+
+    seed2 = default_rng(6135435)
+    W2 = generate_internal_weights(N=100,
+                                   sr=1.2,
+                                   proba=0.4,
+                                   dist="uniform",
+                                   loc=-1,
+                                   scale=2,
+                                   seed=seed2).toarray()
+
+    assert_array_almost_equal(W0, W1)
+    assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
+
+
+def test_reproducibility_Win():
+
+    seed0 = default_rng(78946312)
+    W0 = generate_input_weights(100, 50,
+                                input_scaling=1.2,
+                                proba=0.4,
+                                seed=seed0)
+
+    seed1 = default_rng(78946312)
+    W1 = generate_input_weights(100, 50,
+                                input_scaling=1.2,
+                                proba=0.4,
+                                seed=seed1)
+
+    seed2 = default_rng(6135435)
+    W2 = generate_input_weights(100, 50,
+                                input_scaling=1.2,
+                                proba=0.4,
+                                seed=seed2)
+
+    assert_array_almost_equal(W0, W1)
+    assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
+
+
+def test_reproducibility_fsi():
+
+    seed0 = default_rng(78946312)
+    W0 = fast_spectral_initialization(N=100,
+                                      sr=1.2,
+                                      proba=0.4,
+                                      seed=seed0).toarray()
+
+    seed1 = default_rng(78946312)
+    W1 = fast_spectral_initialization(N=100,
+                                      sr=1.2,
+                                      proba=0.4,
+                                      seed=seed1).toarray()
+
+    seed2 = default_rng(6135435)
+    W2 = fast_spectral_initialization(N=100,
+                                      sr=1.2,
+                                      proba=0.4,
+                                      seed=seed2).toarray()
+
+    assert_array_almost_equal(W0, W1)
+    assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
