@@ -120,7 +120,7 @@ def logistic_map(n_timesteps: int,
         for i in range(1, n_timesteps):
             X[i] = r * X[i-1] * (1-X[i-1])
 
-        return X
+        return X.reshape(-1, 1)
     elif r <= 0:
         raise ValueError("r should be positive.")
     else:
@@ -292,7 +292,7 @@ def mackey_glass(n_timesteps: int,
 
         xt = xth
 
-    return X
+    return X.reshape(-1, 1)
 
 
 def multiscroll(n_timesteps: int,
