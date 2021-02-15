@@ -28,7 +28,9 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+
 from tqdm import tqdm
+from numpy.random import default_rng, SeedSequence, Generator
 
 from ._utils import _check_values, _save
 from .regression_models import sklearn_linear_model
@@ -110,6 +112,10 @@ class ESN:
                  ridge: float = None,
                  Wfb: np.ndarray = None,
                  fbfunc: Callable = None,
+                 noise_in: float = 0.0,
+                 noise_rc: float = 0.0,
+                 noise_out: float = 0.0,
+                 seed: int = None,
                  typefloat: np.dtype = np.float64):
 
         self.W = W
@@ -134,6 +140,12 @@ class ESN:
 
         self.typefloat = typefloat
         self.lr = lr  # leaking rate
+
+        self.noise_in = noise_in
+        self.noise_rc = noise_rc
+        self.noise_out = noise_out
+
+        self.seed = seed
 
         self.reg_model = self._get_regression_model(ridge, reg_model)
         self.fbfunc = fbfunc
@@ -224,7 +236,8 @@ class ESN:
     def _get_next_state(self,
                         single_input: np.ndarray,
                         feedback: np.ndarray = None,
-                        last_state: np.ndarray = None) -> np.ndarray:
+                        last_state: np.ndarray = None,
+                        noise_generator: Generator = None) -> np.ndarray:
         """Given a state vector x(t) and an input vector u(t),
         compute the state vector x(t+1).
 
@@ -252,28 +265,38 @@ class ESN:
         if self.Wfb is not None and feedback is None:
             raise RuntimeError("Missing a feedback vector.")
 
+        if noise_generator is None:
+            noise_generator = default_rng()
+
         # first initialize the current state of the ESN
         if last_state is None:
             x = np.zeros((self.N, 1), dtype=self.typefloat)
         else:
-            x = last_state
+            x = np.asarray(last_state)
 
         # add bias
         if self.in_bias:
             u = np.hstack((1, single_input)).astype(self.typefloat)
         else:
-            u = single_input
+            u = np.asarray(single_input)
+
+        # prepare noise sequence
+        noise_in = self.noise_in * noise_generator.uniform(-1, 1, size=(self.dim_inp, 1))
+        noise_rc = self.noise_rc * noise_generator.uniform(-1, 1, size=(self.N, 1))
 
         # linear transformation
-        x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1)) \
+        x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1) + noise_in) \
             + self.W.dot(x)
 
         # add feedback if requested
         if self.Wfb is not None:
-            x1 += np.dot(self.Wfb, self.fbfunc(feedback))
+            noise_out = self.noise_out * noise_generator.uniform(-1, 1,
+                                                                 size=(self.dim_out, 1))
+            fb = self.fbfunc(np.asarray(feedback)).reshape(self.dim_out, 1)
+            x1 += np.dot(self.Wfb, fb + noise_out)
 
         # previous states memory leak and non-linear transformation
-        x1 = (1-self.lr)*x + self.lr*np.tanh(x1)
+        x1 = (1-self.lr)*x + self.lr*(np.tanh(x1) + noise_rc)
 
         # return the next state computed
         return x1
@@ -284,9 +307,11 @@ class ESN:
                         init_state: np.ndarray = None,
                         init_fb: np.ndarray = None,
                         wash_nr_time_step: int = 0,
+                        seed: int = None,
                         input_id: int = None,
                         memmap: np.memmap = None,
-                        input_pos: int = None
+                        input_pos: int = None,
+                        verbose: bool = False
                         ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Compute all states generated from a single sequence of inputs.
 
@@ -315,7 +340,6 @@ class ESN:
             input in queue
             and computed states, or just states if no index is provided.
         """
-
         if self.Wfb is not None and forced_teacher is None and self.Wout is None:
             raise RuntimeError("Impossible to use feedback without readout"
                                "matrix or teacher forcing.")
@@ -339,12 +363,16 @@ class ESN:
         else:
             current_state = init_state.copy().reshape(-1, 1)
 
+        # random generator for training/running with additive noise
+        rg = default_rng(seed)
+
         # for each time step in the input
-        for t in range(input.shape[0]):
+        for t in tqdm(range(input.shape[0])):
             # compute next state from current state
             current_state = self._get_next_state(input[t, :],
                                                  feedback=last_feedback,
-                                                 last_state=current_state)
+                                                 last_state=current_state,
+                                                 noise_generator=rg)
 
             # compute last feedback
             if self.Wfb is not None:
@@ -381,6 +409,7 @@ class ESN:
                            wash_nr_time_step: int = 0,
                            workers: int = -1,
                            backend: str = "threading",
+                           seed: int = None,
                            verbose: bool = True,
                            memmap: np.memmap = None,
                            ) -> Sequence[np.ndarray]:
@@ -434,6 +463,14 @@ class ESN:
         loop = joblib.Parallel(n_jobs=workers, backend=backend)
         delayed_states = joblib.delayed(self._compute_states)
 
+        # generation of seed sequence
+        # each seed in the sequence is independant from the others
+        # i.e. this is thread safe random generation.
+        # Used for noisy training and running of reservoirs
+        ss = SeedSequence(seed)
+        # one independant seed per sequence
+        child_seeds = ss.spawn(len(inputs))
+
         # progress bar if needed
         if verbose:
             track = tqdm
@@ -454,8 +491,9 @@ class ESN:
                                              memmap=memmap,
                                              input_pos=(
                                                  inputs_starts[i],
-                                                 inputs_ends[i])
-                                             )
+                                                 inputs_ends[i]),
+                                             seed=child_seeds[i],
+                                             verbose=verbose)
                               for i in track(range(len(inputs)), "Computing states"))
         # feedback training
         else:
@@ -468,8 +506,9 @@ class ESN:
                                              memmap=memmap,
                                              input_pos=(
                                                  inputs_starts[i],
-                                                 inputs_ends[i])
-                                             )
+                                                 inputs_ends[i]),
+                                             seed=child_seeds[i],
+                                             verbose=verbose)
                               for i in track(range(len(inputs)), "Computing states"))
 
         # input ids are used to make sure that the returned states are in the same order
@@ -608,6 +647,7 @@ class ESN:
               wash_nr_time_step: int = 0,
               workers: int = -1,
               backend: str = "threading",
+              seed: int = None,
               verbose: bool = False,
               use_memmap: bool = False) -> Sequence[np.ndarray]:
         """Train the ESN model on set of input sequences.
@@ -665,6 +705,8 @@ class ESN:
             memstates = np.memmap(self._tempstates, dtype=self.typefloat, mode="w+",
                                   shape=(self.N + 1, steps))
 
+        seed = seed if seed is not None else self.seed
+
         # compute all states
         all_states = self.compute_all_states(inputs,
                                              forced_teachers=teachers,
@@ -672,7 +714,8 @@ class ESN:
                                              workers=workers,
                                              backend=backend,
                                              verbose=verbose,
-                                             memmap=memstates)
+                                             memmap=memstates,
+                                             seed=seed)
 
         all_teachers = [t[wash_nr_time_step:].T for t in teachers]
 
@@ -708,6 +751,7 @@ class ESN:
             init_fb: np.ndarray = None,
             workers: int = -1,
             backend: str = "threading",
+            seed: int = None,
             verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
            readouts vectors.
@@ -762,12 +806,15 @@ class ESN:
         # autochecks of inputs
         self._autocheck_io(inputs=inputs)
 
+        seed = seed if seed is not None else self.seed
+
         all_states = self.compute_all_states(inputs,
                                              init_state=init_state,
                                              init_fb=init_fb,
                                              workers=workers,
                                              backend=backend,
-                                             verbose=verbose)
+                                             verbose=verbose,
+                                             seed=seed)
 
         all_outputs = self.compute_outputs(all_states)
         # return all_outputs, all_int_states
@@ -780,6 +827,7 @@ class ESN:
                  init_fb: np.ndarray = None,
                  verbose: bool = False,
                  init_inputs: np.ndarray = None,
+                 seed: int = None,
                  return_init: bool = None
                  ) -> Tuple[np.ndarray, np.ndarray]:
         """Run the ESN on generative mode.
@@ -847,6 +895,13 @@ class ESN:
             warnings.warn("Deprecation warning : return_init parameter "
                           "is deprecated since 0.2.2 and will be removed.")
 
+        # for additive noise in the reservoir
+        # 2 separate seeds made from one: one for the warming
+        # (if needed), one for the generation
+        seed = seed if seed is not None else self.seed
+        ss = SeedSequence(seed)
+        child_seeds = ss.spawn(2)
+
         if warming_inputs is not None or init_inputs is not None:
             if init_inputs is not None:
                 warnings.warn("Deprecation warning : init_inputs parameter "
@@ -861,7 +916,8 @@ class ESN:
 
             _, warming_states = self._compute_states(warming_inputs,
                                                      init_state=init_state,
-                                                     init_fb=init_fb)
+                                                     init_fb=init_fb,
+                                                     seed=child_seeds[0])
 
             # initial state (at begining of generation)
             s0 = warming_states[:, -1].reshape(-1, 1)
@@ -895,10 +951,17 @@ class ESN:
         else:
             def track(x, text): return x
 
+        # for additive noise in the reservoir
+        rg = default_rng(child_seeds[1])
+
         for i in track(range(nb_timesteps), "Generating"):
             # from new input u1 and previous state s0
             # compute next state s1 -> s0
-            _, s1 = self._compute_states(u1, init_state=s0, init_fb=fb0)
+            _, s1 = self._get_next_state(single_input=u1,
+                                         feedback=fb0,
+                                         last_state=s0,
+                                         noise_generator=rg)
+
             s0 = s1[:, -1].reshape(-1, 1)
             states[i, :] = s0.flatten()
 
