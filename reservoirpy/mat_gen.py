@@ -40,6 +40,7 @@ from scipy import stats
 import numpy as np
 
 from numpy.random import Generator, default_rng
+from numpy.random import RandomState, MT19937
 from scipy import sparse
 
 from .observables import spectral_radius
@@ -58,6 +59,14 @@ def _is_probability(proba: float) -> bool:
 def _get_generator(seed: Union[int, Generator]) -> Generator:
     if isinstance(seed, Generator):
         return seed
+    # provided to support legacy RandomState generator
+    # of Numpy. It is not the best thing to do however
+    # and recommend the user to keep using integer seeds
+    # and proper Numpŷ Generator API.
+    if isinstance(seed, RandomState):
+        mt19937 = MT19937()
+        mt19937.state = seed.get_state()
+        return Generator(mt19937)
     else:
         return default_rng(seed)
 
@@ -65,7 +74,13 @@ def _get_generator(seed: Union[int, Generator]) -> Generator:
 def _get_rvs(dist: str,
              random_state: Generator,
              **kwargs) -> Callable:
-    if dist in dir(stats):
+    # override scipy.stats uniform rvs
+    # to allow user to set the distribution with
+    # common low/high values and not loc/scale
+    if dist == "uniform":
+        return _uniform_rvs(**kwargs,
+                            random_state=random_state)
+    elif dist in dir(stats):
         distribution = getattr(stats, dist)
         return partial(distribution(**kwargs).rvs,
                        random_state=random_state)
@@ -89,6 +104,20 @@ def _bimodal_discrete_rvs(value: float = 1.,
         return rg.choice([value, -value], replace=True, size=size)
 
     return rvs
+
+
+def _uniform_rvs(low: float = -1.0,
+                 high: float = 1.0,
+                 random_state: Union[Generator, int] = None) -> Callable:
+
+    if isinstance(random_state, Generator):
+        rg = random_state
+    else:
+        rg = default_rng(random_state)
+
+    distribution = getattr(stats, "uniform")
+    return partial(distribution(loc=low, scale=high-low).rvs,
+                   random_state=rg)
 
 
 def fast_spectral_initialization(N: int,
@@ -177,12 +206,9 @@ def fast_spectral_initialization(N: int,
     else:
         a = -(6 * sr) / (np.sqrt(12) * np.sqrt((proba * N)))
 
-    # scipy.stats.uniform takes very specific args:
-    # U[a, b] is defined as U(loc=a, scale=b-a)
-    # therefore U[-a, a] is U(loc=-a, scale=2*a)
     rvs = _get_rvs("uniform",
-                   loc=min(-a, a),
-                   scale=2*abs(a),
+                   low=min(a, -a),
+                   high=max(a, -a),
                    random_state=rg)
 
     if proba < 1 and sparsity_type != "dense":
@@ -196,11 +222,11 @@ def fast_spectral_initialization(N: int,
 def generate_internal_weights(N: int,
                               sr: float = None,
                               proba: float = 0.1,
-                              Wstd: float = 1.0,
                               dist: str = "norm",
                               sparsity_type: str = 'csr',
                               seed: Union[int, Generator] = None,
                               typefloat=np.float64,
+                              Wstd: float = None,
                               **kwargs):
     """Method that generate the weight matrix that will be used
     for the internal connections of the reservoir.
@@ -233,7 +259,7 @@ def generate_internal_weights(N: int,
         are ``'norm'`` with parameters ``loc=0`` and
         ``scale=Wstd`` to obtain weights following
         the standard normal distribution, or ``'uniform'``
-        with parameters ``loc=-1`` and ``scale=2`` to
+        with parameters ``low=-1.`` and ``high=1.`` to
         obtain weights uniformly distributed between -1 and 1.
         Default set to ``'norm'``.
     sparsity_type : {"csr", "csc", "coo", "dense"} optional
@@ -270,11 +296,18 @@ def generate_internal_weights(N: int,
                [ 0.        ,  0.24196227, -0.90802408,  0.        , -0.56228753],
                [ 0.        ,  0.31424733,  0.        ,  0.        ,  0.        ]])
     """
-    if kwargs.get("spectral_radius") is not None:
-        warnings.warn("Deprecation warning: spectral_radius parameter "
+    if 'spectral_radius' in kwargs:
+        warnings.warn("Deprecation warning: 'spectral_radius' parameter "
                       "is deprecated since 0.2.2 and will be removed. "
-                      "Please use sr instead.")
-        sr = kwargs.get("spectral_radius")
+                      "Please use 'sr' instead.")
+        sr = kwargs['spectral_radius']
+        kwargs.pop('spectral_radius')
+
+    if Wstd is not None:
+        warnings.warn("Deprecation warning: 'Wstd' parameter "
+                      "is deprecated since 0.2.2 and will be removed. "
+                      "Please use 'scale' instead.")
+        kwargs["scale"] = Wstd
 
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
@@ -283,8 +316,7 @@ def generate_internal_weights(N: int,
 
     rvs = _get_rvs(dist,
                    random_state=rg,
-                   loc=kwargs.get("loc", 0),
-                   scale=kwargs.get("scale", Wstd))
+                   **kwargs)
 
     # sparse format (default)
     if sparsity_type != "dense":
@@ -294,13 +326,11 @@ def generate_internal_weights(N: int,
                           data_rvs=rvs)
     # dense format
     else:
-        mask = 1 * (rg.random((N, N)) < proba)
-        mat = rvs(size=(N, N))
-        w = np.multiply(mat, mask, dtype=typefloat)
-
-    current_sr = spectral_radius(w)
+        w = rvs(size=(N, N)).astype(typefloat)
+        w[rg.uniform(0.0, 1.0, (N, N)) > proba] = 0.0
 
     if sr is not None:
+        current_sr = spectral_radius(w)
         w *= sr / current_sr
 
     return w
@@ -396,9 +426,8 @@ def generate_input_weights(N: int,
                    **kwargs,
                    random_state=rg)
 
-    mat = rvs(size=(N, dim_input))
-    mask = 1 * (rg.random((N, dim_input)) < proba)
-    w = np.multiply(mat, mask, dtype=typefloat)
-    w = input_scaling * w
+    w = rvs(size=(N, dim_input))
+    w[rg.random((N, dim_input)) > proba] = 0.0
+    w *= input_scaling
 
     return w

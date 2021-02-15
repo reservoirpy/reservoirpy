@@ -187,8 +187,8 @@ def test_reproducibility_W():
                                    sr=1.2,
                                    proba=0.4,
                                    dist="uniform",
-                                   loc=-1,
-                                   scale=2,
+                                   low=-1,
+                                   high=1,
                                    seed=seed0).toarray()
 
     seed1 = default_rng(78946312)
@@ -196,8 +196,8 @@ def test_reproducibility_W():
                                    sr=1.2,
                                    proba=0.4,
                                    dist="uniform",
-                                   loc=-1,
-                                   scale=2,
+                                   low=-1,
+                                   high=1,
                                    seed=seed1).toarray()
 
     seed2 = default_rng(6135435)
@@ -205,8 +205,8 @@ def test_reproducibility_W():
                                    sr=1.2,
                                    proba=0.4,
                                    dist="uniform",
-                                   loc=-1,
-                                   scale=2,
+                                   low=-1,
+                                   high=1,
                                    seed=seed2).toarray()
 
     assert_array_almost_equal(W0, W1)
