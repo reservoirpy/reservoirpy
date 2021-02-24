@@ -91,14 +91,10 @@ print("mean", data.mean())
 print("std", data.std())
 
 # Split data
-train_in = data[None, 0:trainLen]
-train_out = data[None, 0+1:trainLen+1]
-test_in = data[None, trainLen:trainLen+testLen]
-test_out = data[None, trainLen+1:trainLen+testLen+1]
-
-# rearange inputs in correct dimensions
-train_in, train_out = train_in.T, train_out.T
-test_in, test_out = test_in.T, test_out.T
+train_in = data[0:trainLen]
+train_out = data[0+1:trainLen+1]
+test_in = data[trainLen:trainLen+testLen]
+test_out = data[trainLen+1:trainLen+testLen+1]
 
 # parameters of test runs
 eval_metrics = defaultdict(list)
