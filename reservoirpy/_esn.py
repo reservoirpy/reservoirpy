@@ -147,6 +147,8 @@ class ESN:
 
         self.seed = seed
 
+        self.ridge = None
+        self.sklearn_model = None
         self.reg_model = self._get_regression_model(ridge, reg_model)
         self.fbfunc = fbfunc
         if self.Wfb is not None and self.fbfunc is None:
@@ -276,7 +278,7 @@ class ESN:
 
         # add bias
         if self.in_bias:
-            u = np.hstack((1, single_input)).astype(self.typefloat)
+            u = np.hstack((1, single_input.flatten())).astype(self.typefloat)
         else:
             u = np.asarray(single_input)
 
@@ -896,7 +898,7 @@ class ESN:
                           "is deprecated since 0.2.2 and will be removed.")
 
         # for additive noise in the reservoir
-        # 2 separate seeds made from one: one for the warming
+        # 2 separate seeds made from one: one for the warming
         # (if needed), one for the generation
         seed = seed if seed is not None else self.seed
         ss = SeedSequence(seed)
@@ -930,9 +932,11 @@ class ESN:
                 fb0 = warming_outputs[:, -2].reshape(1, -1)
             else:
                 fb0 = None
+            warming_outputs = warming_outputs.T
+            warming_states = warming_states.T
         else:
             warming_outputs, warming_states = None, None
-            # time is often first axis but compute_outputs await
+            # time is often first axis but compute_outputs await
             # for time in second axis, so the reshape :
             s0 = init_state.reshape(-1, 1)
 
@@ -957,10 +961,10 @@ class ESN:
         for i in track(range(nb_timesteps), "Generating"):
             # from new input u1 and previous state s0
             # compute next state s1 -> s0
-            _, s1 = self._get_next_state(single_input=u1,
-                                         feedback=fb0,
-                                         last_state=s0,
-                                         noise_generator=rg)
+            s1 = self._get_next_state(single_input=u1,
+                                      feedback=fb0,
+                                      last_state=s0,
+                                      noise_generator=rg)
 
             s0 = s1[:, -1].reshape(-1, 1)
             states[i, :] = s0.flatten()
