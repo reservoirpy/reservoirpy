@@ -28,10 +28,10 @@ INSTALL_REQUIRES = [
     "tqdm>=4.43.0",
     "joblib>=0.12",
     "dill>=0.3.0"
-    "numpy>=1.15.0",
-    "scipy>=1.0.0",
-    "joblib>=0.12"
-    ]
+    'numpy>=1.15.0',
+    'scipy>=1.0.0',
+    'joblib>=0.12',
+]
 
 PROJECT_URLS = {
     'Bug Tracker': 'https://github.com/reservoirpy/reservoirpy/issues',
@@ -75,12 +75,5 @@ setup(
          'Implementation :: PyPy')
     ],
     python_requires='>=3.6',
-    install_requires=[
-        "tqdm>=4.43.0",
-        "joblib>=0.12",
-        "dill>=0.3.0"
-        'numpy>=1.15.0',
-        'scipy>=1.0.0',
-        'joblib>=0.12',
-    ]
+    install_requires=INSTALL_REQUIRES
 )
