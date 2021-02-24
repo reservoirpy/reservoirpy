@@ -108,7 +108,12 @@ def _save(esn, directory: str):
             "dim_out": dim_out,
             "typefloat": esn.typefloat.__name__,
             "reg_model": reg_model,
-            "fbfunc": fbfunc
+            "fbfunc": fbfunc,
+            "noise_in": esn.noise_in,
+            "noise_out": esn.noise_out,
+            "noise_rc": esn.noise_rc,
+            "seed": esn.seed,
+            "sklearn_model": esn.sklearn_model
         },
         "misc": {
             "fbfunc_info": fbfunc_info
@@ -148,7 +153,7 @@ def load(directory: str):
 
     model_attr = attr["attr"]
 
-    if os.path.splitext(model_attr["W"])[1] == "npy":
+    if os.path.splitext(model_attr["W"])[1] == ".npy":
         model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
     else:
         model_attr["W"] = sparse.load_npz(os.path.join(directory, model_attr["W"]))
