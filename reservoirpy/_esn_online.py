@@ -185,25 +185,25 @@ class ESNOnline:
         if self.in_bias:
             err = f"With bias, Win matrix should be of shape ({self.N}, "
             err += f"{inputs_0.shape[0] + 1}) but is {self.Win.shape}."
-            assert self.Win.shape[1] == inputs_0.shape[0] + 1, err
+            assert self.Win.shape[1] == inputs_0.shape[1] + 1, err
         else:
             err = f"Win matrix should be of shape ({self.N}, "
-            err += f"{inputs_0.shape[0]}) but is {self.Win.shape}."
-            assert self.Win.shape[1] == inputs_0.shape[0], err
+            err += f"{inputs_0.shape[1]}) but is {self.Win.shape}."
+            assert self.Win.shape[1] == inputs_0.shape[1], err
 
         if outputs is not None:
             # check feedback matrix
             if self.Wfb is not None:
                 outputs_0 = outputs[0]
                 err = f"With feedback, Wfb matrix should be of shape ({self.N}, "
-                err += f"{outputs_0.shape[0]}) but is {self.Wfb.shape}."
-                assert outputs_0.shape[0] == self.Wfb.shape[1], err
+                err += f"{outputs_0.shape[1]}) but is {self.Wfb.shape}."
+                assert outputs_0.shape[1] == self.Wfb.shape[1], err
             # check output weights matrix
             if self.Wout is not None:
                 outputs_0 = outputs[0]
                 err = f"Wout matrix should be of shape ({outputs_0.shape[0]}, "
                 err += f"{self.state_size}) but is {self.Wout.shape}."
-                assert (outputs_0.shape[0], self.state_size) == self.Wout.shape, err
+                assert (outputs_0.shape[1], self.state_size) == self.Wout.shape, err
 
     def _get_next_state(self,
                         single_input: np.ndarray) -> np.ndarray:
@@ -227,12 +227,12 @@ class ESNOnline:
 
         # add bias
         if self.in_bias:
-            u = np.hstack((1, single_input)).astype(self.typefloat)
+            u = np.hstack((1, single_input.flatten())).astype(self.typefloat)
         else:
-            u = single_input
+            u = np.asarray(single_input)
 
         # linear transformation
-        x1 = self.Win @ u.reshape(-1, 1) + self.W @ x
+        x1 = self.Win @ u.reshape(-1, 1) + self.W @ x.reshape(-1, 1)
 
         # add feedback if requested
         if self.Wfb is not None:
@@ -361,8 +361,10 @@ class ESNOnline:
             list of np.ndarray
                 All states computed, for all inputs.
         """
-        inputs_concat = [inp[t, :] for inp in inputs for t in range(inp.shape[0])]
-        teachers_concat = [tea[t, :] for tea in teachers for t in range(tea.shape[0])]
+        inputs_concat = [inp[t, :].reshape(-1, self.dim_inp)
+                         for inp in inputs for t in range(inp.shape[0])]
+        teachers_concat = [tea[t, :].reshape(-1, self.dim_out)
+                           for tea in teachers for t in range(tea.shape[0])]
 
         ## Autochecks of inputs and outputs
         self._autocheck_io(inputs=inputs_concat, outputs=teachers_concat)
@@ -422,7 +424,7 @@ class ESNOnline:
                 for all inputs.
         """
 
-        inputs_concat = [inp[t,:] for inp in inputs for t in range(inp.shape[0])]
+        inputs_concat = [inp[t,:].reshape(-1, self.dim_inp) for inp in inputs for t in range(inp.shape[0])]
 
         steps = np.sum([i.shape[0] for i in inputs])
         if verbose:
