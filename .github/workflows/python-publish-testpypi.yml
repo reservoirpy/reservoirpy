@@ -6,11 +6,11 @@ name: Upload Python Package to Test PyPI
 on:
   release:
     types: [created]
+  workflow-dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-20.04
-
     steps:
     - uses: actions/checkout@master
     - name: Set up Python
