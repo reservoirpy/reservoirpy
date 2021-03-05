@@ -140,6 +140,9 @@ Additional dependencies and requirements
       * - pytest-cov
         - 2.10.1
         - tests
+      * - scikit-learn
+        - 0.24.1
+        - tests
       * - sphinx
         - 3.3.1
         - docs

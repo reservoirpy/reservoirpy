@@ -410,7 +410,7 @@ class ESN:
                            init_fb: np.ndarray = None,
                            wash_nr_time_step: int = 0,
                            workers: int = -1,
-                           backend: str = "threading",
+                           backend: str = "loky",
                            seed: int = None,
                            verbose: bool = True,
                            memmap: np.memmap = None,
@@ -450,9 +450,9 @@ class ESN:
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
 
-            backend: {"threadings", "multiprocessing", "loki"}, optional
+            backend: {"threadings", "multiprocessing", "loky"}, optional
                 Backend used for parallelization of states computations.
-                By default, "threading".
+                By default, "loky".
 
             verbose: bool, optional
 
@@ -648,7 +648,7 @@ class ESN:
               teachers: Sequence[np.ndarray],
               wash_nr_time_step: int = 0,
               workers: int = -1,
-              backend: str = "threading",
+              backend: str = "loky",
               seed: int = None,
               verbose: bool = False,
               use_memmap: bool = False) -> Sequence[np.ndarray]:
@@ -675,9 +675,9 @@ class ESN:
                 If n >= 1, will enable parallelization of states computation with
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
-            backend: {"threadings", "multiprocessing", "loki"}, optional
+            backend: {"threadings", "multiprocessing", "loky"}, optional
                 Backend used for parallelization of states computations.
-                By default, "threading".
+                By default, "loky".
             verbose: bool, optional
 
         Returns
@@ -752,7 +752,7 @@ class ESN:
             init_state: np.ndarray = None,
             init_fb: np.ndarray = None,
             workers: int = -1,
-            backend: str = "threading",
+            backend: str = "loky",
             seed: int = None,
             verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
@@ -779,9 +779,9 @@ class ESN:
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
 
-            backend: {"threadings", "multiprocessing", "loki"}, optional
+            backend: {"threadings", "multiprocessing", "loky"}, optional
                 Backend used for parallelization of states computations.
-                By default, "threading".
+                By default, "loky".
 
             verbose: bool, optional
 

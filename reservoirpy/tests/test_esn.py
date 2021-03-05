@@ -6,6 +6,9 @@ from tempfile import TemporaryDirectory
 import pytest
 import numpy as np
 
+from scipy import sparse
+from sklearn.linear_model import LogisticRegression
+
 from .._esn import ESN
 from ..datasets import lorenz
 from .._utils import load
@@ -47,6 +50,16 @@ def dummy_data():
                     for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 500)])
     return Xn0, Xn1
 
+@pytest.fixture(scope="session")
+def dummy_clf_data():
+    Xn0 = np.array([[sin(x), cos(x)]
+                    for x in np.linspace(0, 4*np.pi, 250)])
+    Xn1 = np.array([[sin(10*x), cos(10*x)]
+                   for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 250)])
+    X = np.vstack([Xn0, Xn1])
+    y = np.r_[np.zeros(250), np.ones(250)]
+
+    return X, y
 
 def test_esn(matrices, dummy_data):
     W, Win = matrices
@@ -100,8 +113,35 @@ def test_esn_generate(matrices, dummy_data):
     assert warm_out.shape[0] == X.shape[0]
 
 
+def test_esn_sklearn(matrices, dummy_clf_data):
+    W, Win = matrices
+    model = LogisticRegression()
+    esn = ESN(lr=0.1, W=W, Win=Win, input_bias=False,
+              reg_model=model)
+
+    X, y = dummy_clf_data
+    states = esn.train([X], [y])
+
+    assert esn.Wout.shape == (1, 5)
+
+    outputs, states = esn.run([X])
+
+    assert states[0].shape[0] == X.shape[0]
+    assert outputs[0].shape[1] == 1
+
+    states = esn.train([X, X, X], [y, y, y])
+
+    assert esn.Wout.shape == (1, 5)
+
+    outputs, states = esn.run([X, X])
+
+    assert len(states) == 2
+    assert len(outputs) == 2
+
+
 def test_esn_fb(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
+
     esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb,
               input_bias=False, fbfunc=np.tanh)
     X, y = dummy_data
@@ -169,10 +209,12 @@ def test_esn_generate_fb(matrices_fb, dummy_data):
     assert warm_states.shape[0] == X.shape[0]
     assert warm_out.shape[0] == X.shape[0]
 
+
 def test_save(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
     esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb,
-              input_bias=False, fbfunc=np.tanh)
+              input_bias=False, fbfunc=np.tanh,
+              noise_rc=0.01)
 
     with TemporaryDirectory() as tempdir:
 
@@ -192,11 +234,41 @@ def test_save(matrices_fb, dummy_data):
         esn.save(f"{tempdir}/esn_trained")
         esn = load(f"{tempdir}/esn_trained")
 
-        states = esn.train([X, X, X], [y, y, y])
+        outputs, states = esn.run([X, X])
+
+        assert len(states) == 2
+        assert len(outputs) == 2
+
+
+def test_save_sparse(matrices_fb, dummy_data):
+    W, Win, Wfb = matrices_fb
+    W = sparse.csr_matrix(W)
+    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb,
+              input_bias=False, fbfunc=np.tanh,
+              noise_rc=0.01)
+
+    with TemporaryDirectory() as tempdir:
+
+        esn.save(f"{tempdir}/esn")
+        esn = load(f"{tempdir}/esn")
+
+        X, y = dummy_data
+        states = esn.train([X], [y])
 
         assert esn.Wout.shape == (2, 5)
+
+        outputs, states = esn.run([X])
+
+        assert states[0].shape[0] == X.shape[0]
+        assert outputs[0].shape[1] == y.shape[1]
+
+        esn.save(f"{tempdir}/esn_trained")
+        esn = load(f"{tempdir}/esn_trained")
+
+        assert sparse.issparse(esn.W)
 
         outputs, states = esn.run([X, X])
 
         assert len(states) == 2
         assert len(outputs) == 2
+

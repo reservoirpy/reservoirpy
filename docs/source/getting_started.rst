@@ -12,7 +12,7 @@ ReservoirPy is an open-source project which aims to develop a simple yet perform
 heavy machine learning library or framework.
 
 To learn more about the theoretical aspects of reservoir computing, you can read the
-page :ref:`whats rc`
+page :ref:`whats rc`.
 
 Back to basics: scientific Python and linear regressions
 ========================================================

@@ -28,7 +28,7 @@ connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
 
     from reservoirpy.mat_gen import fast_spectral_initialization
     from reservoirpy.mat_gen import generate_input_weights
-    W = fast_spectral_initialization(1000, spectral_radius=0.5)
+    W = fast_spectral_initialization(1000, sr=0.5)
     Win = generate_input_weights(1000, 5, input_scaling=0.9)
 """
 import warnings
@@ -59,8 +59,8 @@ def _is_probability(proba: float) -> bool:
 def _get_generator(seed: Union[int, Generator]) -> Generator:
     if isinstance(seed, Generator):
         return seed
-    # provided to support legacy RandomState generator
-    # of Numpy. It is not the best thing to do however
+    # provided to support legacy RandomState generator
+    # of Numpy. It is not the best thing to do however
     # and recommend the user to keep using integer seeds
     # and proper Numpŷ Generator API.
     if isinstance(seed, RandomState):
@@ -74,19 +74,19 @@ def _get_generator(seed: Union[int, Generator]) -> Generator:
 def _get_rvs(dist: str,
              random_state: Generator,
              **kwargs) -> Callable:
-    # override scipy.stats uniform rvs
+    # override scipy.stats uniform rvs
     # to allow user to set the distribution with
     # common low/high values and not loc/scale
     if dist == "uniform":
         return _uniform_rvs(**kwargs,
                             random_state=random_state)
+    elif dist == "bimodal":
+        return _bimodal_discrete_rvs(**kwargs,
+                                     random_state=random_state)
     elif dist in dir(stats):
         distribution = getattr(stats, dist)
         return partial(distribution(**kwargs).rvs,
                        random_state=random_state)
-    elif dist == "bimodal":
-        return _bimodal_discrete_rvs(**kwargs,
-                                     random_state=random_state)
     else:
         raise ValueError(f"'{dist}' is not a valid distribution name. "
                          "See 'scipy.stats' for all available distributions.")
