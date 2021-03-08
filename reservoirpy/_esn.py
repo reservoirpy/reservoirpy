@@ -369,7 +369,7 @@ class ESN:
         rg = default_rng(seed)
 
         # for each time step in the input
-        for t in tqdm(range(input.shape[0])):
+        for t in range(input.shape[0]):
             # compute next state from current state
             current_state = self._get_next_state(input[t, :],
                                                  feedback=last_feedback,
@@ -467,8 +467,8 @@ class ESN:
 
         # generation of seed sequence
         # each seed in the sequence is independant from the others
-        # i.e. this is thread safe random generation.
-        # Used for noisy training and running of reservoirs
+        # i.e. this is thread safe random generation.
+        # Used for noisy training and running of reservoirs
         ss = SeedSequence(seed)
         # one independant seed per sequence
         child_seeds = ss.spawn(len(inputs))
