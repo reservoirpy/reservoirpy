@@ -9,7 +9,12 @@ ReservoirPy is a simple user-friendly library based on Python scientific modules
 
 This library works for Python 3.6 and higher.
 
-## Installation, examples and tutorials
+## Offcial documentation
+
+See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
+to learn more about the main features of ReservoirPy, its API and the installation process.
+
+## Examples and tutorials
 
 [Go to the examples folder](./examples/) for intallation, examples, tutorials and Jupyter Notebooks.
 
