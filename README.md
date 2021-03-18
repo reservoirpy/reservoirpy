@@ -1,4 +1,4 @@
-# ReservoirPy (v0.2)
+# ReservoirPy (v0.2.3)
 **A simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 [![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
