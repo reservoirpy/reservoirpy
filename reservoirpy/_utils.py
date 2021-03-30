@@ -152,7 +152,7 @@ def load(directory: str):
         attr = json.load(f)
 
     model_attr = attr["attr"]
-
+    
     if os.path.splitext(model_attr["W"])[1] == ".npy":
         model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
     else:
