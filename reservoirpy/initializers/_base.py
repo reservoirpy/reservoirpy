@@ -261,7 +261,7 @@ class RandomSparse(Initializer):
 
     def _upload_properties(self, kwargs):
         for key, value in kwargs.items():
-            self.__setattr__("_"+key, value)
+            setattr(self, "_"+key, value)
             getter = self._make_property(key)
             setattr(RandomSparse, key, property(getter))
 

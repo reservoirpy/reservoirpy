@@ -84,7 +84,7 @@ def ridge_linear_model(ridge=0., typefloat=np.float32):
 
     .. math::
 
-        W_{out} = YX^{T} \cdot (XX^{T} + \mathrm{ridge} \\times \mathrm{Id}_{N})
+        W_{out} = YX^{T} \\cdot (XX^{T} + \\mathrm{ridge} \\times \\mathrm{Id}_{N})
 
     where :math:`W_out` is the readout matrix learnt through this regression,
     :math:`X` are the internal states, :math:`Y` are the ground truth vectors,
@@ -100,9 +100,9 @@ def ridge_linear_model(ridge=0., typefloat=np.float32):
     typefloat : numpy.dtype, optional
     """
     def ridge_model_solving(X, Y):
-        ridgeid = (ridge*np.eye(X.shape[0])).astype(typefloat)
-
-        return np.dot(np.dot(Y, X.T), linalg.inv(np.dot(X, X.T) + ridgeid))
+        x, y = X.T, Y.T
+        ridgeid = (ridge*np.eye(x.shape[0])).astype(typefloat)
+        return np.dot(np.dot(y, x.T), linalg.inv(np.dot(x, x.T) + ridgeid))
 
     return ridge_model_solving
 
@@ -115,12 +115,12 @@ def pseudo_inverse_linear_model():
 
     .. math::
 
-        W_{out} = YX^{T}
+        W_{out} = X^{-1}Y
 
     where :math:`W_out` is the readout matrix learnt through this regression,
     :math:`X` are the internal states and :math:`Y` are the ground truth vectors.
     """
     def pseudo_inverse_model_solving(X, Y):
-        return np.dot(Y, linalg.pinv(X))
+        return np.dot(Y.T, linalg.pinv(X.T))
 
     return pseudo_inverse_model_solving

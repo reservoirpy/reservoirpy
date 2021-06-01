@@ -55,25 +55,95 @@ def spectral_radius(W, maxiter: int = None) -> float:
     return max(abs(linalg.eig(W)[0]))
 
 
-def compute_error_NRMSE(teacher_signal, predicted_signal, verbose=False):
-    """ Computes Normalized Root-Mean-Squarred Error between a teacher signal and a predicted signal
-    Return the errors in this order: nmrse mean, nmrse max-min, rmse, mse.
-    By default, only NMRSE mean should be considered as a general measure to be
-    compared for different datasets.
+def mse(y: np.ndarray, ypred: np.ndarray) -> float:
+    """[summary]
 
-    For more information, see:
-    - Mean Squared Error https://en.wikipedia.org/wiki/Mean_squared_error
-    - Root Mean Squared Error https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
+    Parameters
+    ----------
+    y : np.ndarray
+        [description]
+    ypred : np.ndarray
+        [description]
+
+    Returns
+    -------
+    float
+        [description]
     """
-    errorLen = len(predicted_signal[:])
-    mse = np.mean((teacher_signal - predicted_signal)**2)
-    rmse = np.sqrt(mse)
-    nmrse_mean = abs(rmse / np.mean(predicted_signal[:])) # Normalised RMSE (based on mean)
-    nmrse_maxmin = rmse / abs(np.max(predicted_signal[:]) - np.min(predicted_signal[:])) # Normalised RMSE (based on max - min)
-    if verbose:
-        print("Errors computed over %d time steps" % (errorLen))
-        print("\nMean Squared error (MSE):\t\t%.4e" % (mse) )
-        print("Root Mean Squared error (RMSE):\t\t%.4e\n" % rmse )
-        print("Normalized RMSE (based on mean):\t%.4e" % (nmrse_mean) )
-        print("Normalized RMSE (based on max - min):\t%.4e" % (nmrse_maxmin) )
-    return nmrse_mean, nmrse_maxmin, rmse, mse
+    return np.mean((y - ypred)**2)
+
+
+def rmse(y: np.ndarray, ypred: np.ndarray) -> float:
+    """[summary]
+
+    Parameters
+    ----------
+    y : np.ndarray
+        [description]
+    ypred : np.ndarray
+        [description]
+
+    Returns
+    -------
+    float
+        [description]
+    """
+    return np.sqrt(mse(y, ypred))
+
+
+def nrmse(y: np.ndarray,
+          ypred: np.ndarray,
+          method: str = 'minmax',
+          feat_axis: int = 1) -> float:
+    """[summary]
+
+    Parameters
+    ----------
+    y : np.ndarray
+        [description]
+    ypred : np.ndarray
+        [description]
+    method : str, optional
+        [description], by default 'minmax'
+    feat_axis : int, optional
+        [description], by default 1
+
+    Returns
+    -------
+    float
+        [description]
+    """
+
+    if method == 'dev':
+        ymean = np.mean(y, axis=feat_axis).reshape(-1, 1)
+        numerator = np.mean((y - ypred)**2)
+        denominator = np.mean((y - ymean)**2)
+        return np.sqrt(numerator / denominator)
+
+    err = rmse(y, ypred)
+
+    if method == 'minmax':
+        return err / (np.max(y) - np.min(y))
+    if method == 'mean':
+        return err / np.mean(y)
+
+
+def r2_coeff(y: np.ndarray, ypred: np.ndarray) -> float:
+    """[summary]
+
+    Parameters
+    ----------
+    y : np.ndarray
+        [description]
+    ypred : np.ndarray
+        [description]
+
+    Returns
+    -------
+    float
+        [description]
+    """
+    ymean = np.mean(y)
+    numerator = np.sum((y - ypred)**2)
+    denominator = np.sum((y - ymean)**2)
+    return 1.0 - numerator/denominator

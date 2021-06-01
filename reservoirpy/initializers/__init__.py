@@ -37,7 +37,7 @@ __all__ = [
 
 
 _registry = {
-        "normal": {
+        "norm": {
             "spectral": NormalSpectralScaling,
             "scaling": NormalScaling
         },
@@ -52,6 +52,24 @@ _registry = {
         "fsi": FastSpectralScaling,
         "lognormal": LogNormalSpectralScaling
     }
+
+
+def _filter_reservoir_kwargs(obj, **kwargs):
+
+    input_kwargs = dict()
+    reservoir_kwargs = dict()
+    fb_kwargs = dict()
+    for param, value in kwargs.items():
+        if "input" in param:
+            input_kwargs[param.split("_")[1]] = value
+        elif "reservoir" in param:
+            reservoir_kwargs[param.split("_")[1]] = value
+        elif "fb" in param:
+            fb_kwargs[param.split("_")[1]] = value
+        else:
+            raise TypeError(f"Unknown argument for initializers "
+                            f"within {obj.__class__.__name__}: {param}.")
+    return input_kwargs, reservoir_kwargs, fb_kwargs
 
 
 def get(method: str,

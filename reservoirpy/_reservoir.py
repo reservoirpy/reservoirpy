@@ -5,6 +5,7 @@ from numpy.random import Generator, default_rng
 
 from .activationsfunc import get_function
 
+from .core import _next_state
 from ._utils import _check_vector, _add_bias
 from ._types import Weights
 
@@ -28,6 +29,61 @@ def _isquare(array: np.ndarray) -> bool:
 def _is2dimensional(array: np.ndarray) -> bool:
     return array.ndim == 2
 
+
+""""
+readout = Readout()
+reservoir = Reservoir()
+
+x = inputs
+
+states = reservoir.run(x, feedback=targets)
+
+readout.fit(states, targets)
+
+new_states = reservoir.run(x, feedback=readout)
+outputs = readout(new_states)
+
+
+X, Y, Xtest, Ytest = mackey_glass
+
+states = reservoir.run(X, feedback=y)
+readout_fitted = readout.fit(states, Y)
+
+test_states = reservoir.run(Xtest, feedback=readout_fitted)
+outputs = readout(test_states)
+
+outputs = reservoir.run(Xtest, feedback=readout.fit(reservoir.run(X, feedback=y), y, from_state=test_states[-1, :]))
+outputs_2 = reservoir.run(Xtest, feedback=readout.fit(reservoir.run(X, feedback=y), y))
+
+outputs == outputs_2
+
+test_states = reservoir.run(Xtest, feedback=readout.fit(reservoir.run(X, feedback=outputs), outputs))
+
+
+
+states = reservoir(X)
+
+LSTM.fit(states, ...)
+
+attention = LSTM(states, ...)
+
+outputs = readout.fit(attention, y)
+
+
+readout = ReadoutRidge(ridge=0.1)
+
+states = reservoir.run(inputs, feedback=target1)
+
+readout1 = readout.fit(states, targets1)
+readout2 = readout.fit(states, targets2)
+
+states_test = reservoir.run(inputs_test, feedback=targets1)
+
+
+model = OnlineModel(reservoir, readout_online)
+
+states, readout1 = reservoir.run(inputs, feedback=targets1, train_online=readout)
+"""
 
 class Reservoir:
     """Base tool for reservoir computing
@@ -124,7 +180,7 @@ class Reservoir:
     noise_rc: float
     noise_in: float
     noise_out: float
-    shape: Tuple[int, int, Optional[int]]
+    shape: Union[Tuple[int, int], Tuple[int, int, int]]
 
     @property
     def state(self) -> np.ndarray:
@@ -170,17 +226,18 @@ class Reservoir:
         return self._last_input
 
     def __init__(self,
-                 Win: Weights,
-                 W: Weights,
-                 Wfb: Weights = None,
-                 fb_activation: Union[str,
-                                      Callable
-                                      ] = "id",
+                 shape,
                  lr: float = 1.0,
                  input_bias: bool = True,
                  noise_rc: float = 0.0,
                  noise_in: float = 0.0,
-                 noise_out: float = 0.0):
+                 noise_out: float = 0.0,
+                 Win: Optional[Weights] = None,
+                 W: Optional[Weights] = None,
+                 Wfb: Optional[Weights] = None,
+                 fb_activation: Union[str,
+                                      Callable] = "id",
+                 ):
         self.lr = lr
         self.Win = _check_vector(Win)
         self.W = _check_vector(W)
@@ -207,15 +264,169 @@ class Reservoir:
         self.reset_state()
         self.reset_last_input()
 
-    def __call__(self,
-                 inputs: np.ndarray = None,
-                 readout: Callable = None,
-                 n_steps: int = None,
-                 from_state: np.ndarray = None,
-                 from_input: np.ndarray = None,
-                 stateful: bool = True,
-                 generative: bool = False,
-                 noise_generator: Generator = None) -> np.ndarray:
+    def __call__(self, *args, **kwargs) -> np.ndarray:
+        return self.run(*args, **kwargs)
+
+    def _next_state(self,
+                    x: np.ndarray,
+                    u: np.ndarray,
+                    y: np.ndarray,
+                    noise_generator: Generator = None
+                    ) -> np.ndarray:
+        """Given the current internal state `x`, a new
+        input `u`, and possibly a feedback `y`, compute
+        the next state value.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Current state.
+        u : np.ndarray
+            New input.
+        y : np.ndarray
+            New feedback.
+        noise_generator : Generator, optional
+            Random state generator, to ensure
+            reproducibility when using noise
+            to regularize the activities,
+            by default None.
+
+        Returns
+        -------
+        np.ndarray
+            Next state.
+        """
+        # x_ = W . x ...
+        x_ = self.W @ x.reshape(-1, 1)
+        #    + Win . (u + noise) ...
+        x_ += self.Win @ _noisify(u.reshape(-1, 1),
+                                  self.noise_in,
+                                  noise_generator)
+
+        if self.feedback:
+            # + Wfb . (fb_activation(y) + noise)
+            y_ = self.fb_activation(y.reshape(-1, 1))
+            x_ += self.Wfb @ _noisify(y_,
+                                      self.noise_out,
+                                      noise_generator)
+
+        # x1 = x * (1 - leak) + leak * (tanh(x_) + noise)
+        x1 = (1 - self.lr) * x.reshape(-1, 1)
+        x1 += self.lr * _noisify(np.tanh(x_),
+                                 self.noise_rc,
+                                 noise_generator)
+
+        return x1.T
+
+    def _check_matrices(self):
+        """Some checks to be sure the weight matrices have
+        a correct format.
+        """
+
+        if not _is2dimensional(self.W):
+            raise ValueError("Reservoir matrix W should be 2-dimensional "
+                             f"but is {self.W.ndim}-dimensional "
+                             f"({self.W.shape}).")
+
+        if not _isquare(self.W):
+            raise ValueError("Reservoir matrix W should be square "
+                             f"but is {self.W.shape}.")
+
+        dim_internal = self.W.shape[0]
+
+        if not _is2dimensional(self.Win):
+            raise ValueError("Input matrix Win should be 2-dimensional "
+                             f"but is {self.Win.shape}.")
+
+        if not self.Win.shape[0] == self.W.shape[0]:
+            raise ValueError("Input matrix Win should be of size "
+                             f"({self.W.shape[0]}, input dimension + bias) "
+                             f"but is of size {self.Win.shape}.")
+
+        dim_in = self.Win.shape[1]
+
+        if self.Wfb is None:
+            self.Wfb = np.zeros((dim_internal, 1))
+            dim_out = None
+        else:
+            if not _is2dimensional(self.Wfb):
+                raise ValueError("Feedback matrix Wfb should be 2-dimensional "
+                                 f"but is {self.Wfb.shape}.")
+            if not self.Wfb.shape[0] == self.W.shape[0]:
+                raise ValueError("Feedback matrix Wfb should be of size "
+                                 f"({self.W.shape[0]}, output dimension) but "
+                                 f"is of size {self.Wfb.shape}.")
+            dim_out = self.Wfb.shape[1]
+
+        self.shape = (
+            dim_in,
+            dim_internal,
+            dim_out
+        )
+
+    def _zero_input_signal(self,
+                           n_steps: int = 1
+                           ) -> np.ndarray:
+        """Yields a stream of null inputs.
+        Usefull in generative mode using feedback
+        only.
+
+        Parameters
+        ----------
+        n_steps : int, optional
+            Max number of steps to yield, by default 1
+
+        Yields
+        -------
+        numpy.ndarray
+            A null input vector for the reservoir.
+        """
+        for t in range(n_steps):
+            yield self._zero_input()
+
+    def _zero_readout_signal(self, *args) -> np.ndarray:
+        """Return a null feedback, when feedback is not
+        needed.
+
+        Returns
+        -------
+        np.ndarray
+            A null feedback vector for the reservoir.
+        """
+        if self.shape[2] is None:
+            return np.zeros((1, 1))
+        return np.zeros((1, self.shape[2]))
+
+    def _zero_state(self) -> np.ndarray:
+        """A null state vector.
+        """
+        return np.zeros((1, self.shape[1]))
+
+    def _zero_input(self) -> np.ndarray:
+        """A null input vector
+        """
+        return np.zeros((1, self.shape[0]))
+
+    def _prepare_states_from_inputs(self,
+                                    inputs: np.ndarray,
+                                    n_steps: int = None
+                                    ) -> np.ndarray:
+        """Allocate an array of zeroes to fetch the
+        computed states.
+        """
+        if n_steps:
+            return np.zeros((n_steps, self.shape[1]))
+        return np.zeros((inputs.shape[0], self.shape[1]))
+
+    def run(self,
+            inputs: np.ndarray = None,
+            readout: Callable = None,
+            n_steps: int = None,
+            from_state: np.ndarray = None,
+            from_input: np.ndarray = None,
+            stateful: bool = True,
+            generative: bool = False,
+            noise_generator: Generator = None) -> np.ndarray:
         """Make the data flow inside the reservoir, and output
         the corresponding states produced.
 
@@ -377,157 +588,6 @@ class Reservoir:
             self.reset_last_input(from_input=last_input)
 
         return output_states
-
-    def _next_state(self,
-                    x: np.ndarray,
-                    u: np.ndarray,
-                    y: np.ndarray,
-                    noise_generator: Generator = None
-                    ) -> np.ndarray:
-        """Given the current internal state `x`, a new
-        input `u`, and possibly a feedback `y`, compute
-        the next state value.
-
-        Parameters
-        ----------
-        x : np.ndarray
-            Current state.
-        u : np.ndarray
-            New input.
-        y : np.ndarray
-            New feedback.
-        noise_generator : Generator, optional
-            Random state generator, to ensure
-            reproducibility when using noise
-            to regularize the activities,
-            by default None.
-
-        Returns
-        -------
-        np.ndarray
-            Next state.
-        """
-        # x_ = W . x ...
-        x_ = self.W @ x.reshape(-1, 1)
-        #    + Win . (u + noise) ...
-        x_ += self.Win @ _noisify(u.reshape(-1, 1),
-                                  self.noise_in,
-                                  noise_generator)
-
-        if self.feedback:
-            # + Wfb . (fb_activation(y) + noise)
-            y_ = self.fb_activation(y.reshape(-1, 1))
-            x_ += self.Wfb @ _noisify(y_,
-                                      self.noise_out,
-                                      noise_generator)
-
-        # x1 = x * (1 - leak) + leak * (tanh(x_) + noise)
-        x1 = (1 - self.lr) * x.reshape(-1, 1)
-        x1 += self.lr * _noisify(np.tanh(x_),
-                                 self.noise_rc,
-                                 noise_generator)
-
-        return x1.T
-
-    def _check_matrices(self):
-        """Some checks to be sure the weight matrices have
-        a correct format.
-        """
-
-        if not _is2dimensional(self.W):
-            raise ValueError("Reservoir matrix W should be 2-dimensional "
-                             f"but is {self.W.ndim}-dimensional "
-                             f"({self.W.shape}).")
-
-        if not _isquare(self.W):
-            raise ValueError("Reservoir matrix W should be square "
-                             f"but is {self.W.shape}.")
-
-        dim_internal = self.W.shape[0]
-
-        if not _is2dimensional(self.Win):
-            raise ValueError("Input matrix Win should be 2-dimensional "
-                             f"but is {self.Win.shape}.")
-
-        if not self.Win.shape[0] == self.W.shape[0]:
-            raise ValueError("Input matrix Win should be of size "
-                             f"({self.W.shape[0]}, input dimension + bias) "
-                             f"but is of size {self.Win.shape}.")
-
-        dim_in = self.Win.shape[1]
-
-        if self.Wfb is None:
-            self.Wfb = np.zeros((dim_internal, 1))
-            dim_out = None
-        else:
-            if not _is2dimensional(self.Wfb):
-                raise ValueError("Feedback matrix Wfb should be 2-dimensional "
-                                 f"but is {self.Wfb.shape}.")
-            if not self.Wfb.shape[0] == self.W.shape[0]:
-                raise ValueError("Feedback matrix Wfb should be of size "
-                                 f"({self.W.shape[0]}, output dimension) but "
-                                 f"is of size {self.Wfb.shape}.")
-            dim_out = self.Wfb.shape[1]
-
-        self.shape = (
-            dim_in,
-            dim_internal,
-            dim_out
-        )
-
-    def _zero_input_signal(self,
-                           n_steps: int = 1
-                           ) -> np.ndarray:
-        """Yields a stream of null inputs.
-        Usefull in generative mode using feedback
-        only.
-
-        Parameters
-        ----------
-        n_steps : int, optional
-            Max number of steps to yield, by default 1
-
-        Yields
-        -------
-        numpy.ndarray
-            A null input vector for the reservoir.
-        """
-        for t in range(n_steps):
-            yield self._zero_input()
-
-    def _zero_readout_signal(self, *args) -> np.ndarray:
-        """Return a null feedback, when feedback is not
-        needed.
-
-        Returns
-        -------
-        np.ndarray
-            A null feedback vector for the reservoir.
-        """
-        if self.shape[2] is None:
-            return np.zeros((1, 1))
-        return np.zeros((1, self.shape[2]))
-
-    def _zero_state(self) -> np.ndarray:
-        """A null state vector.
-        """
-        return np.zeros((1, self.shape[1]))
-
-    def _zero_input(self) -> np.ndarray:
-        """A null input vector
-        """
-        return np.zeros((1, self.shape[0]))
-
-    def _prepare_states_from_inputs(self,
-                                    inputs: np.ndarray,
-                                    n_steps: int = None
-                                    ) -> np.ndarray:
-        """Allocate an array of zeroes to fetch the
-        computed states.
-        """
-        if n_steps:
-            return np.zeros((n_steps, self.shape[1]))
-        return np.zeros((inputs.shape[0], self.shape[1]))
 
     def reset_state(self, from_state: np.ndarray = None):
         """Reset the last state saved to zero or to

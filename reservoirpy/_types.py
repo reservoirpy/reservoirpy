@@ -21,3 +21,7 @@ AnyReadout = Union[AnonymousReadout,
                    Callable[..., Numerical]]
 
 RandomSeed = Union[np.random.Generator, np.random.RandomState, int]
+
+
+def is_iterable(obj):
+    return hasattr(obj, "__iter__") or hasattr(obj, "__getitem__")

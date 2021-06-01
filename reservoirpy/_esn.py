@@ -12,6 +12,7 @@ References
            State Networks’, Jan. 2012, doi: 10.1007/978-3-642-35289-8_36.
 
 """
+
 # @author: Xavier HINAUT
 # xavier.hinaut@inria.fr
 # Copyright Xavier Hinaut 2018
