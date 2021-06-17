@@ -1,7 +1,10 @@
 import os
 import time
 import json
-from typing import Sequence, Union, Any
+import shutil
+import tempfile
+import uuid
+from typing import Sequence, Union, Any, Tuple
 
 import dill
 import numpy as np
@@ -186,3 +189,30 @@ def load(directory: str):
     model = _new_from_save(base_cls, model_attr)
 
     return model
+
+
+def memmap(shape: Tuple, directory: str, dtype: np.dtype, mode: str = "w+") -> np.memmap:
+    """Create a new numpy.memmap object, stored in a temporary
+    folder on disk.
+
+    Parameters
+    ----------
+    shape : tuple of int
+        Shape of the memmaped array.
+    directory: str:
+        Directory where the memmap will be stored.
+    dtype : numpy.dtype
+        Data type of the array.
+    mode : {‘r+’, ‘r’, ‘w+’, ‘c’}, optional
+        Mode in which to open the memmap file. See `Numpy documentation
+        <https://numpy.org/doc/stable/reference/generated/numpy.memmap.html>`_
+        for more information.
+
+    Returns
+    -------
+        numpy.memmap
+            An empty memory-mapped array.
+
+    """
+    filename = os.path.join(directory,  f"{str(uuid.uuid4())}.dat")
+    return np.memmap(filename, shape=shape, mode=mode, dtype=dtype)

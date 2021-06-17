@@ -10,8 +10,8 @@ from scipy import sparse
 from sklearn.linear_model import LogisticRegression
 
 from .._esn import ESN
-from ..datasets import lorenz
 from .._utils import load
+
 
 @pytest.fixture(scope="session")
 def matrices():
@@ -25,6 +25,7 @@ def matrices():
                   [-0.1, 0.0, 0.0, 0.0]])
 
     return W, Win
+
 
 @pytest.fixture(scope="session")
 def matrices_fb():
@@ -50,6 +51,7 @@ def dummy_data():
                     for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 500)])
     return Xn0, Xn1
 
+
 @pytest.fixture(scope="session")
 def dummy_clf_data():
     Xn0 = np.array([[sin(x), cos(x)]
@@ -60,6 +62,7 @@ def dummy_clf_data():
     y = np.r_[np.zeros(250), np.ones(250)]
 
     return X, y
+
 
 def test_esn(matrices, dummy_data):
     W, Win = matrices
@@ -139,6 +142,31 @@ def test_esn_sklearn(matrices, dummy_clf_data):
     assert len(outputs) == 2
 
 
+def test_esn_ridge(matrices, dummy_data):
+    W, Win = matrices
+    esn = ESN(lr=0.1, W=W, Win=Win, input_bias=False, ridge=1e-4)
+
+    X, y = dummy_data
+    states = esn.train([X], [y])
+
+    assert esn.Wout.shape == (2, 5)
+
+    outputs, states = esn.run([X])
+
+    assert states[0].shape[0] == X.shape[0]
+    assert outputs[0].shape[1] == 2
+
+    states = esn.train([X, X, X], [y, y, y])
+
+    assert esn.Wout.shape == (2, 5)
+
+    outputs, states = esn.run([X, X])
+
+    assert len(states) == 2
+    assert len(outputs) == 2
+
+
+
 def test_esn_fb(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
 
@@ -177,6 +205,7 @@ def test_esn_compute_all_states_fb(matrices_fb, dummy_data):
     states = esn.compute_all_states([X, X, X], [y, y, y])
 
     assert len(states) == 3
+
 
 def test_esn_compute_all_states_fb_with_readout(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
@@ -272,3 +301,26 @@ def test_save_sparse(matrices_fb, dummy_data):
         assert len(states) == 2
         assert len(outputs) == 2
 
+
+def test_esn_memmap(matrices, dummy_data):
+    W, Win = matrices
+    esn = ESN(lr=0.1, W=W, Win=Win, input_bias=False)
+    X, y = dummy_data
+
+    states = esn.train([X], [y], use_memmap=True)
+
+    assert esn.Wout.shape == (2, 5)
+
+    outputs, states = esn.run([X])
+
+    assert states[0].shape[0] == X.shape[0]
+    assert outputs[0].shape[1] == y.shape[1]
+
+    states = esn.train([X, X, X], [y, y, y])
+
+    assert esn.Wout.shape == (2, 5)
+
+    outputs, states = esn.run([X, X])
+
+    assert len(states) == 2
+    assert len(outputs) == 2

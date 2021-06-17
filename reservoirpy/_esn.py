@@ -20,10 +20,10 @@ References
 # # http://minds.jacobs-university.de/mantas/code
 
 import time
+import tempfile
 import warnings
 
 from typing import Sequence, Callable, Tuple, Union
-from tempfile import mkdtemp
 from pathlib import Path
 
 import joblib
@@ -32,7 +32,7 @@ import numpy as np
 from tqdm import tqdm
 from numpy.random import default_rng, SeedSequence, Generator
 
-from ._utils import _check_values, _save
+from ._utils import _check_values, _save, memmap
 from .regression_models import sklearn_linear_model
 from .regression_models import ridge_linear_model
 from .regression_models import pseudo_inverse_linear_model
@@ -98,11 +98,6 @@ class ESN:
         reservoirpy.ESNOnline for ESN with online learning using FORCE.
 
     """
-    # memmap temporay storage
-    # is cleaned after training/running
-    _tempstates = Path(mkdtemp(), "states.dat")
-    _tempteach = Path(mkdtemp(), "teachers.dat")
-
     def __init__(self,
                  lr: float,
                  W: np.ndarray,
@@ -282,7 +277,7 @@ class ESN:
         else:
             u = np.asarray(single_input)
 
-        # prepare noise sequence
+        # prepare noise sequence
         noise_in = self.noise_in * noise_generator.uniform(-1, 1, size=(self.dim_inp, 1))
         noise_rc = self.noise_rc * noise_generator.uniform(-1, 1, size=(self.N, 1))
 
@@ -702,47 +697,44 @@ class ESN:
             print(f"Training on {len(inputs)} inputs ({steps} steps) "
                   f"-- wash: {wash_nr_time_step} steps")
 
-        memstates = None
-        if use_memmap:
-            memstates = np.memmap(self._tempstates, dtype=self.typefloat, mode="w+",
-                                  shape=(self.N + 1, steps))
+        with tempfile.TemporaryDirectory() as tempdir:
 
-        seed = seed if seed is not None else self.seed
+            memstates = None
+            if use_memmap:
+                shape = (self.N + 1, steps)
+                memstates = memmap(shape, tempdir, dtype=self.typefloat)
 
-        # compute all states
-        all_states = self.compute_all_states(inputs,
-                                             forced_teachers=teachers,
-                                             wash_nr_time_step=wash_nr_time_step,
-                                             workers=workers,
-                                             backend=backend,
-                                             verbose=verbose,
-                                             memmap=memstates,
-                                             seed=seed)
+            seed = seed if seed is not None else self.seed
 
-        all_teachers = [t[wash_nr_time_step:].T for t in teachers]
+            # compute all states
+            all_states = self.compute_all_states(inputs,
+                                                 forced_teachers=teachers,
+                                                 wash_nr_time_step=wash_nr_time_step,
+                                                 workers=workers,
+                                                 backend=backend,
+                                                 verbose=verbose,
+                                                 memmap=memstates,
+                                                 seed=seed)
 
-        # compute readout matrix
-        if use_memmap:
-            memteachers = np.memmap(self._tempteach,
-                                    dtype=self.typefloat,
-                                    mode="w+",
-                                    shape=(
-                                        all_teachers[0].shape[0],
-                                        steps))
+            all_teachers = [t[wash_nr_time_step:].T for t in teachers]
 
-            memteachers[:] = np.hstack(all_teachers)
+            # compute readout matrix
+            if use_memmap:
+                shape = (all_teachers[0].shape[0], steps)
+                memteachers = memmap(shape, tempdir, dtype=self.typefloat)
+                memteachers[:] = np.hstack(all_teachers)
 
-            self.Wout = self.fit_readout(memstates,
-                                         memteachers,
-                                         use_memmap=True,
-                                         verbose=verbose)
-        else:
-            self.Wout = self.fit_readout(all_states,
-                                         all_teachers,
-                                         verbose=verbose)
+                self.Wout = self.fit_readout(memstates,
+                                             memteachers,
+                                             use_memmap=True,
+                                             verbose=verbose)
+            else:
+                self.Wout = self.fit_readout(all_states,
+                                             all_teachers,
+                                             verbose=verbose)
 
-        # save the expected dimension of outputs
-        self.dim_out = self.Wout.shape[0]
+            # save the expected dimension of outputs
+            self.dim_out = self.Wout.shape[0]
 
         # return all internal states
         return [st.T for st in all_states]
