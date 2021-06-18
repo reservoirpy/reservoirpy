@@ -643,7 +643,7 @@ class ESN:
               teachers: Sequence[np.ndarray],
               wash_nr_time_step: int = 0,
               workers: int = -1,
-              backend: str = "threading",
+              backend: str = "loky",
               seed: int = None,
               verbose: bool = False,
               use_memmap: bool = False) -> Sequence[np.ndarray]:
@@ -744,7 +744,7 @@ class ESN:
             init_state: np.ndarray = None,
             init_fb: np.ndarray = None,
             workers: int = -1,
-            backend: str = "threading",
+            backend: str = "loky",
             seed: int = None,
             verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
