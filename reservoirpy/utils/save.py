@@ -1,32 +1,14 @@
 import os
 import time
 import json
-import shutil
-import tempfile
-import uuid
-from typing import Sequence, Union, Any, Tuple
 
 import dill
 import numpy as np
 
 from scipy import sparse
 
-import reservoirpy
-
-
-def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
-    """ Check if the given array or list contains the given value. """
-    if value == np.nan:
-        assert np.isnan(array_or_list).any() == False, \
-               f"{array_or_list} should not contain NaN values."
-    if value is None:
-        if type(array_or_list) is list:
-            assert np.count_nonzero(array_or_list == None) == 0, \
-                   f"{array_or_list} should not contain None values."
-        elif type(array_or_list) is np.array:
-            # None is transformed to np.nan when it is in an array
-            assert np.isnan(array_or_list).any() == False, \
-                   f"{array_or_list} should not contain NaN values."
+from .._version import __version__
+from .. import regression_models
 
 
 def _save(esn, directory: str):
@@ -79,14 +61,13 @@ def _save(esn, directory: str):
         with open(os.path.join(savedir, fbfunc), "wb+") as f:
             dill.dump(esn.fbfunc, f)
 
-    reg_model = {"type": "pinv"}
-    if esn.ridge is not None:
-        reg_model = {"type": "ridge", "coef": esn.ridge}
-    elif esn.sklearn_model is not None:
-        reg_model = {"type": "sklearn", "path": f"sklearn_func_save-{current_time}"}
-        # reg_model is serialized and stored
-        with open(os.path.join(savedir, reg_model), "wb+") as f:
-            dill.dump(esn.sklearn_model, f)
+    sklearn_model = None
+    if getattr(esn.model, "model", None) is not None:
+        sklearn_model = f"sklearn_func_save-{current_time}"
+        # scikit-learn model is serialized and stored
+        # will require scikit-learn to be imported when loading ESN.
+        with open(os.path.join(savedir, sklearn_model), "wb+") as f:
+            dill.dump(esn.model.model, f)
 
     # a copy of the ESN class is also serialized.
     # allow to load an ESN without necesseraly using the same version of Reservoirpy.
@@ -97,7 +78,7 @@ def _save(esn, directory: str):
     attr = {
         "cls": esn.__class__.__name__,
         "cls_bin": cls_path,
-        "version": reservoirpy.__version__,
+        "version": __version__,
         "serial": current_time,
         "attr": {
             "W": W_path,
@@ -107,16 +88,17 @@ def _save(esn, directory: str):
             "N": esn.N,
             "lr": esn.lr,
             "in_bias": esn.in_bias,
-            "dim_inp": esn.dim_inp,
+            "dim_in": esn.dim_in,
             "dim_out": dim_out,
+            "_ridge": esn.ridge,
             "typefloat": esn.typefloat.__name__,
-            "reg_model": reg_model,
+            "sklearn_model": sklearn_model,
             "fbfunc": fbfunc,
             "noise_in": esn.noise_in,
             "noise_out": esn.noise_out,
             "noise_rc": esn.noise_rc,
             "seed": esn.seed,
-            "sklearn_model": esn.sklearn_model
+            "model": esn.model.__class__.__name__
         },
         "misc": {
             "fbfunc_info": fbfunc_info
@@ -133,7 +115,11 @@ def _new_from_save(base_cls, restored_attr):
     obj = object.__new__(base_cls)
     for name, attr in restored_attr.items():
         obj.__setattr__(name, attr)
-    obj.reg_model = obj._get_regression_model(obj.ridge, obj.reg_model)
+
+    obj.model = getattr(regression_models, obj.model)(obj._ridge, obj.sklearn_model)
+
+    del obj.sklearn_model
+    del obj._ridge
 
     return obj
 
@@ -170,18 +156,11 @@ def load(directory: str):
         with open(os.path.join(directory, model_attr["fbfunc"]), "rb") as f:
             model_attr["fbfunc"] = dill.load(f)
 
-    if model_attr["reg_model"]["type"] == "ridge":
-        model_attr["ridge"] = model_attr["reg_model"]["coef"]
-        model_attr["reg_model"] = None
-    elif model_attr["reg_model"]["type"] == "sklearn":
-        with open(os.path.join(directory, model_attr["reg_model"]["path"]), "rb") as f:
-            model_attr["reg_model"] = dill.load(f)
-        model_attr["ridge"] = None
-    else:
-        model_attr["reg_model"] = None
-        model_attr["ridge"] = None
+    elif model_attr["sklearn_model"] is not None:
+        with open(os.path.join(directory, model_attr["sklearn_model"]), "rb") as f:
+            model_attr["sklearn_model"] = dill.load(f)
 
-    model_attr["typefloat"] = np.float64
+    model_attr["typefloat"] = getattr(np, model_attr["typefloat"])
 
     with open(os.path.join(directory, attr["cls_bin"]), 'rb') as f:
         base_cls = dill.load(f)
@@ -189,30 +168,3 @@ def load(directory: str):
     model = _new_from_save(base_cls, model_attr)
 
     return model
-
-
-def memmap(shape: Tuple, directory: str, dtype: np.dtype, mode: str = "w+") -> np.memmap:
-    """Create a new numpy.memmap object, stored in a temporary
-    folder on disk.
-
-    Parameters
-    ----------
-    shape : tuple of int
-        Shape of the memmaped array.
-    directory: str:
-        Directory where the memmap will be stored.
-    dtype : numpy.dtype
-        Data type of the array.
-    mode : {‘r+’, ‘r’, ‘w+’, ‘c’}, optional
-        Mode in which to open the memmap file. See `Numpy documentation
-        <https://numpy.org/doc/stable/reference/generated/numpy.memmap.html>`_
-        for more information.
-
-    Returns
-    -------
-        numpy.memmap
-            An empty memory-mapped array.
-
-    """
-    filename = os.path.join(directory,  f"{str(uuid.uuid4())}.dat")
-    return np.memmap(filename, shape=shape, mode=mode, dtype=dtype)

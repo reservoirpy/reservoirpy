@@ -18,24 +18,91 @@ References
 # We would like to thank Mantas Lukosevicius for his code that
 # was used as inspiration for this code:
 # # http://minds.jacobs-university.de/mantas/code
-
 import time
-import tempfile
 import warnings
 
 from typing import Sequence, Callable, Tuple, Union
 from pathlib import Path
+from functools import partial
 
-import joblib
 import numpy as np
 
+from joblib import Parallel, delayed
 from tqdm import tqdm
 from numpy.random import default_rng, SeedSequence, Generator
 
-from ._utils import _check_values, _save, memmap
-from .regression_models import sklearn_linear_model
-from .regression_models import ridge_linear_model
-from .regression_models import pseudo_inverse_linear_model
+from .utils.parallel import ParallelProgressQueue, get_joblib_backend, memmap, clean_tempfile
+from .utils.validation import _check_values, add_bias, check_input_lists
+from .utils.save import _save
+from .regression_models import RidgeRegression, SklearnLinearModel
+
+
+def _get_offline_model(ridge: float = 0.0,
+                       sklearn_model: Callable = None,
+                       dtype=np.float64):
+    if ridge > 0.0 and sklearn_model is not None:
+        raise ValueError("Parameters 'ridge' and 'sklearn_model' can not be "
+                         "defined at the same time.")
+    elif sklearn_model is not None:
+        return SklearnLinearModel(sklearn_model, dtype=dtype)
+    else:
+        return RidgeRegression(ridge, dtype=dtype)
+
+
+def _parallelize(esn,
+                 func,
+                 workers,
+                 lengths,
+                 return_states,
+                 pbar_text=None,
+                 verbose=False,
+                 **func_kwargs):
+
+    workers = min(len(lengths), workers)
+    backend = get_joblib_backend() if workers > 1 or workers == -1 else "sequential"
+
+    steps = np.sum(lengths)
+    ends = np.cumsum(lengths)
+    starts = ends - np.asarray(lengths)
+
+    fn_kwargs = ({k: func_kwargs[k][i] for k in func_kwargs.keys()}
+                 for i in range(len(lengths)))
+
+    states = None
+    if return_states:
+        shape = (steps, esn.N)
+        states = memmap(shape, dtype=esn.typefloat, caller=esn)
+
+    with ParallelProgressQueue(total=steps, text=pbar_text, verbose=verbose) as pbar:
+
+        func = partial(func, pbar=pbar)
+
+        with Parallel(backend=backend, n_jobs=workers) as parallel:
+
+            def func_wrapper(states, start_pos, end_pos, *args, **kwargs):
+                s = func(*args, **kwargs)
+
+                out = None
+                # if function returns states and outputs
+                if hasattr(s, "__len__") and len(s) == 2:
+                    out = s[0]  # outputs are always returned first
+                    s = s[1]
+
+                if return_states:
+                    states[start_pos:end_pos] = s[:]
+
+                return out
+
+            outputs = parallel(delayed(func_wrapper)(states, start, end, **kwargs)
+                               for start, end, kwargs in zip(starts, ends, fn_kwargs))
+
+    if return_states:
+        states = [np.array(states[start:end])
+                  for start, end in zip(starts, ends)]
+
+    clean_tempfile(esn)
+
+    return outputs, states
 
 
 class ESN:
@@ -88,7 +155,7 @@ class ESN:
             Readout matrix
         dim_out: int
             Output dimension
-        dim_inp: int
+        dim_in: int
             Input dimension
         N: int
             Number of neuronal units
@@ -104,7 +171,7 @@ class ESN:
                  Win: np.ndarray,
                  input_bias: bool = True,
                  reg_model: Callable = None,
-                 ridge: float = None,
+                 ridge: float = 0.0,
                  Wfb: np.ndarray = None,
                  fbfunc: Callable = None,
                  noise_in: float = 0.0,
@@ -127,7 +194,10 @@ class ESN:
         self.N = self.W.shape[1]
         self.in_bias = input_bias
         # dimension of inputs (including the bias at 1)
-        self.dim_inp = self.Win.shape[1]
+        self.dim_in = self.Win.shape[1]
+        if self.in_bias:
+            self.dim_in = self.dim_in - 1
+
         self.dim_out = None
         if self.Wfb is not None:
             # dimension of outputs
@@ -142,9 +212,8 @@ class ESN:
 
         self.seed = seed
 
-        self.ridge = None
-        self.sklearn_model = None
-        self.reg_model = self._get_regression_model(ridge, reg_model)
+        self.model = _get_offline_model(ridge, reg_model, dtype=typefloat)
+
         self.fbfunc = fbfunc
         if self.Wfb is not None and self.fbfunc is None:
             raise ValueError("If a feedback matrix is provided, fbfunc must"
@@ -160,29 +229,14 @@ class ESN:
         out += f"lr={self.lr}, input_bias={self.in_bias}, input_dim={self.N})"
         return out
 
-    def _get_regression_model(self,
-                              ridge: float = None,
-                              sklearn_model: Callable = None):
-        """Set the type of regression used in the model. All regression models available
-        for now are described in reservoipy.regression_models:
-            - any scikit-learn linear regression model (like Lasso or Ridge)
-            - Tikhonov linear regression (l1 regularization)
-            - Solving system with pseudo-inverse matrix
-        """
-        if ridge is not None and sklearn_model is not None:
-            raise ValueError("ridge and sklearn_model can not be"
-                             "defined at the same time.")
+    @property
+    def ridge(self):
+        return getattr(self.model, "ridge", None)
 
-        elif ridge is not None:
-            self.ridge = ridge
-            return ridge_linear_model(self.ridge)
-
-        elif sklearn_model is not None:
-            self.sklearn_model = sklearn_model
-            return sklearn_linear_model(self.sklearn_model)
-
-        else:
-            return pseudo_inverse_linear_model()
+    @ridge.setter
+    def ridge(self, value):
+        if hasattr(self.model, "ridge"):
+            self.model.ridge = value
 
     def _autocheck_nan(self):
         """ Auto-check to see if some important variables do not have
@@ -206,29 +260,6 @@ class ESN:
         assert len(self.Win.shape) == 2, f"Win shape should be (N, input) but is {self.Win.shape}."
         err = f"Win shape should be ({self.W.shape[1]}, input) but is {self.Win.shape}."
         assert self.Win.shape[0] == self.W.shape[0], err
-
-    def _autocheck_io(self, inputs, outputs=None):
-        # Check if inputs and outputs are lists
-        assert type(inputs) is list, "Inputs should be a list of numpy arrays"
-        if outputs is not None:
-            assert type(outputs) is list, "Outputs should be a list of numpy arrays"
-
-        # check if Win matrix has coherent dimensions with input dimensions
-        if self.in_bias:
-            err = f"With bias, Win matrix should be of shape ({self.N}, "
-            err += f"{inputs[0].shape[1] + 1}) but is {self.Win.shape}."
-            assert self.Win.shape[1] == inputs[0].shape[1] + 1, err
-        else:
-            err = f"Win matrix should be of shape ({self.N}, "
-            err += f"{self.dim_inp}) but is {self.Win.shape}."
-            assert self.Win.shape[1] == inputs[0].shape[1], err
-
-        if outputs is not None:
-            # check feedback matrix
-            if self.Wfb is not None:
-                err = f"With feedback, Wfb matrix should be of shape ({self.N}, "
-                err += f"{outputs[0].shape[1]}) but is {self.Wfb.shape}."
-                assert outputs[0].shape[1] == self.Wfb.shape[1], err
 
     def _get_next_state(self,
                         single_input: np.ndarray,
@@ -267,49 +298,44 @@ class ESN:
 
         # first initialize the current state of the ESN
         if last_state is None:
-            x = np.zeros((self.N, 1), dtype=self.typefloat)
+            x = self.zero_state()
         else:
-            x = np.asarray(last_state)
+            x = np.asarray(last_state, dtype=self.typefloat).reshape(1, -1)
 
+        u = np.asarray(single_input, dtype=self.typefloat).reshape(1, -1)
         # add bias
         if self.in_bias:
-            u = np.hstack((1, single_input.flatten())).astype(self.typefloat)
-        else:
-            u = np.asarray(single_input)
+            u = add_bias(u)
 
         # prepare noise sequence
-        noise_in = self.noise_in * noise_generator.uniform(-1, 1, size=(self.dim_inp, 1))
-        noise_rc = self.noise_rc * noise_generator.uniform(-1, 1, size=(self.N, 1))
+        noise_in = self.noise_in * noise_generator.uniform(-1, 1, size=u.shape)
+        noise_rc = self.noise_rc * noise_generator.uniform(-1, 1, size=x.shape)
 
         # linear transformation
-        x1 = np.dot(self.Win, u.reshape(self.dim_inp, 1) + noise_in) \
-            + self.W.dot(x)
+        x1 = (u + noise_in) @ self.Win.T + x @ self.W
 
         # add feedback if requested
         if self.Wfb is not None:
             noise_out = self.noise_out * noise_generator.uniform(-1, 1,
-                                                                 size=(self.dim_out, 1))
-            fb = self.fbfunc(np.asarray(feedback)).reshape(self.dim_out, 1)
-            x1 += np.dot(self.Wfb, fb + noise_out)
+                                                                 size=feedback.shape)
+            fb = self.fbfunc(np.asarray(feedback)).reshape(1, -1)
+            x1 += (fb + noise_out) @ self.Wfb.T
 
         # previous states memory leak and non-linear transformation
-        x1 = (1-self.lr)*x + self.lr*(np.tanh(x1) + noise_rc)
+        x1 = (1-self.lr) * x + self.lr * (np.tanh(x1)+noise_rc)
 
         # return the next state computed
         return x1
 
-    def _compute_states(self,
-                        input: np.ndarray,
-                        forced_teacher: np.ndarray = None,
-                        init_state: np.ndarray = None,
-                        init_fb: np.ndarray = None,
-                        wash_nr_time_step: int = 0,
-                        seed: int = None,
-                        input_id: int = None,
-                        memmap: np.memmap = None,
-                        input_pos: int = None,
-                        verbose: bool = False
-                        ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+    def compute_states(self,
+                       input: np.ndarray,
+                       forced_teacher: np.ndarray = None,
+                       init_state: np.ndarray = None,
+                       init_fb: np.ndarray = None,
+                       seed: int = None,
+                       verbose: bool = False,
+                       **kwargs
+                       ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Compute all states generated from a single sequence of inputs.
 
         Parameters
@@ -341,27 +367,32 @@ class ESN:
             raise RuntimeError("Impossible to use feedback without readout"
                                "matrix or teacher forcing.")
 
+        check_input_lists(input, self.dim_in, forced_teacher, self.dim_out)
+
         # to track successives internal states of the reservoir
-        states = np.zeros((self.N, len(input)-wash_nr_time_step), dtype=self.typefloat)
+        states = np.zeros((len(input), self.N), dtype=self.typefloat)
 
         # if a feedback matrix is available, feedback will be set to 0 or to
         # a specific value.
-        if self.Wfb is not None:
-            if init_fb is None:
-                last_feedback = np.zeros((self.dim_out, 1), dtype=self.typefloat)
-            else:
-                last_feedback = init_fb.copy()
+        if init_fb is not None:
+            last_feedback = init_fb.copy().reshape(1, -1)
         else:
-            last_feedback = None
+            last_feedback = self.zero_feedback()
 
         # State is initialized to 0 or to a specific value.
         if init_state is None:
-            current_state = np.zeros((self.N, 1),dtype=self.typefloat)
+            current_state = self.zero_state()
         else:
-            current_state = init_state.copy().reshape(-1, 1)
+            current_state = init_state.copy().reshape(1, -1)
 
         # random generator for training/running with additive noise
-        rg = default_rng(seed)
+        rng = default_rng(seed)
+
+        pbar = None
+        if kwargs.get("pbar") is not None:
+            pbar = kwargs.get("pbar")
+        elif verbose is True:
+            pbar = tqdm(total=input.shape[0])
 
         # for each time step in the input
         for t in range(input.shape[0]):
@@ -369,46 +400,32 @@ class ESN:
             current_state = self._get_next_state(input[t, :],
                                                  feedback=last_feedback,
                                                  last_state=current_state,
-                                                 noise_generator=rg)
+                                                 noise_generator=rng)
 
             # compute last feedback
             if self.Wfb is not None:
                 # during training outputs are equal to teachers for feedback
                 if forced_teacher is not None:
-                    last_feedback = forced_teacher[t,:].reshape(
-                        forced_teacher.shape[1], 1).astype(self.typefloat)
+                    last_feedback = forced_teacher[t, :]
                 # feedback of outputs, computed with Wout
                 else:
-                    last_feedback = np.dot(self.Wout,
-                                           np.vstack((1, current_state))).astype(self.typefloat)
-                last_feedback = last_feedback.reshape(self.dim_out, 1)
+                    last_feedback = (add_bias(current_state) @ self.Wout.T)
 
-            # will track all internal states during inference, and only the
-            # states after wash_nr_time_step during training.
-            if t >= wash_nr_time_step:
-                states[:, t-wash_nr_time_step] = current_state.reshape(-1,).astype(self.typefloat)
+            states[t, :] = current_state
 
-        if input_id is None:
-            return 0, states
+            if pbar is not None:
+                pbar.update(1)
 
-        if memmap is not None:
-            memmap[:, input_pos[0]: input_pos[1]] = np.vstack(
-                (np.ones((1, states.shape[1]), dtype=self.typefloat),
-                 states))
-
-        return input_id, states
+        return states
 
     def compute_all_states(self,
                            inputs: Sequence[np.ndarray],
                            forced_teachers: Sequence[np.ndarray] = None,
                            init_state: np.ndarray = None,
                            init_fb: np.ndarray = None,
-                           wash_nr_time_step: int = 0,
                            workers: int = -1,
-                           backend: str = "threading",
                            seed: int = None,
-                           verbose: bool = True,
-                           memmap: np.memmap = None,
+                           verbose: bool = False,
                            ) -> Sequence[np.ndarray]:
         """Compute all states generated from sequences of inputs.
 
@@ -455,62 +472,34 @@ class ESN:
             list of np.ndarray
                 All computed states.
         """
+        inputs, forced_teachers = check_input_lists(inputs, self.dim_in,
+                                                    forced_teachers, self.dim_out)
 
-        # initialization of workers
-        loop = joblib.Parallel(n_jobs=workers, backend=backend)
-        delayed_states = joblib.delayed(self._compute_states)
+        workers = min(workers, len(inputs))
 
-        # generation of seed sequence
-        # each seed in the sequence is independant from the others
-        # i.e. this is thread safe random generation.
-        # Used for noisy training and running of reservoirs
-        ss = SeedSequence(seed)
-        # one independant seed per sequence
-        child_seeds = ss.spawn(len(inputs))
+        backend = "sequential"
+        if workers > 1 or workers == -1:
+            backend = get_joblib_backend()
 
-        # progress bar if needed
-        if verbose:
-            track = tqdm
-        else:
-            def track(x, text):
-                return x
-
-        inputs_ends = np.cumsum([i.shape[0] for i in inputs])
-        inputs_starts = [end - i.shape[0] for i, end in zip(inputs, inputs_ends)]
-
-        # no feedback training or running
         if forced_teachers is None:
-            all_states = loop(delayed_states(inputs[i],
-                                             wash_nr_time_step=wash_nr_time_step,
-                                             input_id=i,
-                                             init_state=init_state,
-                                             init_fb=init_fb,
-                                             memmap=memmap,
-                                             input_pos=(
-                                                 inputs_starts[i],
-                                                 inputs_ends[i]),
-                                             seed=child_seeds[i],
-                                             verbose=verbose)
-                              for i in track(range(len(inputs)), "Computing states"))
-        # feedback training
-        else:
-            all_states = loop(delayed_states(inputs[i],
-                                             forced_teachers[i],
-                                             wash_nr_time_step=wash_nr_time_step,
-                                             input_id=i,
-                                             init_state=init_state,
-                                             init_fb=init_fb,
-                                             memmap=memmap,
-                                             input_pos=(
-                                                 inputs_starts[i],
-                                                 inputs_ends[i]),
-                                             seed=child_seeds[i],
-                                             verbose=verbose)
-                              for i in track(range(len(inputs)), "Computing states"))
+            forced_teachers = [None] * len(inputs)
 
-        # input ids are used to make sure that the returned states are in the same order
-        # as inputs, because parallelization can change this order.
-        return [s[1] for s in sorted(all_states, key=lambda x: x[0])]
+        compute_states = partial(self.compute_states,
+                                 init_state=init_state,
+                                 init_fb=init_fb)
+
+        steps = np.sum([i.shape[0] for i in inputs])
+
+        progress = ParallelProgressQueue(total=steps,
+                                         text="States",
+                                         verbose=verbose)
+        with progress as pbar:
+            with Parallel(backend=backend, n_jobs=workers) as parallel:
+                states = parallel(delayed(
+                    partial(compute_states, pbar=pbar, seed=seed))(x, t)
+                                  for x, t in zip(inputs, forced_teachers))
+
+        return states
 
     def compute_outputs(self,
                         states: Sequence[np.ndarray],
@@ -536,6 +525,7 @@ class ESN:
             list of numpy.arrays
                 All outputs of readout matrix.
         """
+        states, _ = check_input_lists(states, self.N)
         # because all states and readouts will be concatenated,
         # first save the indexes of each inputs states in the concatenated vector.
         if self.Wout is not None:
@@ -546,8 +536,8 @@ class ESN:
 
             outputs = [None] * len(states)
             for i, s in enumerate(states):
-                x = np.vstack((np.ones((s.shape[1],), dtype=self.typefloat), s))
-                y = np.dot(self.Wout, x).astype(self.typefloat)
+                x = add_bias(s)
+                y = (x @ self.Wout.T).astype(self.typefloat)
                 outputs[i] = y
 
             if verbose:
@@ -558,7 +548,8 @@ class ESN:
 
         else:
             raise RuntimeError("Impossible to compute outputs: "
-                               "no readout matrix available.")
+                               "no readout matrix available. "
+                               "Train the network first.")
 
     def fit_readout(self,
                     states: Sequence,
@@ -599,14 +590,16 @@ class ESN:
             numpy.ndarray
                 Readout matrix.
         """
+        states, teachers = check_input_lists(states, self.N, teachers, self.dim_out)
+
         # switch the regression model used at instanciation if needed.
         # WARNING: this change won't be saved by the save function.
         if (ridge is not None) or (reg_model is not None):
-            reg_model = self._get_regression_model(ridge, reg_model)
+            offline_model = _get_offline_model(ridge, reg_model, dtype=self.typefloat)
         elif force_pinv:
-            reg_model = self._get_regression_model(None, None)
+            offline_model = _get_offline_model(ridge=0.0)
         else:
-            reg_model = self.reg_model
+            offline_model = self.model
 
         # check if network responses are valid
         _check_values(array_or_list=states, value=None)
@@ -614,39 +607,23 @@ class ESN:
         if verbose:
             tic = time.time()
             print("Linear regression...")
-        # concatenate the lists (along timestep axis)
-        if not use_memmap:
-            X = np.hstack(states).astype(self.typefloat)
-            Y = np.hstack(teachers).astype(self.typefloat)
 
-            # Adding ones for regression with bias b in (y = a*x + b)
-            X = np.vstack((np.ones((1, X.shape[1]), dtype=self.typefloat), X))
-
-            # Building Wout with a linear regression model.
-            # saving the output matrix in the ESN object for later use
-            Wout = reg_model(X, Y)
-
-        else:
-            Wout = reg_model(states, teachers)
-            del states
-            del teachers
+        self.Wout = offline_model.fit(X=states, Y=teachers)
 
         if verbose:
             toc = time.time()
             print(f"Linear regression done! (in {toc - tic} sec)")
 
-        # return readout matrix
-        return Wout
+        return self.Wout
 
     def train(self,
-              inputs: Sequence[np.ndarray],
-              teachers: Sequence[np.ndarray],
-              wash_nr_time_step: int = 0,
+              inputs: Union[Sequence[np.ndarray], np.ndarray],
+              teachers: Union[Sequence[np.ndarray], np.ndarray],
+              washout: int = 0,
               workers: int = -1,
-              backend: str = "loky",
               seed: int = None,
               verbose: bool = False,
-              use_memmap: bool = False) -> Sequence[np.ndarray]:
+              return_states: bool = False) -> Sequence[np.ndarray]:
         """Train the ESN model on set of input sequences.
 
         Parameters
@@ -690,61 +667,40 @@ class ESN:
             is not (yet) well suited for this.
         """
         # autochecks of inputs and outputs
-        self._autocheck_io(inputs=inputs, outputs=teachers)
+        inputs, teachers = check_input_lists(inputs, self.dim_in,
+                                             teachers, self.dim_out)
 
-        steps = np.sum([i.shape[0] for i in inputs])
+        self.dim_out = teachers[0].shape[1]
+        self.model.initialize(self.N, self.dim_out)
+
+        lengths = [i.shape[0] for i in inputs]
+        steps = sum(lengths)
+
         if verbose:
             print(f"Training on {len(inputs)} inputs ({steps} steps) "
-                  f"-- wash: {wash_nr_time_step} steps")
+                  f"-- wash: {washout} steps")
 
-        with tempfile.TemporaryDirectory() as tempdir:
+        def train_fn(*, x, y, pbar):
+            s = self.compute_states(x, y, seed=seed, pbar=pbar)
+            self.model.partial_fit(s[washout:], y)  # increment X.X^T and Y.X^T
+                                                    # or save data for sklearn fit
+            return s
 
-            memstates = None
-            if use_memmap:
-                shape = (self.N + 1, steps)
-                memstates = memmap(shape, tempdir, dtype=self.typefloat)
+        _, states = _parallelize(self, train_fn, workers, lengths, return_states,
+                                 pbar_text="Train", verbose=verbose,
+                                 x=inputs, y=teachers)
 
-            seed = seed if seed is not None else self.seed
+        self.Wout = self.model.fit()  # perform Y.X^T.(X.X^T + ridge)^-1
+                                              # or sklearn fit
 
-            # compute all states
-            all_states = self.compute_all_states(inputs,
-                                                 forced_teachers=teachers,
-                                                 wash_nr_time_step=wash_nr_time_step,
-                                                 workers=workers,
-                                                 backend=backend,
-                                                 verbose=verbose,
-                                                 memmap=memstates,
-                                                 seed=seed)
-
-            all_teachers = [t[wash_nr_time_step:].T for t in teachers]
-
-            # compute readout matrix
-            if use_memmap:
-                shape = (all_teachers[0].shape[0], steps)
-                memteachers = memmap(shape, tempdir, dtype=self.typefloat)
-                memteachers[:] = np.hstack(all_teachers)
-
-                self.Wout = self.fit_readout(memstates,
-                                             memteachers,
-                                             use_memmap=True,
-                                             verbose=verbose)
-            else:
-                self.Wout = self.fit_readout(all_states,
-                                             all_teachers,
-                                             verbose=verbose)
-
-            # save the expected dimension of outputs
-            self.dim_out = self.Wout.shape[0]
-
-        # return all internal states
-        return [st.T for st in all_states]
+        return states
 
     def run(self,
             inputs: Sequence[np.ndarray],
             init_state: np.ndarray = None,
             init_fb: np.ndarray = None,
             workers: int = -1,
-            backend: str = "loky",
+            return_states=False,
             seed: int = None,
             verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
@@ -792,27 +748,31 @@ class ESN:
             Multiprocess is a good idea only in very specific cases, and this code
             is not (yet) well suited for this.
         """
+        # autochecks of inputs and outputs
+        inputs, _ = check_input_lists(inputs, self.dim_in)
+
+        lengths = [i.shape[0] for i in inputs]
+        steps = sum(lengths)
 
         if verbose:
-            steps = np.sum([i.shape[0] for i in inputs])
             print(f"Running on {len(inputs)} inputs ({steps} steps)")
 
-        # autochecks of inputs
-        self._autocheck_io(inputs=inputs)
+        def run_fn(*, x, pbar):
+            s = self.compute_states(x,
+                                    init_state=init_state,
+                                    init_fb=init_fb,
+                                    seed=seed,
+                                    pbar=pbar)
 
-        seed = seed if seed is not None else self.seed
+            out = self.compute_outputs([s])[0]
 
-        all_states = self.compute_all_states(inputs,
-                                             init_state=init_state,
-                                             init_fb=init_fb,
-                                             workers=workers,
-                                             backend=backend,
-                                             verbose=verbose,
-                                             seed=seed)
+            return out, s
 
-        all_outputs = self.compute_outputs(all_states)
-        # return all_outputs, all_int_states
-        return [st.T for st in all_outputs], [st.T for st in all_states]
+        outputs, states = _parallelize(self, run_fn, workers, lengths, return_states,
+                                       pbar_text="Run", verbose=verbose,
+                                       x=inputs)
+
+        return outputs, states
 
     def generate(self,
                  nb_timesteps: int,
@@ -908,36 +868,35 @@ class ESN:
                       f"{warming_inputs.shape[0]} inputs.")
                 print("Computing initial states...")
 
-            _, warming_states = self._compute_states(warming_inputs,
-                                                     init_state=init_state,
-                                                     init_fb=init_fb,
-                                                     seed=child_seeds[0])
+            warming_states = self.compute_states(warming_inputs,
+                                                 init_state=init_state,
+                                                 init_fb=init_fb,
+                                                 seed=child_seeds[0])
 
             # initial state (at begining of generation)
-            s0 = warming_states[:, -1].reshape(-1, 1)
+            s0 = warming_states[-1, :].reshape(1, -1)
             warming_outputs = self.compute_outputs([warming_states])[0]
             # intial input (at begining of generation)
-            u1 = warming_outputs[:, -1].reshape(1, -1)
+            u1 = warming_outputs[-1, :].reshape(1, -1)
 
             if init_fb is not None:
                 # initial feedback (at begining of generation)
-                fb0 = warming_outputs[:, -2].reshape(1, -1)
+                fb0 = warming_outputs[-2, :].reshape(1, -1)
             else:
                 fb0 = None
-            warming_outputs = warming_outputs.T
-            warming_states = warming_states.T
+
         else:
             warming_outputs, warming_states = None, None
             # time is often first axis but compute_outputs await
             # for time in second axis, so the reshape :
-            s0 = init_state.reshape(-1, 1)
+            s0 = init_state.reshape(1, -1)
 
             if init_fb is not None:
-                fb0 = init_fb.reshape(-1, 1)
+                fb0 = init_fb.reshape(1, -1)
             else:
                 fb0 = None
 
-            u1 = self.compute_outputs([s0])[0][:, -1].reshape(1, -1)
+            u1 = self.compute_outputs([s0])[0][-1, :].reshape(1, -1)
 
         states = np.zeros((nb_timesteps, self.N))
         outputs = np.zeros((nb_timesteps, self.dim_out))
@@ -950,7 +909,7 @@ class ESN:
         # for additive noise in the reservoir
         rg = default_rng(child_seeds[1])
 
-        for i in track(range(nb_timesteps), "Generating"):
+        for i in track(range(nb_timesteps), "Generate"):
             # from new input u1 and previous state s0
             # compute next state s1 -> s0
             s1 = self._get_next_state(single_input=u1,
@@ -958,15 +917,15 @@ class ESN:
                                       last_state=s0,
                                       noise_generator=rg)
 
-            s0 = s1[:, -1].reshape(-1, 1)
-            states[i, :] = s0.flatten()
+            s0 = s1[-1, :].reshape(1, -1)
+            states[i, :] = s0
 
             if fb0 is not None:
                 fb0 = u1.copy()
 
             # from new state s1 compute next input u2 -> u1
-            u1 = self.compute_outputs([s0])[0][:, -1].reshape(1, -1)
-            outputs[i, :] = u1.flatten()
+            u1 = self.compute_outputs([s0])[0][-1, :].reshape(1, -1)
+            outputs[i, :] = u1
 
         return outputs, states, warming_outputs, warming_states
 
@@ -979,3 +938,12 @@ class ESN:
                 Directory where to save the model.
         """
         _save(self, directory)
+
+    def zero_state(self):
+        return np.zeros((1, self.N), dtype=self.typefloat)
+
+    def zero_feedback(self):
+        if self.Wfb is not None:
+            return np.zeros((1, self.dim_out), dtype=self.typefloat)
+        else:
+            return None
