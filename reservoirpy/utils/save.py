@@ -81,15 +81,15 @@ def _save(esn, directory: str):
         "version": __version__,
         "serial": current_time,
         "attr": {
-            "W": W_path,
-            "Win": Win_path,
-            "Wfb": Wfb_path,
-            "Wout": Wout_path,
-            "N": esn.N,
+            "_W": W_path,
+            "_Win": Win_path,
+            "_Wfb": Wfb_path,
+            "_Wout": Wout_path,
+            "_N": esn._N,
             "lr": esn.lr,
-            "in_bias": esn.in_bias,
-            "dim_in": esn.dim_in,
-            "dim_out": dim_out,
+            "_input_bias": esn.input_bias,
+            "_dim_in": esn._dim_in,
+            "_dim_out": dim_out,
             "_ridge": esn.ridge,
             "typefloat": esn.typefloat.__name__,
             "sklearn_model": sklearn_model,
@@ -114,7 +114,11 @@ def _new_from_save(base_cls, restored_attr):
 
     obj = object.__new__(base_cls)
     for name, attr in restored_attr.items():
-        obj.__setattr__(name, attr)
+        try:
+            obj.__setattr__(name, attr)
+        except AttributeError as e:
+            print(e)
+            print(name, attr)
 
     obj.model = getattr(regression_models, obj.model)(obj._ridge, obj.sklearn_model)
 
@@ -142,17 +146,17 @@ def load(directory: str):
 
     model_attr = attr["attr"]
 
-    if os.path.splitext(model_attr["W"])[1] == ".npy":
-        model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
+    if os.path.splitext(model_attr["_W"])[1] == ".npy":
+        model_attr["_W"] = np.load(os.path.join(directory, model_attr["_W"]))
     else:
-        model_attr["W"] = sparse.load_npz(os.path.join(directory, model_attr["W"]))
+        model_attr["_W"] = sparse.load_npz(os.path.join(directory, model_attr["_W"]))
 
-    model_attr["Win"] = np.load(os.path.join(directory, model_attr["Win"]))
+    model_attr["_Win"] = np.load(os.path.join(directory, model_attr["_Win"]))
 
-    if model_attr["Wout"] is not None:
-        model_attr["Wout"] = np.load(os.path.join(directory, model_attr["Wout"]))
-    if model_attr["Wfb"] is not None:
-        model_attr["Wfb"] = np.load(os.path.join(directory, model_attr["Wfb"]))
+    if model_attr["_Wout"] is not None:
+        model_attr["_Wout"] = np.load(os.path.join(directory, model_attr["_Wout"]))
+    if model_attr["_Wfb"] is not None:
+        model_attr["_Wfb"] = np.load(os.path.join(directory, model_attr["_Wfb"]))
         with open(os.path.join(directory, model_attr["fbfunc"]), "rb") as f:
             model_attr["fbfunc"] = dill.load(f)
 

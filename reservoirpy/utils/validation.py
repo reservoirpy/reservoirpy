@@ -4,6 +4,7 @@
 from typing import Union, Sequence, Any
 
 import numpy as np
+from scipy.sparse import issparse
 
 
 def add_bias(X):
@@ -93,3 +94,79 @@ def check_input_lists(X, dim_in, Y=None, dim_out=None):
 
     return X, Y
 
+
+def check_datatype(array, caller=None, name=None):
+    caller_name = f"{caller.__class__.__name__} :" if caller is not None else ""
+    array_name = name if isinstance(name, str) else array.__class__.__name___
+
+    if not isinstance(array, np.ndarray) and not issparse(array):
+        array = np.asarray(array)
+
+    if not (np.issubdtype(array.dtype, np.number)):
+        raise TypeError(f"{caller_name} Impossible to operate on non-numerical data, "
+                        f"in array '{array_name}' of type {array.dtype}: {array}")
+
+    msg = f"{caller_name} Impossible to operate on NaN value, " \
+          f"in array '{array_name}': {array}."
+    if issparse(array):
+        if np.any(np.isnan(array.data)):
+            raise ValueError(msg)
+    else:
+        if np.any(np.isnan(array)):
+            raise ValueError(msg)
+
+    msg = f"{caller_name} Impossible to operate on inf value, " \
+          f"in array '{array_name}': {array}."
+    if issparse(array):
+        if np.any(np.isinf(array.data)):
+            raise ValueError(msg)
+    else:
+        if np.any(np.isinf(array)):
+            raise ValueError(msg)
+
+    return array
+
+
+def check_reservoir_matrices(W, Win, Wout=None, Wfb=None, caller=None):
+    caller_name = f"{caller.__class__.__name__} :" if caller is not None else ""
+
+    W = check_datatype(W, caller=caller, name="W")
+    Win = check_datatype(Win, caller=caller, name="Win")
+
+    in_shape = Win.shape
+    res_shape = W.shape
+
+    # W shape is (units, units)
+    if res_shape[0] != res_shape[1]:
+        raise ValueError(f"{caller_name} reservoir matrix W should be square but has "
+                         f"shape {res_shape}.")
+    # Win shape is (units, dim_in [+ bias])
+    if in_shape[0] != res_shape[0]:
+        raise ValueError(f"{caller_name} dimension mismatch between W and Win: "
+                         f"W is of shape {res_shape} and Win is of shape {in_shape} "
+                         f"({res_shape[0]} != {in_shape[0]}).")
+
+    # Wout shape is (dim_out, units + bias)
+    out_shape = None
+    if Wout is not None:
+        Wout = check_datatype(Wout, caller=caller, name="Wout")
+        out_shape = Wout.shape
+        if out_shape[1] != res_shape[0] + 1:
+            raise ValueError(f"{caller_name} dimension mismatch between W and Wout: "
+                             f"W is of shape {res_shape} and Wout is of shape {out_shape} "
+                             f"({res_shape[0]} + bias (1) != {out_shape[1]}).")
+    # Wfb shape is (units, dim_out)
+    if Wfb is not None:
+        Wfb = check_datatype(Wfb, caller=caller, name="Wfb")
+        fb_shape = Wfb.shape
+        if out_shape is not None:
+            if fb_shape[1] != out_shape[0]:
+                raise ValueError(f"{caller_name} dimension mismatch between Wfb and Wout: "
+                                 f"Wfb is of shape {fb_shape} and Wout is of shape {out_shape} "
+                                 f"({fb_shape[1]} != {out_shape[0]}).")
+        if fb_shape[0] != res_shape[0]:
+            raise ValueError(f"{caller_name} dimension mismatch between W and Wfb: "
+                             f"W is of shape {res_shape} and Wfb is of shape {fb_shape} "
+                             f"({res_shape[0]} != {fb_shape[0]}).")
+
+    return W, Win, Wout, Wfb

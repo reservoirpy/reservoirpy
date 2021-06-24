@@ -47,6 +47,7 @@ pass the models to the `ESN` object as parameters.
 See the :py:class:`reservoirpy.ESN` documentation for more information.
 """
 from typing import Callable
+from abc import ABCMeta
 
 import numpy as np
 
@@ -56,6 +57,7 @@ from joblib import Parallel, delayed
 from .utils.validation import check_vector, add_bias
 from .utils.parallel import lock as global_lock
 from .utils.parallel import manager, get_joblib_backend, as_memmap, clean_tempfile
+from .utils.types import Weights, Data
 
 
 def sklearn_linear_model(model: Callable):
@@ -131,58 +133,6 @@ def pseudo_inverse_linear_model():
     return pseudo_inverse_model_solving
 
 
-class OfflineModel:
-
-    Wout: np.ndarray
-    _dim_in: int
-    _dim_out: int
-    _initialized = False
-
-    @property
-    def initialized(self):
-        return self._initialized
-
-    @property
-    def dim_in(self):
-        return self._dim_in
-
-    @property
-    def dim_out(self):
-        return self._dim_out
-
-    def partial_fit(self, X, Y):
-        raise NotImplementedError
-
-    def fit(self, X, Y):
-        raise NotImplementedError
-
-
-class OnlineModel:
-
-    Wout: np.ndarray
-    _dim_in: int
-    _dim_out: int
-    _initialized = False
-
-    @property
-    def initialized(self):
-        return self._initialized
-
-    @property
-    def dim_in(self):
-        return self._dim_in
-
-    @property
-    def dim_out(self):
-        return self._dim_out
-
-    def step_fit(self, X, Y):
-        raise NotImplementedError
-
-    def fit(self, X, Y):
-        raise NotImplementedError
-
-
 def _solve_ridge(XXT, YXT, ridge):
     return linalg.solve(XXT + ridge, YXT.T, assume_a="sym").T
 
@@ -211,6 +161,41 @@ def _check_tikhnonv_terms(XXT, YXT, x, y):
         raise ValueError(f"Impossible to perform _ridge regression: dimension mismatch "
                          f"between target sequence of shape {y.shape} and expected ouptut "
                          f"dimension ({YXT.shape[0]}) ({y.shape[1]} != {YXT.shape[0]})")
+
+
+class Model(metaclass=ABCMeta):
+
+    Wout: Weights
+    _dim_in: int
+    _dim_out: int
+    _initialized = False
+
+    @property
+    def initialized(self):
+        return self._initialized
+
+    @property
+    def dim_in(self):
+        return self._dim_in
+
+    @property
+    def dim_out(self):
+        return self._dim_out
+
+    def fit(self, X: Data = None, Y: Data = None) -> Weights:
+        raise NotImplementedError
+
+
+class OfflineModel(Model, metaclass=ABCMeta):
+
+    def partial_fit(self, X: Data, Y: Data):
+        raise NotImplementedError
+
+
+class OnlineModel(Model, metaclass=ABCMeta):
+
+    def step_fit(self, X: Data, Y: Data) -> Weights:
+        raise NotImplementedError
 
 
 class RidgeRegression(OfflineModel):
@@ -258,7 +243,8 @@ class RidgeRegression(OfflineModel):
     def clean(self):
         del self._XXT
         del self._YXT
-        self.initialize()
+        if self._initialized:
+            self.initialize()
 
     def partial_fit(self, X, Y):
 
@@ -279,7 +265,6 @@ class RidgeRegression(OfflineModel):
             self._XXT += xxt
             self._YXT += yxt
 
-        return
 
     def fit(self, X=None, Y=None):
 
@@ -311,6 +296,9 @@ class SklearnLinearModel(OfflineModel):
         self.workers = workers
         self.dtype = dtype
 
+        self._X = None
+        self._Y = None
+
     def initialize(self, dim_in=None, dim_out=None):
 
         if dim_in is not None:
@@ -327,6 +315,12 @@ class SklearnLinearModel(OfflineModel):
 
         self._initialized = True
 
+    def clean(self):
+        del self._X
+        del self._Y
+        if self._initialized:
+            self.initialize()
+
     def partial_fit(self, X, Y):
 
         X, Y = _prepare_inputs(X, Y, bias=False)
@@ -338,11 +332,6 @@ class SklearnLinearModel(OfflineModel):
         with global_lock:
             self._X.append(X)
             self._Y.append(Y)
-
-    def clean(self):
-        del self._X
-        del self._Y
-        self.initialize()
 
     def fit(self, X=None, Y=None):
 
@@ -360,91 +349,6 @@ class SklearnLinearModel(OfflineModel):
 
         # Then the matrix W = "[b | A]" statisfies "W * X ~= Ytarget"
         self.Wout = np.asarray(np.hstack([b, A]), dtype=self.dtype)
-
-        self.clean()
-
-        return self.Wout
-
-
-class FORCE(OnlineModel):
-
-    # A special thank to Lionel Eyraud-Dubois and
-    # Olivier Beaumont for their improvement of this method.
-
-    def __init__(self, alpha=1e-6, batch_size=64, dtype=np.float64):
-        self.alpha = alpha
-        self.batch_size = batch_size
-        self.dtype = dtype
-
-        self._step = 0
-        self._P = None
-
-    def clean(self):
-        del self._P
-        self._initialized = False
-
-    def initialize(self, dim_in=None, dim_out=None):
-
-        if dim_in is not None:
-            self._dim_in = dim_in
-        if dim_out is not None:
-            self._dim_out = dim_out
-
-        if getattr(self, "Wout", None) is None:
-            self.Wout = np.zeros((self._dim_in + 1, self._dim_out), dtype=self.dtype)
-        if getattr(self, "_P", None) is None:
-            self._P = np.asmatrix(np.eye(self._dim_in + 1, dtype=self.dtype)) / self.alpha
-
-        self._initialized = True
-
-    def step_fit(self, X, Y):
-        X, Y = _prepare_inputs(X, Y, allow_reshape=True)
-
-        if not self._initialized:
-            raise RuntimeError(f"FORCE model was never initialized. Call "
-                               f"'initialize() first.")
-
-        seq_len = len(X)
-        rTPs = np.zeros(shape=(self.dim_in, seq_len))
-        factors = np.zeros(seq_len)
-
-        for i, (r, y) in enumerate(zip(X, Y)):
-            # At each iteration, the actual P is equal to P - factors*rs @ rs.T
-            output = self.Wout @ r.reshape(1, -1).T
-            error = output - y.reshape(-1, 1)
-
-            rt = r
-            rTP = (rt @ self._P) - (rt @ (factors * rTPs)) @ rTPs.T
-            factor = float(1.0 / (1.0 + rTP @ r))
-
-            factors[i] = factor
-            rTPs[:, i] = rTP
-
-            new_rTP = rTP * (1 - factor * (rTP @ r).item())
-            self.Wout -= error @ new_rTP
-
-        self._P -= (factors * rTPs) @ rTPs.T
-
-        return self.Wout
-
-    def fit(self, X, Y):
-        if isinstance(X, list) and isinstance(Y, list):
-            X = np.vstack(X)
-            Y = np.vstack(Y)
-
-        X = add_bias(X)
-
-        if not self._initialized:
-            self.initialize(X, Y)
-
-        max_length = X.shape[0]
-        num_batches = int(np.ceil(max_length / self.batch_size))
-
-        for i in range(num_batches):
-            start = i * self.batch_size
-            end = (i + 1) * self.batch_size if (i + 1) * self.batch_size < max_length else max_length
-
-            self.step_fit(X[start:end], Y[start:end])
 
         self.clean()
 

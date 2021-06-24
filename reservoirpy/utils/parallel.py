@@ -4,15 +4,14 @@
 import os
 import tempfile
 import uuid
-import warnings
-
 from collections import defaultdict
-from typing import Tuple
 from multiprocessing import Manager, Process
+from typing import Tuple
+from functools import partial
 
-import numpy as np
 import joblib
-
+from joblib import Parallel, delayed
+import numpy as np
 from tqdm import tqdm
 
 manager = Manager()
@@ -76,7 +75,7 @@ def memmap(shape: Tuple, dtype: np.dtype,
         caller_name = caller.__class__.__name__
     else:
         caller_name = ""
-    filename = os.path.join(tempfile.gettempdir(),  f"{caller_name + str(uuid.uuid4())}.dat")
+    filename = os.path.join(tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat")
     if caller is not None:
         temp_registry[caller].append(filename)
     return np.memmap(filename, shape=shape, mode=mode, dtype=dtype)
@@ -88,6 +87,61 @@ def clean_tempfile(caller):
             os.remove(file)
         except OSError:
             pass
+
+
+def parallelize(esn,
+                func,
+                workers,
+                lengths,
+                return_states,
+                pbar_text=None,
+                verbose=False,
+                **func_kwargs):
+    workers = min(len(lengths), workers)
+    backend = get_joblib_backend() if workers > 1 or workers == -1 else "sequential"
+
+    steps = np.sum(lengths)
+    ends = np.cumsum(lengths)
+    starts = ends - np.asarray(lengths)
+
+    fn_kwargs = ({k: func_kwargs[k][i] for k in func_kwargs.keys()}
+                 for i in range(len(lengths)))
+
+    states = None
+    if return_states:
+        shape = (steps, esn.N)
+        states = memmap(shape, dtype=esn.typefloat, caller=esn)
+
+    with ParallelProgressQueue(total=steps, text=pbar_text, verbose=verbose) as pbar:
+
+        func = partial(func, pbar=pbar)
+
+        with Parallel(backend=backend, n_jobs=workers) as parallel:
+
+            def func_wrapper(states, start_pos, end_pos, *args, **kwargs):
+                s = func(*args, **kwargs)
+
+                out = None
+                # if function returns states and outputs
+                if hasattr(s, "__len__") and len(s) == 2:
+                    out = s[0]  # outputs are always returned first
+                    s = s[1]
+
+                if return_states:
+                    states[start_pos:end_pos] = s[:]
+
+                return out
+
+            outputs = parallel(delayed(func_wrapper)(states, start, end, **kwargs)
+                               for start, end, kwargs in zip(starts, ends, fn_kwargs))
+
+    if return_states:
+        states = [np.array(states[start:end])
+                  for start, end in zip(starts, ends)]
+
+    clean_tempfile(esn)
+
+    return outputs, states
 
 
 class ParallelProgressQueue:
