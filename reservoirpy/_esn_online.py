@@ -164,10 +164,8 @@ class ESNOnline:
 
         # Wout dimensions check list
         assert len(self.Wout.shape) == 2, f"Wout shape should be (output, nb_states) but is {self.Wout.shape}."
-        nb_states = self.Win.shape[1] + self.W.shape[0] + 1 if self.use_raw_inp else self.W.shape[0] + 1
-        err = f"Wout shape should be (output, {nb_states}) but is {self.Wout.shape}."
-        assert self.Wout.shape[1] == nb_states, err
-
+        err = f"Wout shape should be (output, {self.state_size}) but is {self.Wout.shape}."
+        assert self.Wout.shape[1] == self.state_size, err
         # Wfb dimensions check list
         if self.Wfb is not None:
             assert len(self.Wfb.shape) == 2, f"Wfb shape should be (input, output) but is {self.Wfb.shape}."
@@ -246,7 +244,7 @@ class ESNOnline:
 
         # return the next state computed
         if self.use_raw_inp:
-            self.state = np.vstack((1.0, x1, u.reshape(-1, 1)))
+            self.state = np.vstack((1.0, x1, single_input.reshape(-1, 1)))
         else:
             self.state = np.vstack((1.0, x1))
 

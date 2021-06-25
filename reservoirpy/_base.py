@@ -241,15 +241,15 @@ class _ESNBase(metaclass=ABCMeta):
         # return the next state computed
         return x1
 
-    def compute_states(self,
-                       input: np.ndarray,
-                       forced_teacher: np.ndarray = None,
-                       init_state: np.ndarray = None,
-                       init_fb: np.ndarray = None,
-                       seed: int = None,
-                       verbose: bool = False,
-                       **kwargs
-                       ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+    def _compute_states(self,
+                        input: np.ndarray,
+                        forced_teacher: np.ndarray = None,
+                        init_state: np.ndarray = None,
+                        init_fb: np.ndarray = None,
+                        seed: int = None,
+                        verbose: bool = False,
+                        **kwargs
+                        ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Compute all states generated from a single sequence of inputs.
 
         Parameters
@@ -366,23 +366,15 @@ class _ESNBase(metaclass=ABCMeta):
                 Feedback initialization vector for all inputs, if feedback is
                 enabled. By default, feedback is initialized at 0.
 
-            wash_nr_time_step: int, optional
-                Number of states to consider as transient when training, and to
-                remove when computing the readout weights. By default, no states are
-                removed.
-
             workers: int, optional
                 If n >= 1, will enable parallelization of states computation with
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
 
-            backend: {"threadings", "multiprocessing", "loky"}, optional
-                Backend used for parallelization of states computations.
-                By default, "threading".
-
             verbose: bool, optional
 
-        Returns:
+        Returns
+        -------
             list of np.ndarray
                 All computed states.
         """
@@ -398,7 +390,7 @@ class _ESNBase(metaclass=ABCMeta):
         if forced_teachers is None:
             forced_teachers = [None] * len(inputs)
 
-        compute_states = partial(self.compute_states,
+        compute_states = partial(self._compute_states,
                                  init_state=init_state,
                                  init_fb=init_fb)
 
@@ -416,7 +408,7 @@ class _ESNBase(metaclass=ABCMeta):
         return states
 
     def compute_outputs(self,
-                        states: Sequence[np.ndarray],
+                        states: Data,
                         verbose: bool = False
                         ) -> Sequence[np.ndarray]:
         """Compute all readouts of a given sequence of states,
@@ -481,6 +473,7 @@ class _ESNBase(metaclass=ABCMeta):
             init_fb: np.ndarray = None,
             workers: int = -1,
             return_states=False,
+            backend=None,
             seed: int = None,
             verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
@@ -507,11 +500,14 @@ class _ESNBase(metaclass=ABCMeta):
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
 
-            backend: {"threadings", "multiprocessing", "loky"}, optional
-                Backend used for parallelization of states computations.
-                By default, "threading".
+            return_states: bool, False by default
+                If `True`, the function will return all the internal states computed
+                during the training. Be warned that this may be too heavy for the
+                memory of your computer.
 
             verbose: bool, optional
+            backend:
+                kept for compatibility with previous versions.
 
         Returns
         -------
@@ -538,19 +534,19 @@ class _ESNBase(metaclass=ABCMeta):
             print(f"Running on {len(inputs)} inputs ({steps} steps)")
 
         def run_fn(*, x, pbar):
-            s = self.compute_states(x,
-                                    init_state=init_state,
-                                    init_fb=init_fb,
-                                    seed=seed,
-                                    pbar=pbar)
+            s = self._compute_states(x,
+                                     init_state=init_state,
+                                     init_fb=init_fb,
+                                     seed=seed,
+                                     pbar=pbar)
 
             out = self.compute_outputs([s])[0]
 
             return out, s
 
         outputs, states = parallelize(self, run_fn, workers, lengths, return_states,
-                                       pbar_text="Run", verbose=verbose,
-                                       x=inputs)
+                                      pbar_text="Run", verbose=verbose,
+                                      x=inputs)
 
         return outputs, states
 
@@ -648,10 +644,10 @@ class _ESNBase(metaclass=ABCMeta):
                       f"{warming_inputs.shape[0]} inputs.")
                 print("Computing initial states...")
 
-            warming_states = self.compute_states(warming_inputs,
-                                                 init_state=init_state,
-                                                 init_fb=init_fb,
-                                                 seed=child_seeds[0])
+            warming_states = self._compute_states(warming_inputs,
+                                                  init_state=init_state,
+                                                  init_fb=init_fb,
+                                                  seed=child_seeds[0])
 
             # initial state (at begining of generation)
             s0 = warming_states[-1, :].reshape(1, -1)
@@ -718,4 +714,3 @@ class _ESNBase(metaclass=ABCMeta):
                 Directory where to save the model.
         """
         _save(self, directory)
-

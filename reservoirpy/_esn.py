@@ -217,10 +217,12 @@ class ESN(_ESNBase):
     def train(self,
               inputs: Data,
               teachers: Data,
-              washout: int = 0,
+              wash_nr_time_step: int = 0,
               workers: int = -1,
               seed: int = None,
               verbose: bool = False,
+              backend=None,
+              use_memmap=None,
               return_states: bool = False) -> Sequence[np.ndarray]:
         """Train the ESN model on set of input sequences.
 
@@ -245,9 +247,14 @@ class ESN(_ESNBase):
                 If n >= 1, will enable parallelization of states computation with
                 n threads/processes, if possible. If n = -1, will use all available
                 resources for parallelization. By default, -1.
-            backend: {"threadings", "multiprocessing", "loky"}, optional
-                Backend used for parallelization of states computations.
-                By default, "threading".
+            return_states: bool, False by default
+                If `True`, the function will return all the internal states computed
+                during the training. Be warned that this may be too heavy for the
+                memory of your computer.
+            backend:
+                kept for compatibility with previous versions.
+            use_memmap:
+                kept for compatibility with previous versions.
             verbose: bool, optional
 
         Returns
@@ -276,19 +283,19 @@ class ESN(_ESNBase):
 
         if verbose:
             print(f"Training on {len(inputs)} inputs ({steps} steps) "
-                  f"-- wash: {washout} steps")
+                  f"-- wash: {wash_nr_time_step} steps")
 
         def train_fn(*, x, y, pbar):
-            s = self.compute_states(x, y, seed=seed, pbar=pbar)
-            self.model.partial_fit(s[washout:], y)  # increment X.X^T and Y.X^T
-                                                    # or save data for sklearn fit
+            s = self._compute_states(x, y, seed=seed, pbar=pbar)
+            self.model.partial_fit(s[wash_nr_time_step:], y)  # increment X.X^T and Y.X^T
+                                                              # or save data for sklearn fit
             return s
 
         _, states = parallelize(self, train_fn, workers, lengths, return_states,
-                                 pbar_text="Train", verbose=verbose,
-                                 x=inputs, y=teachers)
+                                pbar_text="Train", verbose=verbose,
+                                x=inputs, y=teachers)
 
         self.Wout = self.model.fit()  # perform Y.X^T.(X.X^T + ridge)^-1
-                                              # or sklearn fit
+                                      # or sklearn fit
 
         return states
