@@ -112,7 +112,7 @@ else:
 Wfb = np.random.rand(N,n_outputs) - 0.5
 
 # # Mantas way
-# Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
+# Win = (np.random.rand(N,1+dim_in)-0.5) * input_scaling
 # W = np.random.rand(N,N)-0.5
 
 ## delete the fraction of connections given the sparsity (i.e. proba of non-zero connections):

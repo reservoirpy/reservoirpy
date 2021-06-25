@@ -148,7 +148,7 @@ else:
 Wfb = np.random.rand(N, n_outputs) - 0.5
 
 # # Mantas way
-# Win = (np.random.rand(N,1+dim_inp)-0.5) * input_scaling
+# Win = (np.random.rand(N,1+dim_in)-0.5) * input_scaling
 # W = np.random.rand(N,N)-0.5
 
 ## delete the fraction of connections given the sparsity (i.e. proba of non-zero connections):
@@ -173,13 +173,12 @@ W = W * (spectral_radius / original_spectral_radius)
 print( "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W))))
 
 nb_states = Win.shape[1] + N + 1 if use_raw_input else N + 1
-Wout = np.zeros((n_outputs, nb_states))
 
 # Init reservoir
 reservoir = ESNOnline(lr=leak_rate,
                       W=W,
                       Win=Win,
-                      Wout=Wout,
+                      dim_out=1,
                       alpha_coef=alpha_coef,
                       use_raw_input=use_raw_input,
                       input_bias=input_bias,

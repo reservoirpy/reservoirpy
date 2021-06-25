@@ -1,29 +1,14 @@
 import os
 import time
 import json
-from typing import Sequence, Union, Any
 
 import dill
 import numpy as np
 
 from scipy import sparse
 
-import reservoirpy
-
-
-def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
-    """ Check if the given array or list contains the given value. """
-    if value == np.nan:
-        assert np.isnan(array_or_list).any() == False, \
-               f"{array_or_list} should not contain NaN values."
-    if value is None:
-        if type(array_or_list) is list:
-            assert np.count_nonzero(array_or_list == None) == 0, \
-                   f"{array_or_list} should not contain None values."
-        elif type(array_or_list) is np.array:
-            # None is transformed to np.nan when it is in an array
-            assert np.isnan(array_or_list).any() == False, \
-                   f"{array_or_list} should not contain NaN values."
+from .._version import __version__
+from .. import regression_models
 
 
 def _save(esn, directory: str):
@@ -76,14 +61,13 @@ def _save(esn, directory: str):
         with open(os.path.join(savedir, fbfunc), "wb+") as f:
             dill.dump(esn.fbfunc, f)
 
-    reg_model = {"type": "pinv"}
-    if esn.ridge is not None:
-        reg_model = {"type": "ridge", "coef": esn.ridge}
-    elif esn.sklearn_model is not None:
-        reg_model = {"type": "sklearn", "path": f"sklearn_func_save-{current_time}"}
-        # reg_model is serialized and stored
-        with open(os.path.join(savedir, reg_model), "wb+") as f:
-            dill.dump(esn.sklearn_model, f)
+    sklearn_model = None
+    if getattr(esn.model, "model", None) is not None:
+        sklearn_model = f"sklearn_func_save-{current_time}"
+        # scikit-learn model is serialized and stored
+        # will require scikit-learn to be imported when loading ESN.
+        with open(os.path.join(savedir, sklearn_model), "wb+") as f:
+            dill.dump(esn.model.model, f)
 
     # a copy of the ESN class is also serialized.
     # allow to load an ESN without necesseraly using the same version of Reservoirpy.
@@ -94,26 +78,27 @@ def _save(esn, directory: str):
     attr = {
         "cls": esn.__class__.__name__,
         "cls_bin": cls_path,
-        "version": reservoirpy.__version__,
+        "version": __version__,
         "serial": current_time,
         "attr": {
-            "W": W_path,
-            "Win": Win_path,
-            "Wfb": Wfb_path,
-            "Wout": Wout_path,
-            "N": esn.N,
+            "_W": W_path,
+            "_Win": Win_path,
+            "_Wfb": Wfb_path,
+            "_Wout": Wout_path,
+            "_N": esn._N,
             "lr": esn.lr,
-            "in_bias": esn.in_bias,
-            "dim_inp": esn.dim_inp,
-            "dim_out": dim_out,
+            "_input_bias": esn.input_bias,
+            "_dim_in": esn._dim_in,
+            "_dim_out": dim_out,
+            "_ridge": esn.ridge,
             "typefloat": esn.typefloat.__name__,
-            "reg_model": reg_model,
+            "sklearn_model": sklearn_model,
             "fbfunc": fbfunc,
             "noise_in": esn.noise_in,
             "noise_out": esn.noise_out,
             "noise_rc": esn.noise_rc,
             "seed": esn.seed,
-            "sklearn_model": esn.sklearn_model
+            "model": esn.model.__class__.__name__
         },
         "misc": {
             "fbfunc_info": fbfunc_info
@@ -129,8 +114,16 @@ def _new_from_save(base_cls, restored_attr):
 
     obj = object.__new__(base_cls)
     for name, attr in restored_attr.items():
-        obj.__setattr__(name, attr)
-    obj.reg_model = obj._get_regression_model(obj.ridge, obj.reg_model)
+        try:
+            obj.__setattr__(name, attr)
+        except AttributeError as e:
+            print(e)
+            print(name, attr)
+
+    obj.model = getattr(regression_models, obj.model)(obj._ridge, obj.sklearn_model)
+
+    del obj.sklearn_model
+    del obj._ridge
 
     return obj
 
@@ -153,32 +146,25 @@ def load(directory: str):
 
     model_attr = attr["attr"]
 
-    if os.path.splitext(model_attr["W"])[1] == ".npy":
-        model_attr["W"] = np.load(os.path.join(directory, model_attr["W"]))
+    if os.path.splitext(model_attr["_W"])[1] == ".npy":
+        model_attr["_W"] = np.load(os.path.join(directory, model_attr["_W"]))
     else:
-        model_attr["W"] = sparse.load_npz(os.path.join(directory, model_attr["W"]))
+        model_attr["_W"] = sparse.load_npz(os.path.join(directory, model_attr["_W"]))
 
-    model_attr["Win"] = np.load(os.path.join(directory, model_attr["Win"]))
+    model_attr["_Win"] = np.load(os.path.join(directory, model_attr["_Win"]))
 
-    if model_attr["Wout"] is not None:
-        model_attr["Wout"] = np.load(os.path.join(directory, model_attr["Wout"]))
-    if model_attr["Wfb"] is not None:
-        model_attr["Wfb"] = np.load(os.path.join(directory, model_attr["Wfb"]))
+    if model_attr["_Wout"] is not None:
+        model_attr["_Wout"] = np.load(os.path.join(directory, model_attr["_Wout"]))
+    if model_attr["_Wfb"] is not None:
+        model_attr["_Wfb"] = np.load(os.path.join(directory, model_attr["_Wfb"]))
         with open(os.path.join(directory, model_attr["fbfunc"]), "rb") as f:
             model_attr["fbfunc"] = dill.load(f)
 
-    if model_attr["reg_model"]["type"] == "ridge":
-        model_attr["ridge"] = model_attr["reg_model"]["coef"]
-        model_attr["reg_model"] = None
-    elif model_attr["reg_model"]["type"] == "sklearn":
-        with open(os.path.join(directory, model_attr["reg_model"]["path"]), "rb") as f:
-            model_attr["reg_model"] = dill.load(f)
-        model_attr["ridge"] = None
-    else:
-        model_attr["reg_model"] = None
-        model_attr["ridge"] = None
+    elif model_attr["sklearn_model"] is not None:
+        with open(os.path.join(directory, model_attr["sklearn_model"]), "rb") as f:
+            model_attr["sklearn_model"] = dill.load(f)
 
-    model_attr["typefloat"] = np.float64
+    model_attr["typefloat"] = getattr(np, model_attr["typefloat"])
 
     with open(os.path.join(directory, attr["cls_bin"]), 'rb') as f:
         base_cls = dill.load(f)
