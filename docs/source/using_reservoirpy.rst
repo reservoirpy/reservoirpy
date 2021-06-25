@@ -202,18 +202,6 @@ treated separately and simultaneously to speed up the computation of activations
     it should always be passed as parameter as ``[X]``, a list containing only
     one element.
 
-Wash out transient states
--------------------------
-
-The default initial state used for computation of all following states is a null vector, and this
-initial value can have impact on the performance of the reservoir. You can discard the first
-computed states using the `wash_nr_time_steps` parameter::
-
-    >>> states = esn.compute_all_states(X, wash_nr_time_steps=10)
-
-In this example, the 10 first generated states will be discarded, for all sequences in ``X``.
-We thus ensure that we only keep states that are not transient, assuming 10 time steps
-is long enough to avoid picking states influenced by the arbitrary initial value.
 
 Start from a previously computed state
 --------------------------------------
@@ -275,10 +263,15 @@ by the reservoir will be *read* using the learnt weights to produce the desired 
 There are several ways to train an :py:class:`ESN` in ReservoirPy, but the most important one
 is using the :py:meth:`ESN.train` method::
 
-    >>> states = esn.train(X, y)
+    >>> esn.train(X, y)
 
 Using some target values ``y`` and the states produced using the input values ``X``, the ESN
 will learn a new ``Wout`` matrix.
+
+By default, training states are not explicitely computed and returned. You can force this behaviour
+by using the ``return_states`` parameter::
+
+    >>> states = esn.train(X, y, return_states=True)
 
 .. note::
 
