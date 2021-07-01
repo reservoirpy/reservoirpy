@@ -15,6 +15,7 @@ from typing import Optional
 from .._types import RandomSeed
 from ._base import Initializer
 from ._base import RandomSparse
+from ._base import Ones, Zeros
 from ._internal import FastSpectralScaling
 from ._internal import SpectralScaling
 from ._internal import NormalSpectralScaling
@@ -32,7 +33,7 @@ __all__ = [
     "NormalSpectralScaling", "UniformSpectralScaling",
     "BimodalSpectralScaling", "LogNormalSpectralScaling",
     "NormalScaling", "UniformScaling",
-    "BimodalScaling"
+    "BimodalScaling", "Ones"
 ]
 
 
@@ -54,7 +55,7 @@ _registry = {
     }
 
 
-def _filter_reservoir_kwargs(obj, **kwargs):
+def filter_reservoir_kwargs(obj, **kwargs):
 
     input_kwargs = dict()
     reservoir_kwargs = dict()

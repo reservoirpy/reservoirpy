@@ -10,6 +10,7 @@ from typing import Tuple, Callable, Optional
 from abc import ABC
 from functools import partial
 
+import numpy as np
 from scipy import sparse
 from scipy import stats
 from numpy.random import Generator
@@ -294,3 +295,21 @@ class RandomSparse(Initializer):
                                     self.random_state,
                                     self.sparsity_type,
                                     **self._rvs_kwargs)
+
+
+class Ones(Initializer):
+
+    def __init__(self):
+        super(Ones, self).__init__(seed=None)
+
+    def __call__(self, shape):
+        return np.ones(shape)
+
+
+class Zeros(Initializer):
+
+    def __init__(self):
+        super(Zeros, self).__init__(seed=None)
+
+    def __call__(self, shape):
+        return np.zeros(shape)

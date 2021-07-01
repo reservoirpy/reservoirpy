@@ -12,7 +12,6 @@ References
            State Networks’, Jan. 2012, doi: 10.1007/978-3-642-35289-8_36.
 
 """
-
 # @author: Xavier HINAUT
 # xavier.hinaut@inria.fr
 # Copyright Xavier Hinaut 2018
@@ -105,19 +104,21 @@ class ESN:
     _tempteach = Path(mkdtemp(), "teachers.dat")
 
     def __init__(self,
-                 lr: float,
-                 W: np.ndarray,
-                 Win: np.ndarray,
+                 shape: Union[Tuple[int, int, int], int] = None,
+                 lr: float = 1.0,
+                 W: Union[np.ndarray, Callable, str] = "norm",
+                 Win: Union[np.ndarray, Callable, str] = "bimodal",
                  input_bias: bool = True,
                  reg_model: Callable = None,
                  ridge: float = None,
-                 Wfb: np.ndarray = None,
+                 Wfb: Union[np.ndarray, Callable, str] = None,
                  fbfunc: Callable = None,
                  noise_in: float = 0.0,
                  noise_rc: float = 0.0,
                  noise_out: float = 0.0,
                  seed: int = None,
-                 typefloat: np.dtype = np.float64):
+                 typefloat: np.dtype = np.float64,
+                 **kwargs):
 
         self.W = W
         self.Win = Win
@@ -283,7 +284,7 @@ class ESN:
         else:
             u = np.asarray(single_input)
 
-        # prepare noise sequence
+        # prepare noise sequence
         noise_in = self.noise_in * noise_generator.uniform(-1, 1, size=(self.dim_inp, 1))
         noise_rc = self.noise_rc * noise_generator.uniform(-1, 1, size=(self.N, 1))
 

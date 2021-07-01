@@ -49,7 +49,7 @@ def dummy_data():
 
 def test_esn(matrices, dummy_data):
     W, Win, Wout = matrices
-    esn = ESNOnline(lr=0.1, W=W, Win=Win, Wout=Wout, input_bias=False)
+    esn = ESNOnline(lr=0.1, W=W, Win=Win, dim_out=2, input_bias=False)
     X, y = dummy_data
     states = esn.train([X], [y])
 
@@ -73,7 +73,7 @@ def test_esn(matrices, dummy_data):
 def test_esn_fb(matrices_fb, dummy_data):
     W, Win, Wout, Wfb = matrices_fb
     esn = ESNOnline(lr=0.1, W=W, Win=Win, Wfb=Wfb,
-                    Wout=Wout, input_bias=False,
+                    dim_out=2, input_bias=False,
                     fbfunc=np.tanh)
     X, y = dummy_data
     states = esn.train([X], [y])

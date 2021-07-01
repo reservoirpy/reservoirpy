@@ -7,7 +7,7 @@ from pytest import raises
 from numpy.testing import assert_array_almost_equal
 from numpy.random import default_rng
 
-from .._reservoir import Reservoir
+from reservoirpy.nodes.reservoir import Reservoir
 
 
 @pytest.fixture(scope="session")
@@ -26,7 +26,7 @@ def matrices():
                     [-1, 1],
                     [-1, 1]])
 
-    return W, Win, Wfb
+    return W, Win.T, Wfb.T
 
 
 @pytest.fixture(scope="session")
@@ -62,64 +62,85 @@ def dummy_readout():
     return dummy_Wout
 
 
-def test_reservoir(dummy_data, matrices):
+def test_reservoir_call(dummy_data, matrices):
 
     W, Win, _ = matrices
-    res = Reservoir(lr=1.0, W=W, Win=Win, input_bias=False)
-
-    assert res.shape == (Win.shape[1], W.shape[0], None)
+    res = Reservoir(lr=1.0, W=W, Win=Win)
 
     X, y = dummy_data
-    states = res(X)
+    states = res(X[0])
+
+    assert res.is_initialized
+
+    assert states.shape == (1, W.shape[0])
+    assert res.output_dim == W.shape[0]
+
+
+def test_reservoir_run(dummy_data, matrices):
+
+    W, Win, _ = matrices
+    res = Reservoir(lr=1.0, W=W, Win=Win)
+
+    X, y = dummy_data
+    states = res.run(X)
 
     assert states.shape == (X.shape[0], W.shape[0])
+    assert res.output_dim == W.shape[0]
 
 
-def test_reservoir_from_previous_state(dummy_data, matrices):
-
-    W, Win, _ = matrices
-    res = Reservoir(lr=0.1, W=W, Win=Win, input_bias=False)
-
-    assert res.shape == (Win.shape[1], W.shape[0], None)
-
-    X, y = dummy_data
-    states = res(X)
-
-    states2 = res(X)
-
-    states3 = res(X, from_state=states[-1])
-
-    assert_array_almost_equal(states2, states3)
-
-
-def test_reservoir_from_previous_state_and_input(dummy_data, matrices):
+def test_reservoir_call_from_previous_state(dummy_data, matrices):
 
     W, Win, _ = matrices
-    res = Reservoir(lr=0.1, W=W, Win=Win, input_bias=False)
-
-    assert res.shape == (Win.shape[1], W.shape[0], None)
+    res = Reservoir(lr=1.0, W=W, Win=Win)
 
     X, y = dummy_data
-    states = res(X)
+    states = res(X[0])
 
-    states2 = res(X)
+    assert states.shape == (1, W.shape[0])
+    assert res.output_dim == W.shape[0]
 
-    states3 = res(X, from_state=states[-1], from_input=X[-1])
+    states20 = res(X[0])
+    states3 = res(X[0])
 
-    assert_array_almost_equal(states2, states3)
+    states21 = res(X[0], from_state=states)
+
+    assert_array_almost_equal(states20, states21)
+    with pytest.raises(AssertionError):
+        assert_array_almost_equal(states21, states3)
 
 
-def test_reservoir_no_stateful(dummy_data, matrices):
+def test_reservoir_run_from_previous_state(dummy_data, matrices):
 
     W, Win, _ = matrices
-    res = Reservoir(lr=0.1, W=W, Win=Win, input_bias=False)
+    res = Reservoir(lr=1.0, W=W, Win=Win)
 
     X, y = dummy_data
-    states = res(X, stateful=False)
+    states = res.run(X)
 
-    states2 = res(X)
+    assert states.shape == (X.shape[0], W.shape[0])
+    assert res.output_dim == W.shape[0]
 
-    states3 = res(X, stateful=False)
+    states20 = res.run(X)
+    states3 = res.run(X, from_state=states[-5])
+
+    states21 = res.run(X, from_state=states[-1])
+
+    assert_array_almost_equal(states20, states21)
+    with pytest.raises(AssertionError):
+        assert_array_almost_equal(states21, states3)
+
+
+def test_reservoir_call_no_stateful(dummy_data, matrices):
+
+    W, Win, _ = matrices
+    res = Reservoir(lr=0.1, W=W, Win=Win)
+
+    X, y = dummy_data
+    states = res(X[0], stateful=False)
+
+    states2 = res(X[0])
+
+    states3 = res(X[0], stateful=False)
 
     assert_array_almost_equal(states2, states)
     assert_array_almost_equal(states2, states3)

@@ -1,13 +1,16 @@
-from typing import Callable, Union, Tuple, Optional
+from typing import Callable, Union, Tuple, Optional, Sequence
 
 import numpy as np
 from numpy.random import Generator, default_rng
 
-from .activationsfunc import get_function
+from reservoirpy.activationsfunc import get_function
 
-from .core import _next_state
-from ._utils import _check_vector, _add_bias
-from ._types import Weights
+from ..initializers import get as get_init
+from ..initializers import filter_reservoir_kwargs
+from .._utils import _check_vector, _add_bias
+from .._types import Weights
+from ..utils.validation import check_matrix, is_object_sequence, is_array
+from ..node import _Node
 
 
 def _noisify(vector: np.ndarray,
@@ -22,70 +25,81 @@ def _noisify(vector: np.ndarray,
     return vector
 
 
-def _isquare(array: np.ndarray) -> bool:
-    return array.shape[0] == array.shape[1]
+def _get_reservoir_inits(obj, params, **kwargs):
+
+    input_kwargs, internal_kwargs, fb_kwargs = filter_reservoir_kwargs(obj, **kwargs)
+    init_kwargs = {"Win": input_kwargs, "W": internal_kwargs, "Wfb": fb_kwargs}
+
+    inits = dict()
+    matrices = dict()
+    for key in params.keys():
+        init = params[key]
+        if isinstance(init, str):
+            init = get_init(init, **init_kwargs[key])
+        if not callable(init):
+            inits[key] = check_matrix(init)
+        else:
+            inits[key] = init
+    return inits, matrices, {"Win": input_kwargs, "W": internal_kwargs, "Wfb": fb_kwargs}
 
 
-def _is2dimensional(array: np.ndarray) -> bool:
-    return array.ndim == 2
+def _parse_reservoir_shape(shape, params):
+
+    input_dim = None
+    if is_array(params.get("Win")):
+        input_dim = params["Win"].shape[1]
+
+    state_dim = None
+    if is_array(params.get("W")):
+        state_dim = params["W"].shape[0]
+
+    fb_dim = None
+    if is_array(params.get("Wfb")):
+        fb_dim = params["Wfb"].shape[0]
+
+    if shape is None:
+        if state_dim is None:
+            raise ValueError("Shape parameter can not be None if "
+                             "weight matrices are not provided.")
+        shape = input_dim, state_dim, fb_dim
+
+    elif shape is int:
+        if state_dim is not None:
+            if state_dim != shape:
+                raise ValueError("Shape parameter should be None if "
+                                 "W matrix is provided, or should match "
+                                 "the provided matrix dimension.")
+        shape = input_dim, shape, fb_dim
+
+    elif is_object_sequence(shape):
+        if len(shape) < 3:
+            if state_dim is not None or input_dim is not None:
+                if state_dim != shape[1] or input_dim != shape[0]:
+                    raise ValueError("Shape parameter should be None if "
+                                     "W and Win matrices are provided, or "
+                                     "should match the dimensions of the "
+                                     "provided matrices.")
+            shape = shape[0], shape[1], fb_dim
+        elif len(shape) > 3:
+            raise ValueError("Too many value for 'shape' parameter. "
+                             f"Expected maximum 3 received {len(shape)}.")
+    else:
+        raise ValueError("'shape' parameter must be an int 'nb neurons' or a sequence of int "
+                         "(input_dim, nb_neurons) or (input_dim, nb_neurons, output_dim), not "
+                         f"{type(shape)}: {shape}.")
+
+    return shape[0], shape[1], shape[2]
 
 
-""""
-readout = Readout()
-reservoir = Reservoir()
-
-x = inputs
-
-states = reservoir.run(x, feedback=targets)
-
-readout.fit(states, targets)
-
-new_states = reservoir.run(x, feedback=readout)
-outputs = readout(new_states)
+def _parse_matrices_shapes(input_dim, state_dim, fb_dim):
+    return {"Win": (state_dim, input_dim), "W": state_dim, "Wfb": (state_dim, fb_dim)}
 
 
-X, Y, Xtest, Ytest = mackey_glass
-
-states = reservoir.run(X, feedback=y)
-readout_fitted = readout.fit(states, Y)
-
-test_states = reservoir.run(Xtest, feedback=readout_fitted)
-outputs = readout(test_states)
-
-outputs = reservoir.run(Xtest, feedback=readout.fit(reservoir.run(X, feedback=y), y, from_state=test_states[-1, :]))
-outputs_2 = reservoir.run(Xtest, feedback=readout.fit(reservoir.run(X, feedback=y), y))
-
-outputs == outputs_2
-
-test_states = reservoir.run(Xtest, feedback=readout.fit(reservoir.run(X, feedback=outputs), outputs))
+def forward():
+    ...
 
 
-
-states = reservoir(X)
-
-LSTM.fit(states, ...)
-
-attention = LSTM(states, ...)
-
-outputs = readout.fit(attention, y)
-
-
-readout = ReadoutRidge(ridge=0.1)
-
-states = reservoir.run(inputs, feedback=target1)
-
-readout1 = readout.fit(states, targets1)
-readout2 = readout.fit(states, targets2)
-
-states_test = reservoir.run(inputs_test, feedback=targets1)
-
-
-model = OnlineModel(reservoir, readout_online)
-
-states, readout1 = reservoir.run(inputs, feedback=targets1, train_online=readout)
-"""
-
-class Reservoir:
+class Reservoir(_Node):
     """Base tool for reservoir computing
     using analog artificial neural networks.
 
@@ -169,7 +183,6 @@ class Reservoir:
             ``(Win.shape[1], W.shape[0], Wfb.shape[1])``.
     """
 
-    _state: np.ndarray
     _last_input: np.ndarray
 
     W: Weights
@@ -226,19 +239,36 @@ class Reservoir:
         return self._last_input
 
     def __init__(self,
-                 shape,
+                 shape: Union[Sequence[int, int, int], Sequence[int, int], int] = None,
                  lr: float = 1.0,
+                 sr: float = None,
                  input_bias: bool = True,
                  noise_rc: float = 0.0,
                  noise_in: float = 0.0,
                  noise_out: float = 0.0,
-                 Win: Optional[Weights] = None,
-                 W: Optional[Weights] = None,
-                 Wfb: Optional[Weights] = None,
-                 fb_activation: Union[str,
-                                      Callable] = "id",
+                 Win: Optional[Weights, Callable, str] = "norm",
+                 W: Optional[Weights, Callable, str] = "bimodal",
+                 Wfb: Optional[Weights, Callable, str] = None,
+                 fb_activation: Union[str, Callable] = "id",
+                 activation: Union[str, Callable] = "tanh",
+                 **kwargs
                  ):
-        self.lr = lr
+        self.is_built = False
+
+        if shape is None and W is None:
+            raise ValueError("Impossible to create reservoir "
+                             "if no 'shape' or no weight matrix 'W'"
+                             "is provided.")
+
+        params = {"W": W, "Win": Win, "Wfb": Wfb}
+        self._input_dim, self._output_dim, self._fb_dim = _parse_reservoir_shape(shape, params)
+        self._shape = self._input_dim, self._output_dim, self._fb_dim
+        self._initializers, self._params, self._init_kwargs = _get_reservoir_inits(self, params,
+                                                                                   reservoir_sr=sr,
+                                                                                   **kwargs)
+
+        self.initialize()
+
         self.Win = _check_vector(Win)
         self.W = _check_vector(W)
         self.Wfb = None
@@ -257,6 +287,7 @@ class Reservoir:
         self.noise_in = noise_in
         self.noise_out = noise_out
         self.input_bias = input_bias
+        self.lr = lr
 
         self.shape = tuple()
         self._check_matrices()
@@ -417,6 +448,21 @@ class Reservoir:
         if n_steps:
             return np.zeros((n_steps, self.shape[1]))
         return np.zeros((inputs.shape[0], self.shape[1]))
+
+
+    def _update_shape(self, inputs=None, feedback=None):
+        if inputs is not None:
+            self.shape[0] = inputs.shape[1]
+        if feedback is not None:
+            self.shape[2] = feedback.shape[1]
+
+
+    def initialize(self):
+        matrices_shapes = _parse_matrices_shapes(*self._shape)
+        for param, init in self._initializers.items():
+            if self._params.get(param) is None:
+                self._params[param] = init(matrices_shapes[param])
+
 
     def run(self,
             inputs: np.ndarray = None,

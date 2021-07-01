@@ -13,7 +13,7 @@ from typing import Sequence, Callable, Tuple, Union
 
 import numpy as np
 
-from ._utils import _save
+from .utils.save import _save
 
 
 class ESNOnline:
@@ -22,7 +22,7 @@ class ESNOnline:
                  lr: float,
                  W: np.ndarray,
                  Win: np.ndarray,
-                 Wout: np.ndarray,
+                 dim_out: int,
                  alpha_coef: float = 1e-6,
                  use_raw_input: bool = False,
                  input_bias: bool = True,
@@ -71,7 +71,7 @@ class ESNOnline:
             Readout matrix
         dim_out: int
             Output dimension
-        dim_inp: int
+        dim_in: int
             Input dimension
         N: int
             Number of neuronal units
@@ -95,13 +95,8 @@ class ESNOnline:
         self.W = W
         self.Win = Win
         self.Wfb = Wfb
-        self.Wout = Wout
 
         self.use_raw_inp = use_raw_input
-
-        # check if dimensions of matrices are coherent
-        self._autocheck_dimensions()
-        self._autocheck_nan()
 
         # number of neurons
         self.N = self.W.shape[1]
@@ -110,8 +105,15 @@ class ESNOnline:
         # dimension of inputs (not including the bias at 1)
         self.dim_inp = self.Win.shape[1] - 1 if self.in_bias else self.Win.shape[1]
 
-        self.dim_out = Wout.shape[0]
-        self.state_size = Wout.shape[1]
+        self.dim_out = dim_out
+        self.state_size = self.dim_inp + self.N + 1 if self.use_raw_inp else self.N + 1
+
+        self.Wout = np.zeros((self.dim_out, self.state_size), dtype=typefloat)
+
+        # check if dimensions of matrices are coherent
+        self._autocheck_dimensions()
+        self._autocheck_nan()
+
         self.output_values = np.zeros((self.dim_out, 1)).astype(typefloat)
 
         self.typefloat = typefloat
@@ -127,6 +129,7 @@ class ESNOnline:
 
         # Init internal state vector and state_corr_inv matrix
         # (useful if we want to freeze the online learning)
+        self.state = None
         self.reset_reservoir()
         self.reset_correlation_matrix()
 
@@ -161,10 +164,8 @@ class ESNOnline:
 
         # Wout dimensions check list
         assert len(self.Wout.shape) == 2, f"Wout shape should be (output, nb_states) but is {self.Wout.shape}."
-        nb_states = self.Win.shape[1] + self.W.shape[0] + 1 if self.use_raw_inp else self.W.shape[0] + 1
-        err = f"Wout shape should be (output, {nb_states}) but is {self.Wout.shape}."
-        assert self.Wout.shape[1] == nb_states, err
-
+        err = f"Wout shape should be (output, {self.state_size}) but is {self.Wout.shape}."
+        assert self.Wout.shape[1] == self.state_size, err
         # Wfb dimensions check list
         if self.Wfb is not None:
             assert len(self.Wfb.shape) == 2, f"Wfb shape should be (input, output) but is {self.Wfb.shape}."
@@ -231,7 +232,7 @@ class ESNOnline:
         else:
             u = np.asarray(single_input)
 
-        # linear transformation
+        # linear transformation
         x1 = self.Win @ u.reshape(-1, 1) + self.W @ x.reshape(-1, 1)
 
         # add feedback if requested
@@ -243,7 +244,7 @@ class ESNOnline:
 
         # return the next state computed
         if self.use_raw_inp:
-            self.state = np.vstack((1.0, x1, u.reshape(-1, 1)))
+            self.state = np.vstack((1.0, x1, single_input.reshape(-1, 1)))
         else:
             self.state = np.vstack((1.0, x1))
 
@@ -288,11 +289,19 @@ class ESNOnline:
 
         return output, state
 
-    def reset_reservoir(self):
+    def reset_state(self):
         """Reset reservoir by setting internal values to zero.
 
         """
         self.state = np.zeros((self.state_size, 1), dtype=self.typefloat)
+
+    def reset_reservoir(self):
+        """Reset reservoir by setting internal values to zero.
+
+        """
+        self.reset_state()
+        self.Wout = np.zeros((self.dim_out, self.state_size), dtype=self.typefloat)
+        self.reset_correlation_matrix()
 
     def reset_correlation_matrix(self):
         """Reset inverse correlation state matrix to the initial value :
