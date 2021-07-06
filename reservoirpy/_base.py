@@ -37,9 +37,9 @@ class _ESNBase(metaclass=ABCMeta):
     _N: int
 
     def __init__(self,
-                 lr: float,
                  W: Weights,
                  Win: Weights,
+                 lr: float = 1.0,
                  input_bias: bool = True,
                  activation: Activation = np.tanh,
                  Wfb: Weights = None,
@@ -236,7 +236,7 @@ class _ESNBase(metaclass=ABCMeta):
             x1 += (fb + noise_out) @ self.Wfb.T
 
         # previous states memory leak and non-linear transformation
-        x1 = (1-self.lr) * x + self.lr * (np.tanh(x1)+noise_rc)
+        x1 = (1-self.lr) * x + self.lr * (self.activation(x1)+noise_rc)
 
         # return the next state computed
         return x1
