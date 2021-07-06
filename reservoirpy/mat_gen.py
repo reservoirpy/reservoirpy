@@ -40,10 +40,11 @@ from scipy import stats
 import numpy as np
 
 from numpy.random import Generator, default_rng
-from numpy.random import RandomState, MT19937
 from scipy import sparse
 
 from .observables import spectral_radius
+from .utils.random import get_generator
+
 
 __all__ = [
     "fast_spectral_initialization",
@@ -54,21 +55,6 @@ __all__ = [
 
 def _is_probability(proba: float) -> bool:
     return 1. - proba >= 0. and proba >= 0.
-
-
-def _get_generator(seed: Union[int, Generator]) -> Generator:
-    if isinstance(seed, Generator):
-        return seed
-    # provided to support legacy RandomState generator
-    # of Numpy. It is not the best thing to do however
-    # and recommend the user to keep using integer seeds
-    # and proper Numpŷ Generator API.
-    if isinstance(seed, RandomState):
-        mt19937 = MT19937()
-        mt19937.state = seed.get_state()
-        return Generator(mt19937)
-    else:
-        return default_rng(seed)
 
 
 def _get_rvs(dist: str,
@@ -199,7 +185,7 @@ def fast_spectral_initialization(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rg = _get_generator(seed)
+    rg = get_generator(seed)
 
     if sr is None or proba <= 0.:
         a = 1
@@ -312,7 +298,7 @@ def generate_internal_weights(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rg = _get_generator(seed)
+    rg = get_generator(seed)
 
     rvs = _get_rvs(dist,
                    random_state=rg,
@@ -420,7 +406,7 @@ def generate_input_weights(N: int,
     if input_bias:
         dim_input += 1
 
-    rg = _get_generator(seed)
+    rg = get_generator(seed)
 
     rvs = _get_rvs(dist,
                    **kwargs,
