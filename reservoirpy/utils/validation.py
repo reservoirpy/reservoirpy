@@ -34,7 +34,7 @@ def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
                    f"{array_or_list} should not contain NaN values."
 
 
-def check_vector(array, allow_reshape=True):
+def check_vector(array, allow_reshape=True, expand_axis=0):
     if not isinstance(array, np.ndarray):
         raise TypeError(f"Data type '{type(array)}' not understood. All sequences of data "
                         f"should be Numpy arrays, or lists of Numpy arrays.")
@@ -44,7 +44,10 @@ def check_vector(array, allow_reshape=True):
 
     if allow_reshape:
         if array.ndim < 2:
-            array = array.reshape(1, -1)
+            if expand_axis == 0:
+                array = array.reshape(1, -1)
+            elif expand_axis == 1:
+                array = array.reshape(-1, 1)
 
     return array
 
