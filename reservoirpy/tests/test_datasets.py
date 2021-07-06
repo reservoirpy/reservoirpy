@@ -13,7 +13,8 @@ from ..datasets import to_forecasting
     datasets.lorenz,
     datasets.mackey_glass,
     datasets.multiscroll,
-    datasets.rabinovich_fabrikant
+    datasets.rabinovich_fabrikant,
+    datasets.narma,
 ])
 def test_generation(dataset_func):
 

@@ -4,10 +4,12 @@ from typing import Union
 
 import numpy as np
 
-from numpy.random import RandomState
+from numpy.random import RandomState, Generator
 from scipy.integrate import solve_ivp
 
 from ._seed import get_seed
+from ..utils.random import get_generator
+from ..utils.validation import check_vector
 
 
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
@@ -48,13 +50,13 @@ def henon_map(n_timesteps: int,
             Number of timesteps to generate.
         a : float, optional
             :math:`a` parameter of the system.
-            By default, equal to 1.4.
+            By default, equals to 1.4.
         b : float, optional
             :math:`b` parameter of the system.
-            By default, equal to 0.3.
+            By default, equals to 0.3.
         x0 : list or numpy.ndarray, optional
             Initial conditions of the system.
-            By default, equal to [0.0, 0.0].
+            By default, equals to [0.0, 0.0].
 
     Returns
     -------
@@ -94,10 +96,10 @@ def logistic_map(n_timesteps: int,
             Number of timesteps to generate.
         r : float, optional
             :math:`r` parameter of the system.
-            By default, equal to 3.9.
+            By default, equals to 3.9.
         x0 : float, optional
             Initial condition of the system.
-            By default, equal to 0.5.
+            By default, equals to 0.5.
 
     Returns
     -------
@@ -147,20 +149,20 @@ def lorenz(n_timesteps: int,
             Number of timesteps to generate.
         rho : float, optional
             :math:`\\rho` parameter of the system.
-            By default, equal to 28.0.
+            By default, equals to 28.0.
         sigma : float, optional
             :math:`\\sigma` parameter of the system.
-            By default, equal to 10.0.
+            By default, equals to 10.0.
         beta : float, optional
             :math:`\\beta` parameter of the system.
-            By default, equal to :math:`\\frac{8}{3}`.
+            By default, equals to :math:`\\frac{8}{3}`.
         x0 : list or numpy.ndarray, optional
             Initial conditions of the system.
-            By default, equal to [1.0, 1.0, 1.0].
+            By default, equals to [1.0, 1.0, 1.0].
         h : float, optional
             Controls the continuous time delta between two
             discrete timesteps.
-            By default, equal to 0.03.
+            By default, equals to 0.03.
 
     Returns
     -------
@@ -198,7 +200,7 @@ def mackey_glass(n_timesteps: int,
                  n: int = 10,
                  x0: float = 1.2,
                  h: float = 1.0,
-                 seed: Union[int, RandomState] = None) -> np.ndarray:
+                 seed: Union[int, RandomState, Generator] = None) -> np.ndarray:
     """Mackey-Glass timeseries [#]_ [#]_, computed from the Mackey-Glass
     delayed differential equation:
 
@@ -212,24 +214,24 @@ def mackey_glass(n_timesteps: int,
             Number of timesteps to compute.
         tau : int, optional
             Time delay :math:`\\tau` of Mackey-Glass equation.
-            By defaults, equal to 17. Other values can
+            By defaults, equals to 17. Other values can
             change the choatic behaviour of the timeseries.
         a : float, optional
             :math:`a` parameter of the equation.
-            By default, equal to 0.2.
+            By default, equals to 0.2.
         b : float, optional
             :math:`b` parameter of the equation.
-            By default, equal to 0.1.
+            By default, equals to 0.1.
         n : int, optional
             :math:`n` parameter of the equation.
-            By default, equal to 10.
+            By default, equals to 10.
         x0 : float, optional
             Initial condition of the timeseries.
-            By default, equal to 1.2.
+            By default, equals to 1.2.
         h : float, optional
             Time delta for the Runge-Kuta method. Can be assimilated
             to the number of discrete point computed per timestep.
-            By default, equal to 1.0.
+            By default, equals to 1.0.
         seed : int or RandomState
             Random state seed for reproducibility.
 
@@ -263,18 +265,16 @@ def mackey_glass(n_timesteps: int,
     # a random state is needed as the method used to discretize
     # the timeseries needs to use randomly generated initial steps
     # based on the initial condition passed as parameter.
-    if isinstance(seed, RandomState):
-        rs = seed
-    elif seed is not None:
-        rs = RandomState(seed)
-    else:
-        rs = RandomState(get_seed())
+    if seed is None:
+        seed = get_seed()
+
+    rs = get_generator(seed)
 
     # generate random first step based on the value
     # of the initial condition
     history_length = int(np.floor(tau/h))
     history = collections.deque(x0 * np.ones(history_length)
-                                + 0.2 * (rs.rand(history_length) - 0.5))
+                                + 0.2 * (rs.random(history_length) - 0.5))
     xt = x0
 
     X = np.zeros(n_timesteps)
@@ -316,20 +316,20 @@ def multiscroll(n_timesteps: int,
             Number of timesteps to generate.
         a : float, optional
             :math:`a` parameter of the system.
-            By default, equal to 40.
+            By default, equals to 40.
         b : float, optional
             :math:`b` parameter of the system.
-            By default, equal to 3.
+            By default, equals to 3.
         c : float, optional
             :math:`c` parameter of the system.
-            By default, equal to 28`.
+            By default, equals to 28`.
         x0 : list or numpy.ndarray, optional
             Initial conditions of the system.
-            By default, equal to [-0.1, 0.5, -0.6].
+            By default, equals to [-0.1, 0.5, -0.6].
         h : float, optional
             Controls the continuous time delta between two
             discrete timesteps.
-            By default, equal to 0.01.
+            By default, equals to 0.01.
 
     Returns
     -------
@@ -382,17 +382,17 @@ def rabinovich_fabrikant(n_timesteps: int,
             Number of timesteps to generate.
         alpha : float, optional
             :math:`\\alpha` parameter of the system.
-            By default, equal to 1.1.
+            By default, equals to 1.1.
         gamma : float, optional
             :math:`\\gamma` parameter of the system.
-            By default, equal to 0.89.
+            By default, equals to 0.89.
         x0 : list or numpy.ndarray, optional
             Initial conditions of the system.
-            By default, equal to [-1, 0, 0.5].
+            By default, equals to [-1, 0, 0.5].
         h : float, optional
             Controls the continuous time delta between two
             discrete timesteps.
-            By default, equal to 0.05.
+            By default, equals to 0.05.
 
     Returns
     -------
@@ -424,3 +424,77 @@ def rabinovich_fabrikant(n_timesteps: int,
                     dense_output=True)
 
     return sol.sol(t).T
+
+
+def narma(n_timesteps: int,
+          order: int = 30,
+          a1: float = 0.2,
+          a2: float = 0.04,
+          b: float = 1.5,
+          c: float = 0.001,
+          x0: float = 0,
+          seed: Union[int, RandomState] = None):
+    """Non-linear Autoregressive Moving Average (NARMA) timeseries,
+    as first defined in [1]_, and as used in [2]_.
+
+    NARMA n-th order dynamical system is defined by the recurrent relation:
+
+        .. math::
+
+            y[t+1] = a_1 y[t] + a_2 y[t] (\\sum_{0}{n-1} y[t-i]) + b u[t-(n-1)]u[t] + c
+
+    where :math:`u[t]` are sampled following an uniform distribution in :math:`[0, 0.5]`.
+
+        Parameters
+        ----------
+            n_timesteps : int
+                Number of timesteps to generate.
+            order: int, optional
+                Order of the system, by default 30.
+            a1 : float, optional
+                :math:`a_1` parameter of the system.
+                By default, equals to 0.2.
+            a2 : float, optional
+                :math:`a_2` parameter of the system.
+                By default, equals to 0.04.
+            b : float, optional
+                :math:`b` parameter of the system.
+                By default, equals to 1.5.
+            c : float, optional
+                :math:`c` parameter of the system.
+                By default, equals to 0.001.
+            x0 : list or numpy.ndarray, optional
+                Initial conditions of the system.
+                By default, initial steps are 0.
+
+        Returns
+        -------
+            numpy.ndarray
+                Rabinovitch-Fabrikant system timeseries.
+
+        References
+        ----------
+            .. [1] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
+                   network training: unifying the algorithms and accelerating
+                   convergence,‘ in IEEE Transactions on Neural Networks,
+                   vol. 11, no. 3, pp. 697-709, May 2000, doi: 10.1109/72.846741.
+
+            .. [2] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
+                   D. Stroobandt, ‘Improving reservoirs using intrinsic plasticity‘,
+                   Neurocomputing, 71. 1159-1171, 2008, doi: 10.1016/j.neucom.2007.12.020.
+
+        """
+
+    if seed is None:
+        seed = get_seed()
+    rs = get_generator(seed)
+
+    y = np.zeros((n_timesteps+order, 1))
+
+    x0 = check_vector(np.asarray(x0), allow_reshape=True, expand_axis=1)
+    y[:x0.shape[0], :] = x0
+
+    noise = rs.uniform(0, 0.5, size=(n_timesteps+order, 1))
+    for t in range(order, n_timesteps+order-1):
+        y[t+1] = a1*y[t] + a2*y[t]*np.sum(y[t-order:t]) + b*noise[t-order]*noise[t] + c
+    return y[order:, :]
