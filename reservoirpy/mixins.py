@@ -10,6 +10,7 @@ from .node import Node, Model
 from .utils.validation import check_vector
 
 
+"""""""""""
 class FeedbackReceiver(Node):
 
     _feedback: Node
@@ -62,7 +63,6 @@ class FeedbackReceiver(Node):
                 return self._feedback.call(mapping)
 
     def zero_feedback(self):
-        """A null state vector."""
         return self._feedback.zero_state()
 
     def initialize_feedback(self):
@@ -116,7 +116,6 @@ class FeedbackReceiver(Node):
                                 f"it is neither a Node instance nor an array.")
         else:
             yield self
-    """
     def call(self, x, forced_feedback=None, from_state=None, stateful=True, reset=False):
         x = self._check_input(x)
         if forced_feedback is not None:
@@ -151,11 +150,10 @@ class FeedbackReceiver(Node):
                 states[i, :] = s
 
         return states
-    """
 
     def __lshift__(self, other):
         return self.link_feedback(other)
-
+"""""""""""
 
 class TrainableOffline(Node):
 
