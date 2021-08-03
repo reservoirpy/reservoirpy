@@ -7,7 +7,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from ..node import Node, combine
-from ..mixins import FeedbackReceiver
+#from ..mixins import FeedbackReceiver
 from ..nodes.io import Input
 
 
@@ -65,18 +65,40 @@ def feedback_node():
         node.set_input_dim(x.shape[1])
         node.set_output_dim(x.shape[1])
 
-    def initialize_fb(node: FeedbackReceiver):
+    def initialize_fb(node: Node):
         fb = node.feedback()
         node.set_feedback_dim(fb.shape[1])
 
-    class FBNode(FeedbackReceiver):
+    class FBNode(Node):
 
         def __init__(self):
-            super(FBNode, self).__init__(initializer=initialize,
-                                         fb_initializer=initialize_fb,
-                                         forward=forward)
+            super().__init__(initializer=initialize,
+                             fb_initializer=initialize_fb,
+                             forward=forward)
 
     n = FBNode()
+
+    return n
+
+
+@pytest.fixture(scope="function")
+def inverter_node():
+
+    def forward(node: Node, x):
+        return -x
+
+    def initialize(node: Node, x=None):
+        if x is not None:
+            node.set_input_dim(x.shape[1])
+            node.set_output_dim(x.shape[1])
+
+    class Inverter(Node):
+
+        def __init__(self):
+            super(Inverter, self).__init__(initializer=initialize,
+                                           forward=forward)
+
+    n = Inverter()
 
     return n
 
@@ -434,3 +456,20 @@ def test_model_feedback_from_previous_node(plus_node,
 
 
 # TODO: test feedback from outsider nodes/models
+
+
+def test_model_feedback_from_outsider(plus_node, feedback_node,
+                                      inverter_node):
+
+    model = plus_node >> feedback_node
+    feedback_node << (plus_node >> inverter_node)
+
+    data = np.zeros((1, 5))
+    res = model(data)
+
+    assert_array_equal(res, data + 1)
+    assert_array_equal(feedback_node.state(), data + 3)
+
+    res = model(data)
+    assert_array_equal(res, data + 3)
+    assert_array_equal(feedback_node.state(), data + 6)
