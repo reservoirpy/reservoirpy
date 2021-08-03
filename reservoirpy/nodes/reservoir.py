@@ -5,9 +5,9 @@ import numpy as np
 from numpy.random import Generator, default_rng
 
 from ..utils.types import Weights
+from ..node import Node
 from ..mat_gen import generate_internal_weights, generate_input_weights
 from ..utils.validation import is_array
-from ..mixins import FeedbackReceiver
 from ..activationsfunc import identity, tanh
 
 
@@ -163,7 +163,7 @@ def _noisify(vector: np.ndarray,
     return vector
 
 
-class Reservoir(FeedbackReceiver):
+class Reservoir(Node):
 
     def __init__(self,
                  units: int = None,
