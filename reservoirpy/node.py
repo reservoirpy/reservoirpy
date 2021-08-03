@@ -1,12 +1,105 @@
-# Author: Nathan Trouvain at 07/07/2021 <nathan.trouvain@inria.fr>
-# Licence: MIT License
-# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+"""Node API: simple tools for complex reservoir computing architectures.
 
-from contextlib import ExitStack, contextmanager
-from itertools import product
+The Node API features a simple implementation of computational graphs, similar
+to what can be found in other popular deep learning and differenciable calculus
+libraries. It is however simplified and made the most flexible possible by
+discarding the useless "fully differentiable operations" functionalities. If
+you wish to use learning rules making use of chain rule and full
+differentiability of all operators, ReservoirPy may not be the tool you need
+(actually, the whole paradigm of reservoir computing might arguably not be the
+tool you need).
+
+The Node API is composed of a base :py:class:`Node` that can be described as a
+stateful recurrent operator able to manipulate streams of data. A
+:py:class:`Node` applies a `forward` function on some data, and then stores the
+result in its `state` attribute. The `forward` operation can be a function
+depending on the data, on the current `state` vector of the Node, and
+optionally on data coming from other distant nodes `states` though feedback
+connections (distant nodes can be reached using the `feedback` attribute of the
+node they are connected to).
+
+Nodes can also be connected together to form a :py:class:`Model`. Models hold
+references to the connected nodes and make data flow from one node to
+the next. :py:class:`Model` is essentialy a subclass of :py:class:`Node`, that
+can also be connected to other nodes and models.
+
+TODO: add link to tutorial
+
+:py:class:`Node` subclassing
+============================
+
+    .. highlight:: python
+
+    Subclassing the :py:class:`Node` to create a custom operator takes only a
+    few steps to be done and operational. Sublasses of :py:class:`Node` can
+    then be used as any other node instances.
+
+    First, one needs to create the `forward` function that will be applied
+    by the new node class::
+
+        def forward(node: Node, x: np.ndarray) -> np.ndarray:
+        '''Does something to the current state of the node, the input
+        data and some feedback.'''
+
+            state = node.state()  # get current node state
+            feedback = node.feedback()  # call state of some distant node
+            some_param = node.const1
+            some_other_param = node.const2
+
+            return x + some_param * state + some_other_param * feedback
+
+    This function **must** take as parameter a vector `x` of shape
+    ``(1, dim x)`` (one timestep of data) and the node instance itself. You can
+    access any parameter stored in the node through this instance.
+
+    Then, one needs to create the `intialize` function that will be used at
+    runtime to infer the input and output dimensions of the node, and optionaly
+    initialize some parameters (some neuronal weights, for instance)::
+
+        def intialize(node: Node, x=None):
+        '''This function receives a data point x at runtime and uses it to
+        infer input and output dimensions.
+        '''
+            if x is not None:
+                node.set_input_dim(x.shape[1])
+                node.set_output_dim(x.shape[1])
+
+                # you can initialize parameters here
+                node.set_param("const1", 1)
+
+    Additionaly, another function can be created to initialize feedback signal
+    dimension, if the node requires feedback::
+
+        def intialize_fb(node: Node):
+        '''This function is called at runtime and
+        infer feedback dimensions.
+        '''
+            if node.has_feedback:
+                # in our case, feedback dimension is just the dimension of the
+                # feedback vector.
+                feedback = node.feedback()
+                node.set_feedback_dim(feedback.shape[1])
+
+    If your node need to be trained following some learning rule, an `fit`
+    function
+
+References
+==========
+
+    ReservoirPy Node API was heavily inspired by Explosion.ai *Thinc*
+    functional deep learning library [1]_, and *Nengo* core API [2]_.
+    It also follows some *scikit-learn* schemes and guidelines [3]_.
+
+    .. [1] `Thinc <https://thinc.ai/>`_ website
+    .. [2] `Nengo <https://www.nengo.ai/>`_ website
+    .. [3] `scikit-learn <https://scikit-learn.org/stable/>`_ website
+
+"""
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from contextlib import ExitStack, contextmanager
+from itertools import product
 from typing import Callable, Dict, List
 
 import numpy as np
@@ -106,6 +199,7 @@ def combine(*models):
 
 
 class Node:
+
     _state: np.ndarray
     _params: Dict
     _hypers: Dict
@@ -113,6 +207,9 @@ class Node:
     _output_dim: int
     _forward: Callable
     _initializer: Callable
+    _feedback: "Node"
+    _feedback_dim: int
+    _feedback_initializer: Callable
     _name: str
     _state_proxy: np.ndarray
     _factory_id: int = -1
@@ -124,20 +221,25 @@ class Node:
         cls._registry = dict()
 
     def __init__(self, params=None, hypers=None, forward=None,
-                 initializer=None, input_dim=None, output_dim=None,
+                 initializer=None, fb_initializer=None,
+                 input_dim=None, output_dim=None, feedback_dim=None,
                  name=None):
 
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
         self._forward = forward
         self._initializer = initializer
+        self._feedback_initializer = fb_initializer
         self._input_dim = input_dim
         self._output_dim = output_dim
+        self._feedback_dim = feedback_dim
 
         self._name = self._get_name(name)
 
         self._is_initialized = False
+        self._is_fb_initialized = False
         self._state_proxy = None
+        self._feedback = None
 
     def __repr__(self):
         klas = type(self).__name__
@@ -162,6 +264,9 @@ class Node:
     def __rshift__(self, other):
         return self.link(other)
 
+    def __lshift__(self, other):
+        return self.link_feedback(other)
+
     def _get_name(self, name=None):
         if name is None:
             type(self)._factory_id += 1
@@ -179,7 +284,7 @@ class Node:
 
         if not self._is_initialized:
             raise RuntimeError(
-                f"Impossible to set state of node {self.name}: node"
+                f"Impossible to set state of node {self.name}: node "
                 f"is not initialized yet.")
 
         if s.shape[1] != self.output_dim:
@@ -199,6 +304,17 @@ class Node:
                     f"dimension is (1, {self.input_dim}) and input dimension "
                     f"is {x.shape}.")
         return x
+
+    def _check_feedback(self, fb):  # TODO: build this
+        fb = check_vector(fb)
+
+        if self._is_initialized:
+            if fb.shape[1] != self._feedback_dim:
+                raise ValueError(
+                    f"Impossible to call node {self.name}: node input "
+                    f"dimension is (1, {self.input_dim}) and input dimension "
+                    f"is {fb.shape}.")
+        return fb
 
     @property
     def name(self):
@@ -221,8 +337,20 @@ class Node:
         return self._output_dim
 
     @property
+    def feedback_dim(self):
+        return self._feedback_dim
+
+    @property
     def is_initialized(self):
         return self._is_initialized
+
+    @property
+    def has_feedback(self):
+        return self._feedback is not None
+
+    @property
+    def is_fb_initialized(self):
+        return self._is_fb_initialized
 
     def state(self):
         if not self.is_initialized:
@@ -233,6 +361,22 @@ class Node:
         if self._state_proxy is None:
             return self._state
         return self._state_proxy
+
+    def feedback(self):
+        if not self._feedback.is_initialized:
+            raise RuntimeError(f"Impossible to get feedback "
+                               f"from node or model {self._feedback} "
+                               f"to node {self.name}: {self._feedback.name} "
+                               f"is not initialized.")
+
+        if isinstance(self._feedback, Node):
+            return self._feedback.state_proxy()
+        else:
+            if isinstance(self._feedback, Model):
+                mapping = {c.name: p.state_proxy()
+                           for p, c in self._feedback.edges
+                           if p in self._feedback.input_nodes}
+                return self._feedback.call(mapping)
 
     def set_state_proxy(self, value=None):
         if value is not None:
@@ -249,6 +393,13 @@ class Node:
     def set_output_dim(self, value):
         if not self._is_initialized:
             self._output_dim = value
+        else:
+            raise TypeError(f"Output dimension of {self.name} is "
+                            "immutable after initialization.")
+
+    def set_feedback_dim(self, value):
+        if not self.is_fb_initialized:
+            self._feedback_dim = value
         else:
             raise TypeError(f"Output dimension of {self.name} is "
                             "immutable after initialization.")
@@ -286,6 +437,10 @@ class Node:
 
         return self
 
+    def initialize_feedback(self):
+        self._feedback_initializer(self)
+        self._is_fb_initialized = True
+
     def reset(self, to_state: np.ndarray = None):
         """Reset the last state saved to zero or to
         another state value `from_state`.
@@ -301,6 +456,12 @@ class Node:
         else:
             self._state = self._check_state(to_state)
         return self
+
+    def reset_feedback(self, to_feedback=None):
+        if to_feedback is None:
+            self._feedback.reset()
+        else:
+            self._feedback.reset(to_state=to_feedback)
 
     @contextmanager
     def with_state(self, state=None, stateful=False, reset=False):
@@ -325,22 +486,53 @@ class Node:
             self._state = current_state
 
     @contextmanager
-    def with_feedback(self, feedback=None, reset=False):
-        current_state_proxy = self._state_proxy
+    def with_feedback(self, feedback=None, stateful=False, reset=False):
 
-        if feedback is None:
-            if reset:
-                feedback = self.zero_state()
+        if self.has_feedback:  # if it is a feedback receiver
+            current_fb = self._feedback
+
+            if feedback is None:
+                if reset:
+                    feedback = self.zero_feedback()
+                else:
+                    feedback = current_fb
+
+            if isinstance(feedback, Node):
+                self._feedback = feedback
+                yield self
+                self._feedback = current_fb
+            elif isinstance(feedback, np.ndarray):
+                current_proxy = self._feedback._state_proxy
+                self._feedback.set_state_proxy(feedback)
+                yield self
+                if not stateful:
+                    self._feedback._state_proxy = current_proxy
             else:
-                feedback = current_state_proxy
+                raise TypeError(f"Impossible to get feedback from {feedback}: "
+                                f"it is neither a Node instance nor an array.")
 
-        self.set_state_proxy(feedback)
-        yield self
+        else:  # maybe a feedback sender then ?
+            current_state_proxy = self._state_proxy
+
+            if feedback is None:
+                if reset:
+                    feedback = self.zero_state()
+                else:
+                    feedback = current_state_proxy
+
+            self.set_state_proxy(feedback)
+            yield self
 
     def zero_state(self):
         """A null state vector."""
         if self.output_dim is not None:
             return np.zeros((1, self.output_dim))
+
+    def zero_feedback(self):
+        """A null state vector."""
+        if self._feedback is not None:
+            return self._feedback.zero_state()
+        return None
 
     def link(self, other):
         if isinstance(other, Node) or \
@@ -348,8 +540,15 @@ class Node:
                 all([isinstance(obj, Node) for obj in other]):
             return link(self, other)
         else:
-            raise TypeError(f"Impossible to link node {self.name} with"
+            raise TypeError(f"Impossible to link node {self.name} with "
                             f"oject of type {type(other)}.")
+
+    def link_feedback(self, node):
+        if not isinstance(node, Node):
+            raise TypeError(f"Impossible to receive feedback from {node}: "
+                            f"it is not a Node instance.")
+        self._feedback = node
+        return self
 
     def call(self, x, from_state=None, stateful=True, reset=False):
         x = self._check_input(x)
@@ -395,8 +594,6 @@ class Model(Node):
         self._edges = edges
         self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
         self._nodes = topological_sort(nodes, edges, self._inputs)
-        self._fb_nodes = [n for n in self.nodes if hasattr(n, "feedback")]
-        self._trainables = [n for n in self.nodes if hasattr(n, "fit")]
 
         self._dispatcher = DataDispatcher(self)
 
@@ -409,7 +606,6 @@ class Model(Node):
         return self.get_node(item)
 
     def _check_input(self, x):
-        # TODO : handle mappings
         if is_mapping(x):
             input_names = [n.name for n in self.input_nodes]
 
@@ -486,11 +682,11 @@ class Model(Node):
 
     @property
     def trainable_nodes(self):
-        return self._trainables
+        return [n for n in self.nodes if hasattr(n, "fit")]
 
     @property
     def feedback_nodes(self):
-        return self._fb_nodes
+        return [n for n in self.nodes if n.has_feedback]
 
     @property
     def data_dispatcher(self):
@@ -517,7 +713,7 @@ class Model(Node):
             yield self
 
     @contextmanager
-    def with_feedback(self, feedback=None, reset=False):
+    def with_feedback(self, feedback=None, stateful=False, reset=False):
 
         if feedback is None and not reset:
             yield self
@@ -529,6 +725,7 @@ class Model(Node):
                 if feedback is not None:
                     value = feedback.get(node.name)
                 stack.enter_context(node.with_feedback(value,
+                                                       stateful=stateful,
                                                        reset=reset))
             yield self
 
@@ -573,7 +770,9 @@ class Model(Node):
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             # maybe load forced feedbacks in proxys ?
-            with self.with_feedback(forced_feedback, reset=reset):
+            with self.with_feedback(forced_feedback,
+                                    stateful=stateful,
+                                    reset=reset):
                 self._forward(self, x)
 
                 # wash states proxys
