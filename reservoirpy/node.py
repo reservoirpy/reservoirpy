@@ -80,8 +80,46 @@ TODO: add link to tutorial
                 feedback = node.feedback()
                 node.set_feedback_dim(feedback.shape[1])
 
-    If your node need to be trained following some learning rule, an `fit`
-    function
+    TODO: section about trainable nodes
+
+    That's it! You can now create a new base :py:class:`Node` instance
+    parametrized with the functions you have just written::
+
+        node = Node(forward=forward,
+                    initializer=initialize,
+                    fb_initializer=initialize_fb,
+                    params={"const1": None},
+                    hypers={"const2": -1},
+                    name="custom_node")
+
+    .. note::
+        Do not forget to declare the mutable parameters `params` and immutable
+        hyperparameters `hypers` as dictionnaries. `params` should store all
+        parameters that need to be initialized and that will evolve during the
+        life cycle of the node (for example, neuronal weights whom value will
+        change during training). `hypers` should store parameters used to
+        define the architecture or the behavior of the node instance, and that
+        will not change through learning mechanisms.
+
+    You can also create a new subclass of :py:class:`Node` in a similar way::
+
+        class CustomNode(Node):
+
+            def __init__(self, const2=-1, name=None):
+                super().__init__(forward=forward,
+                                 initializer=initialize,
+                                 fb_initializer=initialize_fb,
+                                 params={"const1": None},
+                                 hypers={"const2": const2},
+                                 name=name)
+
+        node = CustomeNode(const2=-1, name="custom_node")
+
+    This allow more flexibility, as you can redefine the complete behavior of
+    the node in the subclass. Be careful to expose the `name` parameter in the
+    subclass ``__init__``, and to pass it to the base class as parameter.
+    It is a good practice to find meaningful names for your node instances.
+
 
 References
 ==========
@@ -100,7 +138,7 @@ References
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import ExitStack, contextmanager
 from itertools import product
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -108,9 +146,52 @@ from .utils.graphflow import (DataDispatcher,
                               find_entries_and_exits,
                               topological_sort, )
 from .utils.validation import check_vector, is_mapping
+from .utils.types import MappedData
 
 
-def forward(model: "Model", x):
+def _remove_input_for_feedback(model: "Model") -> "Node":
+    all_nodes = set(model.nodes)
+    input_nodes = set(model.input_nodes)
+    filtered_nodes = all_nodes - input_nodes
+    filtered_edges = [edge for edge in model.edges
+                      if edge[0] not in input_nodes]
+
+    # return a Node if Model - Inputs = 1 Node
+    # else return a Model - Inputs
+    if len(filtered_nodes) == 1:
+        return list(filtered_nodes)[0]
+    return Model(filtered_nodes, filtered_edges)
+
+
+def forward(model: "Model",
+            x: MappedData) -> List[np.ndarray]:
+    """Function applied by a :py:class:`Model` instance.
+
+    This function if basically a composition of the forward functions of all
+    nodes involved in the model architecture. For instance, let :math:`f`
+    be the forward function of a first node, and let :math:`g` be the forward
+    function of a second node. If first node is connected to second node in a
+    model, then the model forward function :math:`h` will compute, at each
+    timestep :math:`t` of a timeserie :math:`X`:
+
+    .. math::
+
+        h(X_t) = g(f(X_t)) = (g \\circ f)(X_t)
+
+    Parameters
+    ----------
+    model : Model
+        A :py:class:`Model` instance.
+    x : numpy.ndarray or dict of numpy.ndarray
+        A vector of shape `(1, ndim)` corresponding to a timestep of data, or
+        a dictionnary mapping node names to vector of shapes
+        `(1, ndim of corresponding node)`.
+
+    Returns
+    -------
+        list of numpy.ndarray
+            New states of all terminal nodes of the model, i.e. its output.
+    """
     data = model.data_dispatcher.load(x)
 
     for node in model.nodes:
@@ -119,10 +200,29 @@ def forward(model: "Model", x):
     return [out_node.state() for out_node in model.output_nodes]
 
 
-def initializer(model: "Model", x, y=None):
+def initializer(model: "Model",
+                x: MappedData,
+                y: Optional[MappedData] = None):
+    """Initializes a :py:class:`Model` instance at runtime, using samples of
+    data to infer all :py:class:`Node` dimensions.
+
+    Parameters
+    ----------
+    model : Model
+        A :py:class:`Model` instance.
+    x : numpy.ndarray or dict of numpy.ndarray
+        A vector of shape `(1, ndim)` corresponding to a timestep of data, or
+        a dictionnary mapping node names to vector of shapes
+        `(1, ndim of corresponding node)`.
+    y : numpy.ndarray or dict of numpy.ndarray
+        A vector of shape `(1, ndim)` corresponding to a timestep of target
+        data or feedback, or a dictionnary mapping node names to vector of
+        shapes `(1, ndim of corresponding node)`.
+    """
     data = model.data_dispatcher.load(x, y)
 
     # first, probe network to init forward flow
+    # (no real call, only zero states)
     for node in model.nodes:
         node.initialize(x=data[node].x, y=data[node].y)
 
@@ -133,6 +233,26 @@ def initializer(model: "Model", x, y=None):
 
 
 def link(node1: "Node", node2: "Node") -> "Model":
+    """Connects two :py:class:`Node` instances to form a :py:class:`Model`
+    instance. `node1` output will be used as input for `node2` in the
+    created model.
+
+    `node1` and `node2` can also be :py:class:`Model` instances. In this case,
+    the new :py:class:`Model` created will contain all nodes previously
+    contained in all the models, and link all `node1` outputs to all `node2`
+    inputs.
+
+    Parameters
+    ----------
+    node1, node2 : Node, Node
+        :py:class:`Node` instance to connect. `node1` is connected to `node2`
+        such that `node1` output is used as input by `node2`.
+
+    Returns
+    -------
+        Model
+            A :py:class:`Model` instance chaining the nodes.
+    """
     # fetch all nodes in the two subgraphs.
     all_nodes = []
     for node in (node1, node2):
@@ -183,7 +303,25 @@ def link(node1: "Node", node2: "Node") -> "Model":
     return Model(nodes=all_nodes, edges=all_edges)
 
 
-def combine(*models):
+def combine(*models: "Model"):
+    """Merge different :py:class:`Model` instances into a single
+    :py:class:`Model` instance.
+
+    :py:class:`Node` instances contained in the models to merge will be
+    gathered in a single model, along with all previously defined connections
+    between them.
+
+    Parameters
+    ----------
+    *models : Model instances
+        All models to merge.
+
+    Returns
+    -------
+        Model
+            A new :py:class:`Model` instance.
+
+    """
     all_nodes = set()
     all_edges = set()
     for model in models:
@@ -240,6 +378,12 @@ class Node:
         self._is_fb_initialized = False
         self._state_proxy = None
         self._feedback = None
+
+        # used to store a reduced version of the feedback if needed
+        # when feedback is a Model (inputs of the feedback Model are suppressed
+        # in the reduced version, as we do not need then to re-run them
+        # because we assume they have already run during the forward call)
+        self._reduced_fb = None
 
     def __repr__(self):
         klas = type(self).__name__
@@ -369,14 +513,19 @@ class Node:
                                f"to node {self.name}: {self._feedback.name} "
                                f"is not initialized.")
 
-        if isinstance(self._feedback, Node):
+        if isinstance(self._feedback, Model):
+            input_data = {c.name: p.state_proxy()
+                          for p, c in self._feedback.edges
+                          if p in self._feedback.input_nodes}
+            if isinstance(self._reduced_fb, Model):
+                return self._reduced_fb.call(input_data)
+            else:
+                reduced_name = self._reduced_fb.name
+                return self._reduced_fb.call(input_data[reduced_name])
+        elif isinstance(self._feedback, Node):
             return self._feedback.state_proxy()
         else:
-            if isinstance(self._feedback, Model):
-                mapping = {c.name: p.state_proxy()
-                           for p, c in self._feedback.edges
-                           if p in self._feedback.input_nodes}
-                return self._feedback.call(mapping)
+            return None
 
     def set_state_proxy(self, value=None):
         if value is not None:
@@ -438,8 +587,25 @@ class Node:
         return self
 
     def initialize_feedback(self):
-        self._feedback_initializer(self)
+        if isinstance(self._feedback, Model):
+            input_data = {c.name: p.state_proxy()
+                          for p, c in self._feedback.edges
+                          if p in self._feedback.input_nodes}
+            self._reduced_fb = _remove_input_for_feedback(self._feedback)
+
+            if isinstance(self._reduced_fb, Model):
+                self._reduced_fb.initialize(x=input_data)
+            else:
+                reduced_name = self._reduced_fb.name
+                self._reduced_fb.initialize(x=input_data[reduced_name])
+
+        elif isinstance(self._feedback, Node):
+            self._feedback_initializer(self)
+
         self._is_fb_initialized = True
+        self._feedback._is_initialized = True
+
+        return self
 
     def reset(self, to_state: np.ndarray = None):
         """Reset the last state saved to zero or to
@@ -577,6 +743,7 @@ class Node:
 
 
 class Model(Node):
+
     _nodes: List
     _edges: List
     _inputs: List

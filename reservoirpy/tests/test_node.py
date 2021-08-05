@@ -455,9 +455,6 @@ def test_model_feedback_from_previous_node(plus_node,
     assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 11)
 
 
-# TODO: test feedback from outsider nodes/models
-
-
 def test_model_feedback_from_outsider(plus_node, feedback_node,
                                       inverter_node):
 
@@ -467,9 +464,32 @@ def test_model_feedback_from_outsider(plus_node, feedback_node,
     data = np.zeros((1, 5))
     res = model(data)
 
-    assert_array_equal(res, data + 1)
-    assert_array_equal(feedback_node.state(), data + 3)
+    assert_array_equal(res, data + 3)
+    assert_array_equal(plus_node.state(), data + 2)
+    assert_array_equal(inverter_node.state(), data)
 
     res = model(data)
     assert_array_equal(res, data + 3)
-    assert_array_equal(feedback_node.state(), data + 6)
+    assert_array_equal(plus_node.state(), data + 4)
+    assert_array_equal(inverter_node.state(), data - 2)
+
+
+def test_model_feedback_from_outsider_complex(plus_node, feedback_node,
+                                              inverter_node, minus_node):
+
+    model = plus_node >> feedback_node
+    fb_model = plus_node >> inverter_node >> minus_node
+    feedback_node << fb_model
+
+    data = np.zeros((1, 5))
+    res = model(data)
+
+    assert_array_equal(res, data + 1)
+    assert_array_equal(plus_node.state(), data + 2)
+    assert_array_equal(minus_node.state(), data - 2)
+
+    res = model(data)
+
+    assert_array_equal(res, data + 3)
+    assert_array_equal(plus_node.state(), data + 4)
+    assert_array_equal(minus_node.state(), data - 2)
