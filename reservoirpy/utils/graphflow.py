@@ -1,7 +1,7 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from collections import defaultdict, namedtuple
+from collections import defaultdict, namedtuple, deque
 from typing import Dict, List
 
 import numpy as np
@@ -32,7 +32,7 @@ def topological_sort(nodes, edges, inputs=None):
     # using Kahn's algorithm
     ordered_nodes = []
     edges = set(edges)
-    inputs = set(inputs)
+    inputs = deque(inputs)
     while len(inputs) > 0:
         n = inputs.pop()
         ordered_nodes.append(n)
@@ -40,13 +40,99 @@ def topological_sort(nodes, edges, inputs=None):
             edges.remove((n, m))
             parents[m].remove(n)
             if parents.get(m) is None or len(parents[m]) < 1:
-                inputs.add(m)
+                inputs.append(m)
     if len(edges) > 0:
         raise RuntimeError("Model has a cycle: impossible "
                            "to automatically determine operations "
                            "order in the model.")
     else:
         return ordered_nodes
+
+
+def get_offline_subgraphs(nodes, edges):
+
+    global_inputs, global_outputs = find_entries_and_exits(nodes, edges)
+    parents, children = find_parents_and_children(edges)
+
+    # cut the graph:
+    # all "blocking" nodes are disconnected from their children
+    cuts = dict()
+    for node in nodes:
+        if node.is_trained_offline and not node.is_trained_online:
+            cuts[node] = children.get(node, [])
+            children[node] = []
+
+    # run Kahn algorithm to create subgraphs going from
+    # previous blocking nodes to the next ones
+    # (or first from inputs to first blocking nodes).
+    inputs = global_inputs.copy()
+    prev_inputs = inputs.copy()
+    subgraphs = []
+    # while all blocking nodes have not been added to a subgraph as output:
+    while len(cuts) > 0:
+        subnodes = []
+        subedges = []
+        next_inputs = []
+        inputs = deque(inputs)
+        ascendants = {n: p.copy() for n, p in parents.items()}
+        descendants = {n: c.copy() for n, c in children.items()}
+        while len(inputs) > 0:
+            n = inputs.popleft()
+            subnodes.append(n)
+            for m in descendants.get(n, ()):
+                ascendants[m].remove(n)
+                subedges.append((n, m))
+                if ascendants.get(m) is None or len(ascendants[m]) == 0:
+                    inputs.append(m)
+
+            if hasattr(n, "stop") and n not in global_outputs:
+                next_inputs.append(n)
+                # output of the previous subgraph will serve as inputs for
+                # the next.
+
+            if n in cuts:
+                # current node is blocking: add it to current subgraph
+                # and remove the seal diconnecting it from its children.
+                # It will be used as a standard node in the next subgraph
+                # creation loop.
+                child = cuts.pop(n)
+                children[n] = child
+
+        # rollback to find minimal requirements for current subgraphs inputs:
+        # if current subgraph inputs are not the global inputs of the global
+        # graph, it means they have predecessors probably already integrated
+        # to previously constructed subgraphs. Add all the predecessors to
+        # current subgraph.
+        for inp in prev_inputs:
+            if inp not in global_inputs:
+                pred_nodes, pred_edges = find_predecessors_of(inp, edges)
+                subnodes = set(subnodes) | set(pred_nodes)
+                subedges = set(subedges) | set(pred_edges)
+
+        # would be quicker to not redo a topo sort...
+        subgraphs.append(topological_sort(list(subnodes), list(subedges)))
+
+        # inputs for the next subgraphs are current blocking nodes used as
+        # inputs for the current subgraph.
+        prev_inputs = next_inputs.copy()
+        inputs = deque(next_inputs)
+
+    return subgraphs
+
+
+def find_predecessors_of(node, edges):
+    precedent_nodes = []
+    precedent_egdes = []
+    for edge in edges:
+        if edge[1] is node:
+            precedent_nodes.append(edge[0])
+            precedent_egdes.append(edge)
+
+            prec_nodes, prec_edges = find_predecessors_of(edge[0], edges)
+            precedent_nodes.extend(prec_nodes)
+            precedent_egdes.extend(prec_edges)
+
+    return precedent_nodes, precedent_egdes
 
 
 def find_entries_and_exits(nodes, edges):

@@ -142,11 +142,10 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from .utils.graphflow import (DataDispatcher,
-                              find_entries_and_exits,
-                              topological_sort, )
-from .utils.validation import check_vector, is_mapping
+from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
+                              get_offline_subgraphs, topological_sort, )
 from .utils.types import MappedData
+from .utils.validation import check_vector, is_mapping
 
 
 def _remove_input_for_feedback(model: "Model") -> "Node":
@@ -198,6 +197,36 @@ def forward(model: "Model",
         node(data[node].x)
 
     return [out_node.state() for out_node in model.output_nodes]
+
+
+def backward(model: "Model", X: MappedData, Y: MappedData):
+    data = model.data_dispatcher.load(X, Y)
+
+    offline_subgraphs = get_offline_subgraphs(model.nodes, model.edges)
+
+    already_trained = set()
+    for nodes, edges in offline_subgraphs:
+        currently_training = set()
+        for node in nodes:
+            if node.is_trainable and not node:
+                if hasattr(node, "_partial_backward") and \
+                        node not in already_trained:
+                    node.partial_fit(data[node].x, data[node].y)
+                    currently_training.add(node)
+
+                elif hasattr(node, "_update") and \
+                        node not in already_trained:
+                    node.fit_run(data[node].x, data[node].y)
+                    currently_training.add(node)
+            else:
+                node(data[node].x)
+
+        for node in nodes:
+            if hasattr(node, "_partial_backward") and \
+                    node not in already_trained:
+                node.fit()
+
+        already_trained |= currently_training
 
 
 def initializer(model: "Model",
@@ -337,13 +366,15 @@ def combine(*models: "Model"):
 
 
 class Node:
-
     _state: np.ndarray
     _params: Dict
     _hypers: Dict
     _input_dim: int
     _output_dim: int
     _forward: Callable
+    _backward: Callable
+    _partial_backward: Callable
+    _update: Callable
     _initializer: Callable
     _feedback: "Node"
     _feedback_dim: int
@@ -359,13 +390,16 @@ class Node:
         cls._registry = dict()
 
     def __init__(self, params=None, hypers=None, forward=None,
-                 initializer=None, fb_initializer=None,
-                 input_dim=None, output_dim=None, feedback_dim=None,
-                 name=None):
+                 backward=None, partial_backward=None, update=None,
+                 initializer=None, fb_initializer=None, input_dim=None,
+                 output_dim=None, feedback_dim=None, name=None):
 
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
         self._forward = forward
+        self._backward = backward
+        self._partial_backward = partial_backward
+        self._update = update
         self._initializer = initializer
         self._feedback_initializer = fb_initializer
         self._input_dim = input_dim
@@ -439,7 +473,7 @@ class Node:
         return s
 
     def _check_input(self, x):
-        x = check_vector(x)
+        x = check_vector(x, allow_reshape=True)
 
         if self._is_initialized:
             if x.shape[1] != self.input_dim:
@@ -450,7 +484,7 @@ class Node:
         return x
 
     def _check_feedback(self, fb):  # TODO: build this
-        fb = check_vector(fb)
+        fb = check_vector(fb, allow_reshape=True)
 
         if self._is_initialized:
             if fb.shape[1] != self._feedback_dim:
@@ -491,6 +525,19 @@ class Node:
     @property
     def has_feedback(self):
         return self._feedback is not None
+
+    @property
+    def is_trained_offline(self):
+        return self._backward is not None or \
+               self._partial_backward is not None
+
+    @property
+    def is_trained_online(self):
+        return self._update is not None
+
+    @property
+    def is_trainable(self):
+        return self.is_trained_offline or self.is_trained_online
 
     @property
     def is_fb_initialized(self):
@@ -741,9 +788,39 @@ class Node:
 
         return states
 
+    def partial_fit(self, x, y=None):
+        x = self._check_input(x)
+        y = self._check_state(y)
+
+        if not self._is_initialized:
+            self.initialize(x, y)
+
+        self._partial_backward(self, x, y)
+
+        return self
+
+    def step_fit(self, x, y=None):
+        x = self._check_input(x)
+        y = self._check_state(y)
+
+        if not self._is_initialized:
+            self.initialize(x, y)
+
+        self._partial_backward(self, x, y)
+
+        return self(x)
+
+    def fit(self, X=None, Y=None):
+
+        if not self._is_initialized:
+            self.initialize(X[0], Y[0])
+
+        self._backward(self, X, Y)
+
+        return self
+
 
 class Model(Node):
-
     _nodes: List
     _edges: List
     _inputs: List
@@ -756,6 +833,8 @@ class Model(Node):
         super(Model, self).__init__(params=params,
                                     hypers=hypers,
                                     forward=forward,
+                                    backward=backward,
+                                    partial_backward=partial_backward,
                                     initializer=initializer)
 
         self._edges = edges
@@ -849,7 +928,8 @@ class Model(Node):
 
     @property
     def trainable_nodes(self):
-        return [n for n in self.nodes if hasattr(n, "fit")]
+        return [n for n in self.nodes if
+                getattr(n, "_backward", None) is not None]
 
     @property
     def feedback_nodes(self):
@@ -982,3 +1062,9 @@ class Model(Node):
             return states[self.output_nodes[0].name]
 
         return states
+
+    def partial_fit(self, x, y=None):
+        pass
+
+    def fit(self, X=None, Y=None):
+        ...
