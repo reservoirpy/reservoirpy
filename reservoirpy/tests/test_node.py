@@ -7,7 +7,6 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from ..node import Node, combine
-#from ..mixins import FeedbackReceiver
 from ..nodes.io import Input
 
 
