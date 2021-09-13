@@ -4,9 +4,7 @@
 from collections import defaultdict, namedtuple, deque
 from typing import Dict, List
 
-import numpy as np
-
-from .validation import is_mapping, is_node
+from .validation import is_mapping, is_node, is_array
 
 DataPoint = namedtuple("DataPoint", "x, y")
 
@@ -58,7 +56,8 @@ def get_offline_subgraphs(nodes, edges):
     # all "blocking" nodes are disconnected from their children
     cuts = dict()
     for node in nodes:
-        if node.is_trained_offline and not node.is_trained_online:
+        if node.is_trainable and node.is_trained_offline \
+                and not node.is_trained_online:
             cuts[node] = children.get(node, [])
             children[node] = []
 
@@ -176,8 +175,8 @@ class DataDispatcher:
                                    f"data to run.")
 
     def _check_targets(self, target_mapping):
-        for node in self._nodes:
-            if is_mapping(target_mapping):
+        if is_mapping(target_mapping):
+            for node in self._nodes:
                 if node in self._trainables and target_mapping.get(
                         node.name) is None:
                     raise KeyError(f"Trainable node {node.name} not found "
@@ -236,7 +235,7 @@ class DataDispatcher:
                 Y = {trainable.name: Y for trainable in self._trainables}
             self._check_targets(Y)
 
-        # check is all sequences have same length,
+        # check if all sequences have same length,
         # taking the length of the first input sequence
         # as reference
         current_node = list(X.keys())[0]
@@ -262,7 +261,7 @@ class DataDispatcher:
                         f"given a sequence of length {sequence_length}.")
 
         for i in range(sequence_length):
-            x = {node: X[node][i, :] for node in X.keys()}
+            x = {node: X[node][i] for node in X.keys()}
             if Y is not None:
                 # if feedbacks vectors are meant to be fed
                 # with a delay in time of one timestep w.r.t. 'X'
@@ -271,12 +270,12 @@ class DataDispatcher:
                         y = {node: None for node in
                              Y.keys()}
                     else:
-                        y = {node: Y[node][i-1, :] for node in Y.keys()}
+                        y = {node: Y[node][i-1] for node in Y.keys()}
                 # else assume that all feedback vectors must be instantaneously
                 # fed to the network. This means that 'Y' already contains data
                 # that is delayed by one timestep w.r.t. 'X'.
                 else:
-                    y = {node: Y[node][i, :] for node in Y.keys()}
+                    y = {node: Y[node][i] for node in Y.keys()}
             else:
                 y = None
 

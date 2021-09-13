@@ -17,8 +17,9 @@ def is_2d(array: Weights) -> bool:
     return array.ndim == 2
 
 
-def is_object_sequence(seq: Any) -> bool:
-    return isinstance(seq, Sequence) and not isinstance(seq, str)
+def is_sequence_set(seq: Any) -> bool:
+    return isinstance(seq, list) or \
+           (isinstance(seq, np.ndarray) and seq.ndim > 2)
 
 
 def is_array(obj: Any) -> bool:

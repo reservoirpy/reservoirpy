@@ -6,6 +6,8 @@ from typing import Callable, Union, Iterable, Dict
 import numpy as np
 from scipy.sparse import csr_matrix, csc_matrix, coo_matrix
 
+global_dtype = np.float64
+global_ctype = "d"
 
 Weights = Union[np.ndarray, csr_matrix, csc_matrix, coo_matrix]
 Data = Union[Iterable[np.ndarray], np.ndarray]

@@ -139,13 +139,16 @@ References
 from contextlib import ExitStack, contextmanager
 from itertools import product
 from typing import Callable, Dict, List, Optional
+from multiprocessing import Array
+from uuid import uuid4
 
 import numpy as np
 
 from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
                               get_offline_subgraphs, topological_sort, )
 from .utils.types import MappedData
-from .utils.validation import check_vector, is_mapping
+from .utils.validation import check_vector, is_mapping, is_sequence_set
+from .utils.parallel import memmap_buffer
 
 
 def _remove_input_for_feedback(model: "Model") -> "Node":
@@ -160,6 +163,23 @@ def _remove_input_for_feedback(model: "Model") -> "Node":
     if len(filtered_nodes) == 1:
         return list(filtered_nodes)[0]
     return Model(filtered_nodes, filtered_edges)
+
+
+def _to_ragged_array_seq(data):
+    if is_mapping(data):
+        new_data = {}
+        for name, datum in data.items():
+            if not is_sequence_set(datum):
+                new_datum = [datum]
+            else:
+                new_datum = datum
+            new_data[name] = datum
+        return new_data
+    else:
+        if not is_sequence_set(data):
+            return [data]
+        else:
+            return data
 
 
 def forward(model: "Model",
@@ -199,34 +219,35 @@ def forward(model: "Model",
     return [out_node.state() for out_node in model.output_nodes]
 
 
-def backward(model: "Model", X: MappedData, Y: MappedData):
-    data = model.data_dispatcher.load(X, Y)
+def train(model: "Model", x: MappedData, y: MappedData = None):
+    data = model.data_dispatcher.load(x, y)
 
-    offline_subgraphs = get_offline_subgraphs(model.nodes, model.edges)
+    for node in model.nodes:
+        if node.is_trainable and hasattr(node, "_train"):
+            node.train(data[node].x, data[node].y)
+        else:
+            node(data[node].x)
 
-    already_trained = set()
-    for nodes, edges in offline_subgraphs:
-        currently_training = set()
-        for node in nodes:
-            if node.is_trainable and not node:
-                if hasattr(node, "_partial_backward") and \
-                        node not in already_trained:
-                    node.partial_fit(data[node].x, data[node].y)
-                    currently_training.add(node)
+    return [out_node.state() for out_node in model.output_nodes]
 
-                elif hasattr(node, "_update") and \
-                        node not in already_trained:
-                    node.fit_run(data[node].x, data[node].y)
-                    currently_training.add(node)
-            else:
-                node(data[node].x)
 
-        for node in nodes:
-            if hasattr(node, "_partial_backward") and \
-                    node not in already_trained:
-                node.fit()
+def partial_backward(model: "Model",
+                     X_batch: MappedData,
+                     Y_batch: MappedData = None):
+    data = model.data_dispatcher.load(X_batch, Y_batch)
 
-        already_trained |= currently_training
+    for node in model.nodes:
+        if node.is_trainable and node not in model.already_trained:
+            if hasattr(node, "_partial_backward"):
+                node.partial_fit(data[node].x, data[node].y)
+
+
+def backward(model: "Model", X: MappedData = None, Y: MappedData = None):
+
+    for node in model.nodes:
+        if node.is_trainable and hasattr(node, "_partial_backward") and \
+                node not in model.already_trained:
+            node.fit()
 
 
 def initializer(model: "Model",
@@ -369,12 +390,15 @@ class Node:
     _state: np.ndarray
     _params: Dict
     _hypers: Dict
+    _buffers: Dict
     _input_dim: int
     _output_dim: int
     _forward: Callable
     _backward: Callable
     _partial_backward: Callable
-    _update: Callable
+    _train: Callable
+    _trainable: bool
+    _fitted: bool
     _initializer: Callable
     _feedback: "Node"
     _feedback_dim: int
@@ -390,16 +414,22 @@ class Node:
         cls._registry = dict()
 
     def __init__(self, params=None, hypers=None, forward=None,
-                 backward=None, partial_backward=None, update=None,
+                 backward=None, partial_backward=None, train=None,
                  initializer=None, fb_initializer=None, input_dim=None,
                  output_dim=None, feedback_dim=None, name=None):
 
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
+
+        # buffers are all node state components that should not live
+        # outside the node training loop, like partial computations for
+        # linear regressions. They can also be shared across multiple processes
+        # when needed.
+        self._buffers = dict()
         self._forward = forward
         self._backward = backward
         self._partial_backward = partial_backward
-        self._update = update
+        self._train = train
         self._initializer = initializer
         self._feedback_initializer = fb_initializer
         self._input_dim = input_dim
@@ -418,6 +448,10 @@ class Node:
         # in the reduced version, as we do not need then to re-run them
         # because we assume they have already run during the forward call)
         self._reduced_fb = None
+
+        self._trainable = self.is_trained_offline or self.is_trained_online
+        self._fitted = False if self.is_trainable and self.is_trained_offline\
+            else True
 
     def __repr__(self):
         klas = type(self).__name__
@@ -533,11 +567,22 @@ class Node:
 
     @property
     def is_trained_online(self):
-        return self._update is not None
+        return self._train is not None
 
     @property
     def is_trainable(self):
-        return self.is_trained_offline or self.is_trained_online
+        return self._trainable
+
+    @property
+    def fitted(self):
+        return self._fitted
+
+    @is_trainable.setter
+    def is_trainable(self, value: bool):
+        if type(value) is bool:
+            self._trainable = value
+        else:
+            raise TypeError("'is_trainable' must be a boolean.")
 
     @property
     def is_fb_initialized(self):
@@ -618,6 +663,16 @@ class Node:
                            f"in {self.name}. Available params are: "
                            f"{list(self._params.keys())}. Available "
                            f"hyperparams are {list(self._hypers.keys())}.")
+
+    def create_buffer(self, name, shape=None, data=None):
+        self._buffers[name] = memmap_buffer(self, data=data,
+                                            shape=shape, name=name)
+
+    def set_buffer(self, name, value):
+        self._buffers[name][:] = value
+
+    def get_buffer(self, name):
+        return self._buffers[name]
 
     def initialize(self, x=None, y=None):
         if not self._is_initialized:
@@ -788,36 +843,43 @@ class Node:
 
         return states
 
-    def partial_fit(self, x, y=None):
-        x = self._check_input(x)
-        y = self._check_state(y)
+    def train(self, x, y=None):
+        if self._train is not None:
+            x = self._check_input(x)
+            y = self._check_state(y)
 
-        if not self._is_initialized:
-            self.initialize(x, y)
+            if not self._is_initialized:
+                self.initialize(x, y)
 
-        self._partial_backward(self, x, y)
+            state = self(x)
+            self._train(self, x, y)
 
-        return self
+            return state
 
-    def step_fit(self, x, y=None):
-        x = self._check_input(x)
-        y = self._check_state(y)
+    def partial_fit(self, X_batch, Y_batch=None):
+        if self._partial_backward is not None:
+            if not self._is_initialized:
+                self.initialize(X_batch[0], Y_batch[0])
 
-        if not self._is_initialized:
-            self.initialize(x, y)
+            self._partial_backward(self, X_batch, Y_batch)
 
-        self._partial_backward(self, x, y)
-
-        return self(x)
+            return self
 
     def fit(self, X=None, Y=None):
+        if self._backward is not None:
+            if not self._is_initialized:
+                self.initialize(X[0], Y[0])
 
-        if not self._is_initialized:
-            self.initialize(X[0], Y[0])
+            if X is not None and Y is not None:
+                if self._partial_backward is not None:
+                    for X_batch, Y_batch in zip(X, Y):
+                        self.partial_fit(X_batch, Y_batch)
 
-        self._backward(self, X, Y)
+            self._backward(self, X, Y)
 
-        return self
+            self._fitted = True
+
+            return self
 
 
 class Model(Node):
@@ -827,15 +889,16 @@ class Model(Node):
     _outputs: List
     _dispatcher: "DataDispatcher"
 
-    def __init__(self, nodes=None, edges=None):
+    def __init__(self, nodes=None, edges=None, name=None):
         params = {n.name: n.params for n in nodes}
         hypers = {n.name: n.hypers for n in nodes}
         super(Model, self).__init__(params=params,
                                     hypers=hypers,
                                     forward=forward,
                                     backward=backward,
-                                    partial_backward=partial_backward,
-                                    initializer=initializer)
+                                    train=train,
+                                    initializer=initializer,
+                                    name=name)
 
         self._edges = edges
         self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
@@ -876,6 +939,12 @@ class Model(Node):
                             f"{self.get_node(name).input_dim}) and input "
                             f"dimension is {x.shape}.")
         return x
+
+    def _check_if_only_online(self):
+        if any([n.is_trained_offline and not n.fitted for n in self.nodes]):
+            raise RuntimeError(f"Impossible to train model {self.name} using "
+                               f"online method: model contains untrained "
+                               f"offline nodes.")
 
     def _load_proxys(self):
         for node in self._nodes:
@@ -997,7 +1066,7 @@ class Model(Node):
     def zero_state(self):
         pass
 
-    def initialize(self, x=None):
+    def initialize(self, x=None, y=None):
         self._is_initialized = False
         self._initializer(self, x=x)
         self.reset()
@@ -1063,8 +1132,51 @@ class Model(Node):
 
         return states
 
-    def partial_fit(self, x, y=None):
-        pass
+    def train(self, x, y=None):
+        x = self._check_input(x)
+
+        if not self._is_initialized:
+            self.initialize(x)
+
+        self._check_if_only_online()
+
+        with self.with_feedback(feedback=y):
+            state = self._train(self, x, y)
+
+        return state
+
+    def partial_fit(self, X_batch, Y_batch=None):
+        return self
 
     def fit(self, X=None, Y=None):
-        ...
+
+        X, Y = _to_ragged_array_seq(X), _to_ragged_array_seq(Y)
+        X, Y = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
+
+        if not self._is_initialized:
+            if is_mapping(X):
+                self.initialize({name: x[0] for name, x in X.items()},
+                                {name: y[0] for name, y in Y.items()})
+            else:
+                self.initialize(X[0], Y[0])
+
+        offline_subgraphs = get_offline_subgraphs(self.nodes, self.edges)
+
+        already_trained = set()
+        for nodes, edges in offline_subgraphs:
+            submodel = Model(nodes, edges, name=f"{uuid4()}")
+            submodel.already_trained = already_trained
+
+            # for seq/batch in dataset
+            for x_seq, y_seq in zip(X, Y):
+                states = self.run(x_seq, y_seq)
+                self._partial_backward(submodel, states, y_seq)
+
+            self._backward(submodel)
+
+            already_trained |= set([n for n in submodel.nodes
+                                    if n.is_trainable])
+
+        self._backward(self, X, Y)
+
+        return self
