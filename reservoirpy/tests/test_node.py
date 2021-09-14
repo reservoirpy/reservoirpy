@@ -102,6 +102,43 @@ def inverter_node():
     return n
 
 
+@pytest.fixture(scope="function")
+def offline_node():
+
+    def forward(node: Node, x):
+        return x + node.b
+
+    def partial_backward(node: Node, X_batch, Y_batch=None):
+        b = np.mean(np.abs(X_batch - Y_batch))
+        node.set_buffer("b", node.get_buffer("b") + b)
+
+    def backward(node: Node, X=None, Y=None):
+        b = node.get_buffer("b")
+        node.set_param("b", np.array(b).copy())
+        initialize_buffers(node)
+
+    def initialize(node: Node, x=None, y=None):
+        if x is not None:
+            node.set_input_dim(x.shape[1])
+            node.set_output_dim(x.shape[1])
+
+            initialize_buffers(node)
+
+    def initialize_buffers(node: Node):
+        node.create_buffer("b", (1,))
+
+    class Offline(Node):
+
+        def __init__(self):
+            super(Offline, self).__init__(params={"b": 0},
+                                          forward=forward,
+                                          partial_backward=partial_backward,
+                                          backward=backward,
+                                          initializer=initialize)
+
+    return Offline()
+
+
 def test_node_creation(plus_node):
     assert plus_node.name == 'PlusNode-0'
     assert plus_node.params["c"] is None
@@ -492,3 +529,42 @@ def test_model_feedback_from_outsider_complex(plus_node, feedback_node,
     assert_array_equal(res, data + 3)
     assert_array_equal(plus_node.state(), data + 4)
     assert_array_equal(minus_node.state(), data - 2)
+
+
+def test_offline_fit(offline_node):
+
+    X = np.ones((10, 5)) * 0.5
+    Y = np.ones((10, 5))
+
+    assert offline_node.b == 0
+
+    offline_node.partial_fit(X, Y)
+
+    assert_array_equal(offline_node.get_buffer("b"), np.array([0.5]))
+
+    offline_node.fit()
+
+    assert_array_equal(offline_node.b, np.array([0.5]))
+
+    X = np.ones((10, 5)) * 2.
+    Y = np.ones((10, 5))
+
+    offline_node.fit(X, Y)
+
+    assert_array_equal(offline_node.b, np.array([1.]))
+
+    X = [np.ones((10, 5)) * 2.] * 3
+    Y = [np.ones((10, 5))] * 3
+
+    offline_node.fit(X, Y)
+
+    assert_array_equal(offline_node.b, np.array([3.]))
+
+    offline_node.partial_fit(X, Y)
+
+    assert_array_equal(offline_node.get_buffer("b"), np.array([3.]))
+
+
+def test_offline_fit_model(offline_node, plus_node):
+    ...
+

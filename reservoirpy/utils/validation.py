@@ -28,7 +28,10 @@ def is_array(obj: Any) -> bool:
 
 def is_mapping(obj):
     return isinstance(obj, Mapping) or \
-           (hasattr(obj, "__getitem__") and not hasattr(obj, "__array__"))
+           ((hasattr(obj, "items") and hasattr(obj, "get")) or
+            (not (isinstance(obj, list) or isinstance(obj, tuple)) and
+             hasattr(obj, "__getitem__") and
+             not hasattr(obj, "__array__")))
 
 
 def is_numerical(obj):

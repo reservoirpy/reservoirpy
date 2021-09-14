@@ -165,7 +165,7 @@ def _remove_input_for_feedback(model: "Model") -> "Node":
     return Model(filtered_nodes, filtered_edges)
 
 
-def _to_ragged_array_seq(data):
+def _to_ragged_seq_set(data):
     if is_mapping(data):
         new_data = {}
         for name, datum in data.items():
@@ -173,13 +173,28 @@ def _to_ragged_array_seq(data):
                 new_datum = [datum]
             else:
                 new_datum = datum
-            new_data[name] = datum
+            new_data[name] = new_datum
         return new_data
     else:
         if not is_sequence_set(data):
             return [data]
         else:
             return data
+
+
+def _initialize_with_seq_set(node, X, Y=None):
+    X = _to_ragged_seq_set(X)
+
+    if Y is not None:
+        Y = _to_ragged_seq_set(Y)
+
+    if not node.is_initialized:
+        if Y is not None:
+            node.initialize(X[0], Y[0])
+        else:
+            node.initialize(X[0])
+
+    return X, Y
 
 
 def forward(model: "Model",
@@ -517,16 +532,16 @@ class Node:
                     f"is {x.shape}.")
         return x
 
-    def _check_feedback(self, fb):  # TODO: build this
-        fb = check_vector(fb, allow_reshape=True)
+    def _check_output(self, y):
+        y = check_vector(y, allow_reshape=True)
 
         if self._is_initialized:
-            if fb.shape[1] != self._feedback_dim:
+            if y.shape[1] != self.output_dim:
                 raise ValueError(
-                    f"Impossible to call node {self.name}: node input "
-                    f"dimension is (1, {self.input_dim}) and input dimension "
-                    f"is {fb.shape}.")
-        return fb
+                    f"Impossible to fit node {self.name}: node expected "
+                    f"output dimension is (1, {self.output_dim}) and teacher "
+                    f"vector dimension is {y.shape}."
+                    )
 
     @property
     def name(self):
@@ -858,22 +873,28 @@ class Node:
 
     def partial_fit(self, X_batch, Y_batch=None):
         if self._partial_backward is not None:
-            if not self._is_initialized:
-                self.initialize(X_batch[0], Y_batch[0])
 
-            self._partial_backward(self, X_batch, Y_batch)
+            X_batch, Y_batch = _initialize_with_seq_set(self, X_batch, Y_batch)
+
+            for X, Y in zip(X_batch, Y_batch):
+                self._partial_backward(self, X, Y)
 
             return self
 
     def fit(self, X=None, Y=None):
-        if self._backward is not None:
-            if not self._is_initialized:
-                self.initialize(X[0], Y[0])
 
-            if X is not None and Y is not None:
+        if self._backward is not None:
+            if X is not None:
+                X, Y = _initialize_with_seq_set(self, X, Y)
+
                 if self._partial_backward is not None:
                     for X_batch, Y_batch in zip(X, Y):
                         self.partial_fit(X_batch, Y_batch)
+
+            elif not self._is_initialized:
+                raise RuntimeError(f"Impossible to fit node {self.name}: node"
+                                   f"is not initialized, and fit was called "
+                                   f"without input and teacher data.")
 
             self._backward(self, X, Y)
 
@@ -1150,7 +1171,7 @@ class Model(Node):
 
     def fit(self, X=None, Y=None):
 
-        X, Y = _to_ragged_array_seq(X), _to_ragged_array_seq(Y)
+        X, Y = _to_ragged_seq_set(X), _to_ragged_seq_set(Y)
         X, Y = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
 
         if not self._is_initialized:
