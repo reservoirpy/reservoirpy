@@ -4,7 +4,7 @@
 from collections import defaultdict, namedtuple, deque
 from typing import Dict, List
 
-from .validation import is_mapping, is_node, is_array
+from .validation import is_mapping, is_node
 
 DataPoint = namedtuple("DataPoint", "x, y")
 
@@ -46,7 +46,7 @@ def topological_sort(nodes, edges, inputs=None):
     else:
         return ordered_nodes
 
-
+"""
 def get_offline_subgraphs(nodes, edges):
 
     global_inputs, global_outputs = find_entries_and_exits(nodes, edges)
@@ -84,14 +84,14 @@ def get_offline_subgraphs(nodes, edges):
                 if ascendants.get(m) is None or len(ascendants[m]) == 0:
                     inputs.append(m)
 
-            if hasattr(n, "stop") and n not in global_outputs:
+            if hasattr(n, "_partial_backward") and n not in global_outputs:
                 next_inputs.append(n)
                 # output of the previous subgraph will serve as inputs for
                 # the next.
 
             if n in cuts:
                 # current node is blocking: add it to current subgraph
-                # and remove the seal diconnecting it from its children.
+                # and remove the seal disconnecting it from its children.
                 # It will be used as a standard node in the next subgraph
                 # creation loop.
                 child = cuts.pop(n)
@@ -109,7 +109,8 @@ def get_offline_subgraphs(nodes, edges):
                 subedges = set(subedges) | set(pred_edges)
 
         # would be quicker to not redo a topo sort...
-        subgraphs.append(topological_sort(list(subnodes), list(subedges)))
+        subgraphs.append((topological_sort(list(subnodes), list(subedges)),
+                          subedges))
 
         # inputs for the next subgraphs are current blocking nodes used as
         # inputs for the current subgraph.
@@ -117,6 +118,138 @@ def get_offline_subgraphs(nodes, edges):
         inputs = deque(next_inputs)
 
     return subgraphs
+"""
+
+"""
+def get_offline_subgraphs(nodes, edges):
+
+    global_inputs, global_outputs = find_entries_and_exits(nodes, edges)
+    parents, children = find_parents_and_children(edges)
+
+    offlines = set([n for n in nodes
+                    if n.is_trained_offline and not n.is_trained_online])
+    included = set()
+
+    # run Kahn algorithm to create subgraphs going from
+    # previous blocking nodes to the next ones
+    # (or first from inputs to first blocking nodes).
+    inputs = global_inputs.copy()
+    prev_inputs = inputs.copy()
+    subgraphs = []
+
+    # while all blocking nodes have not been added to a subgraph as output:
+    while len(included) != len(offlines):
+        subedges = []
+        subnodes = []
+        next_inputs = set()
+        next_included = set()
+        inputs = deque(inputs)
+
+        while len(inputs) > 0:
+            n = inputs.popleft()
+            subnodes.append(n)
+
+            if n in offlines and n not in included:
+                if n not in global_outputs:
+                    next_inputs.add(n)
+                next_included.add(n)
+                continue
+
+            for m in children.get(n, ()):
+
+                for p in parents.get(m, []):
+                    if p in offlines and p not in included:
+                        next_inputs.add(n)
+                        break
+
+                if n in next_inputs:
+                    subnodes.remove(n)
+                    break
+
+                parents[m].remove(n)
+                subedges.append((n, m))
+
+                if len(parents.get(m, [])) == 0:
+                    inputs.append(m)
+
+        # would be quicker to not redo a topo sort...
+        subgraphs.append((topological_sort(list(subnodes), list(subedges)),
+                          subedges))
+
+        # inputs for the next subgraphs are current blocking nodes
+        # prev_inputs = next_inputs.copy()
+
+        inputs = deque(next_inputs)
+        included |= next_included
+
+    return subgraphs
+"""
+
+
+def get_offline_subgraphs(nodes, edges):
+
+    inputs, outputs = find_entries_and_exits(nodes, edges)
+    parents, children = find_parents_and_children(edges)
+
+    offlines = set([n for n in nodes
+                    if n.is_trained_offline and not n.is_trained_online])
+    included, trained = set(), set()
+    subgraphs, required = [], []
+    _nodes = nodes.copy()
+    while trained != offlines:
+        subnodes, subedges = [], []
+        for node in _nodes:
+            if node in inputs or \
+                    all([p in included for p in parents.get(node)]):
+
+                if node.is_trained_offline and node not in trained:
+                    trained.add(node)
+                    subnodes.append(node)
+                else:
+                    if node not in outputs:
+                        subnodes.append(node)
+                    included.add(node)
+
+        subedges = [edge for edge in edges
+                    if edge[0] in subnodes and edge[1] in subnodes]
+        subgraphs.append((subnodes, subedges))
+        _nodes = [n for n in nodes if n not in included]
+
+    required = _get_required_nodes(subgraphs, children)
+
+    return list(zip(subgraphs, required))
+
+
+def _get_required_nodes(subgraphs, children):
+
+    req = []
+    for i in range(1, len(subgraphs)):
+        currs = set(subgraphs[i - 1][0])
+        nexts = set(subgraphs[i][0])
+
+        req.append(_get_links(currs, nexts, children))
+
+    nexts = set([n for n in subgraphs[-1][0] if n.is_trained_offline])
+    currs = set(subgraphs[-1][0]) - nexts
+
+    req.append(_get_links(currs, nexts, children))
+
+    return req
+
+
+def _get_links(previous, nexts, children):
+
+    links = {}
+    for n in previous:
+        next_children = []
+        if n not in nexts:
+            next_children = [c.name for c in children.get(n, [])
+                             if c in nexts]
+
+        if len(next_children) > 0:
+            links[n.name] = next_children
+
+    return links
 
 
 def find_predecessors_of(node, edges):
@@ -140,12 +273,9 @@ def find_entries_and_exits(nodes, edges):
     receivers = set([n for _, n in edges])
 
     lonely = nodes - senders - receivers
-    if len(lonely) > 0:
-        raise RuntimeError("Model has lonely nodes, connected to "
-                           "no inputs and no outputs.")
 
-    entrypoints = senders - receivers
-    endpoints = receivers - senders
+    entrypoints = senders - receivers | lonely
+    endpoints = receivers - senders | lonely
 
     return list(entrypoints), list(endpoints)
 
@@ -177,8 +307,9 @@ class DataDispatcher:
     def _check_targets(self, target_mapping):
         if is_mapping(target_mapping):
             for node in self._nodes:
-                if node in self._trainables and target_mapping.get(
-                        node.name) is None:
+                if node in self._trainables and \
+                        not node.fitted and \
+                        target_mapping.get(node.name) is None:
                     raise KeyError(f"Trainable node {node.name} not found "
                                    f"in target/feedback data mapping. This "
                                    f"node requires "
@@ -246,9 +377,8 @@ class DataDispatcher:
                                  f"number of timesteps: {node} is given "
                                  f"a sequence of length {len(sequence)} as "
                                  f"input "
-                                 f" while {current_node} is given a sequence "
-                                 f"of "
-                                 f"length {sequence_length}")
+                                 f"while {current_node} is given a sequence "
+                                 f"of length {sequence_length}")
 
         if Y is not None:
             for node, sequence in Y.items():

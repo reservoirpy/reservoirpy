@@ -2,6 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import pytest
+from copy import deepcopy
 import numpy as np
 
 from numpy.testing import assert_array_equal
@@ -137,6 +138,43 @@ def offline_node():
                                           initializer=initialize)
 
     return Offline()
+
+
+@pytest.fixture(scope="function")
+def offline_node2():
+
+    def forward(node: Node, x):
+        return x + node.b
+
+    def partial_backward(node: Node, X_batch, Y_batch=None):
+        b = np.mean(np.abs(X_batch - Y_batch))
+        node.set_buffer("b", node.get_buffer("b") + b)
+
+    def backward(node: Node, X=None, Y=None):
+        b = node.get_buffer("b")
+        node.set_param("b", np.array(b).copy())
+        initialize_buffers(node)
+
+    def initialize(node: Node, x=None, y=None):
+        if x is not None:
+            node.set_input_dim(x.shape[1])
+            node.set_output_dim(x.shape[1])
+
+            initialize_buffers(node)
+
+    def initialize_buffers(node: Node):
+        node.create_buffer("b", (1,))
+
+    class Offline2(Node):
+
+        def __init__(self):
+            super(Offline2, self).__init__(params={"b": 0},
+                                          forward=forward,
+                                          partial_backward=partial_backward,
+                                          backward=backward,
+                                          initializer=initialize)
+
+    return Offline2()
 
 
 def test_node_creation(plus_node):
@@ -565,6 +603,13 @@ def test_offline_fit(offline_node):
     assert_array_equal(offline_node.get_buffer("b"), np.array([3.]))
 
 
-def test_offline_fit_model(offline_node, plus_node):
-    ...
+def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_node):
 
+    model = plus_node >> offline_node >> minus_node >> offline_node2
+
+    X = np.ones((5, 5)) * 0.5
+    Y = np.ones((5, 5))
+
+    model.fit(X, Y)
+
+    assert_array_equal(offline_node.b, np.array([6.5]))

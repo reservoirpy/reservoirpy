@@ -139,8 +139,8 @@ References
 from contextlib import ExitStack, contextmanager
 from itertools import product
 from typing import Callable, Dict, List, Optional
-from multiprocessing import Array
 from uuid import uuid4
+from collections import Iterable
 
 import numpy as np
 
@@ -195,6 +195,33 @@ def _initialize_with_seq_set(node, X, Y=None):
             node.initialize(X[0])
 
     return X, Y
+
+
+def _extract_offline_nodes(nodes, edges, already_trained, prev_trained):
+
+    offline_nodes = [n for n in nodes
+                     if hasattr(n, "_partial_backward")
+                     and n not in already_trained]
+
+    forward_nodes = list(set(nodes) - set(offline_nodes))
+    forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
+
+    submodel = Model(forward_nodes, forward_edges, name=f"{uuid4()}")
+
+    return submodel, forward_nodes
+
+
+def _build_forward_sumodels(nodes, edges, already_trained):
+
+    offline_nodes = [n for n in nodes
+                     if n.is_trained_offline and n not in already_trained]
+
+    forward_nodes = list(set(nodes) - set(offline_nodes))
+    forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
+
+    submodel = Model(forward_nodes, forward_edges, name=f"{uuid4()}")
+
+    return submodel, offline_nodes
 
 
 def forward(model: "Model",
@@ -257,11 +284,10 @@ def partial_backward(model: "Model",
                 node.partial_fit(data[node].x, data[node].y)
 
 
-def backward(model: "Model", X: MappedData = None, Y: MappedData = None):
+def backward(model: "Model", *args, **kwargs):
 
     for node in model.nodes:
-        if node.is_trainable and hasattr(node, "_partial_backward") and \
-                node not in model.already_trained:
+        if node.is_trained_offline and node not in model.already_trained:
             node.fit()
 
 
@@ -1095,7 +1121,7 @@ class Model(Node):
         return self
 
     def call(self, x, forced_feedback=None, from_state=None, stateful=True,
-             reset=False):
+             reset=False, return_states=None):
         x = self._check_input(x)
 
         if not self._is_initialized:
@@ -1116,16 +1142,25 @@ class Model(Node):
                 self._clean_proxys()
 
                 state = {}
-                if len(self.output_nodes) > 1:
-                    for out_node in self.output_nodes:
-                        state[out_node.name] = out_node.state()
+                if return_states == "all":
+                    for node in self.nodes:
+                        state[node.name] = node.state()
+
+                elif isinstance(return_states, Iterable):
+                    for name in return_states:
+                        state[name] = self.get_node(name).state()
+
                 else:
-                    state = self.output_nodes[0].state()
+                    if len(self.output_nodes) > 1:
+                        for out_node in self.output_nodes:
+                            state[out_node.name] = out_node.state()
+                    else:
+                        state = self.output_nodes[0].state()
 
         return state
 
     def run(self, X, forced_feedbacks=None, from_state=None, stateful=True,
-            reset=False, shift_fb=True):
+            reset=False, shift_fb=True, return_states=None):
 
         if not self._is_initialized:
             if is_mapping(X):
@@ -1133,14 +1168,30 @@ class Model(Node):
             else:
                 self.initialize(X[0])
 
-        states = {n.name: np.zeros((X.shape[0], n.output_dim))
-                  for n in self.output_nodes}
+        if is_mapping(X):
+            seq_len = X[list(X.keys())[0]].shape[0]
+        else:
+            seq_len = X.shape[0]
 
+        # pre-allocate states
+        if return_states == "all":
+            states = {n.name: np.zeros((seq_len, n.output_dim))
+                      for n in self.nodes}
+        elif isinstance(return_states, Iterable):
+            states = {n.name: np.zeros((seq_len, n.output_dim))
+                      for n in [self.get_node(name)
+                                for name in return_states]}
+        else:
+            states = {n.name: np.zeros((seq_len, n.output_dim))
+                      for n in self.output_nodes}
+
+        # run
         with self.with_state(from_state, stateful=stateful, reset=reset):
             for i, (x, forced_feedback) in enumerate(
                     self._dispatcher.dispatch(X, forced_feedbacks,
                                               shift_fb=shift_fb)):
-                state = self.call(x, forced_feedback=forced_feedback)
+                state = self.call(x, forced_feedback=forced_feedback,
+                                  return_states=return_states)
 
                 if is_mapping(state):
                     for name, value in state.items():
@@ -1148,7 +1199,9 @@ class Model(Node):
                 else:
                     states[self.output_nodes[0].name][i, :] = state
 
-        if len(states) == 1:
+        # dicts are only relevant if model has several outputs (len > 1) or
+        # if we want to return states from hidden nodes
+        if len(states) == 1 and return_states is None:
             return states[self.output_nodes[0].name]
 
         return states
@@ -1171,9 +1224,6 @@ class Model(Node):
 
     def fit(self, X=None, Y=None):
 
-        X, Y = _to_ragged_seq_set(X), _to_ragged_seq_set(Y)
-        X, Y = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
-
         if not self._is_initialized:
             if is_mapping(X):
                 self.initialize({name: x[0] for name, x in X.items()},
@@ -1181,23 +1231,62 @@ class Model(Node):
             else:
                 self.initialize(X[0], Y[0])
 
-        offline_subgraphs = get_offline_subgraphs(self.nodes, self.edges)
+        X, Y = _to_ragged_seq_set(X), _to_ragged_seq_set(Y)
+        data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
+        X = [datum[0] for datum in data]
+        Y = [datum[1] for datum in data]
+
+        subgraphs = get_offline_subgraphs(self.nodes,
+                                          self.edges)
+
+        still_required = set()
+        for _, relations in subgraphs:
+            still_required |= set(relations.keys())
 
         already_trained = set()
-        for nodes, edges in offline_subgraphs:
-            submodel = Model(nodes, edges, name=f"{uuid4()}")
+        next_X = None
+        for (nodes, edges), relations in subgraphs:
+
+            submodel, offline_nodes = _build_forward_sumodels(nodes,
+                                                              edges,
+                                                              already_trained)
+
             submodel.already_trained = already_trained
 
+            if next_X is not None:
+                for i in range(len(X)):
+                    X[i].update(next_X[i])
+
+            next_X = []
             # for seq/batch in dataset
             for x_seq, y_seq in zip(X, Y):
-                states = self.run(x_seq, y_seq)
-                self._partial_backward(submodel, states, y_seq)
 
-            self._backward(submodel)
+                x_seq = {n: x for n, x in x_seq.items()
+                         if n in submodel.node_names}
+                y_seq = {n: y for n, y in y_seq.items()
+                         if n in [o.name for o in offline_nodes]}
 
-            already_trained |= set([n for n in submodel.nodes
-                                    if n.is_trainable])
+                states = submodel.run(x_seq, y_seq,
+                                      return_states=list(relations.keys()))
 
-        self._backward(self, X, Y)
+                dist_states = {}
+                for curr_node, next_nodes in relations.items():
+                    if len(next_nodes) > 1:
+                        for next_node in next_nodes:
+                            if dist_states.get(next_node) is None:
+                                dist_states[next_node] = list()
+                            dist_states[next_node].append(states[curr_node])
+                    else:
+                        dist_states[next_nodes[0]] = states[curr_node]
+
+                for node in offline_nodes:
+                    node.partial_fit(dist_states[node.name], y_seq[node.name])
+
+                next_X.append(dist_states)
+
+            for node in offline_nodes:
+                node.fit()
+
+            already_trained |= set(offline_nodes)
 
         return self
