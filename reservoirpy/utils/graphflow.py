@@ -4,6 +4,7 @@
 from collections import defaultdict, namedtuple, deque
 from typing import Dict, List
 
+from . import safe_defaultdict_copy
 from .validation import is_mapping, is_node
 
 DataPoint = namedtuple("DataPoint", "x, y")
@@ -45,145 +46,6 @@ def topological_sort(nodes, edges, inputs=None):
                            "order in the model.")
     else:
         return ordered_nodes
-
-"""
-def get_offline_subgraphs(nodes, edges):
-
-    global_inputs, global_outputs = find_entries_and_exits(nodes, edges)
-    parents, children = find_parents_and_children(edges)
-
-    # cut the graph:
-    # all "blocking" nodes are disconnected from their children
-    cuts = dict()
-    for node in nodes:
-        if node.is_trainable and node.is_trained_offline \
-                and not node.is_trained_online:
-            cuts[node] = children.get(node, [])
-            children[node] = []
-
-    # run Kahn algorithm to create subgraphs going from
-    # previous blocking nodes to the next ones
-    # (or first from inputs to first blocking nodes).
-    inputs = global_inputs.copy()
-    prev_inputs = inputs.copy()
-    subgraphs = []
-    # while all blocking nodes have not been added to a subgraph as output:
-    while len(cuts) > 0:
-        subnodes = []
-        subedges = []
-        next_inputs = []
-        inputs = deque(inputs)
-        ascendants = {n: p.copy() for n, p in parents.items()}
-        descendants = {n: c.copy() for n, c in children.items()}
-        while len(inputs) > 0:
-            n = inputs.popleft()
-            subnodes.append(n)
-            for m in descendants.get(n, ()):
-                ascendants[m].remove(n)
-                subedges.append((n, m))
-                if ascendants.get(m) is None or len(ascendants[m]) == 0:
-                    inputs.append(m)
-
-            if hasattr(n, "_partial_backward") and n not in global_outputs:
-                next_inputs.append(n)
-                # output of the previous subgraph will serve as inputs for
-                # the next.
-
-            if n in cuts:
-                # current node is blocking: add it to current subgraph
-                # and remove the seal disconnecting it from its children.
-                # It will be used as a standard node in the next subgraph
-                # creation loop.
-                child = cuts.pop(n)
-                children[n] = child
-
-        # rollback to find minimal requirements for current subgraphs inputs:
-        # if current subgraph inputs are not the global inputs of the global
-        # graph, it means they have predecessors probably already integrated
-        # to previously constructed subgraphs. Add all the predecessors to
-        # current subgraph.
-        for inp in prev_inputs:
-            if inp not in global_inputs:
-                pred_nodes, pred_edges = find_predecessors_of(inp, edges)
-                subnodes = set(subnodes) | set(pred_nodes)
-                subedges = set(subedges) | set(pred_edges)
-
-        # would be quicker to not redo a topo sort...
-        subgraphs.append((topological_sort(list(subnodes), list(subedges)),
-                          subedges))
-
-        # inputs for the next subgraphs are current blocking nodes used as
-        # inputs for the current subgraph.
-        prev_inputs = next_inputs.copy()
-        inputs = deque(next_inputs)
-
-    return subgraphs
-"""
-
-"""
-def get_offline_subgraphs(nodes, edges):
-
-    global_inputs, global_outputs = find_entries_and_exits(nodes, edges)
-    parents, children = find_parents_and_children(edges)
-
-    offlines = set([n for n in nodes
-                    if n.is_trained_offline and not n.is_trained_online])
-    included = set()
-
-    # run Kahn algorithm to create subgraphs going from
-    # previous blocking nodes to the next ones
-    # (or first from inputs to first blocking nodes).
-    inputs = global_inputs.copy()
-    prev_inputs = inputs.copy()
-    subgraphs = []
-
-    # while all blocking nodes have not been added to a subgraph as output:
-    while len(included) != len(offlines):
-        subedges = []
-        subnodes = []
-        next_inputs = set()
-        next_included = set()
-        inputs = deque(inputs)
-
-        while len(inputs) > 0:
-            n = inputs.popleft()
-            subnodes.append(n)
-
-            if n in offlines and n not in included:
-                if n not in global_outputs:
-                    next_inputs.add(n)
-                next_included.add(n)
-                continue
-
-            for m in children.get(n, ()):
-
-                for p in parents.get(m, []):
-                    if p in offlines and p not in included:
-                        next_inputs.add(n)
-                        break
-
-                if n in next_inputs:
-                    subnodes.remove(n)
-                    break
-
-                parents[m].remove(n)
-                subedges.append((n, m))
-
-                if len(parents.get(m, [])) == 0:
-                    inputs.append(m)
-
-        # would be quicker to not redo a topo sort...
-        subgraphs.append((topological_sort(list(subnodes), list(subedges)),
-                          subedges))
-
-        # inputs for the next subgraphs are current blocking nodes
-        # prev_inputs = next_inputs.copy()
-
-        inputs = deque(next_inputs)
-        included |= next_included
-
-    return subgraphs
-"""
 
 
 def get_offline_subgraphs(nodes, edges):
@@ -290,7 +152,7 @@ class DataDispatcher:
         self._inputs = model.input_nodes
         self.__parents, _ = find_parents_and_children(model.edges)
 
-        self._parents = self.__parents.copy()
+        self._parents = safe_defaultdict_copy(self.__parents)
         self._teachers = dict()
 
     def __getitem__(self, item):
@@ -332,15 +194,18 @@ class DataDispatcher:
         return DataPoint(x=x, y=teacher)
 
     def load(self, X=None, Y=None):
-        self._parents = self.__parents.copy()
+        self._parents = safe_defaultdict_copy(self.__parents)
         self._teachers = dict()
 
         if X is not None:
             self._check_inputs(X)
-            for inp_node in self._inputs:
-                if is_mapping(X):
-                    self._parents[inp_node] += [X[inp_node.name]]
-                else:
+            if is_mapping(X):
+                for node in self._nodes:
+                    if X.get(node.name) is not None:
+                        self._parents[node] += [X[node.name]]
+
+            else:
+                for inp_node in self._inputs:
                     self._parents[inp_node] += [X]
 
         if Y is not None:

@@ -177,6 +177,30 @@ def offline_node2():
     return Offline2()
 
 
+@pytest.fixture(scope="function")
+def sum_node():
+
+    def forward(node: Node, x):
+        if isinstance(x, list):
+            x = np.concatenate(x, axis=0)
+        return np.sum(x, axis=0)
+
+    def initialize(node: Node, x=None):
+        if x is not None:
+            if isinstance(x, list):
+                x = np.concatenate(x, axis=0)
+            node.set_input_dim(x.shape[1])
+            node.set_output_dim(x.shape[1])
+
+    class Sum(Node):
+
+        def __init__(self):
+            super(Sum, self).__init__(forward=forward,
+                                      initializer=initialize)
+
+    return Sum()
+
+
 def test_node_creation(plus_node):
     assert plus_node.name == 'PlusNode-0'
     assert plus_node.params["c"] is None
@@ -603,9 +627,10 @@ def test_offline_fit(offline_node):
     assert_array_equal(offline_node.get_buffer("b"), np.array([3.]))
 
 
-def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_node):
+def test_offline_fit_simple_model(offline_node, offline_node2,
+                                  plus_node, minus_node):
 
-    model = plus_node >> offline_node >> minus_node >> offline_node2
+    model = plus_node >> offline_node
 
     X = np.ones((5, 5)) * 0.5
     Y = np.ones((5, 5))
@@ -613,3 +638,52 @@ def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_
     model.fit(X, Y)
 
     assert_array_equal(offline_node.b, np.array([6.5]))
+
+    X = np.ones((3, 5, 5)) * 0.5
+    Y = np.ones((3, 5, 5))
+
+    model.fit(X, Y)
+
+    assert_array_equal(offline_node.b, np.array([19.5]))
+
+    model.fit(X, Y, stateful=True, reset=True)
+
+    assert_array_equal(offline_node.b, np.array([57.0]))
+
+    res = model.run(X[0])
+
+    exp = np.tile(np.array([59.5, 62, 64.5, 67, 69.5]), 5).reshape(5, 5).T
+
+    assert_array_equal(exp, res)
+
+
+def test_offline_fit_complicated_model(offline_node, offline_node2,
+                                       plus_node, minus_node, sum_node):
+
+    input = Input()
+
+    branch1 = input >> plus_node >> offline_node >> minus_node >> sum_node
+    branch2 = input >> sum_node >> offline_node2
+
+    model = combine(branch1, branch2)
+
+    X = np.ones((5, 5)) * 0.5
+    Y = np.ones((5, 5))
+
+    model.fit(X, Y)
+
+    assert_array_equal(offline_node.b, np.array([6.5]))
+    assert_array_equal(offline_node2.b, np.array([6.7]))
+
+    X = np.ones((3, 5, 5)) * 0.5
+    Y = np.ones((3, 5, 5))
+
+    model.fit(X, Y)
+
+    assert_array_equal(offline_node.b, np.array([19.5]))
+    assert_array_equal(offline_node2.b, np.array([43.5]))
+
+    model.fit(X, Y, stateful=True, reset=True)
+
+    assert_array_equal(offline_node.b, np.array([57.0]))
+    assert_array_equal(offline_node2.b, np.array([118.5]))
