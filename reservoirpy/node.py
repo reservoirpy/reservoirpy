@@ -197,20 +197,6 @@ def _initialize_with_seq_set(node, X, Y=None):
     return X, Y
 
 
-def _extract_offline_nodes(nodes, edges, already_trained, prev_trained):
-
-    offline_nodes = [n for n in nodes
-                     if hasattr(n, "_partial_backward")
-                     and n not in already_trained]
-
-    forward_nodes = list(set(nodes) - set(offline_nodes))
-    forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
-
-    submodel = Model(forward_nodes, forward_edges, name=f"{uuid4()}")
-
-    return submodel, forward_nodes
-
-
 def _build_forward_sumodels(nodes, edges, already_trained):
 
     offline_nodes = [n for n in nodes
@@ -221,7 +207,23 @@ def _build_forward_sumodels(nodes, edges, already_trained):
 
     submodel = Model(forward_nodes, forward_edges, name=f"{uuid4()}")
 
+    submodel.already_trained = already_trained
+
     return submodel, offline_nodes
+
+
+def _distribute_states_to_next_subgraph(states, relations):
+    dist_states = {}
+    for curr_node, next_nodes in relations.items():
+        if len(next_nodes) > 1:
+            for next_node in next_nodes:
+                if dist_states.get(next_node) is None:
+                    dist_states[next_node] = list()
+                dist_states[next_node].append(states[curr_node])
+        else:
+            dist_states[next_nodes[0]] = states[curr_node]
+
+    return dist_states
 
 
 def forward(model: "Model",
@@ -261,16 +263,13 @@ def forward(model: "Model",
     return [out_node.state() for out_node in model.output_nodes]
 
 
-def train(model: "Model", x: MappedData, y: MappedData = None):
-    data = model.data_dispatcher.load(x, y)
+def train(model: "Model", y: MappedData = None):
+
+    data = model.data_dispatcher.load(Y=y)
 
     for node in model.nodes:
-        if node.is_trainable and hasattr(node, "_train"):
-            node.train(data[node].x, data[node].y)
-        else:
-            node(data[node].x)
-
-    return [out_node.state() for out_node in model.output_nodes]
+        if node.is_trained_online:
+            node.train(data[node].y)
 
 
 def partial_backward(model: "Model",
@@ -717,7 +716,11 @@ class Node:
 
     def initialize(self, x=None, y=None):
         if not self._is_initialized:
-            x = check_vector(x)
+            if isinstance(x, np.ndarray):
+                x = check_vector(x)
+            elif isinstance(x, list):
+                for i in range(len(x)):
+                    x[i] = check_vector(x[i])
             if y is not None:
                 y = check_vector(y)
                 self._initializer(self, x=x, y=y)
@@ -808,12 +811,17 @@ class Node:
 
             if isinstance(feedback, Node):
                 self._feedback = feedback
+
                 yield self
+
                 self._feedback = current_fb
+
             elif isinstance(feedback, np.ndarray):
                 current_proxy = self._feedback._state_proxy
                 self._feedback.set_state_proxy(feedback)
+
                 yield self
+
                 if not stateful:
                     self._feedback._state_proxy = current_proxy
             else:
@@ -830,7 +838,11 @@ class Node:
                     feedback = current_state_proxy
 
             self.set_state_proxy(feedback)
+
             yield self
+
+            if not stateful:
+                self._state_proxy = current_state_proxy
 
     def zero_state(self):
         """A null state vector."""
@@ -893,7 +905,7 @@ class Node:
                 self.initialize(x, y)
 
             state = self(x)
-            self._train(self, x, y)
+            self._train(self, y)
 
             return state
 
@@ -972,9 +984,7 @@ class Model(Node):
                         f"of model {self.name}.")
 
             for name, value in x.items():
-                if name not in input_names:
-                    raise NameError(f"Node '{name}' not found in input nodes "
-                                    f"of model {self.name}.")
+
                 value = check_vector(value)
                 x[name] = value
 
@@ -1206,7 +1216,10 @@ class Model(Node):
 
         return states
 
-    def train(self, x, y=None):
+    def train(self, x, y=None, force_teachers=True,
+              from_state=None, stateful=True,
+              reset=False, return_states=None):
+
         x = self._check_input(x)
 
         if not self._is_initialized:
@@ -1214,8 +1227,32 @@ class Model(Node):
 
         self._check_if_only_online()
 
-        with self.with_feedback(feedback=y):
-            state = self._train(self, x, y)
+        for i, (x, forced_feedback) in enumerate(
+                self._dispatcher.dispatch(x, y,
+                                          shift_fb=shift_fb)):
+
+        forced_feedback = None
+        if force_teachers:
+            forced_feedback = y
+
+        self._load_proxys()
+
+        with self.with_state(from_state, stateful=stateful, reset=reset):
+                with self.with_feedback(forced_feedback,
+                                        stateful=stateful,
+                                        reset=reset):
+                    state = self.call(x)
+
+                    # clean feedbacks containing teacher values before training
+                    # potentially using these feedbacks
+                    if not force_teachers:
+                        self._clean_proxys()
+
+                    self._train(self, y)
+
+                    # or use the teacher values during training and then clean
+                    if force_teachers:
+                        self._clean_proxys()
 
         return state
 
@@ -1239,10 +1276,6 @@ class Model(Node):
         subgraphs = get_offline_subgraphs(self.nodes,
                                           self.edges)
 
-        still_required = set()
-        for _, relations in subgraphs:
-            still_required |= set(relations.keys())
-
         already_trained = set()
         next_X = None
         for (nodes, edges), relations in subgraphs:
@@ -1250,8 +1283,6 @@ class Model(Node):
             submodel, offline_nodes = _build_forward_sumodels(nodes,
                                                               edges,
                                                               already_trained)
-
-            submodel.already_trained = already_trained
 
             if next_X is not None:
                 for i in range(len(X)):
@@ -1269,18 +1300,8 @@ class Model(Node):
                 states = submodel.run(x_seq, y_seq,
                                       return_states=list(relations.keys()))
 
-                dist_states = {}
-                for curr_node, next_nodes in relations.items():
-                    if len(next_nodes) > 1:
-                        for next_node in next_nodes:
-                            if dist_states.get(next_node) is None:
-                                dist_states[next_node] = list()
-                            dist_states[next_node].append(states[curr_node])
-                    else:
-                        dist_states[next_nodes[0]] = states[curr_node]
-
-                for node in offline_nodes:
-                    node.partial_fit(dist_states[node.name], y_seq[node.name])
+                dist_states = _distribute_states_to_next_subgraph(states,
+                                                                  relations)
 
                 next_X.append(dist_states)
 

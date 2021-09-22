@@ -331,21 +331,20 @@ class DataDispatcher:
 
         return DataPoint(x=x, y=teacher)
 
-    def load(self, X, Y=None):
+    def load(self, X=None, Y=None):
         self._parents = self.__parents.copy()
         self._teachers = dict()
 
-        self._check_inputs(X)
-
-        for inp_node in self._inputs:
-            if is_mapping(X):
-                self._parents[inp_node] += [X[inp_node.name]]
-            else:
-                self._parents[inp_node] += [X]
-
-        self._check_targets(Y)
+        if X is not None:
+            self._check_inputs(X)
+            for inp_node in self._inputs:
+                if is_mapping(X):
+                    self._parents[inp_node] += [X[inp_node.name]]
+                else:
+                    self._parents[inp_node] += [X]
 
         if Y is not None:
+            self._check_targets(Y)
             for node in self._nodes:
                 if is_mapping(Y):
                     if Y.get(node.name) is not None:
