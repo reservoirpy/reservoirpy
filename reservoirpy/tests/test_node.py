@@ -17,7 +17,7 @@ def plus_node():
     def forward(node: Node, x):
         return x + node.c + node.h + node.state()
 
-    def initialize(node: Node, x=None):
+    def initialize(node: Node, x=None, **kwargs):
         node.set_input_dim(x.shape[1])
         node.set_output_dim(x.shape[1])
         node.set_param("c", 1)
@@ -39,7 +39,7 @@ def minus_node():
     def forward(node: Node, x):
         return x - node.c - node.h - node.state()
 
-    def initialize(node: Node, x=None):
+    def initialize(node: Node, x=None, **kwargs):
         node.set_input_dim(x.shape[1])
         node.set_output_dim(x.shape[1])
         node.set_param("c", 1)
@@ -61,7 +61,7 @@ def feedback_node():
     def forward(node: Node, x):
         return node.feedback() + x + 1
 
-    def initialize(node: Node, x=None):
+    def initialize(node: Node, x=None, **kwargs):
         node.set_input_dim(x.shape[1])
         node.set_output_dim(x.shape[1])
 
@@ -87,7 +87,7 @@ def inverter_node():
     def forward(node: Node, x):
         return -x
 
-    def initialize(node: Node, x=None):
+    def initialize(node: Node, x=None, **kwarg):
         if x is not None:
             node.set_input_dim(x.shape[1])
             node.set_output_dim(x.shape[1])

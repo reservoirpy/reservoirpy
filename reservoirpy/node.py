@@ -210,11 +210,15 @@ def _dist_states_to_next_subgraph(states, relations):
     return dist_states
 
 
-def _allocate_returned_states(inputs, model, return_states):
-    if is_mapping(inputs):
-        seq_len = inputs[list(inputs.keys())[0]].shape[0]
+def _allocate_returned_states(inputs, n, model, return_states):
+
+    if inputs is not None:
+        if is_mapping(inputs):
+            seq_len = inputs[list(inputs.keys())[0]].shape[0]
+        else:
+            seq_len = inputs.shape[0]
     else:
-        seq_len = inputs.shape[0]
+        seq_len = n
 
     # pre-allocate states
     if return_states == "all":
@@ -729,23 +733,24 @@ class Node:
         return self
 
     def initialize_feedback(self):
-        if isinstance(self._feedback, Model):
-            input_data = {c.name: p.state_proxy()
-                          for p, c in self._feedback.edges
-                          if p in self._feedback.input_nodes}
-            self._reduced_fb = _remove_input_for_feedback(self._feedback)
+        if not self.is_fb_initialized:
+            if isinstance(self._feedback, Model):
+                input_data = {c.name: p.state_proxy()
+                              for p, c in self._feedback.edges
+                              if p in self._feedback.input_nodes}
+                self._reduced_fb = _remove_input_for_feedback(self._feedback)
 
-            if isinstance(self._reduced_fb, Model):
-                self._reduced_fb.initialize(x=input_data)
-            else:
-                reduced_name = self._reduced_fb.name
-                self._reduced_fb.initialize(x=input_data[reduced_name])
+                if isinstance(self._reduced_fb, Model):
+                    self._reduced_fb.initialize(x=input_data)
+                else:
+                    reduced_name = self._reduced_fb.name
+                    self._reduced_fb.initialize(x=input_data[reduced_name])
 
-        elif isinstance(self._feedback, Node):
-            self._feedback_initializer(self)
+            elif isinstance(self._feedback, Node):
+                self._feedback_initializer(self)
 
-        self._is_fb_initialized = True
-        self._feedback._is_initialized = True
+            self._is_fb_initialized = True
+            self._feedback._is_initialized = True
 
         return self
 
@@ -867,8 +872,10 @@ class Node:
         self._feedback = node
         return self
 
-    def call(self, x, from_state=None, stateful=True, reset=False):
-        x = self._check_input(x)
+    def call(self, x=None, from_state=None, stateful=True, reset=False):
+
+        if x is not None:
+            x = self._check_input(x)
 
         if not self._is_initialized:
             self.initialize(x)
@@ -879,14 +886,22 @@ class Node:
 
         return state
 
-    def run(self, X, from_state=None, stateful=True, reset=False):
+    def run(self, X=None, n=1, from_state=None, stateful=True, reset=False):
 
         if not self._is_initialized:
-            self.initialize(X[0])
+            if X is not None:
+                self.initialize(X[0])
+            else:
+                self.initialize()
+
+        seq_len = X.shape[0] if X is not None else n
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            states = np.zeros((X.shape[0], self.output_dim))
-            for i, x in enumerate(X):
+            states = np.zeros((seq_len, self.output_dim))
+            for i in range(seq_len):
+                x = None
+                if X is not None:
+                    x = X[i]
                 s = self.call(x)
                 states[i, :] = s
 
@@ -1008,12 +1023,14 @@ class Model(Node):
         for node in self._nodes:
             node._state_proxy = None
 
-    def _initialize_on_sequence(self, X, Y=None):
+    def _initialize_on_sequence(self, X=None, Y=None):
         if not self._is_initialized:
-            if is_mapping(X):
-                x_init = {name: x[0] for name, x in X.items()}
-            else:
-                x_init = X[0]
+            x_init = None
+            if X is not None:
+                if is_mapping(X):
+                    x_init = {name: x[0] for name, x in X.items()}
+                else:
+                    x_init = X[0]
 
             y_init = None
             if Y is not None:
@@ -1142,14 +1159,16 @@ class Model(Node):
 
     def initialize(self, x=None, y=None):
         self._is_initialized = False
-        self._initializer(self, x=x)
+        self._initializer(self, x=x, y=y)
         self.reset()
         self._is_initialized = True
         return self
 
-    def call(self, x, forced_feedback=None, from_state=None, stateful=True,
+    def call(self, x=None, forced_feedback=None, from_state=None, stateful=True,
              reset=False, return_states=None):
-        x = self._check_input(x)
+
+        if x is not None:
+            x = self._check_input(x)
 
         if not self._is_initialized:
             self.initialize(x)
@@ -1186,12 +1205,12 @@ class Model(Node):
 
         return state
 
-    def run(self, X, forced_feedbacks=None, from_state=None, stateful=True,
+    def run(self, X=None, n=1, forced_feedbacks=None, from_state=None, stateful=True,
             reset=False, shift_fb=True, return_states=None):
 
         self._initialize_on_sequence(X, forced_feedbacks)
 
-        states = _allocate_returned_states(X, self, return_states)
+        states = _allocate_returned_states(X, n, self, return_states)
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             for i, (x, forced_feedback) in enumerate(
@@ -1270,12 +1289,12 @@ class Model(Node):
     def fit(self, X=None, Y=None, stateful=False, reset=False,
             from_state=None):
 
-        self._initialize_on_sequence(X, Y)
-
         X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
         X = [datum[0] for datum in data]
         Y = [datum[1] for datum in data]
+
+        self._initialize_on_sequence(X[0], Y[0])
 
         subgraphs = get_offline_subgraphs(self.nodes,
                                           self.edges)
