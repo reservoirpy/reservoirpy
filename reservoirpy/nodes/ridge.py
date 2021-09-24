@@ -15,7 +15,8 @@ def _solve_ridge(XXT, YXT, ridge):
     return linalg.solve(XXT + ridge, YXT.T, assume_a="sym").T
 
 
-def _prepare_inputs(X, Y, bias=True, allow_reshape=False):
+def _prepare_inputs(X, Y, bias=True, transient=0, allow_reshape=False):
+
     if bias:
         X = add_bias(X)
     if not isinstance(X, np.ndarray):
@@ -26,15 +27,24 @@ def _prepare_inputs(X, Y, bias=True, allow_reshape=False):
     X = check_vector(X, allow_reshape=allow_reshape)
     Y = check_vector(Y, allow_reshape=allow_reshape)
 
+    seq_len = len(X)
+
+    if seq_len > transient:
+        X, Y = X[transient:], Y[transient:]
+    # TODO: else raise ?
+
     return X, Y
 
 
 def forward(readout: Node, x):
-    return (x @ readout.Wout.T + readout.bias.T).T
+    return (x @ readout.Wout.T + readout.bias.T)
 
 
 def partial_backward(readout: Node, X_batch, Y_batch=None):
-    X, Y = _prepare_inputs(X_batch, Y_batch, allow_reshape=True)
+    transient = readout.transient
+
+    X, Y = _prepare_inputs(X_batch, Y_batch,
+                           transient=transient, allow_reshape=True)
 
     xxt = X.T.dot(X)
     yxt = Y.T.dot(X)
@@ -55,7 +65,7 @@ def backward(readout: Node, X=None, Y=None):
 
     Wout_raw = _solve_ridge(XXT, YXT, ridgeid)
 
-    Wout, bias = Wout_raw[:, 1:], Wout_raw[:, 1]
+    Wout, bias = Wout_raw[:, 1:], Wout_raw[:, 1][:, np.newaxis]
 
     readout.set_param("Wout", Wout)
     readout.set_param("bias", bias)

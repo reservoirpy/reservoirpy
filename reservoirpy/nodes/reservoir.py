@@ -238,6 +238,7 @@ class Reservoir(Node):
         self._seed = seed
         self._rg = np.random.default_rng(seed)
 
+    # TODO: handle random seed stuff somewhere else (and more globally)
     @property
     def random_generator(self):
         return self._rg
