@@ -144,10 +144,11 @@ from collections import Iterable
 
 import numpy as np
 
+from .utils import to_ragged_seq_set
 from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
                               get_offline_subgraphs, topological_sort, )
 from .utils.types import MappedData
-from .utils.validation import check_vector, is_mapping, is_sequence_set
+from .utils.validation import check_vector, is_mapping
 from .utils.parallel import memmap_buffer
 
 
@@ -165,28 +166,11 @@ def _remove_input_for_feedback(model: "Model") -> "Node":
     return Model(filtered_nodes, filtered_edges)
 
 
-def _to_ragged_seq_set(data):
-    if is_mapping(data):
-        new_data = {}
-        for name, datum in data.items():
-            if not is_sequence_set(datum):
-                new_datum = [datum]
-            else:
-                new_datum = datum
-            new_data[name] = new_datum
-        return new_data
-    else:
-        if not is_sequence_set(data):
-            return [data]
-        else:
-            return data
-
-
 def _initialize_with_seq_set(node, X, Y=None):
-    X = _to_ragged_seq_set(X)
+    X = to_ragged_seq_set(X)
 
     if Y is not None:
-        Y = _to_ragged_seq_set(Y)
+        Y = to_ragged_seq_set(Y)
 
     if not node.is_initialized:
         if Y is not None:
@@ -238,7 +222,7 @@ def _allocate_returned_states(inputs, model, return_states):
                   for n in model.nodes}
     elif isinstance(return_states, Iterable):
         states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in [model.get_node(name)
+                  for n in [model[name]
                             for name in return_states]}
     else:
         states = {n.name: np.zeros((seq_len, n.output_dim))
@@ -492,7 +476,10 @@ class Node:
         # because we assume they have already run during the forward call)
         self._reduced_fb = None
 
-        self._trainable = self.is_trained_offline or self.is_trained_online
+        self._trainable = self._backward is not None or \
+                          self._partial_backward is not None or \
+                          self._train is not None
+
         self._fitted = False if self.is_trainable and self.is_trained_offline\
             else True
 
@@ -611,12 +598,12 @@ class Node:
 
     @property
     def is_trained_offline(self):
-        return self._backward is not None or \
-               self._partial_backward is not None
+        return self.is_trainable and (self._backward is not None or
+                                      self._partial_backward is not None)
 
     @property
     def is_trained_online(self):
-        return self._train is not None
+        return self.is_trainable and self._train is not None
 
     @property
     def is_trainable(self):
@@ -930,6 +917,8 @@ class Node:
 
     def fit(self, X=None, Y=None):
 
+        self._fitted = False
+
         if self._backward is not None:
             if X is not None:
                 X, Y = _initialize_with_seq_set(self, X, Y)
@@ -997,11 +986,11 @@ class Model(Node):
                 x[name] = value
 
                 if self._is_initialized:
-                    if value.shape[1] != self.get_node(name).input_dim:
+                    if value.shape[1] != self[name].input_dim:
                         raise ValueError(
                             f"Impossible to call node {name}: node input "
                             f"dimension is (1, "
-                            f"{self.get_node(name).input_dim}) and input "
+                            f"{self[name].input_dim}) and input "
                             f"dimension is {x.shape}.")
         return x
 
@@ -1089,6 +1078,10 @@ class Model(Node):
     def data_dispatcher(self):
         return self._dispatcher
 
+    @property
+    def is_empty(self):
+        return len(self.nodes) == 0
+
     @contextmanager
     def with_state(self, state=None, stateful=False, reset=False):
         current_state = {n.name: n.state() for n in self.nodes}
@@ -1141,7 +1134,7 @@ class Model(Node):
                 node.reset()
         else:
             for node_name, current_state in to_state.items():
-                self.get_node(node_name).reset(to_state=current_state)
+                self[node_name].reset(to_state=current_state)
         return self
 
     def zero_state(self):
@@ -1182,7 +1175,7 @@ class Model(Node):
 
                 elif isinstance(return_states, Iterable):
                     for name in return_states:
-                        state[name] = self.get_node(name).state()
+                        state[name] = self[name].state()
 
                 else:
                     if len(self.output_nodes) > 1:
@@ -1279,7 +1272,7 @@ class Model(Node):
 
         self._initialize_on_sequence(X, Y)
 
-        X, Y = _to_ragged_seq_set(X), _to_ragged_seq_set(Y)
+        X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
         X = [datum[0] for datum in data]
         Y = [datum[1] for datum in data]
@@ -1300,21 +1293,28 @@ class Model(Node):
                     for i in range(len(X)):
                         X[i].update(next_X[i])
 
+                return_states = None
+                if len(relations) > 0:
+                    return_states = list(relations.keys())
+
                 next_X = []
                 # for seq/batch in dataset
                 for x_seq, y_seq in zip(X, Y):
 
-                    x_seq = {n: x for n, x in x_seq.items()
-                             if n in submodel.node_names}
-                    y_seq = {n: y for n, y in y_seq.items()
-                             if n in [o.name for o in offlines]}
+                    if not submodel.is_empty:
+                        x_seq = {n: x for n, x in x_seq.items()
+                                 if n in submodel.node_names}
+                        y_seq = {n: y for n, y in y_seq.items()
+                                 if n in [o.name for o in offlines]}
 
-                    states = submodel.run(x_seq, y_seq,
-                                          return_states=list(relations.keys()),
-                                          stateful=stateful)
+                        states = submodel.run(x_seq, y_seq,
+                                              return_states=return_states,
+                                              stateful=stateful)
 
-                    dist_states = _dist_states_to_next_subgraph(states,
-                                                                relations)
+                        dist_states = _dist_states_to_next_subgraph(states,
+                                                                    relations)
+                    else:
+                        dist_states = x_seq
 
                     for node in offlines:
                         node.partial_fit(dist_states[node.name],

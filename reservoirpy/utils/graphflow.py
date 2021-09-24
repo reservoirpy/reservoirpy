@@ -85,14 +85,19 @@ def get_offline_subgraphs(nodes, edges):
 def _get_required_nodes(subgraphs, children):
 
     req = []
+    fitted = set()
     for i in range(1, len(subgraphs)):
         currs = set(subgraphs[i - 1][0])
         nexts = set(subgraphs[i][0])
 
         req.append(_get_links(currs, nexts, children))
 
-    nexts = set([n for n in subgraphs[-1][0] if n.is_trained_offline])
-    currs = set(subgraphs[-1][0]) - nexts
+        fitted |= set([node for node in currs if node.is_trained_offline])
+
+    nexts = set([n for n in subgraphs[-1][0]
+                 if n.is_trained_offline and n not in fitted])
+    currs = set([n for n in subgraphs[-1][0]
+                 if not n.is_trained_offline or n in fitted])
 
     req.append(_get_links(currs, nexts, children))
 
