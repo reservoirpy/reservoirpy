@@ -2,7 +2,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
+<<<<<<< Updated upstream
 import gc
+=======
+import sys
+>>>>>>> Stashed changes
 import tempfile
 import uuid
 from collections import defaultdict
@@ -14,14 +18,23 @@ import joblib
 from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
-
 from .types import global_dtype
+
+# FIX waiting for a workaround to avoid crashing with multiprocessing
+# activated with Python < 3.8. Seems to be due to compatibility issues
+# with pickle5 protocol and loky library.
+if sys.version_info < (3, 8):
+    _BACKEND = "sequential"
+    _AVAILABLE_BACKENDS = ("sequential",)
+else:
+    _BACKEND = "loky"
+    _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
+                           "threading", "sequential")
+
 
 manager = Manager()
 lock = manager.Lock()
 
-_BACKEND = "loky"
-_AVAILABLE_BACKENDS = ["loky", "multiprocessing", "threading"]
 
 temp_registry = defaultdict(list)
 
@@ -31,6 +44,7 @@ def get_joblib_backend(workers=-1):
 
 
 def set_joblib_backend(backend):
+    global _BACKEND
     if backend in _AVAILABLE_BACKENDS:
         _BACKEND = backend
     else:
@@ -66,6 +80,8 @@ def memmap_buffer(node, data=None, shape=None,
     return memmap
 
 
+=======
+>>>>>>> Stashed changes
 def as_memmap(data, caller=None):
     if caller is not None:
         caller_name = caller.name
