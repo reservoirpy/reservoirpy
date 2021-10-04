@@ -2,11 +2,8 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
-<<<<<<< Updated upstream
 import gc
-=======
 import sys
->>>>>>> Stashed changes
 import tempfile
 import uuid
 from collections import defaultdict
@@ -32,6 +29,17 @@ else:
                            "threading", "sequential")
 
 
+# FIX waiting for a workaround to avoid crashing with multiprocessing
+# activated with Python < 3.8. Seems to be due to compatibility issues
+# with pickle5 protocol and loky library.
+if sys.version_info < (3, 8):
+    _BACKEND = "sequential"
+    _AVAILABLE_BACKENDS = ("sequential",)
+else:
+    _BACKEND = "loky"
+    _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
+                           "threading", "sequential")
+
 manager = Manager()
 lock = manager.Lock()
 
@@ -52,6 +60,7 @@ def set_joblib_backend(backend):
                          f"backend value. Available backends are "
                          f"{_AVAILABLE_BACKENDS}.")
 
+<<<<<<< Updated upstream
 def get_lock():
     return lock
 
@@ -80,6 +89,8 @@ def memmap_buffer(node, data=None, shape=None,
     return memmap
 
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 def as_memmap(data, caller=None):
