@@ -224,7 +224,7 @@ class DataDispatcher:
                         self._teachers[node] = Y
         return self
 
-    def dispatch(self, X, Y=None, shift_fb=True):
+    def dispatch(self, X, Y=None, shift_fb=True, return_targets=False):
 
         if not is_mapping(X):
             X = {inp.name: X for inp in self._inputs}
@@ -262,20 +262,23 @@ class DataDispatcher:
         for i in range(sequence_length):
             x = {node: X[node][i] for node in X.keys()}
             if Y is not None:
+                y = None
+                if return_targets:
+                    y = {node: Y[node][i] for node in Y.keys()}
                 # if feedbacks vectors are meant to be fed
                 # with a delay in time of one timestep w.r.t. 'X'
                 if shift_fb:
                     if i == 0:
-                        y = {node: None for node in
-                             Y.keys()}
+                        fb = {node: None for node in
+                              Y.keys()}
                     else:
-                        y = {node: Y[node][i-1] for node in Y.keys()}
+                        fb = {node: Y[node][i-1] for node in Y.keys()}
                 # else assume that all feedback vectors must be instantaneously
                 # fed to the network. This means that 'Y' already contains data
                 # that is delayed by one timestep w.r.t. 'X'.
                 else:
-                    y = {node: Y[node][i] for node in Y.keys()}
+                    fb = {node: Y[node][i] for node in Y.keys()}
             else:
-                y = None
+                fb = y = None
 
-            yield x, y
+            yield x, fb, y

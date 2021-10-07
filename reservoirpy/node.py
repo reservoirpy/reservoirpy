@@ -144,6 +144,8 @@ from collections import Iterable
 
 import numpy as np
 
+from tqdm import tqdm
+
 from .utils import to_ragged_seq_set
 from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
                               get_offline_subgraphs, topological_sort, )
@@ -210,15 +212,18 @@ def _dist_states_to_next_subgraph(states, relations):
     return dist_states
 
 
-def _allocate_returned_states(inputs, n, model, return_states):
+def _allocate_returned_states(model, inputs=None, n=None, return_states=None):
 
     if inputs is not None:
         if is_mapping(inputs):
             seq_len = inputs[list(inputs.keys())[0]].shape[0]
         else:
             seq_len = inputs.shape[0]
-    else:
+    elif n is not None:
         seq_len = n
+    else:
+        raise ValueError("'X' and 'n' parameters can't be None at the "
+                         "same time.")
 
     # pre-allocate states
     if return_states == "all":
@@ -233,6 +238,19 @@ def _allocate_returned_states(inputs, n, model, return_states):
                   for n in model.output_nodes}
 
     return states
+
+
+def _node_fb_init_general(node):
+    if node.has_feedback:
+        feedback = node.feedback()
+
+        fb_dim = None
+        if isinstance(feedback, list):
+            fb_dim = tuple([fb.shape[1] for fb in feedback])
+        elif isinstance(feedback, np.ndarray):
+            fb_dim = feedback.shape[1]
+
+        node.set_feedback_dim(fb_dim)
 
 
 def forward(model: "Model",
@@ -272,13 +290,15 @@ def forward(model: "Model",
     return [out_node.state() for out_node in model.output_nodes]
 
 
-def train(model: "Model", y: MappedData = None):
+def train(model: "Model", x=None, y: MappedData = None, force_teachers=True):
 
-    data = model.data_dispatcher.load(Y=y)
+    data = model.data_dispatcher.load(X=x, Y=y)
 
     for node in model.nodes:
         if node.is_trained_online:
-            node.train(data[node].y)
+            node.train(data[node].x, data[node].y,
+                       force_teachers=force_teachers,
+                       call=False)
 
 
 def initializer(model: "Model",
@@ -417,11 +437,12 @@ def combine(*models: "Model"):
     return Model(nodes=list(all_nodes), edges=list(all_edges))
 
 
-class Node:
+class Node(object):
     _state: np.ndarray
     _params: Dict
     _hypers: Dict
     _buffers: Dict
+    _buffers_initializer: Callable
     _input_dim: int
     _output_dim: int
     _forward: Callable
@@ -446,8 +467,9 @@ class Node:
 
     def __init__(self, params=None, hypers=None, forward=None,
                  backward=None, partial_backward=None, train=None,
-                 initializer=None, fb_initializer=None, input_dim=None,
-                 output_dim=None, feedback_dim=None, name=None):
+                 initializer=None, fb_initializer=_node_fb_init_general,
+                 buffers_initializer=None, input_dim=None, output_dim=None,
+                 feedback_dim=None, name=None):
 
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
@@ -463,6 +485,7 @@ class Node:
         self._train = train
         self._initializer = initializer
         self._feedback_initializer = fb_initializer
+        self._buffers_initializer = buffers_initializer
         self._input_dim = input_dim
         self._output_dim = output_dim
         self._feedback_dim = feedback_dim
@@ -567,6 +590,14 @@ class Node:
                     f"output dimension is (1, {self.output_dim}) and teacher "
                     f"vector dimension is {y.shape}."
                     )
+
+    def _call(self, x=None, from_state=None, stateful=True, reset=False):
+        with self.with_state(from_state, stateful=stateful, reset=reset):
+            x = check_vector(x, allow_reshape=True)
+            state = self._forward(self, x)
+            self._state = state
+
+        return state
 
     @property
     def name(self):
@@ -727,6 +758,9 @@ class Node:
             else:
                 self._initializer(self, x=x)
 
+            if self._buffers_initializer is not None:
+                self._buffers_initializer(self)
+
             self.reset()
             self._is_initialized = True
 
@@ -880,9 +914,7 @@ class Node:
         if not self._is_initialized:
             self.initialize(x)
 
-        with self.with_state(from_state, stateful=stateful, reset=reset):
-            state = self._forward(self, x)
-            self._state = state
+        state = self._call(x, from_state, stateful, reset)
 
         return state
 
@@ -901,24 +933,47 @@ class Node:
             for i in range(seq_len):
                 x = None
                 if X is not None:
-                    x = X[i]
-                s = self.call(x)
+                    x = np.atleast_2d(X[i])
+                s = self._call(x)
                 states[i, :] = s
 
         return states
 
-    def train(self, x, y=None):
+    def train(self, X, Y=None, force_teachers=True, call=True,
+              learn_every=1, from_state=None, stateful=True, reset=False):
+
         if self._train is not None:
-            x = self._check_input(x)
-            y = self._check_state(y)
 
             if not self._is_initialized:
-                self.initialize(x, y)
+                x_init = X[0]
+                y_init = Y[0] if Y is not None else None
+                self.initialize(x=x_init, y=y_init)
 
-            state = self(x)
-            self._train(self, y)
+            seq_len = X.shape[0]
 
-            return state
+            with self.with_state(from_state, stateful=stateful, reset=reset):
+                states = np.zeros((seq_len, self.output_dim))
+                for i in range(seq_len):
+                    x = X[i, :]
+
+                    y = Y[i, :] if Y is not None else None
+                    if y is None and self.has_feedback:
+                        y = self.feedback()
+
+                    if call:
+                        s = self.call(x)
+                    else:
+                        s = self.zero_state()
+
+                    if force_teachers:
+                        self.set_state_proxy(y)
+
+                    if i % learn_every == 0 or seq_len == 1:
+                        self._train(self, x=x, y=y)
+
+                    states[i, :] = s
+
+            return states
 
     def partial_fit(self, X_batch, Y_batch=None):
         if self._partial_backward is not None:
@@ -956,6 +1011,7 @@ class Node:
 
 class Model(Node):
     _nodes: List
+    _registry: Dict
     _edges: List
     _inputs: List
     _outputs: List
@@ -974,6 +1030,7 @@ class Model(Node):
         self._edges = edges
         self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
         self._nodes = topological_sort(nodes, edges, self._inputs)
+        self._registry = {n.name: n for n in self.nodes}
 
         self._dispatcher = DataDispatcher(self)
 
@@ -996,18 +1053,32 @@ class Model(Node):
                         f"of model {self.name}.")
 
             for name, value in x.items():
-
                 value = check_vector(value)
                 x[name] = value
 
                 if self._is_initialized:
                     if value.shape[1] != self[name].input_dim:
                         raise ValueError(
-                            f"Impossible to call node {name}: node input "
-                            f"dimension is (1, "
-                            f"{self[name].input_dim}) and input "
-                            f"dimension is {x.shape}.")
+                            f"Impossible to call node {name} in model "
+                            f"{self}: node input "
+                            f"dimension is (1, {self[name].input_dim}) "
+                            f"and input dimension is {value.shape}.")
         return x
+
+    def _check_targets(self, y):
+        if is_mapping(y):
+            for name, value in y.items():
+                value = check_vector(value)
+                y[name] = value
+
+                if self._is_initialized:
+                    if value.shape[1] != self[name].output_dim:
+                        raise ValueError(
+                            f"Impossible to fit/train node {name} in model "
+                            f"{self}: node output "
+                            f"dimension is (1, {self[name].output_dim}) "
+                            f"and target dimension is {value.shape}.")
+        return y
 
     def _check_if_only_online(self):
         if any([n.is_trained_offline and not n.fitted for n in self.nodes]):
@@ -1015,8 +1086,10 @@ class Model(Node):
                                f"online method: model contains untrained "
                                f"offline nodes.")
 
-    def _load_proxys(self):
+    def _load_proxys(self, keep=False):
         for node in self._nodes:
+            if keep and node._state_proxy is not None:
+                continue
             node._state_proxy = node.state()
 
     def _clean_proxys(self):
@@ -1041,12 +1114,34 @@ class Model(Node):
 
             self.initialize(x_init, y_init)
 
+    def _call(self, x=None, return_states=None, *args, **kwargs):
+
+        self._forward(self, x)
+
+        state = {}
+        if return_states == "all":
+            for node in self.nodes:
+                state[node.name] = node.state()
+
+        elif isinstance(return_states, Iterable):
+            for name in return_states:
+                state[name] = self[name].state()
+
+        else:
+            if len(self.output_nodes) > 1:
+                for out_node in self.output_nodes:
+                    state[out_node.name] = out_node.state()
+            else:
+                state = self.output_nodes[0].state()
+
+        return state
+
     def get_node(self, name):
-        for n in self._nodes:
-            if n.name == name:
-                return n
-        raise KeyError(f"No node named '{name}' found in "
-                       f"model {self.name}.")
+        if self._registry.get(name) is not None:
+            return self._registry[name]
+        else:
+            raise KeyError(f"No node named '{name}' found in "
+                           f"model {self.name}.")
 
     @property
     def nodes(self):
@@ -1054,7 +1149,7 @@ class Model(Node):
 
     @property
     def node_names(self):
-        return [n.name for n in self._nodes]
+        return list(self._registry.keys())
 
     @property
     def edges(self):
@@ -1084,8 +1179,7 @@ class Model(Node):
 
     @property
     def trainable_nodes(self):
-        return [n for n in self.nodes if
-                getattr(n, "_backward", None) is not None]
+        return [n for n in self.nodes if n.is_trainable]
 
     @property
     def feedback_nodes(self):
@@ -1101,22 +1195,22 @@ class Model(Node):
 
     @contextmanager
     def with_state(self, state=None, stateful=False, reset=False):
-        current_state = {n.name: n.state() for n in self.nodes}
-
         if state is None and not reset:
+            current_state = None
+            if not stateful:
+                current_state = {n.name: n.state() for n in self.nodes}
             yield self
             if not stateful:
                 self.reset(to_state=current_state)
             return
 
         with ExitStack() as stack:
-            for node in self.nodes:
-                value = None
-                if state is not None:
+            if state is not None:
+                for node in self.nodes:
                     value = state.get(node.name)
-                stack.enter_context(node.with_state(value,
-                                                    stateful=stateful,
-                                                    reset=reset))
+                    stack.enter_context(node.with_state(value,
+                                                        stateful=stateful,
+                                                        reset=reset))
             yield self
 
     @contextmanager
@@ -1127,13 +1221,12 @@ class Model(Node):
             return
 
         with ExitStack() as stack:
-            for node in self.nodes:
-                value = None
-                if feedback is not None:
+            if feedback is not None:
+                for node in self.nodes:
                     value = feedback.get(node.name)
-                stack.enter_context(node.with_feedback(value,
-                                                       stateful=stateful,
-                                                       reset=reset))
+                    stack.enter_context(node.with_feedback(value,
+                                                           stateful=stateful,
+                                                           reset=reset))
             yield self
 
     def reset(self, to_state: Dict = None):
@@ -1164,8 +1257,8 @@ class Model(Node):
         self._is_initialized = True
         return self
 
-    def call(self, x=None, forced_feedback=None, from_state=None, stateful=True,
-             reset=False, return_states=None):
+    def call(self, x=None, forced_feedback=None, from_state=None,
+             stateful=True, reset=False, return_states=None):
 
         if x is not None:
             x = self._check_input(x)
@@ -1182,97 +1275,33 @@ class Model(Node):
             with self.with_feedback(forced_feedback,
                                     stateful=stateful,
                                     reset=reset):
-                self._forward(self, x)
+                state = self._call(x, return_states)
 
-                # wash states proxys
-                self._clean_proxys()
-
-                state = {}
-                if return_states == "all":
-                    for node in self.nodes:
-                        state[node.name] = node.state()
-
-                elif isinstance(return_states, Iterable):
-                    for name in return_states:
-                        state[name] = self[name].state()
-
-                else:
-                    if len(self.output_nodes) > 1:
-                        for out_node in self.output_nodes:
-                            state[out_node.name] = out_node.state()
-                    else:
-                        state = self.output_nodes[0].state()
+        # wash states proxys
+        self._clean_proxys()
 
         return state
 
-    def run(self, X=None, n=1, forced_feedbacks=None, from_state=None, stateful=True,
-            reset=False, shift_fb=True, return_states=None):
+    def run(self, X=None, n=1, forced_feedbacks=None, from_state=None,
+            stateful=True, reset=False, shift_fb=True, return_states=None):
 
         self._initialize_on_sequence(X, forced_feedbacks)
 
-        states = _allocate_returned_states(X, n, self, return_states)
+        states = _allocate_returned_states(self, X, n, return_states)
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            for i, (x, forced_feedback) in enumerate(
+            for i, (x, forced_feedback, _) in enumerate(
                     self._dispatcher.dispatch(X, forced_feedbacks,
                                               shift_fb=shift_fb)):
-                state = self.call(x, forced_feedback=forced_feedback,
-                                  return_states=return_states)
+                self._load_proxys()
+                with self.with_feedback(forced_feedback):
+                    state = self._call(x, return_states=return_states)
 
                 if is_mapping(state):
                     for name, value in state.items():
                         states[name][i, :] = value
                 else:
                     states[self.output_nodes[0].name][i, :] = state
-
-        # dicts are only relevant if model has several outputs (len > 1) or
-        # if we want to return states from hidden nodes
-        if len(states) == 1 and return_states is None:
-            return states[self.output_nodes[0].name]
-
-        return states
-
-    def train(self, X, Y=None, force_teachers=True,
-              from_state=None, stateful=True,
-              reset=False, return_states=None):
-
-        self._check_if_only_online()
-
-        self._initialize_on_sequence(X, Y)
-
-        states = _allocate_returned_states(X, self, return_states)
-
-        self._load_proxys()
-
-        with self.with_state(from_state, stateful=stateful, reset=reset):
-            for (i, (x, forced_feedback)), y in zip(enumerate(
-                    self._dispatcher.dispatch(X, Y)), Y):
-
-                with self.with_feedback(forced_feedback,
-                                        stateful=stateful,
-                                        reset=reset):
-
-                    state = self.call(x, return_states=return_states)
-
-                    # clean feedbacks containing teacher values before training
-                    # potentially using these feedbacks
-                    if not force_teachers:
-                        self._clean_proxys()
-
-                    self._train(self, Y[i])
-
-                    # or use the teacher values during training and then clean
-                    if force_teachers:
-                        self._clean_proxys()
-
-                    # reload proxys for next call
-                    self._load_proxys()
-
-                    if is_mapping(state):
-                        for name, value in state.items():
-                            states[name][i, :] = value
-                    else:
-                        states[self.output_nodes[0].name][i, :] = state
 
         self._clean_proxys()
 
@@ -1283,11 +1312,63 @@ class Model(Node):
 
         return states
 
-    def partial_fit(self, X_batch, Y_batch=None):
-        return self
+    def train(self, X, Y=None, force_teachers=True, learn_every=1,
+              from_state=None, stateful=True,
+              reset=False, return_states=None):
 
-    def fit(self, X=None, Y=None, stateful=False, reset=False,
-            from_state=None):
+        self._check_if_only_online()
+
+        self._initialize_on_sequence(X, Y)
+
+        states = _allocate_returned_states(self, X, None, return_states)
+
+        self._load_proxys()
+        with self.with_state(from_state, stateful=stateful, reset=reset):
+            for i, (x, forced_feedback, y) in tqdm(enumerate(
+                    self._dispatcher.dispatch(X, Y, return_targets=True)),
+                    total=len(X)):
+
+                if not force_teachers:
+                    forced_feedback = None
+
+                with self.with_feedback(forced_feedback):
+                    state = self._call(x, return_states=return_states)
+
+                self._load_proxys()
+
+                y = self._check_targets(y)
+
+                if i % learn_every == 0 or len(X) == 1:
+                    self._train(self, x=x, y=y, force_teachers=force_teachers)
+
+                # don't use the teacher values kept during training
+                # if not force_teachers:
+                #    self._clean_proxys()
+
+                # reload proxys for next call (don't remove what has not
+                # been cleaned, it's the forced teachers)
+                # self._load_proxys(keep=True)
+
+                if is_mapping(state):
+                    for name, value in state.items():
+                        states[name][i, :] = value
+                else:
+                    states[self.output_nodes[0].name][i, :] = state
+
+        self._clean_proxys()
+
+        # dicts are only relevant if model has several outputs (len > 1) or
+        # if we want to return states from hidden nodes
+        if len(states) == 1 and return_states is None:
+            return states[self.output_nodes[0].name]
+
+        return states
+
+    def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
+
+        if not any([n for n in self.trai_trainnable_nodes if n.is_trained_offline]):
+            raise TypeError(f"Impossible to fit model {self} offline: "
+                            "no offline nodes found in model.")
 
         X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
@@ -1302,7 +1383,7 @@ class Model(Node):
         trained = set()
         next_X = None
 
-        with self.with_state(from_state, reset=reset):
+        with self.with_state(from_state, reset=reset, stateful=stateful):
             for (nodes, edges), relations in subgraphs:
                 submodel, offlines = _build_forward_sumodels(nodes,
                                                              edges,
@@ -1326,8 +1407,10 @@ class Model(Node):
                         y_seq = {n: y for n, y in y_seq.items()
                                  if n in [o.name for o in offlines]}
 
+                        submodel._is_initialized = True
                         states = submodel.run(x_seq, y_seq,
                                               return_states=return_states,
+                                              reset=reset,
                                               stateful=stateful)
 
                         dist_states = _dist_states_to_next_subgraph(states,
@@ -1346,4 +1429,7 @@ class Model(Node):
 
                 trained |= set(offlines)
 
+        return self
+
+    def partial_fit(self, *args, **kwargs):
         return self

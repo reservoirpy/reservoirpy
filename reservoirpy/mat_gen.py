@@ -43,7 +43,7 @@ from numpy.random import Generator, default_rng
 from scipy import sparse
 
 from .observables import spectral_radius
-from .utils.random import get_generator
+from .utils.random import rand_generator
 
 
 __all__ = [
@@ -185,7 +185,7 @@ def fast_spectral_initialization(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rg = get_generator(seed)
+    rg = rand_generator(seed)
 
     if sr is None or proba <= 0.:
         a = 1
@@ -298,7 +298,7 @@ def generate_internal_weights(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rg = get_generator(seed)
+    rg = rand_generator(seed)
 
     rvs = _get_rvs(dist,
                    random_state=rg,
@@ -406,7 +406,7 @@ def generate_input_weights(N: int,
     if input_bias:
         dim_input += 1
 
-    rg = get_generator(seed)
+    rg = rand_generator(seed)
 
     rvs = _get_rvs(dist,
                    **kwargs,

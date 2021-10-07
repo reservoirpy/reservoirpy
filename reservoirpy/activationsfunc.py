@@ -58,7 +58,7 @@ def get_function(name: str) -> Callable:  # pragma: no cover
         return index[name]
 
 
-def softmax(x: np.ndarray) -> np.ndarray:
+def softmax(x: np.ndarray, beta=1) -> np.ndarray:
     """Softmax activation function:
 
     .. math::
@@ -73,7 +73,7 @@ def softmax(x: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
     """
-    return np.exp(x) / np.exp(x).sum()
+    return np.exp(beta*x) / np.exp(beta*x).sum()
 
 
 @_elementwise

@@ -2,6 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
+import gc
 import sys
 import tempfile
 import uuid
@@ -14,6 +15,8 @@ import joblib
 from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
+
+from ..utils.types import global_dtype
 
 # FIX waiting for a workaround to avoid crashing with multiprocessing
 # activated with Python < 3.8. Seems to be due to compatibility issues
@@ -46,7 +49,38 @@ def set_joblib_backend(backend):
                          f"backend value. Available backends are "
                          f"{_AVAILABLE_BACKENDS}.")
 
+def get_lock():
+    return lock
+
+
+def memmap_buffer(node, data=None, shape=None,
+                  dtype=None, mode="w+", name=None):
+    global temp_registry
+
+    caller = node.name
+    if data is None:
+        if shape is None:
+            raise ValueError(f"Impossible to create buffer for node {node}: "
+                             f"neither data nor shape were given.")
+
+    name = name if name is not None else uuid.uuid4()
+    temp = os.path.join(tempfile.gettempdir(), f"{caller + str(name)}")
+
+    temp_registry[node].append(temp)
+
+    shape = shape if shape is not None else data.shape
+    dtype = dtype if dtype is not None else global_dtype
+
+    memmap = np.memmap(temp, shape=shape, mode=mode, dtype=dtype)
+
+    if data is not None:
+        memmap[:] = data
+
+    return memmap
+
+
 def as_memmap(data, caller=None):
+    global temp_registry
     if caller is not None:
         caller_name = caller.__class__.__name__
     else:
@@ -81,6 +115,8 @@ def memmap(shape: Tuple, dtype: np.dtype,
             An empty memory-mapped array.
 
     """
+    global temp_registry
+
     if caller is not None:
         caller_name = caller.__class__.__name__
     else:
@@ -92,6 +128,9 @@ def memmap(shape: Tuple, dtype: np.dtype,
 
 
 def clean_tempfile(caller):
+    global temp_registry
+
+    gc.collect()
     for file in temp_registry[caller]:
         try:
             os.remove(file)

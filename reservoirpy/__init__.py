@@ -11,6 +11,8 @@ from . import regression_models
 from . import activationsfunc
 from . import hyper
 
+from .node import Node, Model, link, combine
+
 from ._esn import ESN
 from ._esn_online import ESNOnline
 
@@ -28,5 +30,6 @@ __all__ = [
     "ESN", "ESNOnline",
     "mat_gen", "activationsfunc",
     "observables", "regression_models",
-    "hyper", "load"
+    "hyper", "load", "Node", "Model",
+    "link", "combine"
 ]

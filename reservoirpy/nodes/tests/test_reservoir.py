@@ -35,9 +35,9 @@ def test_reservoir_bias():
 
     assert node.W.shape == (100, 100)
     assert node.Win.shape == (100, 10)
-    assert node.bias.shape == (1, 1)
+    assert node.bias.shape == (100, 1)
     assert node.Wfb is None
-    assert_array_equal(node.bias, np.zeros((1, 1)))
+    assert_array_equal(node.bias, np.zeros((100, 1)))
     assert node.lr == 0.8
     assert node.units == 100
 
@@ -46,8 +46,7 @@ def test_reservoir_bias():
     data = np.ones((1, 10))
     res = node(data)
 
-    assert node.bias.shape == (1, 1)
-    assert_array_equal(node.bias, np.ones((1, 1)))
+    assert node.bias.shape == (100, 1)
 
 
 def test_reservoir_chain():

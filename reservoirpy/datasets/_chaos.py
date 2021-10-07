@@ -8,7 +8,7 @@ from numpy.random import RandomState, Generator
 from scipy.integrate import solve_ivp
 
 from ._seed import get_seed
-from ..utils.random import get_generator
+from ..utils.random import rand_generator
 from ..utils.validation import check_vector
 
 
@@ -268,7 +268,7 @@ def mackey_glass(n_timesteps: int,
     if seed is None:
         seed = get_seed()
 
-    rs = get_generator(seed)
+    rs = rand_generator(seed)
 
     # generate random first step based on the value
     # of the initial condition
@@ -487,7 +487,7 @@ def narma(n_timesteps: int,
 
     if seed is None:
         seed = get_seed()
-    rs = get_generator(seed)
+    rs = rand_generator(seed)
 
     y = np.zeros((n_timesteps+order, 1))
 

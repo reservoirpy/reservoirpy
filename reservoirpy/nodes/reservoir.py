@@ -2,41 +2,86 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 import numpy as np
-from numpy.random import Generator, default_rng
+from numpy.random import Generator
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
 from ..node import Node
 from ..utils.types import Weights
 from ..utils.validation import is_array
+from ..utils.random import noise
 
 
-def forward(reservoir: "Reservoir", u: np.ndarray) -> np.ndarray:
-    lr = reservoir.lr
-    activation = reservoir.activation
+def _reservoir_kernel(reservoir, u, r):
     W = reservoir.W
     Win = reservoir.Win
     bias = reservoir.bias
-    noise_in = reservoir.noise_in
-    noise_rc = reservoir.noise_rc
-    rg = reservoir.random_generator
 
-    s = reservoir.state().T
+    g_in = reservoir.noise_in
+    g_rc = reservoir.noise_rc
+    dist = reservoir.noise_type
 
-    _x = W @ s
-    _x += Win @ _noisify(u.reshape(-1, 1), noise_in, rg) + bias
+    pre_s = W @ r + Win @ (u + noise(dist, u.shape, g_in)) + bias
 
     if reservoir.has_feedback:
         Wfb = reservoir.Wfb
-        noise_out = reservoir.noise_out
-        fb_activation = reservoir.fb_activation
+        g_fb = reservoir.noise_out
+        h = reservoir.fb_activation
 
-        _y = fb_activation(reservoir.feedback().reshape(-1, 1))
-        _x += Wfb @ _noisify(_y, noise_out, rg)
+        y = reservoir.feedback().reshape(-1, 1)
+        y = h(y) + noise(dist, y.shape, g_fb)
 
-    x1 = (1 - lr) * s + lr * _noisify(activation(_x), noise_rc, rg)
+        pre_s += Wfb @ y
 
-    return x1.T
+    return pre_s + noise(dist, pre_s.shape, g_rc)
+
+
+def forward_internal(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
+    """Reservoir with internal activation function:
+
+    .. math::
+
+        r[n+1] = (1 - \\alpha) \\cdot r[t] + \\alpha
+         \\cdot f (W_{in} \\cdot u[n] + W \\cdot r[t])
+
+
+    where :math:`r[n]` is the state and the output of the reservoir."""
+    lr = reservoir.lr
+    f = reservoir.activation
+
+    u = x.reshape(-1, 1)
+    r = reservoir.state().T
+
+    s_next = (1 - lr) * r + lr * f(_reservoir_kernel(reservoir, u, r))
+
+    return s_next.T
+
+
+def forward_external(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
+    """Reservoir with external activation function:
+
+    .. math::
+
+        x[n+1] = (1 - \\alpha) \\cdot x[t] + \\alpha
+         \\cdot f (W_{in} \\cdot u[n] + W \\cdot r[t])
+
+        r[n+1] = f(x[n+1])
+
+
+    where :math:`x[n]` is the internal state of the reservoir and :math:`r[n]`
+    is the response of the reservoir."""
+    lr = reservoir.lr
+    f = reservoir.activation
+
+    u = x.reshape(-1, 1)
+    r = reservoir.state().T
+    s = reservoir.internal_state
+
+    s_next = (1 - lr) * s + lr * _reservoir_kernel(reservoir, u, r)
+
+    reservoir.set_param("internal_state", s_next)
+
+    return f(s_next).T
 
 
 def initialize(reservoir,
@@ -48,7 +93,8 @@ def initialize(reservoir,
                W_init=None,
                Win_init=None,
                input_bias=None,
-               seed=None):
+               seed=None,
+               **kwargs):
     if x is not None:
         reservoir.set_input_dim(x.shape[1])
 
@@ -60,7 +106,7 @@ def initialize(reservoir,
                                  f"a square matrix.")
 
             if W.shape[0] != reservoir.output_dim:
-                reservoir.set_output_dim(W.shape[0])
+                reservoir._output_dim = W.shape[0]
 
         elif callable(W_init):
             W = W_init(N=reservoir.output_dim, sr=sr,
@@ -81,7 +127,7 @@ def initialize(reservoir,
             Win = Win_init
             bias_dim = 1 if input_bias else 0
             bias_msg = "+ 1 (bias)" if input_bias else ""
-            if Win.shape[0] != x.shape[1] + bias_dim:
+            if Win.shape[1] != x.shape[1] + bias_dim:
                 raise ValueError("Dimension mismatch between Win and input "
                                  f"vector in {reservoir.name}: Win is "
                                  f"{Win.shape} "
@@ -89,7 +135,7 @@ def initialize(reservoir,
                                  f"{bias_msg} "
                                  f"!= {Win.shape[0] - bias_dim} {bias_msg})")
 
-            if Win.shape[1] != out_dim:
+            if Win.shape[0] != out_dim:
                 raise ValueError(f"Dimension mismatch between Win and W in "
                                  f"{reservoir.name}: "
                                  f"Win is {Win.shape} and W is "
@@ -104,16 +150,20 @@ def initialize(reservoir,
             raise ValueError(f"Data type {type(Win_init)} not "
                              f"understood for matrix initializer "
                              f"'Win_init' in {reservoir.name}. Win "
-                             f"should be an array or a callabl returning "
+                             f"should be an array or a callable returning "
                              f"an array.")
 
         reservoir.set_param("Win", Win)
 
         if input_bias:
-            bias = np.ones((1, 1))
+            bias = Win_init(N=reservoir.output_dim, dim_input=1,
+                            input_bias=False, input_scaling=input_scaling,
+                            proba=input_connectivity, seed=seed)
         else:
-            bias = np.zeros((1, 1))
+            bias = np.zeros((reservoir.output_dim, 1))
         reservoir.set_param("bias", bias)
+
+        reservoir.set_param("internal_state", reservoir.zero_state().T)
 
 
 def initialize_feedback(reservoir,
@@ -134,14 +184,14 @@ def initialize_feedback(reservoir,
     if fb_dim is not None:
         if is_array(Wfb_init):
             Wfb = Wfb_init
-            if not fb_dim == Wfb.shape[0]:
+            if not fb_dim == Wfb.shape[1]:
                 raise ValueError("Dimension mismatch between Wfb and feedback "
                                  f"vector in {reservoir.name}: Wfb is "
                                  f"{Wfb.shape} "
                                  f"and feedback is {(1, fb_dim)} "
                                  f"({fb_dim} != {Wfb.shape[0]})")
 
-            if not Wfb.shape[1] == reservoir.output_dim:
+            if not Wfb.shape[0] == reservoir.output_dim:
                 raise ValueError(f"Dimension mismatch between Wfb and W in "
                                  f"{reservoir.name}: Wfb is {Wfb.shape} and "
                                  f"W is "
@@ -161,18 +211,6 @@ def initialize_feedback(reservoir,
         reservoir.set_param("Wfb", Wfb)
 
 
-def _noisify(vector: np.ndarray,
-             coef: float,
-             random_generator: Generator = None
-             ) -> np.ndarray:
-    if coef > 0.0:
-        if random_generator is None:
-            random_generator = default_rng()
-        noise = coef * random_generator.uniform(-1, 1, vector.shape)
-        return vector + noise
-    return vector
-
-
 class Reservoir(Node):
 
     def __init__(self,
@@ -183,6 +221,7 @@ class Reservoir(Node):
                  noise_rc: float = 0.0,
                  noise_in: float = 0.0,
                  noise_fb: float = 0.0,
+                 noise_type: str = "norm",
                  input_scaling: Optional[float] = 1.0,
                  fb_scaling: Optional[float] = 1.0,
                  input_connectivity: Optional[float] = 0.1,
@@ -194,12 +233,21 @@ class Reservoir(Node):
                  fb_dim: int = None,
                  fb_activation: Union[str, Callable] = identity,
                  activation: Union[str, Callable] = tanh,
+                 equation: str = "internal",
                  name=None,
                  seed=None):
         if units is None and not is_array(W):
             raise ValueError(
-                "'units' parameter must not be None if 'W' parameter is not"
+                "'units' parameter must not be None if 'W' parameter is not "
                 "a matrix.")
+
+        if equation == "internal":
+            forward = forward_internal
+        elif equation == "external":
+            forward = forward_external
+        else:
+            raise ValueError("'equation' parameter must be either 'internal' "
+                             "or 'external'.")
 
         super(Reservoir, self).__init__(
             fb_initializer=partial(initialize_feedback,
@@ -208,7 +256,8 @@ class Reservoir(Node):
                                    fb_connectivity=fb_connectivity,
                                    fb_dim=fb_dim,
                                    seed=seed),
-            params={"W": None, "Win": None, "Wfb": None, "bias": None},
+            params={"W": None, "Win": None, "Wfb": None, "bias": None,
+                    "internal_state": None},
             hypers={"lr": lr,
                     "sr": sr,
                     "input_scaling": input_scaling,
@@ -219,6 +268,7 @@ class Reservoir(Node):
                     "noise_in": noise_in,
                     "noise_rc": noise_rc,
                     "noise_out": noise_fb,
+                    "noise_type": noise_type,
                     "activation": activation,
                     "fb_activation": fb_activation,
                     "units": units},
@@ -235,19 +285,72 @@ class Reservoir(Node):
             output_dim=units,
             name=name)
 
-        self._seed = seed
-        self._rg = np.random.default_rng(seed)
+        self.seed = seed
 
-    # TODO: handle random seed stuff somewhere else (and more globally)
-    @property
-    def random_generator(self):
-        return self._rg
 
-    @property
-    def seed(self):
-        return self._seed
+def asabuki_forward(node, u):
 
-    @seed.setter
-    def seed(self, value):
-        self._rg = np.random.default_rng(value)
-        self._seed = value
+    dt = node.dt
+    tau = node.tau
+    M = node.M
+    win = node.win
+    sigma = node.sigma
+    N = node.output_dim
+    wf = node.wf
+    f = node.activation
+
+    x = node.state().reshape(-1, 1)
+    lr = dt / tau
+
+    if node.has_feedback:
+        z1 = node.feedback().reshape(-1, 1)
+        fb_vect = np.dot(wf, z1) * dt / tau
+    else:
+        fb_vect = np.zeros_like(x)
+
+    x = (1.0 - lr) * x + np.dot(M, f(x)) * lr \
+        + np.dot(win, u.reshape(-1, 1)) * lr \
+        + sigma * np.sqrt(dt) * np.random.randn(N, 1) \
+        + fb_vect
+
+    return x.T
+
+
+def asabuki_init(node, x=None, y=None):
+    if x is not None:
+        node.set_input_dim(x.shape[1])
+        node.set_output_dim(node.M.shape[0])
+
+
+def asabuki_init_fb(reservoir, *args, **kwargs):
+    if reservoir.has_feedback:
+        feedback = reservoir.feedback()
+        fb_dim = feedback.shape[1]
+        reservoir.set_feedback_dim(fb_dim)
+    else:
+        reservoir.set_feedback_dim(0)
+
+
+class ReservoirAsabuki(Node):
+
+    def __init__(self,
+                 dt = 1,
+                 tau = 10,
+                 sigma = 0.3,
+                 M = None,
+                 win = None,
+                 wf = None,
+                 activation: Union[str, Callable] = tanh,
+                 name=None):
+
+        super(ReservoirAsabuki, self).__init__(
+            params={"M": M, "win": win, "wf": wf},
+            hypers={"dt": dt,
+                    "tau": tau,
+                    "sigma": sigma,
+                    "activation": activation,
+                    "units": M.shape[0]},
+            forward=asabuki_forward,
+            initializer=asabuki_init,
+            fb_initializer=asabuki_init_fb,
+            name=name)

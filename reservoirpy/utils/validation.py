@@ -48,12 +48,12 @@ def is_node(obj):
 
 def add_bias(X):
     if isinstance(X, np.ndarray):
-        if X.ndim < 2:
-            X = X.reshape(1, -1)
+        X = np.atleast_2d(X)
         return np.hstack([np.ones((X.shape[0], 1)), X])
     elif isinstance(X, list):
         new_X = []
         for x in X:
+            x = np.atleast_2d(x)
             new_X.append(np.hstack([np.ones((x.shape[0], 1)), x]))
         return new_X
 
@@ -73,22 +73,18 @@ def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
                 f"{array_or_list} should not contain NaN values."
 
 
-def check_vector(array, allow_reshape=True, expand_axis=0):
+def check_vector(array, allow_reshape=True):
     if not isinstance(array, np.ndarray):
         raise TypeError(
-            f"Data type '{type(array)}' not understood. All sequences of data "
-            f"should be Numpy arrays, or lists of Numpy arrays.")
+            f"Data type '{type(array)}' not understood. All vectors"
+            f"should be Numpy arrays.")
+
+    if allow_reshape:
+        array = np.atleast_2d(array)
 
     if not (np.issubdtype(array.dtype, np.number)):
         raise TypeError(
             f"Impossible to operate on non-numerical data, in array: {array}")
-
-    if allow_reshape:
-        if array.ndim < 2:
-            if expand_axis == 0:
-                array = array[np.newaxis, :]
-            elif expand_axis == 1:
-                array = array[:, np.newaxis]
 
     return array
 

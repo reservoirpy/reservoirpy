@@ -185,7 +185,7 @@ def sum_node():
             x = np.concatenate(x, axis=0)
         return np.sum(x, axis=0)
 
-    def initialize(node: Node, x=None):
+    def initialize(node: Node, x=None, **kwargs):
         if x is not None:
             if isinstance(x, list):
                 x = np.concatenate(x, axis=0)
