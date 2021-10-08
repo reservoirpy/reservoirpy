@@ -18,7 +18,6 @@ def _reservoir_kernel(reservoir, u, r):
     bias = reservoir.bias
 
     g_in = reservoir.noise_in
-    g_rc = reservoir.noise_rc
     dist = reservoir.noise_type
 
     pre_s = W @ r + Win @ (u + noise(dist, u.shape, g_in)) + bias
@@ -33,7 +32,7 @@ def _reservoir_kernel(reservoir, u, r):
 
         pre_s += Wfb @ y
 
-    return pre_s + noise(dist, pre_s.shape, g_rc)
+    return pre_s
 
 
 def forward_internal(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
@@ -48,11 +47,15 @@ def forward_internal(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
     where :math:`r[n]` is the state and the output of the reservoir."""
     lr = reservoir.lr
     f = reservoir.activation
+    dist = reservoir.noise_type
+    g_rc = reservoir.noise_rc
 
     u = x.reshape(-1, 1)
     r = reservoir.state().T
 
-    s_next = (1 - lr) * r + lr * f(_reservoir_kernel(reservoir, u, r))
+    s_next = (1 - lr) * r \
+             + lr * f(_reservoir_kernel(reservoir, u, r)) \
+             + noise(dist, r.shape, g_rc)
 
     return s_next.T
 
@@ -72,12 +75,16 @@ def forward_external(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
     is the response of the reservoir."""
     lr = reservoir.lr
     f = reservoir.activation
+    dist = reservoir.noise_type
+    g_rc = reservoir.noise_rc
 
     u = x.reshape(-1, 1)
     r = reservoir.state().T
     s = reservoir.internal_state
 
-    s_next = (1 - lr) * s + lr * _reservoir_kernel(reservoir, u, r)
+    s_next = (1 - lr) * s \
+             + lr * _reservoir_kernel(reservoir, u, r) \
+             + noise(dist, r.shape, g_rc)
 
     reservoir.set_param("internal_state", s_next)
 
