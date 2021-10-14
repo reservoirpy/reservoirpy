@@ -2,7 +2,6 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 import numpy as np
-from numpy.random import Generator
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
@@ -293,71 +292,3 @@ class Reservoir(Node):
             name=name)
 
         self.seed = seed
-
-
-def asabuki_forward(node, u):
-
-    dt = node.dt
-    tau = node.tau
-    M = node.M
-    win = node.win
-    sigma = node.sigma
-    N = node.output_dim
-    wf = node.wf
-    f = node.activation
-
-    x = node.state().reshape(-1, 1)
-    lr = dt / tau
-
-    if node.has_feedback:
-        z1 = node.feedback().reshape(-1, 1)
-        fb_vect = np.dot(wf, z1) * dt / tau
-    else:
-        fb_vect = np.zeros_like(x)
-
-    x = (1.0 - lr) * x + np.dot(M, f(x)) * lr \
-        + np.dot(win, u.reshape(-1, 1)) * lr \
-        + sigma * np.sqrt(dt) * np.random.randn(N, 1) \
-        + fb_vect
-
-    return x.T
-
-
-def asabuki_init(node, x=None, y=None):
-    if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(node.M.shape[0])
-
-
-def asabuki_init_fb(reservoir, *args, **kwargs):
-    if reservoir.has_feedback:
-        feedback = reservoir.feedback()
-        fb_dim = feedback.shape[1]
-        reservoir.set_feedback_dim(fb_dim)
-    else:
-        reservoir.set_feedback_dim(0)
-
-
-class ReservoirAsabuki(Node):
-
-    def __init__(self,
-                 dt = 1,
-                 tau = 10,
-                 sigma = 0.3,
-                 M = None,
-                 win = None,
-                 wf = None,
-                 activation: Union[str, Callable] = tanh,
-                 name=None):
-
-        super(ReservoirAsabuki, self).__init__(
-            params={"M": M, "win": win, "wf": wf},
-            hypers={"dt": dt,
-                    "tau": tau,
-                    "sigma": sigma,
-                    "activation": activation,
-                    "units": M.shape[0]},
-            forward=asabuki_forward,
-            initializer=asabuki_init,
-            fb_initializer=asabuki_init_fb,
-            name=name)
