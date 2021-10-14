@@ -50,6 +50,7 @@ from ._chaos import multiscroll
 from ._chaos import rabinovich_fabrikant
 from ._chaos import mackey_glass
 from ._chaos import narma
+from ._chaos import doublescroll
 
 from ._seed import set_seed, get_seed
 
@@ -61,7 +62,7 @@ __all__ = [
     "mackey_glass",
     "multiscroll",
     "rabinovich_fabrikant",
-    "narma",
+    "narma", "doublescroll",
     "set_seed", "get_seed",
     "to_forecasting"
 ]

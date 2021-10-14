@@ -134,7 +134,8 @@ def lorenz(n_timesteps: int,
            sigma: float = 10.0,
            beta: float = 8.0/3.0,
            x0: Union[list, np.ndarray] = [1.0, 1.0, 1.0],
-           h: float = 0.03) -> np.ndarray:
+           h: float = 0.03,
+           **kwargs) -> np.ndarray:
     """Lorenz attractor timeseries [#]_ [#]_:
 
     .. math::
@@ -163,6 +164,9 @@ def lorenz(n_timesteps: int,
             Controls the continuous time delta between two
             discrete timesteps.
             By default, equals to 0.03.
+        **kwargs:
+            Other parameters to pass to the `scipy.integrate.solve_ivp`
+            solver.
 
     Returns
     -------
@@ -183,14 +187,15 @@ def lorenz(n_timesteps: int,
         x, y, z = state
         return sigma * (y - x), x * (rho - z) - y, x * y - beta * z
 
+    t_eval = np.arange(0.0, n_timesteps * h, h)
+
     sol = solve_ivp(lorenz_diff,
                     y0=x0,
                     t_span=(0.0, n_timesteps*h),
-                    dense_output=True)
+                    t_eval=t_eval,
+                    **kwargs)
 
-    t = np.arange(0.0, n_timesteps * h, h)
-
-    return sol.sol(t).T
+    return sol.y.T
 
 
 def mackey_glass(n_timesteps: int,
@@ -363,11 +368,91 @@ def multiscroll(n_timesteps: int,
     return sol.sol(t).T
 
 
+def doublescroll(n_timesteps: int,
+                 r1: float = 1.2,
+                 r2: float = 3.44,
+                 r4: float = 0.193,
+                 ir: float = 2*2.25e-5,
+                 beta: float = 11.6,
+                 x0: Union[list, np.ndarray] = [0.37926545,
+                                                0.058339,
+                                                -0.08167691],
+                 h: float = 0.01,
+                 **kwargs) -> np.ndarray:
+    """Double scroll attractor timeseries [#]_ [#]_,
+    a particular case of multiscroll attractor timeseries.
+
+    .. math::
+
+        \\frac{dx}{dt} &= a(y - x) \\\\
+        \\frac{dy}{dt} &= (c - a)x - xz + cy \\\\
+        \\frac{dz}{dt} &= xy - bz
+
+    Parameters
+    ----------
+        n_timesteps : int
+            Number of timesteps to generate.
+        a : float, optional
+            :math:`a` parameter of the system.
+            By default, equals to 40.
+        b : float, optional
+            :math:`b` parameter of the system.
+            By default, equals to 3.
+        c : float, optional
+            :math:`c` parameter of the system.
+            By default, equals to 28`.
+        x0 : list or numpy.ndarray, optional
+            Initial conditions of the system.
+            By default, equals to [-0.1, 0.5, -0.6].
+        h : float, optional
+            Controls the continuous time delta between two
+            discrete timesteps.
+            By default, equals to 0.01.
+
+    Returns
+    -------
+        numpy.ndarray :
+            Multiscroll attractor timeseries.
+
+    References
+    ----------
+        .. [#] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
+               Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
+               Jul. 1999, doi: 10.1142/S0218127499001024.
+        .. [#] `Chen double scroll attractor
+               <https://en.wikipedia.org/wiki/Multiscroll_attractor#Chen_attractor>`_
+               on Wikipedia.
+
+    """
+
+    def doublescroll(t, state):
+        V1, V2, I = state
+
+        dV = V1 - V2
+        factor = (dV/r2) + ir * np.sinh(beta * dV)
+        dV1 = (V1/r1) - factor
+        dV2 = factor - I
+        dI = V2 - r4 * I
+
+        return dV1, dV2, dI
+
+    t_eval = np.arange(0.0, n_timesteps * h, h)
+
+    sol = solve_ivp(doublescroll,
+                    y0=x0,
+                    t_span=(0.0, n_timesteps*h),
+                    t_eval=t_eval,
+                    **kwargs)
+
+    return sol.y.T
+
+
 def rabinovich_fabrikant(n_timesteps: int,
                          gamma: float = 0.89,
                          alpha: float = 1.1,
                          x0: Union[list, np.ndarray] = [-1, 0, 0.5],
-                         h: float = 0.05) -> np.ndarray:
+                         h: float = 0.05,
+                         **kwargs) -> np.ndarray:
     """Rabinovitch-Fabrikant system [#]_ [#]_ timeseries.
 
     .. math::
@@ -393,6 +478,9 @@ def rabinovich_fabrikant(n_timesteps: int,
             Controls the continuous time delta between two
             discrete timesteps.
             By default, equals to 0.05.
+        **kwargs:
+            Other parameters to pass to the `scipy.integrate.solve_ivp`
+            solver.
 
     Returns
     -------
@@ -416,14 +504,15 @@ def rabinovich_fabrikant(n_timesteps: int,
         dz = -2*z*(alpha + x*y)
         return dx, dy, dz
 
-    t = np.arange(0.0, n_timesteps*h, h)
+    t_eval = np.arange(0.0, n_timesteps*h, h)
 
     sol = solve_ivp(rabinovich_fabrikant_diff,
                     y0=x0,
                     t_span=(0.0, n_timesteps*h),
-                    dense_output=True)
+                    t_eval=t_eval,
+                    **kwargs)
 
-    return sol.sol(t).T
+    return sol.y.T
 
 
 def narma(n_timesteps: int,

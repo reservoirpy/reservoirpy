@@ -69,10 +69,12 @@ def initialize_buffers(readout):
 
 class Ridge(Node):
 
-    def __init__(self, output_dim=None, ridge=0.0, transient=0, name=None):
+    def __init__(self, output_dim=None, ridge=0.0, transient=0,
+                 input_bias=True, name=None):
         super(Ridge, self).__init__(params={"Wout": None, "bias": None},
                                     hypers={"ridge": ridge,
-                                            "transient": transient},
+                                            "transient": transient,
+                                            "input_bias": input_bias},
                                     forward=readout_forward,
                                     partial_backward=partial_backward,
                                     backward=backward,

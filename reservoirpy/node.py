@@ -1366,7 +1366,7 @@ class Model(Node):
 
     def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
 
-        if not any([n for n in self.trai_trainnable_nodes if n.is_trained_offline]):
+        if not any([n for n in self.trainable_nodes if n.is_trained_offline]):
             raise TypeError(f"Impossible to fit model {self} offline: "
                             "no offline nodes found in model.")
 
