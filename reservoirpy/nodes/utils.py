@@ -33,13 +33,14 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
 
             if bias:
                 Wout = W[1:, :]
-                bias = W[:1, :]
+                bias = W[:1, :][np.newaxis, :]
             else:
                 Wout = W
-                bias = np.zeros((out_dim, 1))
+                bias = np.zeros((1, out_dim))
+
         elif isinstance(init_func, np.ndarray):
             Wout = init_func
-            bias = np.zeros((out_dim, 1))
+            bias = np.zeros((1, out_dim))  # TODO: bias from callable
         else:
             raise ValueError(f"Data type {type(init_func)} not "
                              f"understood for matrix initializer "

@@ -22,6 +22,7 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
 
     X, Y = _prepare_inputs_for_learning(X_batch, Y_batch,
                                         transient=transient,
+                                        bias=readout.input_bias,
                                         allow_reshape=True)
 
     xxt = X.T.dot(X)
@@ -39,21 +40,27 @@ def backward(readout: Node, X=None, Y=None):
     XXT = readout.get_buffer("XXT")
     YXT = readout.get_buffer("YXT")
 
-    ridgeid = (ridge * np.eye(readout.input_dim + 1, dtype=global_dtype))
+    input_dim = readout.input_dim
+    if readout.input_bias:
+        input_dim += 1
+
+    ridgeid = (ridge * np.eye(input_dim, dtype=global_dtype))
 
     Wout_raw = _solve_ridge(XXT, YXT, ridgeid)
 
-    Wout, bias = Wout_raw[1:, :], Wout_raw[0, :][np.newaxis, :]
-
-    readout.set_param("Wout", Wout)
-    readout.set_param("bias", bias)
+    if readout.input_bias:
+        Wout, bias = Wout_raw[1:, :], Wout_raw[0, :][np.newaxis, :]
+        readout.set_param("Wout", Wout)
+        readout.set_param("bias", bias)
+    else:
+        readout.set_param("Wout", Wout_raw)
 
 
 def initialize(readout: Node,
                x=None,
                y=None):
 
-    _initialize_readout(readout, x, y)
+    _initialize_readout(readout, x, y, bias=readout.input_bias)
 
 
 def initialize_buffers(readout):
@@ -61,10 +68,16 @@ def initialize_buffers(readout):
     # in parallel for ridge regression
     # ! only memmap can be used ! Impossible to share Numpy arrays with
     # different processes in r/w mode otherwise (with proper locking)
-    readout.create_buffer("XXT", (readout.input_dim + 1,
-                                  readout.input_dim + 1))
-    readout.create_buffer("YXT", (readout.output_dim,
-                                  readout.input_dim + 1))
+    input_dim = readout.input_dim
+    output_dim = readout.output_dim
+
+    if readout.input_bias:
+        input_dim += 1
+
+    readout.create_buffer("XXT", (input_dim,
+                                  input_dim))
+    readout.create_buffer("YXT", (output_dim,
+                                  input_dim))
 
 
 class Ridge(Node):
