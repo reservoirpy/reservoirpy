@@ -47,7 +47,11 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
 Tutorial on ReservoirPy can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
 ## Explore Hyper-Parameters with Hyperopt
-Tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+
+Take a look at our **advices and general method to explore hyperparameters** for reservoirs in our recent paper:
+"Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters", ICANN 2021
+[HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [Preprint](https://hal.inria.fr/hal-03203318/)
 
 [Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization%20of%20hyperparameters)
 
