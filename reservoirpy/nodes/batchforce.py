@@ -13,7 +13,7 @@ import numpy as np
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
 
-from ..node import Node
+from ..base import Node
 
 
 def _reset_buffers(step, rTPs, factors):
@@ -22,7 +22,7 @@ def _reset_buffers(step, rTPs, factors):
     factors[:] = np.zeros_like(factors)
 
 
-def train(readout: "FORCE", x=None, y=None):
+def train(readout: "BatchFORCE", x=None, y=None):
 
     if x is not None:
 
@@ -69,7 +69,7 @@ def train(readout: "FORCE", x=None, y=None):
             _reset_buffers(steps, rTPs, factors)
 
 
-def initialize(readout: "FORCE",
+def initialize(readout: "BatchFORCE",
                x=None,
                y=None,
                init_func=None,
@@ -88,7 +88,7 @@ def initialize(readout: "FORCE",
         readout.set_param("P", P)
 
 
-def initialize_buffers(readout: "FORCE"):
+def initialize_buffers(readout: "BatchFORCE"):
     bias_dim = 0
     if readout.has_bias:
         bias_dim = 1

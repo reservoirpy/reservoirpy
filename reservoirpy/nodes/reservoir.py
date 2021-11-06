@@ -5,7 +5,7 @@ import numpy as np
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
-from ..node import Node
+from ..base import Node
 from ..utils.types import Weights
 from ..utils.validation import is_array
 from ..utils.random import noise
@@ -227,7 +227,7 @@ class Reservoir(Node):
                  noise_rc: float = 0.0,
                  noise_in: float = 0.0,
                  noise_fb: float = 0.0,
-                 noise_type: str = "norm",
+                 noise_type: str = "normal",
                  input_scaling: Optional[float] = 1.0,
                  fb_scaling: Optional[float] = 1.0,
                  input_connectivity: Optional[float] = 0.1,

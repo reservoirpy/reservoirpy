@@ -76,6 +76,48 @@ def test_force_train():
     assert res.shape == (10000, 10)
 
 
+def test_force_lms():
+
+    node = FORCE(10, rule="lms")
+
+    X, Y = np.ones((200, 100)), np.ones((200, 10))
+
+    res = node.train(X, Y)
+
+    assert res.shape == (200, 10)
+    assert node.Wout.shape == (100, 10)
+    assert node.bias.shape == (1, 10)
+
+    def alpha_gen():
+        while True:
+            yield 1e-6
+
+    node = FORCE(10, rule="lms", alpha=alpha_gen())
+
+    X, Y = np.ones((200, 100)), np.ones((200, 10))
+
+    res = node.train(X, Y)
+
+    assert res.shape == (200, 10)
+    assert node.Wout.shape == (100, 10)
+    assert node.bias.shape == (1, 10)
+
+    node = FORCE(10, rule="lms", alpha=alpha_gen())
+
+    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
+
+    for x, y in zip(X, Y):
+        res = node.train(x, y, learn_every=5)
+
+    assert node.Wout.shape == (100, 10)
+    assert node.bias.shape == (1, 10)
+
+    data = np.ones((10000, 100))
+    res = node.run(data)
+
+    assert res.shape == (10000, 10)
+
+
 def test_esn_force():
 
     readout = FORCE(10)
@@ -85,7 +127,27 @@ def test_esn_force():
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
 
-    for x,y in zip(X, Y):
+    for x, y in zip(X, Y):
+        res = esn.train(x, y)
+
+    assert readout.Wout.shape == (100, 10)
+    assert readout.bias.shape == (1, 10)
+
+    data = np.ones((10000, 100))
+    res = esn.run(data)
+
+    assert res.shape == (10000, 10)
+
+
+def test_esn_force_lms():
+    readout = FORCE(10, rule="lms")
+    reservoir = Reservoir(100)
+
+    esn = reservoir >> readout
+
+    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
+
+    for x, y in zip(X, Y):
         res = esn.train(x, y)
 
     assert readout.Wout.shape == (100, 10)
@@ -104,7 +166,7 @@ def test_force_feedback():
 
     esn = reservoir >> readout
 
-    reservoir << readout
+    reservoir <<= readout
 
     X, Y = np.ones((5, 200, 8)), np.ones((5, 200, 10))
     for x, y in zip(X, Y):
@@ -155,15 +217,15 @@ def test_dummy_mutual_supervision():
     readout2 = FORCE(1, name="r2")
     reservoir2 = Reservoir(100)
 
-    readout1 << readout2
-    readout2 << readout1
-    reservoir1 << readout1
-    reservoir2 << readout2
+    readout1 <<= readout2
+    readout2 <<= readout1
+    reservoir1 <<= readout1
+    reservoir2 <<= readout2
 
     branch1 = reservoir1 >> readout1
     branch2 = reservoir2 >> readout2
 
-    model = combine(branch1, branch2)
+    model = branch1 & branch2
 
     X = np.ones((200, 5))
 

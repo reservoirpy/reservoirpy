@@ -5,7 +5,7 @@ import numpy as np
 
 from ..utils.validation import check_vector, add_bias
 from ..utils.types import global_dtype
-from ..node import Node
+from ..base import Node
 
 
 def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
@@ -33,7 +33,7 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
 
             if bias:
                 Wout = W[1:, :]
-                bias = W[:1, :][np.newaxis, :]
+                bias = W[:1, :].reshape((1, out_dim))
             else:
                 Wout = W
                 bias = np.zeros((1, out_dim))
@@ -88,3 +88,19 @@ def _prepare_inputs_for_learning(X=None, Y=None, bias=True, transient=0,
 
 def readout_forward(node: Node, x):
     return (node.Wout.T @ x.T + node.bias.T).T
+
+
+def _assemble_wout(Wout,  bias, has_bias=True):
+    wo = Wout
+    if has_bias:
+        wo = np.r_[bias, wo]
+    return wo
+
+
+def _split_and_save_wout(node, wo):
+    if node.input_bias:
+        Wout, bias = wo[1:, :], wo[0, :][np.newaxis, :]
+        node.set_param("Wout", Wout)
+        node.set_param("bias", bias)
+    else:
+        node.set_param("Wout", wo)

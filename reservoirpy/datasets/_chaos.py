@@ -1,10 +1,8 @@
 import collections
-
 from typing import Union
 
 import numpy as np
-
-from numpy.random import RandomState, Generator
+from numpy.random import Generator, RandomState
 from scipy.integrate import solve_ivp
 
 from ._seed import get_seed
@@ -17,7 +15,7 @@ def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
     Mackey-Glass time delay diffential equation, at values x(t) and x(t-tau).
 
     """
-    return -b*xt + a*xtau / (1+xtau**n)
+    return -b * xt + a * xtau / (1 + xtau ** n)
 
 
 def _mg_rk4(xt, xtau, a, b, n, h=1.0):
@@ -26,11 +24,11 @@ def _mg_rk4(xt, xtau, a, b, n, h=1.0):
 
     """
     k1 = h * _mg_eq(xt, xtau, a, b, n)
-    k2 = h * _mg_eq(xt + 0.5*k1, xtau, a, b, n)
-    k3 = h * _mg_eq(xt + 0.5*k2, xtau, a, b, n)
+    k2 = h * _mg_eq(xt + 0.5 * k1, xtau, a, b, n)
+    k3 = h * _mg_eq(xt + 0.5 * k2, xtau, a, b, n)
     k4 = h * _mg_eq(xt + k3, xtau, a, b, n)
 
-    return xt + k1/6 + k2/3 + k3/3 + k4/6
+    return xt + k1 / 6 + k2 / 3 + k3 / 3 + k4 / 6
 
 
 def henon_map(n_timesteps: int,
@@ -75,8 +73,8 @@ def henon_map(n_timesteps: int,
     states[0] = np.asarray(x0)
 
     for i in range(1, n_timesteps):
-        states[i][0] = 1 - a*states[i-1][0]**2 + states[i-1][1]
-        states[i][1] = b*states[i-1][0]
+        states[i][0] = 1 - a * states[i - 1][0] ** 2 + states[i - 1][1]
+        states[i][1] = b * states[i - 1][0]
 
     return states
 
@@ -120,7 +118,7 @@ def logistic_map(n_timesteps: int,
         X[0] = x0
 
         for i in range(1, n_timesteps):
-            X[i] = r * X[i-1] * (1-X[i-1])
+            X[i] = r * X[i - 1] * (1 - X[i - 1])
 
         return X.reshape(-1, 1)
     elif r <= 0:
@@ -132,7 +130,7 @@ def logistic_map(n_timesteps: int,
 def lorenz(n_timesteps: int,
            rho: float = 28.0,
            sigma: float = 10.0,
-           beta: float = 8.0/3.0,
+           beta: float = 8.0 / 3.0,
            x0: Union[list, np.ndarray] = [1.0, 1.0, 1.0],
            h: float = 0.03,
            **kwargs) -> np.ndarray:
@@ -183,6 +181,7 @@ def lorenz(n_timesteps: int,
         .. [#] `Lorenz system <https://en.wikipedia.org/wiki/Lorenz_system>`_
                on Wikipedia.
     """
+
     def lorenz_diff(t, state):
         x, y, z = state
         return sigma * (y - x), x * (rho - z) - y, x * y - beta * z
@@ -191,7 +190,7 @@ def lorenz(n_timesteps: int,
 
     sol = solve_ivp(lorenz_diff,
                     y0=x0,
-                    t_span=(0.0, n_timesteps*h),
+                    t_span=(0.0, n_timesteps * h),
                     t_eval=t_eval,
                     **kwargs)
 
@@ -205,7 +204,8 @@ def mackey_glass(n_timesteps: int,
                  n: int = 10,
                  x0: float = 1.2,
                  h: float = 1.0,
-                 seed: Union[int, RandomState, Generator] = None) -> np.ndarray:
+                 seed: Union[
+                     int, RandomState, Generator] = None) -> np.ndarray:
     """Mackey-Glass timeseries [#]_ [#]_, computed from the Mackey-Glass
     delayed differential equation:
 
@@ -259,8 +259,10 @@ def mackey_glass(n_timesteps: int,
 
     References
     ----------
-        .. [#] M. C. Mackey and L. Glass, ‘Oscillation and chaos in physiological
-               control systems’, Science, vol. 197, no. 4300, pp. 287–289, Jul. 1977,
+        .. [#] M. C. Mackey and L. Glass, ‘Oscillation and chaos in
+        physiological
+               control systems’, Science, vol. 197, no. 4300, pp. 287–289,
+               Jul. 1977,
                doi: 10.1126/science.267326.
         .. [#] `Mackey-Glass equations
                 <https://en.wikipedia.org/wiki/Mackey-Glass_equations>`_
@@ -277,7 +279,7 @@ def mackey_glass(n_timesteps: int,
 
     # generate random first step based on the value
     # of the initial condition
-    history_length = int(np.floor(tau/h))
+    history_length = int(np.floor(tau / h))
     history = collections.deque(x0 * np.ones(history_length)
                                 + 0.2 * (rs.random(history_length) - 0.5))
     xt = x0
@@ -347,22 +349,24 @@ def multiscroll(n_timesteps: int,
                Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
                Jul. 1999, doi: 10.1142/S0218127499001024.
         .. [#] `Chen double scroll attractor
-               <https://en.wikipedia.org/wiki/Multiscroll_attractor#Chen_attractor>`_
+               <https://en.wikipedia.org/wiki/Multiscroll_attractor
+               #Chen_attractor>`_
                on Wikipedia.
 
     """
+
     def multiscroll_diff(t, state):
         x, y, z = state
         dx = a * (y - x)
-        dy = (c - a)*x - x*z + c*y
-        dz = x*y - b*z
+        dy = (c - a) * x - x * z + c * y
+        dz = x * y - b * z
         return dx, dy, dz
 
     t = np.arange(0.0, n_timesteps * h, h)
 
     sol = solve_ivp(multiscroll_diff,
                     y0=x0,
-                    t_span=(0.0, n_timesteps*h),
+                    t_span=(0.0, n_timesteps * h),
                     dense_output=True)
 
     return sol.sol(t).T
@@ -372,7 +376,7 @@ def doublescroll(n_timesteps: int,
                  r1: float = 1.2,
                  r2: float = 3.44,
                  r4: float = 0.193,
-                 ir: float = 2*2.25e-5,
+                 ir: float = 2 * 2.25e-5,
                  beta: float = 11.6,
                  x0: Union[list, np.ndarray] = [0.37926545,
                                                 0.058339,
@@ -420,7 +424,8 @@ def doublescroll(n_timesteps: int,
                Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
                Jul. 1999, doi: 10.1142/S0218127499001024.
         .. [#] `Chen double scroll attractor
-               <https://en.wikipedia.org/wiki/Multiscroll_attractor#Chen_attractor>`_
+               <https://en.wikipedia.org/wiki/Multiscroll_attractor
+               #Chen_attractor>`_
                on Wikipedia.
 
     """
@@ -429,8 +434,8 @@ def doublescroll(n_timesteps: int,
         V1, V2, I = state
 
         dV = V1 - V2
-        factor = (dV/r2) + ir * np.sinh(beta * dV)
-        dV1 = (V1/r1) - factor
+        factor = (dV / r2) + ir * np.sinh(beta * dV)
+        dV1 = (V1 / r1) - factor
         dV2 = factor - I
         dI = V2 - r4 * I
 
@@ -440,7 +445,7 @@ def doublescroll(n_timesteps: int,
 
     sol = solve_ivp(doublescroll,
                     y0=x0,
-                    t_span=(0.0, n_timesteps*h),
+                    t_span=(0.0, n_timesteps * h),
                     t_eval=t_eval,
                     **kwargs)
 
@@ -493,22 +498,24 @@ def rabinovich_fabrikant(n_timesteps: int,
                ‘Stochastic self-modulation of waves in
                nonequilibrium media’, p. 8, 1979.
         .. [#] `Rabinovich-Fabrikant equations
-               <https://en.wikipedia.org/wiki/Rabinovich%E2%80%93Fabrikant_equations>`_
+               <https://en.wikipedia.org/wiki/Rabinovich%E2%80
+               %93Fabrikant_equations>`_
                on Wikipedia.
 
     """
+
     def rabinovich_fabrikant_diff(t, state):
         x, y, z = state
-        dx = y*(z - 1 + x**2) + gamma*x
-        dy = x*(3*z + 1 - x**2) + gamma*y
-        dz = -2*z*(alpha + x*y)
+        dx = y * (z - 1 + x ** 2) + gamma * x
+        dy = x * (3 * z + 1 - x ** 2) + gamma * y
+        dz = -2 * z * (alpha + x * y)
         return dx, dy, dz
 
-    t_eval = np.arange(0.0, n_timesteps*h, h)
+    t_eval = np.arange(0.0, n_timesteps * h, h)
 
     sol = solve_ivp(rabinovich_fabrikant_diff,
                     y0=x0,
-                    t_span=(0.0, n_timesteps*h),
+                    t_span=(0.0, n_timesteps * h),
                     t_eval=t_eval,
                     **kwargs)
 
@@ -530,9 +537,11 @@ def narma(n_timesteps: int,
 
         .. math::
 
-            y[t+1] = a_1 y[t] + a_2 y[t] (\\sum_{0}{n-1} y[t-i]) + b u[t-(n-1)]u[t] + c
+            y[t+1] = a_1 y[t] + a_2 y[t] (\\sum_{0}{n-1} y[t-i]) + b u[t-(
+            n-1)]u[t] + c
 
-    where :math:`u[t]` are sampled following an uniform distribution in :math:`[0, 0.5]`.
+    where :math:`u[t]` are sampled following an uniform distribution in
+    :math:`[0, 0.5]`.
 
         Parameters
         ----------
@@ -566,11 +575,14 @@ def narma(n_timesteps: int,
             .. [1] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
                    network training: unifying the algorithms and accelerating
                    convergence,‘ in IEEE Transactions on Neural Networks,
-                   vol. 11, no. 3, pp. 697-709, May 2000, doi: 10.1109/72.846741.
+                   vol. 11, no. 3, pp. 697-709, May 2000,
+                   doi: 10.1109/72.846741.
 
             .. [2] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
-                   D. Stroobandt, ‘Improving reservoirs using intrinsic plasticity‘,
-                   Neurocomputing, 71. 1159-1171, 2008, doi: 10.1016/j.neucom.2007.12.020.
+                   D. Stroobandt, ‘Improving reservoirs using intrinsic
+                   plasticity‘,
+                   Neurocomputing, 71. 1159-1171, 2008,
+                   doi: 10.1016/j.neucom.2007.12.020.
 
         """
 
@@ -578,12 +590,15 @@ def narma(n_timesteps: int,
         seed = get_seed()
     rs = rand_generator(seed)
 
-    y = np.zeros((n_timesteps+order, 1))
+    y = np.zeros((n_timesteps + order, 1))
 
-    x0 = check_vector(np.asarray(x0), allow_reshape=True, expand_axis=1)
+    x0 = check_vector(np.atleast_2d(np.asarray(x0)))
     y[:x0.shape[0], :] = x0
 
-    noise = rs.uniform(0, 0.5, size=(n_timesteps+order, 1))
-    for t in range(order, n_timesteps+order-1):
-        y[t+1] = a1*y[t] + a2*y[t]*np.sum(y[t-order:t]) + b*noise[t-order]*noise[t] + c
+    noise = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
+    for t in range(order, n_timesteps + order - 1):
+        y[t + 1] = a1 * y[t] \
+                   + a2 * y[t] * np.sum(y[t - order:t]) \
+                   + b * noise[t - order] * noise[t] \
+                   + c
     return y[order:, :]

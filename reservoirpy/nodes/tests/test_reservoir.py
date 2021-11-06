@@ -70,7 +70,7 @@ def test_reservoir_feedback():
     node1 = Reservoir(100, lr=0.8, input_bias=False)
     node2 = Reservoir(50, lr=1.0, input_bias=False)
 
-    node1 << node2
+    node1 <<= node2
 
     data = np.ones((1, 10))
     res = (node1 >> node2)(data)

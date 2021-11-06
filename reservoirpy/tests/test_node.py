@@ -7,14 +7,16 @@ import numpy as np
 
 from numpy.testing import assert_array_equal
 
-from ..node import Node, combine
+#from ..node import Node, combine
+from ..base import Node
+from ..ops import merge
 from ..nodes.io import Input
 
 
 @pytest.fixture(scope="function")
 def plus_node():
 
-    def forward(node: Node, x):
+    def forward(node: Node, x: np.ndarray):
         return x + node.c + node.h + node.state()
 
     def initialize(node: Node, x=None, **kwargs):
@@ -123,8 +125,6 @@ def offline_node():
             node.set_input_dim(x.shape[1])
             node.set_output_dim(x.shape[1])
 
-            initialize_buffers(node)
-
     def initialize_buffers(node: Node):
         node.create_buffer("b", (1,))
 
@@ -135,6 +135,7 @@ def offline_node():
                                           forward=forward,
                                           partial_backward=partial_backward,
                                           backward=backward,
+                                          buffers_initializer=initialize_buffers,
                                           initializer=initialize)
 
     return Offline()
@@ -220,7 +221,9 @@ def test_node_attr(plus_node):
     plus_node.set_param("c", 1)
 
     assert plus_node.get_param("c") == 1
-    assert plus_node.get_param("foo") is None
+
+    with pytest.raises(AttributeError):
+        plus_node.get_param("foo")
 
     with pytest.raises(KeyError):
         plus_node.set_param("foo", 1)
@@ -355,10 +358,7 @@ def test_node_link(plus_node, minus_node):
     assert set(model1.nodes) == set(model2.nodes)
 
     with pytest.raises(RuntimeError):
-        combine(model1, model2)
-
-    with pytest.raises(TypeError):
-        combine(model1, plus_node)
+        model1 & model2
 
     with pytest.raises(RuntimeError):
         plus_node >> minus_node >> plus_node
@@ -380,7 +380,7 @@ def test_model_call(plus_node, minus_node):
     branch1 = input_node >> plus_node
     branch2 = input_node >> minus_node
 
-    model = combine(branch1, branch2)
+    model = branch1 & branch2
 
     res = model(data)
 
@@ -431,7 +431,7 @@ def test_model_run(plus_node, minus_node):
     branch1 = input_node >> plus_node
     branch2 = input_node >> minus_node
 
-    model = combine(branch1, branch2)
+    model = merge(branch1, branch2)
 
     data = np.zeros((3, 5))
     res = model.run(data)
@@ -482,7 +482,7 @@ def test_model_run(plus_node, minus_node):
 def test_model_feedback(plus_node, minus_node, feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
-    feedback_node << minus_node
+    feedback_node <<= minus_node
 
     data = np.zeros((1, 5))
     res = model(data)
@@ -498,7 +498,7 @@ def test_model_feedback(plus_node, minus_node, feedback_node):
 def test_model_feedback_run(plus_node, minus_node, feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
-    feedback_node << minus_node
+    feedback_node <<= minus_node
 
     data = np.zeros((3, 5))
     res = model.run(data)
@@ -512,7 +512,7 @@ def test_model_feedback_run(plus_node, minus_node, feedback_node):
 def test_model_feedback_forcing_sender(plus_node, minus_node, feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
-    feedback_node << minus_node
+    feedback_node <<= minus_node
 
     data = np.zeros((3, 5))
     res = model.run(data, forced_feedbacks={"MinusNode-0": data + 1},
@@ -526,7 +526,7 @@ def test_model_feedback_forcing_sender(plus_node, minus_node, feedback_node):
 def test_model_feedback_forcing_receiver(plus_node, minus_node, feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
-    feedback_node << minus_node
+    feedback_node <<= minus_node
 
     data = np.zeros((3, 5))
     res = model.run(data, forced_feedbacks={"FBNode-0": data + 1},
@@ -542,7 +542,7 @@ def test_model_feedback_from_previous_node(plus_node,
                                            feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
-    feedback_node << plus_node  # feedback in time, not in space anymore
+    feedback_node <<= plus_node  # feedback in time, not in space anymore
 
     data = np.zeros((3, 5))
     res = model.run(data)
@@ -557,7 +557,7 @@ def test_model_feedback_from_outsider(plus_node, feedback_node,
                                       inverter_node):
 
     model = plus_node >> feedback_node
-    feedback_node << (plus_node >> inverter_node)
+    feedback_node <<= (plus_node >> inverter_node)
 
     data = np.zeros((1, 5))
     res = model(data)
@@ -577,7 +577,7 @@ def test_model_feedback_from_outsider_complex(plus_node, feedback_node,
 
     model = plus_node >> feedback_node
     fb_model = plus_node >> inverter_node >> minus_node
-    feedback_node << fb_model
+    feedback_node <<= fb_model
 
     data = np.zeros((1, 5))
     res = model(data)
@@ -665,7 +665,7 @@ def test_offline_fit_complicated_model(offline_node, offline_node2,
     branch1 = input >> plus_node >> offline_node >> minus_node >> sum_node
     branch2 = input >> sum_node >> offline_node2
 
-    model = combine(branch1, branch2)
+    model = merge(branch1, branch2)
 
     X = np.ones((5, 5)) * 0.5
     Y = np.ones((5, 5))

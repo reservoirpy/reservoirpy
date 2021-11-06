@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from ..activationsfunc import get_function
-from ..node import Node
+from ..base import Node
 
 
 def forward(node: Node, x):

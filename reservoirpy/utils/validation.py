@@ -1,12 +1,12 @@
 # Author: Nathan Trouvain at 21/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Any, Mapping, Sequence, Union
+from typing import Any, Mapping, Sequence, Union, Iterable
 
 import numpy as np
 from scipy.sparse import issparse
 
-from .types import Weights
+from .types import Weights, GenericNode
 
 
 def is_square(array: Weights) -> bool:
@@ -58,6 +58,18 @@ def add_bias(X):
         return new_X
 
 
+def check_all_nodes(*nodes: Any):
+    msg = "Impossible to link nodes: object {} is neither a Node nor a Model."
+    for nn in nodes:
+        if isinstance(nn, Iterable):
+            for n in nn:
+                if not isinstance(n, GenericNode):
+                    raise TypeError(msg.format(n))
+        else:
+            if not isinstance(nn, GenericNode):
+                raise TypeError(msg.format(nn))
+
+
 def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
     """ Check if the given array or list contains the given value. """
     if value == np.nan:
@@ -76,7 +88,7 @@ def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
 def check_vector(array, allow_reshape=True):
     if not isinstance(array, np.ndarray):
         raise TypeError(
-            f"Data type '{type(array)}' not understood. All vectors"
+            f"Data type '{type(array)}' not understood. All vectors "
             f"should be Numpy arrays.")
 
     if allow_reshape:
@@ -85,6 +97,8 @@ def check_vector(array, allow_reshape=True):
     if not (np.issubdtype(array.dtype, np.number)):
         raise TypeError(
             f"Impossible to operate on non-numerical data, in array: {array}")
+
+    # TODO: choose axis to expand and/or np.atleast_2d
 
     return array
 

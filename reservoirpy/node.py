@@ -141,6 +141,7 @@ from itertools import product
 from typing import Callable, Dict, List, Optional
 from uuid import uuid4
 from collections import Iterable
+from copy import copy, deepcopy
 
 import numpy as np
 
@@ -149,7 +150,7 @@ from tqdm import tqdm
 from .utils import to_ragged_seq_set
 from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
                               get_offline_subgraphs, topological_sort, )
-from .utils.types import MappedData
+from .utils.types import MappedData, GenericNode
 from .utils.validation import check_vector, is_mapping
 from .utils.parallel import memmap_buffer
 
@@ -437,7 +438,7 @@ def combine(*models: "Model"):
     return Model(nodes=list(all_nodes), edges=list(all_edges))
 
 
-class Node(object):
+class Node(GenericNode):
     _state: np.ndarray
     _params: Dict
     _hypers: Dict
@@ -457,13 +458,15 @@ class Node(object):
     _feedback_initializer: Callable
     _name: str
     _state_proxy: np.ndarray
-    _factory_id: int = -1
-    _registry: Dict = dict()
+    #_factory_id: int = -1
+    #_registry: Dict = dict()
 
+    """
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls._factory_id = -1
         cls._registry = dict()
+    """
 
     def __init__(self, params=None, hypers=None, forward=None,
                  backward=None, partial_backward=None, train=None,
@@ -533,9 +536,23 @@ class Node(object):
     def __rshift__(self, other):
         return self.link(other)
 
+    def __rrshift__(self, other):
+        return self.link(other)
+
     def __lshift__(self, other):
         return self.link_feedback(other)
 
+    def __rlshift__(self, other):
+        return self.link_feedback(other)
+
+    def __and__(self, other):
+        from .ops import merge
+        return merge(self, other)
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+
+    """
     def _get_name(self, name=None):
         if name is None:
             type(self)._factory_id += 1
@@ -547,6 +564,7 @@ class Node(object):
                             f"by another node. Node names should "
                             f"be unique.")
         return name
+    """
 
     def _check_state(self, s):
         s = check_vector(s)
@@ -890,21 +908,13 @@ class Node(object):
             return self._feedback.zero_state()
         return None
 
-    def link(self, other):
-        if isinstance(other, Node) or \
-                hasattr(other, "__getitem__") and \
-                all([isinstance(obj, Node) for obj in other]):
-            return link(self, other)
-        else:
-            raise TypeError(f"Impossible to link node {self.name} with "
-                            f"oject of type {type(other)}.")
+    def link(self, other, name: str = None):
+        from .ops import link
+        return link(self, other, name=name)
 
-    def link_feedback(self, node):
-        if not isinstance(node, Node):
-            raise TypeError(f"Impossible to receive feedback from {node}: "
-                            f"it is not a Node instance.")
-        self._feedback = node
-        return self
+    def link_feedback(self, node, inplace: bool = False, name: str = None):
+        from .ops import link_feedback
+        return link_feedback(self, node, inplace=inplace, name=name)
 
     def call(self, x=None, from_state=None, stateful=True, reset=False):
 
@@ -1008,6 +1018,35 @@ class Node(object):
 
             return self
 
+    def copy(self, name: str = None, copy_feedback: bool = False,
+             shallow: bool = False):
+        if shallow:
+            new_obj = copy(self)
+        else:
+            if self.has_feedback:
+                # store feedback node
+                fb = self._feedback
+                # temporarily remove it
+                self._feedback = None
+
+                # copy and restore feedback
+                new_obj = deepcopy(self)
+                new_obj._feedback = fb
+                self._feedback = fb
+
+            else:
+                new_obj = deepcopy(self)
+
+        if copy_feedback:
+            if self.has_feedback:
+                fb_copy = deepcopy(self._feedback)
+                new_obj._feedback = fb_copy
+
+        n = self._get_name(name)
+        new_obj._name = n
+
+        return new_obj
+
 
 class Model(Node):
     _nodes: List
@@ -1017,7 +1056,7 @@ class Model(Node):
     _outputs: List
     _dispatcher: "DataDispatcher"
 
-    def __init__(self, nodes=None, edges=None, name=None):
+    def __init__(self, nodes=(), edges=(), name=None):
         params = {n.name: n.params for n in nodes}
         hypers = {n.name: n.hypers for n in nodes}
         super(Model, self).__init__(params=params,
@@ -1028,9 +1067,16 @@ class Model(Node):
                                     name=name)
 
         self._edges = edges
-        self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
+
+        if len(self.nodes) > 0:
+            self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
+        else:
+            self._inputs = self._outputs = list()
+
         self._nodes = topological_sort(nodes, edges, self._inputs)
         self._registry = {n.name: n for n in self.nodes}
+
+        self._nodes = nodes
 
         self._dispatcher = DataDispatcher(self)
 
@@ -1041,6 +1087,10 @@ class Model(Node):
 
     def __getitem__(self, item):
         return self.get_node(item)
+
+    def __iand__(self, other):
+        from .ops import merge
+        return merge(self, other, inplace=True)
 
     def _check_input(self, x):
         if is_mapping(x):
@@ -1135,6 +1185,24 @@ class Model(Node):
                 state = self.output_nodes[0].state()
 
         return state
+
+    def update_graph(self, new_nodes, new_edges):
+        self._nodes = list(set(new_nodes) | set(self.nodes))
+        self._edges = list(set(new_edges) | set(self.edges))
+
+        self._params = {n.name: n.params for n in self._nodes}
+        self._hypers = {n.name: n.hypers for n in self._nodes}
+
+        self._inputs, self._outputs = find_entries_and_exits(self._nodes,
+                                                             self._edges)
+        self._nodes = topological_sort(self._nodes, self._edges, self._inputs)
+        self._registry = {n.name: n for n in self.nodes}
+
+        self._dispatcher = DataDispatcher(self)
+
+        self._is_initialized = False
+
+        return self
 
     def get_node(self, name):
         if self._registry.get(name) is not None:

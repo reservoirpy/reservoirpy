@@ -8,7 +8,7 @@ from scipy import linalg
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
 
-from ..node import Node
+from ..base import Node
 from ..utils.parallel import get_lock
 from ..utils.types import global_dtype
 

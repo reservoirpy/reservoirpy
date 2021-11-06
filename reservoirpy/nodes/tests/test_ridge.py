@@ -87,7 +87,7 @@ def test_ridge_feedback():
 
     esn = reservoir >> readout
 
-    reservoir << readout
+    reservoir <<= readout
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
     res = esn.fit(X, Y)
