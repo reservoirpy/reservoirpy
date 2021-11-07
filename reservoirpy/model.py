@@ -265,16 +265,18 @@ class Model(GenericNode):
             x_init = None
             if X is not None:
                 if is_mapping(X):
-                    x_init = {name: x[0] for name, x in X.items()}
+                    x_init = {name: np.atleast_2d(x[0])
+                              for name, x in X.items()}
                 else:
-                    x_init = X[0]
+                    x_init = np.atleast_2d(X[0])
 
             y_init = None
             if Y is not None:
                 if is_mapping(Y):
-                    y_init = {name: y[0] for name, y in Y.items()}
+                    y_init = {name: np.atleast_2d(y[0])
+                              for name, y in Y.items()}
                 else:
-                    y_init = Y[0]
+                    y_init = np.atleast_2d(Y[0])
 
             self.initialize(x_init, y_init)
 
@@ -510,13 +512,12 @@ class Model(GenericNode):
 
         self._initialize_on_sequence(X, Y)
 
-        states = _allocate_returned_states(self, X, None, return_states)
+        states = _allocate_returned_states(self, X, return_states)
 
         self._load_proxys()
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            for i, (x, forced_feedback, y) in tqdm(enumerate(
-                    self._dispatcher.dispatch(X, Y, return_targets=True)),
-                    total=len(X)):
+            for i, (x, forced_feedback, y) in enumerate(
+                    self._dispatcher.dispatch(X, Y, return_targets=True)):
 
                 if not force_teachers:
                     forced_feedback = None

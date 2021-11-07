@@ -18,6 +18,7 @@ def _reservoir_kernel(reservoir, u, r):
 
     g_in = reservoir.noise_in
     dist = reservoir.noise_type
+    noise_gen = reservoir.noise_generator
 
     pre_s = W @ r + Win @ (u + noise(dist, u.shape, g_in)) + bias
 
@@ -27,7 +28,7 @@ def _reservoir_kernel(reservoir, u, r):
         h = reservoir.fb_activation
 
         y = reservoir.feedback().reshape(-1, 1)
-        y = h(y) + noise(dist, y.shape, g_fb)
+        y = h(y) + noise_gen(dist, y.shape, g_fb)
 
         pre_s += Wfb @ y
 
@@ -48,13 +49,14 @@ def forward_internal(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
     f = reservoir.activation
     dist = reservoir.noise_type
     g_rc = reservoir.noise_rc
+    noise_gen = reservoir.noise_generator
 
     u = x.reshape(-1, 1)
     r = reservoir.state().T
 
     s_next = (1 - lr) * r \
              + lr * f(_reservoir_kernel(reservoir, u, r)) \
-             + noise(dist, r.shape, g_rc)
+             + noise_gen(dist, r.shape, g_rc)
 
     return s_next.T
 
@@ -76,6 +78,7 @@ def forward_external(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
     f = reservoir.activation
     dist = reservoir.noise_type
     g_rc = reservoir.noise_rc
+    noise_gen = reservoir.noise_generator
 
     u = x.reshape(-1, 1)
     r = reservoir.state().T
@@ -83,7 +86,7 @@ def forward_external(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:
 
     s_next = (1 - lr) * s \
              + lr * _reservoir_kernel(reservoir, u, r) \
-             + noise(dist, r.shape, g_rc)
+             + noise_gen(dist, r.shape, g_rc)
 
     reservoir.set_param("internal_state", s_next)
 
@@ -98,6 +101,7 @@ def initialize(reservoir,
                rc_connectivity=None,
                W_init=None,
                Win_init=None,
+               bias_init=None,
                input_bias=None,
                seed=None,
                **kwargs):
@@ -159,16 +163,19 @@ def initialize(reservoir,
                              f"should be an array or a callable returning "
                              f"an array.")
 
-        reservoir.set_param("Win", Win)
-
         if input_bias:
-            bias = Win_init(N=reservoir.output_dim, dim_input=1,
-                            input_bias=False, input_scaling=input_scaling,
-                            proba=input_connectivity, seed=seed)
+            if callable(Win_init):  # TODO: allow bias initializers
+                bias = Win_init(N=reservoir.output_dim, dim_input=1,
+                                input_bias=False, input_scaling=input_scaling,
+                                proba=input_connectivity, seed=seed)
+            elif is_array(Win_init):
+                bias = Win[:, :1]
+                Win = Win[:, 1:]
         else:
             bias = np.zeros((reservoir.output_dim, 1))
-        reservoir.set_param("bias", bias)
 
+        reservoir.set_param("Win", Win)
+        reservoir.set_param("bias", bias)
         reservoir.set_param("internal_state", reservoir.zero_state().T)
 
 
@@ -277,7 +284,8 @@ class Reservoir(Node):
                     "noise_type": noise_type,
                     "activation": activation,
                     "fb_activation": fb_activation,
-                    "units": units},
+                    "units": units,
+                    "noise_generator": partial(noise, seed=seed)},
             forward=forward,
             initializer=partial(initialize,
                                 sr=sr,
@@ -290,5 +298,3 @@ class Reservoir(Node):
                                 seed=seed),
             output_dim=units,
             name=name)
-
-        self.seed = seed

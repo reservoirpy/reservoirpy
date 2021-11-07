@@ -7,7 +7,7 @@ import sys
 import tempfile
 import uuid
 from collections import defaultdict
-from multiprocessing import Manager, Process
+from multiprocessing import Process
 from typing import Tuple
 from functools import partial
 
@@ -29,10 +29,6 @@ else:
     _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
                            "threading", "sequential")
 
-manager = Manager()
-lock = manager.Lock()
-
-
 temp_registry = defaultdict(list)
 
 
@@ -48,9 +44,6 @@ def set_joblib_backend(backend):
         raise ValueError(f"'{backend}' is not a valid joblib "
                          f"backend value. Available backends are "
                          f"{_AVAILABLE_BACKENDS}.")
-
-def get_lock():
-    return lock
 
 
 def memmap_buffer(node, data=None, shape=None,

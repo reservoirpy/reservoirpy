@@ -353,12 +353,13 @@ class Node(GenericNode):
     def initialize(self, x=None, y=None):
         if not self._is_initialized:
             if isinstance(x, np.ndarray):
-                x = check_vector(x)
+                x = np.atleast_2d(check_vector(x))
             elif isinstance(x, list):
                 for i in range(len(x)):
-                    x[i] = check_vector(x[i])
+                    x[i] = np.atleast_2d(check_vector(x[i]))
+
             if y is not None:
-                y = check_vector(y)
+                y = np.atleast_2d(check_vector(y))
                 self._initializer(self, x=x, y=y)
             else:
                 self._initializer(self, x=x)
@@ -522,7 +523,7 @@ class Node(GenericNode):
 
         if not self._is_initialized:
             if X is not None:
-                self.initialize(X[0])
+                self.initialize(np.atleast_2d(X[0]))
             else:
                 self.initialize()
 
@@ -545,8 +546,8 @@ class Node(GenericNode):
         if self._train is not None:
 
             if not self._is_initialized:
-                x_init = X[0]
-                y_init = Y[0] if Y is not None else None
+                x_init = np.atleast_2d(X[0])
+                y_init = np.atleast_2d(Y[0]) if Y is not None else None
                 self.initialize(x=x_init, y=y_init)
                 self.initialize_buffers()
 

@@ -81,8 +81,10 @@ def nrmse(y_true, y_pred, norm="minmax", norm_value=None):
             return error / norms[norm](y_true)
 
 
-def rsquare():
-    ...
+def rsquare(y_true, y_pred):
+    d = (y_true - y_pred) ** 2
+    D = (y_true - y_true.mean())**2
+    return 1 - np.sum(d) / np.sum(D)
 
 
 def compute_error_NRMSE(teacher_signal, predicted_signal, verbose=False):

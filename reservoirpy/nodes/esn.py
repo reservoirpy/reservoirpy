@@ -205,6 +205,8 @@ class ESN(FrozenModel):
         X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         self._initialize_on_sequence(X[0], Y[0])
 
+        self.initialize_buffers()
+
         def run_partial_fit_fn(x, y):
             states = np.zeros((x.shape[0], self.reservoir.output_dim))
 

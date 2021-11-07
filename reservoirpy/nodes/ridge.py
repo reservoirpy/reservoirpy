@@ -9,7 +9,6 @@ from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
 
 from ..base import Node
-from ..utils.parallel import get_lock
 from ..utils.types import global_dtype
 
 
@@ -28,11 +27,12 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
     xxt = X.T.dot(X)
     yxt = Y.T.dot(X)
 
-    # Lock the memory map to avoid increment from
-    # different processes at the same time (Numpy doesn't like that).
-    with get_lock():
-        readout.set_buffer("XXT", readout.get_buffer("XXT") + xxt)
-        readout.set_buffer("YXT", readout.get_buffer("YXT") + yxt)
+    # This is thread-safe, apparently, using Numpy memmap as buffers
+    # ok for parallelization then
+    XXT = readout.get_buffer("XXT")
+    YXT = readout.get_buffer("YXT")
+    XXT += xxt
+    YXT += yxt
 
 
 def backward(readout: Node, X=None, Y=None):

@@ -2,6 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from typing import Any, Mapping, Sequence, Union, Iterable
+import numbers
 
 import numpy as np
 from scipy.sparse import issparse
@@ -87,9 +88,13 @@ def _check_values(array_or_list: Union[Sequence, np.ndarray], value: Any):
 
 def check_vector(array, allow_reshape=True):
     if not isinstance(array, np.ndarray):
-        raise TypeError(
-            f"Data type '{type(array)}' not understood. All vectors "
-            f"should be Numpy arrays.")
+        # a single number, make it an array
+        if isinstance(array, numbers.Number):
+            array = np.asarray(array)
+        else:
+            raise TypeError(
+                f"Data type '{type(array)}' not understood. All vectors "
+                f"should be Numpy arrays.")
 
     if allow_reshape:
         array = np.atleast_2d(array)

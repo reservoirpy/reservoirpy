@@ -32,6 +32,26 @@ def test_force_init():
     assert res.shape == (10000, 10)
 
 
+def test_force_train_one_step():
+
+    node = FORCE(10)
+
+    x = np.ones((5, 2))
+    y = np.ones((5, 10))
+
+    for x, y in zip(x, y):
+        res = node.train(x, y)
+
+    assert node.Wout.shape == (100, 10)
+    assert node.bias.shape == (1, 10)
+    assert node.alpha == 1e-6
+
+    data = np.ones((10000, 100))
+    res = node.run(data)
+
+    assert res.shape == (10000, 10)
+
+
 def test_force_train():
 
     node = FORCE(10)

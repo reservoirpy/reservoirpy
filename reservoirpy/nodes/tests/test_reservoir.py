@@ -26,6 +26,43 @@ def test_reservoir_init():
     assert res.shape == (10000, 100)
 
 
+def test_reservoir_init_from_matrices():
+
+    Win = np.ones((100, 10))
+
+    node = Reservoir(100, lr=0.8, Win=Win, input_bias=False)
+
+    data = np.ones((1, 10))
+    res = node(data)
+
+    assert node.W.shape == (100, 100)
+    assert_array_equal(node.Win, Win)
+    assert node.lr == 0.8
+    assert node.units == 100
+
+    data = np.ones((10000, 10))
+    res = node.run(data)
+
+    assert res.shape == (10000, 100)
+
+    Win = np.ones((100, 11))
+
+    node = Reservoir(100, lr=0.8, Win=Win, input_bias=True)
+
+    data = np.ones((1, 10))
+    res = node(data)
+
+    assert node.W.shape == (100, 100)
+    assert_array_equal(np.c_[node.bias, node.Win], Win)
+    assert node.lr == 0.8
+    assert node.units == 100
+
+    data = np.ones((10000, 10))
+    res = node.run(data)
+
+    assert res.shape == (10000, 100)
+
+
 def test_reservoir_bias():
 
     node = Reservoir(100, lr=0.8, input_bias=False)
