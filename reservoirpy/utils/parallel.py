@@ -36,7 +36,13 @@ lock = manager.Lock()
 temp_registry = defaultdict(list)
 
 
-def get_joblib_backend(workers=-1):
+def get_joblib_backend(workers=-1, backend=None):
+    if backend is not None:
+        if backend in _AVAILABLE_BACKENDS:
+            return backend
+        else:
+            raise ValueError(f"'{backend}' is not a Joblib backend. Available "
+                             f"backends are {_AVAILABLE_BACKENDS}.")
     return _BACKEND if workers > 1 or workers == -1 else "sequential"
 
 
