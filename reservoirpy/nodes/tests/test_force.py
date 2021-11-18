@@ -12,7 +12,6 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 
 from reservoirpy.nodes import FORCE, Reservoir
-from reservoirpy.node import combine
 
 
 def test_force_init():

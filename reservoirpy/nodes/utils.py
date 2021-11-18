@@ -5,7 +5,7 @@ import numpy as np
 
 from ..utils.validation import check_vector, add_bias
 from ..utils.types import global_dtype
-from ..base import Node
+from ..node import Node
 
 
 def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):

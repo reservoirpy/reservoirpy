@@ -5,7 +5,7 @@ import numpy as np
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
-from ..base import Node
+from ..node import Node
 from ..utils.types import Weights
 from ..utils.validation import is_array
 from ..utils.random import noise
@@ -180,13 +180,13 @@ def initialize(reservoir,
 
 
 def initialize_feedback(reservoir,
+                        feedback=None,
                         Wfb_init=None,
                         fb_scaling=None,
                         fb_connectivity=None,
                         fb_dim: int = None,
                         seed=None):
     if reservoir.has_feedback:
-        feedback = reservoir.feedback()
         fb_dim = feedback.shape[1]
         reservoir.set_feedback_dim(fb_dim)
     elif fb_dim is not None:

@@ -13,7 +13,7 @@ import numpy as np
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
 
-from ..base import Node
+from ..node import Node
 
 
 def _reset_buffers(step, rTPs, factors):

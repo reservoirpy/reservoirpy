@@ -14,7 +14,7 @@ from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning, _assemble_wout,
                     _split_and_save_wout)
 
-from ..base import Node
+from ..node import Node
 
 
 def _rls_like_rule(P, r, e):

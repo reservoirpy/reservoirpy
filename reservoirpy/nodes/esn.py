@@ -6,16 +6,16 @@ from typing import Sequence
 
 import numpy as np
 from joblib import Parallel, delayed
-from tqdm import tqdm
 
 from .force import FORCE
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
 from ..model import FrozenModel
-from ..utils import to_ragged_seq_set
+from ..utils import to_ragged_seq_set, progress, verbosity
 from ..utils.types import GenericNode
 from ..utils.validation import is_mapping
+from ..utils.parallel import get_joblib_backend
 
 _LEARNING_METHODS = {"ridge": Ridge,
                      "force": FORCE}
@@ -88,7 +88,7 @@ class ESN(FrozenModel):
                  learning_method="ridge", reservoir: GenericNode = None,
                  readout: GenericNode = None, feedback=False, Win_bias=True,
                  Wout_bias=True, workers=1,
-                 backend="sequential", name=None, **kwargs):
+                 backend=None, name=None, **kwargs):
 
         msg = "'{}' is not a valid method. Available methods for {} are {}."
 
@@ -187,12 +187,17 @@ class ESN(FrozenModel):
 
             return idx, states
 
+        backend = get_joblib_backend(workers=self.workers,
+                                     backend=self.backend)
+
+        seq = progress(X, f"Running {self.name}")
+
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers,
-                          backend=self.backend) as parallel:
+                          backend=backend) as parallel:
                 states = parallel(delayed(run_fn)(idx, x, y)
-                                  for idx, (x, y) in tqdm(enumerate(
-                    zip(X, fb_gen)), total=len(X)))
+                                  for idx, (x, y) in enumerate(
+                    zip(seq, fb_gen)))
 
         return _sort_and_unpack(states, return_states=return_states)
 
@@ -222,12 +227,18 @@ class ESN(FrozenModel):
 
             self.readout.partial_fit(states, y)
 
+        backend = get_joblib_backend(workers=self.workers,
+                                     backend=self.backend)
+
+        seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers,
-                          backend=self.backend) as parallel:
+                          backend=backend) as parallel:
                 parallel(delayed(run_partial_fit_fn)(x, y)
-                         for x, y in tqdm(zip(X, Y), total=len(X)))
+                         for x, y in zip(seq, Y))
 
+            if verbosity():
+                print(f"Fitting node {self.name}...")
             self.readout.fit()
 
         return self

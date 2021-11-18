@@ -3,7 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from ..base import Node
+from ..node import Node
 from ..activationsfunc import relu, tanh
 
 

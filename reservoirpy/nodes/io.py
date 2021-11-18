@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 import numpy as np
 
-from ..base import Node
+from ..node import Node
 
 
 def _io_initialize(io_node: "Node", x=None, **kwargs):

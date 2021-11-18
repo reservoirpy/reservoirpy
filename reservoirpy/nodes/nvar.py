@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 
-from ..base import Node
+from ..node import Node
 
 
 def forward(node, x):
@@ -47,7 +47,7 @@ def initialize(node, x=None, *args, **kwargs):
         # linear components.
         nonlinear_dim = math.comb(linear_dim + order - 1, order)
 
-        output_dim = int(linear_dim + nonlinear_dim)
+        output_dim = output_dim = int(linear_dim + nonlinear_dim)
 
         node.set_output_dim(output_dim)
         node.set_input_dim(input_dim)
