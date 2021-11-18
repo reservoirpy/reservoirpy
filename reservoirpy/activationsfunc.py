@@ -53,7 +53,8 @@ def get_function(name: str) -> Callable:  # pragma: no cover
     }
 
     if index.get(name) is None:
-        raise ValueError(f"Function name must be one of {[k for k in index.keys()]}")
+        raise ValueError(f"Function name must be one of "
+                         f"{[k for k in index.keys()]}")
     else:
         return index[name]
 
@@ -99,7 +100,7 @@ def softplus(x: np.ndarray) -> np.ndarray:
 
 @_elementwise
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    """Sigmoïde activation function:
+    """Sigmoid activation function:
 
     .. math::
 
