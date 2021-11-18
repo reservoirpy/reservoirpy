@@ -568,7 +568,7 @@ def narma(n_timesteps: int,
         Returns
         -------
             numpy.ndarray
-                Rabinovitch-Fabrikant system timeseries.
+                NARMA timeseries.
 
         References
         ----------
