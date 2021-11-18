@@ -22,7 +22,7 @@ copyright = '2021, Xavier Hinaut, Nathan Trouvain'
 author = 'Xavier Hinaut, Nathan Trouvain'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.2'
+release = '0.3.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -47,11 +47,12 @@ exclude_patterns = []
 
 
 # -- Options for HTML output -------------------------------------------------
-
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_logo = "_static/rpy_navbar.png"
+
+html_theme = 'pydata_sphinx_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
