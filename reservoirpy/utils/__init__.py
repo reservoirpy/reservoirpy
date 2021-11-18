@@ -5,7 +5,26 @@ from collections import Iterable, defaultdict
 
 import numpy as np
 
+from tqdm import tqdm
+
 from .validation import is_mapping, is_sequence_set
+
+
+VERBOSITY = 1
+
+
+def verbosity(level=None):
+    global VERBOSITY
+    if isinstance(level, int) and VERBOSITY != level:
+        VERBOSITY = level
+    return VERBOSITY
+
+
+def progress(it, *args, **kwargs):
+    if VERBOSITY > 0:
+        return tqdm(it, *args, **kwargs)
+    else:
+        return it
 
 
 def safe_defaultdict_copy(d):
@@ -19,7 +38,6 @@ def safe_defaultdict_copy(d):
 
 
 def to_ragged_seq_set(data):
-
     # data is a dict
     if is_mapping(data):
         new_data = {}

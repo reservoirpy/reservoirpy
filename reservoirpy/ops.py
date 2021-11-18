@@ -7,10 +7,10 @@ from typing import Union, Iterable, Sequence
 from uuid import uuid4
 
 from .model import Model, FrozenModel
-from .base import Node
+from .node import Node
 from .utils.types import GenericNode
 from .utils.validation import check_all_nodes
-from .nodes.operators import Concat
+from .nodes.concat import Concat
 
 
 def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
@@ -51,11 +51,11 @@ def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
         if sender.is_initialized and \
                 receiver.is_initialized and \
                 sender.output_dim != receiver.input_dim:
-            raise TypeError(f"Dimension mismatch between connected nodes: "
-                            f"sender node {sender.name} has output dimension "
-                            f"{sender.output_dim} but receiver node "
-                            f"{receiver.name} has input dimension "
-                            f"{receiver.input_dim}.")
+            raise ValueError(f"Dimension mismatch between connected nodes: "
+                             f"sender node {sender.name} has output dimension "
+                             f"{sender.output_dim} but receiver node "
+                             f"{receiver.name} has input dimension "
+                             f"{receiver.input_dim}.")
 
     # all outputs from subgraph 1 are connected to
     # all inputs from subgraph 2.

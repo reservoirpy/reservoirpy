@@ -73,7 +73,8 @@ class GenericNode(Protocol):
 
     def __rrshift__(self, other: Union[
         "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":
-        return self.link(other)
+        from ..ops import link
+        return link(other, self)
 
     def __and__(self, other: Union[
         "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":

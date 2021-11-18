@@ -12,15 +12,11 @@ from collections import Iterable
 
 import numpy as np
 
-from tqdm import tqdm
-
-from . import verbosity, silence_pbar
-from .utils import to_ragged_seq_set
+from .utils import to_ragged_seq_set, progress, verbosity
 from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
                               get_offline_subgraphs, topological_sort, )
 from .utils.types import MappedData, GenericNode
 from .utils.validation import check_vector, is_mapping
-
 
 
 def _build_forward_sumodels(nodes, edges, already_trained):
@@ -31,7 +27,7 @@ def _build_forward_sumodels(nodes, edges, already_trained):
     forward_nodes = list(set(nodes) - set(offline_nodes))
     forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
 
-    submodel = Model(forward_nodes, forward_edges, name=f"{uuid4()}")
+    submodel = Model(forward_nodes, forward_edges, name=f"SubModel-{uuid4()}")
 
     submodel.already_trained = already_trained
 
@@ -481,10 +477,13 @@ class Model(GenericNode):
 
         states = _allocate_returned_states(self, X, return_states)
 
+        seq = progress(
+            self._dispatcher.dispatch(X, forced_feedbacks, shift_fb=shift_fb),
+            f"Running {self.name}", total=len(X))
+
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            for i, (x, forced_feedback, _) in enumerate(
-                    self._dispatcher.dispatch(X, forced_feedbacks,
-                                              shift_fb=shift_fb)):
+            for i, (x, forced_feedback, _) in enumerate(seq):
+
                 self._load_proxys()
                 with self.with_feedback(forced_feedback):
                     state = self._call(x, return_states=return_states)
@@ -514,10 +513,14 @@ class Model(GenericNode):
 
         states = _allocate_returned_states(self, X, return_states)
 
+        seq_len = X.shape[0]
+        dispatch = self._dispatcher.dispatch(X, Y, return_targets=True)
+        seq = progress(dispatch, f"Training {self.name}", total=seq_len) \
+            if seq_len > 1 else dispatch
+
         self._load_proxys()
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            for i, (x, forced_feedback, y) in enumerate(
-                    self._dispatcher.dispatch(X, Y, return_targets=True)):
+            for i, (x, forced_feedback, y) in enumerate(seq):
 
                 if not force_teachers:
                     forced_feedback = None
@@ -525,20 +528,14 @@ class Model(GenericNode):
                 with self.with_feedback(forced_feedback):
                     state = self._call(x, return_states=return_states)
 
+                # reload feedbacks from training. Some nodes may need
+                # feedback signals to train.
                 self._load_proxys()
 
                 y = self._check_targets(y)
 
                 if i % learn_every == 0 or len(X) == 1:
                     self._train(self, x=x, y=y, force_teachers=force_teachers)
-
-                # don't use the teacher values kept during training
-                # if not force_teachers:
-                #    self._clean_proxys()
-
-                # reload proxys for next call (don't remove what has not
-                # been cleaned, it's the forced teachers)
-                # self._load_proxys(keep=True)
 
                 if is_mapping(state):
                     for name, value in state.items():
@@ -581,10 +578,6 @@ class Model(GenericNode):
                                                              edges,
                                                              trained)
 
-                if verbosity():
-                    print(f"Training iteration {i}: running {submodel.nodes} "
-                          f"and training {offlines}.")
-
                 if next_X is not None:
                     for i in range(len(X)):
                         X[i].update(next_X[i])
@@ -621,6 +614,8 @@ class Model(GenericNode):
                     next_X.append(dist_states)
 
                 for node in offlines:
+                    if verbosity():
+                        print(f"Fitting node {node.name}...")
                     node.fit()
 
                 trained |= set(offlines)

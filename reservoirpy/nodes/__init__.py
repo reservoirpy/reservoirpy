@@ -6,12 +6,12 @@ from .nvar import NVAR
 from .esn import ESN
 from .activations import Tanh, Sigmoid, Softmax, Softplus, Identity, ReLU
 from .randomchoice import RandomChoice
-from .io import Input, Output, Probe
+from .io import Input, Output
+from .concat import Concat
 
 __all__ = ["Reservoir",
            "Input",
            "Output",
-           "Probe",
            "Ridge",
            "FORCE",
            "Tanh",
@@ -23,4 +23,5 @@ __all__ = ["Reservoir",
            "RandomChoice",
            "AsabukiNorm",
            "NVAR",
-           "ESN"]
+           "ESN",
+           "Concat"]
