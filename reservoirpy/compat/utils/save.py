@@ -7,7 +7,7 @@ import numpy as np
 
 from scipy import sparse
 
-from .._version import __version__
+from ..._version import __version__
 from .. import regression_models
 
 
@@ -168,6 +168,9 @@ def load(directory: str):
 
     with open(os.path.join(directory, attr["cls_bin"]), 'rb') as f:
         base_cls = dill.load(f)
+
+    if model_attr.get("activation") is None:
+        model_attr["activation"] = np.tanh
 
     model = _new_from_save(base_cls, model_attr)
 

@@ -2,7 +2,9 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
+import pytest
 
+from reservoirpy import set_seed
 from reservoirpy.nodes import ESN, Ridge, Reservoir
 
 
@@ -63,18 +65,40 @@ def test_esn_feedback():
     assert esn.reservoir.Wfb.shape == (100, 5)
 
 
-def test_esn_parallel_fit():
+def test_esn_parallel_fit_reproducibility():
 
-    esn = ESN(units=100,
-              lr=0.8, sr=0.4, ridge=1e-5,
-              feedback=True, workers=-1, backend="loky")
+    for i in range(100):
+        set_seed(45)
 
-    X, Y = np.ones((10, 100, 10)), np.ones((10, 100, 5))
-    esn.fit(X, Y)
+        esn = ESN(units=100,
+                  lr=0.8, sr=0.4, ridge=1e-5,
+                  feedback=True, workers=-1, backend="loky")
 
-    assert esn.reservoir.W.shape == (100, 100)
-    assert esn.reservoir.Win.shape == (100, 10)
-    assert esn.readout.Wout.shape == (100, 5)
+        X, Y = np.ones((10, 100, 10)), np.ones((10, 100, 5))
+        esn.fit(X, Y)
 
-    assert esn.reservoir.Wfb is not None
-    assert esn.reservoir.Wfb.shape == (100, 5)
+        assert esn.reservoir.W.shape == (100, 100)
+        assert esn.reservoir.Win.shape == (100, 10)
+        assert esn.readout.Wout.shape == (100, 5)
+
+        assert esn.reservoir.Wfb is not None
+        assert esn.reservoir.Wfb.shape == (100, 5)
+
+        assert np.mean(esn.readout.Wout) - 0.002418478571198347 < 1e-5
+
+
+def test_hierarchical_esn_forbidden():
+
+    esn1 = ESN(units=100,
+               lr=0.8, sr=0.4, ridge=1e-5,
+               feedback=True, workers=-1, backend="loky",
+               name="E1")
+
+    esn2 = ESN(units=100,
+               lr=0.8, sr=0.4, ridge=1e-5,
+               feedback=True, workers=-1, backend="loky",
+               name="E2")
+
+    # FrozenModel can't be linked (for now).
+    with pytest.raises(TypeError):
+        model = esn1 >> esn2

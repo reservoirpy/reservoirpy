@@ -1,7 +1,16 @@
-.. _`reservoirpy.datasets`:
+reservoirpy.datasets package
+============================
 
-reservoirpy.datasets
-====================
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   reservoirpy.datasets.tests
+
+Module contents
+---------------
 
 .. automodule:: reservoirpy.datasets
    :members:

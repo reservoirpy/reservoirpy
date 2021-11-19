@@ -1,7 +1,7 @@
 import time
 import warnings
 
-from typing import Sequence, Callable, Tuple, Union
+from typing import Sequence, Tuple, Union
 from pathlib import Path
 from functools import partial
 from abc import ABCMeta
@@ -12,10 +12,10 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 from numpy.random import default_rng, SeedSequence, Generator
 
-from .utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
-from .utils.validation import add_bias, check_input_lists, check_reservoir_matrices
+from ..utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
+from ..utils.validation import add_bias, check_input_lists, check_reservoir_matrices
 from .utils.save import _save
-from .utils.types import Weights, Data, Activation
+from ..base.types import Weights, Data, Activation
 
 
 class _ESNBase(metaclass=ABCMeta):

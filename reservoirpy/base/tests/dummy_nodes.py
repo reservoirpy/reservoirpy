@@ -84,8 +84,9 @@ def off_forward(node: Node, x):
 
 
 def off_partial_backward(node: Node, X_batch, Y_batch=None):
-    b = np.mean(np.abs(X_batch - Y_batch))
-    node.set_buffer("b", node.get_buffer("b") + b)
+    db = np.mean(np.abs(X_batch - Y_batch))
+    b = node.get_buffer("b")
+    b += db
 
 
 def off_backward(node: Node, X=None, Y=None):
@@ -119,8 +120,9 @@ def off2_forward(node: Node, x):
 
 
 def off2_partial_backward(node: Node, X_batch, Y_batch=None):
-    b = np.mean(np.abs(X_batch - Y_batch))
-    node.set_buffer("b", node.get_buffer("b") + b)
+    db = np.mean(np.abs(X_batch - Y_batch))
+    b = node.get_buffer("b")
+    b += db
 
 
 def off2_backward(node: Node, X=None, Y=None):

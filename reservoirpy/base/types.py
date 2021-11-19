@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from typing import (Any, Callable, Dict, Iterable, Iterator, Optional, Tuple,
                     TypeVar, Union, Sequence, List)
 from typing import overload, runtime_checkable
-from copy import copy, deepcopy
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol
@@ -73,12 +72,12 @@ class GenericNode(Protocol):
 
     def __rrshift__(self, other: Union[
         "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":
-        from ..ops import link
+        from reservoirpy.base.ops import link
         return link(other, self)
 
     def __and__(self, other: Union[
         "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":
-        from ..ops import merge
+        from reservoirpy.base.ops import merge
         return merge(self, other)
 
     def _get_name(self, name=None):
@@ -166,7 +165,7 @@ class GenericNode(Protocol):
             Iterator["GenericNode"]: ...
 
     def link(self, other: "GenericNode", name: str = None) -> "GenericNode":
-        from ..ops import link
+        from reservoirpy.base.ops import link
         return link(self, other, name=name)
 
     @overload

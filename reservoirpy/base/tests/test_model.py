@@ -1,18 +1,18 @@
 # Author: Nathan Trouvain at 10/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import pytest
-import numpy as np
 
 from numpy.testing import assert_array_equal
 
 from .dummy_nodes import *
 from ..ops import merge
-from ..nodes.io import Input
-from ..nodes.concat import Concat
+from ..model import Model
+from ...nodes.io import Input
 
 
 def test_node_link(plus_node, minus_node):
+
+    clean_registry(Model)
 
     model1 = plus_node >> minus_node
     model2 = minus_node >> plus_node
@@ -286,46 +286,44 @@ def test_offline_fit_simple_model(offline_node, offline_node2,
 
     assert_array_equal(offline_node.b, np.array([94.5]))
 
-    model.fit(X, Y, stateful=True, reset=True)
+    model.fit(X, Y, reset=True)
 
     assert_array_equal(offline_node.b, np.array([19.5]))
 
-    res = model.run(X[0])
+    res = model.run(X[0], reset=True)
 
-    exp = np.tile(np.array([34.5, 37, 39.5, 42, 44.5]), 5).reshape(5, 5).T
+    exp = np.tile(np.array([22., 24.5, 27., 29.5, 32.]), 5).reshape(5, 5).T
 
     assert_array_equal(exp, res)
 
-"""
-def test_offline_fit_complicated_model(offline_node, offline_node2,
-                                       plus_node, minus_node, sum_node):
 
-    input = Input()
-    concat = Concat()
-    
-    branch1 = input >> plus_node >> offline_node >> minus_node >> concat >> sum_node
-    branch2 = input >> sum_node >> offline_node2
+def test_offline_fit_simple_model_fb(offline_node, offline_node2,
+                                     plus_node, minus_node,
+                                     feedback_node):
 
-    model = merge(branch1, branch2)
+    model = plus_node >> feedback_node >> offline_node
+    feedback_node <<= offline_node
 
     X = np.ones((5, 5)) * 0.5
     Y = np.ones((5, 5))
 
     model.fit(X, Y)
 
-    assert_array_equal(offline_node.b, np.array([6.5]))
-    assert_array_equal(offline_node2.b, np.array([6.7]))
+    assert_array_equal(offline_node.b, np.array([7.5]))
 
     X = np.ones((3, 5, 5)) * 0.5
     Y = np.ones((3, 5, 5))
 
     model.fit(X, Y)
 
-    assert_array_equal(offline_node.b, np.array([94.5]))
-    assert_array_equal(offline_node2.b, np.array([196.1]))
+    assert_array_equal(offline_node.b, np.array([97.5]))
 
-    model.fit(X, Y, stateful=True, reset=True)
+    model.fit(X, Y, reset=True)
 
-    assert_array_equal(offline_node.b, np.array([19.5]))
-    assert_array_equal(offline_node2.b, np.array([43.5]))
-"""
+    assert_array_equal(offline_node.b, np.array([22.5]))
+
+    res = model.run(X[0], reset=True)
+
+    exp = np.tile(np.array([26, 54.5, 85.5, 119, 155]), 5).reshape(5, 5).T
+
+    assert_array_equal(exp, res)

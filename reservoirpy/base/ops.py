@@ -3,14 +3,14 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from itertools import product
-from typing import Union, Iterable, Sequence
+from typing import Union, Sequence
 from uuid import uuid4
 
-from .model import Model, FrozenModel
-from .node import Node
-from .utils.types import GenericNode
-from .utils.validation import check_all_nodes
-from .nodes.concat import Concat
+from reservoirpy.base.model import Model, FrozenModel
+from reservoirpy.base.node import Node
+from reservoirpy.base.types import GenericNode
+from reservoirpy.utils.validation import check_all_nodes
+from reservoirpy.nodes.concat import Concat
 
 
 def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
@@ -136,6 +136,22 @@ def link(node1: Union[GenericNode, Sequence[GenericNode]],
     """
 
     check_all_nodes(node1, node2)
+
+    frozens = []
+    if isinstance(node1, Sequence):
+        frozens += [n.name for n in node1 if isinstance(n, FrozenModel)]
+    else:
+        if isinstance(node1, FrozenModel):
+            frozens.append(node1)
+    if isinstance(node2, Sequence):
+        frozens += [n.name for n in node2 if isinstance(n, FrozenModel)]
+    else:
+        if isinstance(node2, FrozenModel):
+            frozens.append(2)
+
+    if len(frozens) > 0:
+        raise TypeError("Impossible to link FrozenModel to other Nodes or "
+                        f"Model. FrozenModel found: {frozens}.")
 
     # get left side
     if isinstance(node1, Sequence):

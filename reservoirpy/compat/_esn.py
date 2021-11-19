@@ -19,22 +19,14 @@ References
 # was used as inspiration for this code:
 # # http://minds.jacobs-university.de/mantas/code
 import time
-import warnings
 
-from typing import Sequence, Callable, Tuple, Union
-from pathlib import Path
-from functools import partial
+from typing import Sequence, Callable
 
 import numpy as np
 
-from joblib import Parallel, delayed
-from tqdm import tqdm
-from numpy.random import default_rng, SeedSequence, Generator
-
-from .utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
-from .utils.validation import _check_values, add_bias, check_input_lists
-from .utils.save import _save
-from .utils.types import Weights, Data, Activation
+from ..utils.parallel import parallelize
+from ..utils.validation import _check_values, check_input_lists
+from ..base.types import Data, Activation
 from .regression_models import RidgeRegression, SklearnLinearModel
 from ._base import _ESNBase
 
@@ -126,9 +118,9 @@ class ESN(_ESNBase):
                  activation: Activation = np.tanh,
                  seed: int = None,
                  typefloat: np.dtype = np.float64):
-        super(ESN, self).__init__(lr,
-                                  W,
+        super(ESN, self).__init__(W,
                                   Win,
+                                  lr=lr,
                                   input_bias=input_bias,
                                   activation=activation,
                                   Wfb=Wfb,

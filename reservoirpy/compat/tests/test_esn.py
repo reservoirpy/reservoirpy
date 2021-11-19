@@ -8,7 +8,7 @@ from scipy import sparse
 from sklearn.linear_model import LogisticRegression
 
 from .._esn import ESN
-from ..utils.save import load
+from reservoirpy.compat.utils.save import load
 
 
 @pytest.fixture(scope="session")

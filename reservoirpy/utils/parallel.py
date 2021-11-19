@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
 
-from ..utils.types import global_dtype
+from reservoirpy.base.types import global_dtype
 
 # FIX waiting for a workaround to avoid crashing with multiprocessing
 # activated with Python < 3.8. Seems to be due to compatibility issues
@@ -54,10 +54,6 @@ def set_joblib_backend(backend):
         raise ValueError(f"'{backend}' is not a valid joblib "
                          f"backend value. Available backends are "
                          f"{_AVAILABLE_BACKENDS}.")
-
-def get_lock():
-    global lock
-    return lock
 
 
 def memmap_buffer(node, data=None, shape=None,

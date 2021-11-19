@@ -57,13 +57,8 @@ def test_node_link_several(plus_node, minus_node, offline_node):
 
     model = [plus_node, minus_node] >> offline_node
 
-    assert set(model.nodes) == {plus_node, minus_node, offline_node,
-                                model["Concat-0"]}
-
-    concat = model["Concat-0"]
-    assert set(model.edges) == {(plus_node, concat),
-                                (minus_node, concat),
-                                (concat, offline_node)}
+    assert len(model.nodes) == 4
+    assert len(model.edges) == 3
 
     model = plus_node >> [offline_node, minus_node]
 

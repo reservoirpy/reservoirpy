@@ -6,7 +6,7 @@ import math
 
 import numpy as np
 
-from ..node import Node
+from reservoirpy.base.node import Node
 
 
 def forward(node, x):

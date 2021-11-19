@@ -5,21 +5,19 @@ import tempfile
 from ._version import __version__
 
 from .utils import verbosity
-from .utils.save import load
+from reservoirpy.compat.utils.save import load
 from .utils.random import set_seed
 
 from . import mat_gen
 from . import observables
-from . import regression_models
 from . import activationsfunc
 from . import hyper
+from . import nodes
+from . import compat
 
-from .node import Node
-from .model import Model
-from .ops import link, merge, link_feedback
-
-from ._esn import ESN
-from ._esn_online import ESNOnline
+from .base.node import Node
+from .base.model import Model
+from .base.ops import link, merge, link_feedback
 
 
 logger = logging.getLogger(__name__)

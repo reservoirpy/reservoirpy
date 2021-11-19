@@ -13,7 +13,7 @@ from reservoirpy.nodes import Ridge, Reservoir
 
 def test_ridge_init():
 
-    node = Ridge(ridge=1e-8, transient=100)
+    node = Ridge(10, ridge=1e-8, transient=100)
 
     data = np.ones((1, 100))
     res = node(data)

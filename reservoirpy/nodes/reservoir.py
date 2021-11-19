@@ -5,8 +5,8 @@ import numpy as np
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
-from ..node import Node
-from ..utils.types import Weights
+from reservoirpy.base.node import Node
+from reservoirpy.base.types import Weights
 from ..utils.validation import is_array
 from ..utils.random import noise
 

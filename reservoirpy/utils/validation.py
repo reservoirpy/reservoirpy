@@ -7,7 +7,7 @@ from typing import Any, Iterable, Mapping, Sequence, Union
 import numpy as np
 from scipy.sparse import issparse
 
-from .types import GenericNode, Weights
+from reservoirpy.base.types import GenericNode, Weights
 
 
 def check_node_io(node, x, expected_dim,

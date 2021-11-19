@@ -7,71 +7,50 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import ExitStack, contextmanager
 from typing import Dict, List, Optional, Tuple
-from uuid import uuid4
 from collections import Iterable
+from functools import partial
 
 import numpy as np
 
-from .utils import to_ragged_seq_set, progress, verbosity
-from .utils.graphflow import (DataDispatcher, find_entries_and_exits,
-                              get_offline_subgraphs, topological_sort, )
-from .utils.types import MappedData, GenericNode
-from .utils.validation import check_vector, is_mapping
+from ..utils import to_ragged_seq_set, progress, verbosity
+from .graphflow import (DataDispatcher, find_entries_and_exits,
+                        get_offline_subgraphs, topological_sort, )
+from ._utils import (_allocate_returned_states, _dist_states_to_next_subgraph,
+                     _build_forward_sumodels, )
+from .types import MappedData, GenericNode
+from ..utils.validation import check_vector, is_mapping
 
 
-def _build_forward_sumodels(nodes, edges, already_trained):
+def _run_and_partial_fit(model, offlines, relations, x_seq, y_seq,
+                         stateful=True, reset=False, return_states=None,
+                         force_teachers=True):
 
-    offline_nodes = [n for n in nodes
-                     if n.is_trained_offline and n not in already_trained]
+    if not model.is_empty:
+        x_seq = {n: x for n, x in x_seq.items()
+                 if n in model.node_names}
 
-    forward_nodes = list(set(nodes) - set(offline_nodes))
-    forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
-
-    submodel = Model(forward_nodes, forward_edges, name=f"SubModel-{uuid4()}")
-
-    submodel.already_trained = already_trained
-
-    return submodel, offline_nodes
-
-
-def _dist_states_to_next_subgraph(states, relations):
-    dist_states = {}
-    for curr_node, next_nodes in relations.items():
-        if len(next_nodes) > 1:
-            for next_node in next_nodes:
-                if dist_states.get(next_node) is None:
-                    dist_states[next_node] = list()
-                dist_states[next_node].append(states[curr_node])
+        if force_teachers:
+            y_seq = {n: y for n, y in y_seq.items()
+                     if n in [o.name for o in offlines]}
         else:
-            dist_states[next_nodes[0]] = states[curr_node]
+            y_seq = None
 
-    return dist_states
+        model._is_initialized = True
+        states = model.run(x_seq, y_seq,
+                           return_states=return_states,
+                           stateful=stateful,
+                           reset=reset)
 
-
-def _allocate_returned_states(model, inputs=None, return_states=None):
-
-    if inputs is not None:
-        if is_mapping(inputs):
-            seq_len = inputs[list(inputs.keys())[0]].shape[0]
-        else:
-            seq_len = inputs.shape[0]
+        dist_states = _dist_states_to_next_subgraph(states,
+                                                    relations)
     else:
-        raise ValueError("'X' and 'n' parameters can't be None at the "
-                         "same time.")
+        dist_states = x_seq
 
-    # pre-allocate states
-    if return_states == "all":
-        states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in model.nodes}
-    elif isinstance(return_states, Iterable):
-        states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in [model[name]
-                            for name in return_states]}
-    else:
-        states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in model.output_nodes}
+    for node in offlines:
+        node.partial_fit(dist_states[node.name],
+                         y_seq[node.name])
 
-    return states
+        return dist_states
 
 
 def forward(model: "Model",
@@ -199,7 +178,7 @@ class Model(GenericNode):
         return self.get_node(item)
 
     def __iand__(self, other):
-        from .ops import merge
+        from reservoirpy.base.ops import merge
         return merge(self, other, inplace=True)
 
     def _check_input(self, x):
@@ -378,6 +357,17 @@ class Model(GenericNode):
     def is_empty(self):
         return len(self.nodes) == 0
 
+    @property
+    def is_trainable(self) -> bool:
+        return any([n.is_trainable for n in self.nodes])
+
+    @is_trainable.setter
+    def is_trainable(self, value):
+        trainables = [n for n in self.nodes
+                      if n.is_trained_offline or n.is_trained_online]
+        for node in trainables:
+            node.is_trainable = value
+
     @contextmanager
     def with_state(self, state=None, stateful=False, reset=False):
         if state is None and not reset:
@@ -552,7 +542,9 @@ class Model(GenericNode):
 
         return states
 
-    def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
+    def fit(self, X=None, Y=None, force_teachers=True,
+            from_state=None, stateful=True, reset=False,
+            workers=1):
 
         if not any([n for n in self.trainable_nodes if n.is_trained_offline]):
             raise TypeError(f"Impossible to fit model {self} offline: "
@@ -579,39 +571,29 @@ class Model(GenericNode):
                                                              trained)
 
                 if next_X is not None:
-                    for i in range(len(X)):
-                        X[i].update(next_X[i])
+                    for j in range(len(X)):
+                        X[j].update(next_X[j])
 
                 return_states = None
                 if len(relations) > 0:
                     return_states = list(relations.keys())
 
+                # next inputs for next submodel
                 next_X = []
+                seq = progress(X, f"Running {self.name}")
+
+                _partial_fit_fn = partial(_run_and_partial_fit,
+                                          force_teachers=force_teachers,
+                                          model=submodel,
+                                          reset=reset,
+                                          offlines=offlines,
+                                          relations=relations,
+                                          stateful=stateful,
+                                          return_states=return_states)
+
                 # for seq/batch in dataset
-                for x_seq, y_seq in zip(X, Y):
-
-                    if not submodel.is_empty:
-                        x_seq = {n: x for n, x in x_seq.items()
-                                 if n in submodel.node_names}
-                        y_seq = {n: y for n, y in y_seq.items()
-                                 if n in [o.name for o in offlines]}
-
-                        submodel._is_initialized = True
-                        states = submodel.run(x_seq, y_seq,
-                                              return_states=return_states,
-                                              reset=reset,
-                                              stateful=stateful)
-
-                        dist_states = _dist_states_to_next_subgraph(states,
-                                                                    relations)
-                    else:
-                        dist_states = x_seq
-
-                    for node in offlines:
-                        node.partial_fit(dist_states[node.name],
-                                         y_seq[node.name])
-
-                    next_X.append(dist_states)
+                for x_seq, y_seq in zip(seq, Y):
+                    next_X += [_partial_fit_fn(x_seq=x_seq, y_seq=y_seq)]
 
                 for node in offlines:
                     if verbosity():
@@ -630,3 +612,7 @@ class FrozenModel(Model):
 
     def __init__(self, *args, **kwargs):
         super(FrozenModel, self).__init__(*args, **kwargs)
+
+    def update_graph(self, new_nodes, new_edges):
+        raise TypeError(f"Impossible to update FrozenModel {self}: "
+                        f"model is frozen and cannot be modified.")

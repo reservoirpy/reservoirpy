@@ -5,7 +5,7 @@ from typing import Sequence
 
 import numpy as np
 
-from ..node import Node
+from reservoirpy.base.node import Node
 from ..utils.validation import check_node_io
 
 

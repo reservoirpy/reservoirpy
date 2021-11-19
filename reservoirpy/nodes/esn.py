@@ -11,9 +11,9 @@ from .force import FORCE
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
-from ..model import FrozenModel
+from reservoirpy.base.model import FrozenModel
 from ..utils import to_ragged_seq_set, progress, verbosity
-from ..utils.types import GenericNode
+from reservoirpy.base.types import GenericNode
 from ..utils.validation import is_mapping
 from ..utils.parallel import get_joblib_backend
 
@@ -82,6 +82,10 @@ def forward(model: "ESN", x):
     return [out_node.state() for out_node in model.output_nodes]
 
 
+def intialize_buffers(model: "ESN"):
+    model.readout._buffers_initializer(model.readout)
+
+
 class ESN(FrozenModel):
 
     def __init__(self, reservoir_method="reservoir",
@@ -126,6 +130,31 @@ class ESN(FrozenModel):
         self._params.update({"reservoir": reservoir,
                              "readout": readout})
 
+        self._trainable = True
+        self._is_fb_initialized = False
+
+        # in case an external Model wants to initialize all buffers at once
+        self._buffers_initializer = intialize_buffers
+
+    @property
+    def is_trained_offline(self) -> bool:
+        return True
+
+    @property
+    def is_trained_online(self) -> bool:
+        return False
+
+    @property
+    def is_fb_initialized(self):
+        return self._is_fb_initialized
+
+    @property
+    def has_feedback(self):
+        """Always returns False, ESNs are not supposed to receive external
+        feedback. Feedback between reservoir and readout must be defined
+        at ESN creation."""
+        return False
+
     def _call(self, x=None, return_states=None, *args, **kwargs):
 
         if is_mapping(x):
@@ -150,6 +179,38 @@ class ESN(FrozenModel):
             state = self.readout.state()
 
         return state
+
+    def state(self, which="external"):
+        if which == "external":
+            return self.readout.state()
+        elif which == "internal":
+            return self.reservoir.state()
+        else:
+            raise ValueError(f"'which' parameter of {self.name} "
+                             f"'state' function must be "
+                             f"one of 'external' or 'internal'.")
+
+    def initialize_feedback(self) -> "Node":
+        """Call the Node feedback initializer. The feedback initializer will
+        determine feedback dimension given some feedback signal, and intialize
+        all parameters related to the feedback connection.
+
+        Feedback sender Node must be initialized, as the feedback intializer
+        will probably call the :py:meth:`Node.feedback` method to get
+        a sample of feedback signal.
+
+        Returns
+        -------
+            Node
+                Initialized Node.
+        """
+        if self.feedback:
+            if not self.reservoir.is_fb_initialized:
+                empty_feedback = self.reservoir.zero_feedback()
+                self.reservoir._feedback_initializer(self.reservoir,
+                                                     empty_feedback)
+                self._is_fb_initialized = True
+        return self
 
     def run(self, X=None, forced_feedbacks=None, from_state=None,
             stateful=True, reset=False, shift_fb=True, return_states=None):

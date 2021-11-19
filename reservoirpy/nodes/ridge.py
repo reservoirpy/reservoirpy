@@ -8,8 +8,10 @@ from scipy import linalg
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
 
-from ..node import Node
-from ..utils.types import global_dtype
+from ..utils.parallel import lock
+
+from reservoirpy.base.node import Node
+from reservoirpy.base.types import global_dtype
 
 
 def _solve_ridge(XXT, YXT, ridge):
@@ -27,12 +29,14 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
     xxt = X.T.dot(X)
     yxt = Y.T.dot(X)
 
-    # This is thread-safe, apparently, using Numpy memmap as buffers
-    # ok for parallelization then
     XXT = readout.get_buffer("XXT")
     YXT = readout.get_buffer("YXT")
-    XXT += xxt
-    YXT += yxt
+
+    # This is not thread-safe, apparently, using Numpy memmap as buffers
+    # ok for parallelization then with a lock
+    with lock:
+        XXT += xxt
+        YXT += yxt
 
 
 def backward(readout: Node, X=None, Y=None):

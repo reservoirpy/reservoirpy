@@ -3,7 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from ..node import Node
+from reservoirpy.base.node import Node
 from ..activationsfunc import relu, tanh
 
 

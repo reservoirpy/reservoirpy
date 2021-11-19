@@ -151,12 +151,14 @@ from uuid import uuid4
 
 import numpy as np
 
-from .model import Model
-from .utils import to_ragged_seq_set, progress
-from .utils.parallel import clean_tempfile, memmap_buffer
-from .utils.types import (BackwardFn, Data, EmptyInitFn, ForwardFn,
-                          ForwardInitFn, GenericNode, PartialBackFn, Shape)
-from .utils.validation import check_node_io, check_node_state, check_vector
+from reservoirpy.base.model import Model
+from reservoirpy.base.types import (BackwardFn, Data, EmptyInitFn, ForwardFn,
+                                    ForwardInitFn, GenericNode, PartialBackFn,
+                                    Shape, )
+from reservoirpy.utils import progress, to_ragged_seq_set
+from reservoirpy.utils.parallel import clean_tempfile, memmap_buffer
+from reservoirpy.utils.validation import (check_node_io, check_node_state,
+                                          check_vector, )
 
 
 def _initialize_with_seq_set(node, X, Y=None):
@@ -1037,7 +1039,8 @@ class Node(GenericNode):
             return states
 
     def partial_fit(self, X_batch: Data,
-                    Y_batch: Data = None) -> "Node":
+                    Y_batch: Data = None,
+                    **kwargs) -> "Node":
         """Partial offline fitting method of a Node.
         Can be used to perform batched fitting or to precompute some variables
         used by the fitting method.

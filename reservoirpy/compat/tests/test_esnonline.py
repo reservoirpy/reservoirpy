@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 
 from .._esn_online import ESNOnline
-from ..datasets import lorenz
+from reservoirpy.datasets import lorenz
 
 
 @pytest.fixture(scope="session")

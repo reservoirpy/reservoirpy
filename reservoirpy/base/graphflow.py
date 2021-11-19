@@ -4,8 +4,8 @@
 from collections import defaultdict, namedtuple, deque
 from typing import Dict, List
 
-from . import safe_defaultdict_copy
-from .validation import is_mapping, is_node
+from reservoirpy.utils import safe_defaultdict_copy
+from reservoirpy.utils.validation import is_mapping, is_node
 
 DataPoint = namedtuple("DataPoint", "x, y")
 
@@ -193,6 +193,8 @@ class DataDispatcher:
             else:
                 x.append(parent)
 
+        # in theory, only operators can support several incoming signal
+        # i.e. several operands, so unpack data is the list is unecessary
         if len(x) == 1:
             x = x[0]
 

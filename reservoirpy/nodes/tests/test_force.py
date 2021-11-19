@@ -41,11 +41,11 @@ def test_force_train_one_step():
     for x, y in zip(x, y):
         res = node.train(x, y)
 
-    assert node.Wout.shape == (100, 10)
+    assert node.Wout.shape == (2, 10)
     assert node.bias.shape == (1, 10)
     assert node.alpha == 1e-6
 
-    data = np.ones((10000, 100))
+    data = np.ones((10000, 2))
     res = node.run(data)
 
     assert res.shape == (10000, 10)
