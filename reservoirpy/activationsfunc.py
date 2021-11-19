@@ -53,12 +53,13 @@ def get_function(name: str) -> Callable:  # pragma: no cover
     }
 
     if index.get(name) is None:
-        raise ValueError(f"Function name must be one of {[k for k in index.keys()]}")
+        raise ValueError(f"Function name must be one of "
+                         f"{[k for k in index.keys()]}")
     else:
         return index[name]
 
 
-def softmax(x: np.ndarray) -> np.ndarray:
+def softmax(x: np.ndarray, beta=1) -> np.ndarray:
     """Softmax activation function:
 
     .. math::
@@ -73,7 +74,7 @@ def softmax(x: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
     """
-    return np.exp(x) / np.exp(x).sum()
+    return np.exp(beta*x) / np.exp(beta*x).sum()
 
 
 @_elementwise
@@ -99,7 +100,7 @@ def softplus(x: np.ndarray) -> np.ndarray:
 
 @_elementwise
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    """Sigmoïde activation function:
+    """Sigmoid activation function:
 
     .. math::
 

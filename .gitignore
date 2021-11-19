@@ -4,6 +4,8 @@ Pipfile.lock
 
 # VScode
 .vscode/
+
+# Pycharm
 .idea/
 
 # Byte-compiled / optimized / DLL files

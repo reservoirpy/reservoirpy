@@ -1,33 +1,44 @@
-# ReservoirPy (v0.2.4)
-**A simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
+![ReservoirPy banner](static/rpy_banner_bw.png)
 
 [![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
 [![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
 
+
+# ReservoirPy (v0.3) 🌀 🧠
+**Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
+
+
+```python
+from reservoirpy.nodes import Reservoir, Ridge, Input
+
+data      = Input(input_dim=1)
+reservoir = Reservoir(100, lr=0.1, sr=0.99)
+readout   = Ridge(1, ridge=1e-3)
+
+esn = data >> reservoir >> readout
+
+forecast = esn.fit(X, y).run(timeseries)
+```
+
+
 ReservoirPy is a simple user-friendly library based on Python scientific modules. It provides a flexible interface to implement efficient Reservoir Computing (RC) architectures with a particular focus on Echo State Networks (ESN). Advanced features of ReservoirPy allow to improve computation time efficiency on a simple laptop compared to basic Python implementation. Some of its features are: offline and online training, parallel implementation, sparse matrix computation, fast spectral initialization, etc. Moreover, graphical tools are included to easily explore hyperparameters with the help of the hyperopt library.
 
-This library works for Python 3.6 and higher.
+This library works for Python 3.8 and higher.
 
-## Offcial documentation
+## Offcial documentation 📖
 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process.
 
-## Examples and tutorials
+## Examples and tutorials 🎓
 
-[Go to the examples folder](./examples/) for intallation, examples, tutorials and Jupyter Notebooks.
+[Go to the tutorial folder](./tutorials/) for tutorials in Jupyter Notebooks.
 
-## Versions
-**To enable last features of ReservoirPy, you migth want to download a specific Git branch.**
+[Go to the examples folder](./examples/) for examples and papers with codes, also in Jupyter Notebooks.
 
-Available versions and corresponding branch:
-- v0.1.x : `v0.1`
-- v0.2.x (last stable) : `master`
-- v0.2.x (dev) : `v0.2.x`
-- (comming soon) v0.3.0 : `v0.3`
 
-## Quick try
+## Quick try ⚡
 #### Chaotic timeseries prediction (MackeyGlass)
 
 Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:

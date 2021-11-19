@@ -1,7 +1,8 @@
-.. _`reservoirpy.hyper`:
+reservoirpy.hyper package
+=========================
 
-reservoirpy.hyper
-=================
+Module contents
+---------------
 
 .. automodule:: reservoirpy.hyper
    :members:

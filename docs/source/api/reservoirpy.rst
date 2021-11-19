@@ -1,35 +1,51 @@
-ReservoirPy package
+reservoirpy package
 ===================
-
-.. autofunction:: reservoirpy.load
-
-
-Submodules
-----------
-
-  .. list-table::
-      :widths: 50 50
-      :header-rows: 0
-
-      * - :ref:`reservoirpy.esn`
-        - Object-oriented API for Echo State Networks design
-      * - :ref:`reservoirpy.mat_gen`
-        - Tools for weight matrices initialization
-      * - :ref:`reservoirpy.regression_models`
-        - Simple linear models and handled for `scikit-learn` linear regressors
-      * - :ref:`reservoirpy.activationsfunc`
-        - Activations functions for reservoirs, feedbacks, etc.
-      * - :ref:`reservoirpy.observables`
-        - Metrics and measures
 
 Subpackages
 -----------
 
- .. list-table::
-      :widths: 50 50
-      :header-rows: 0
+.. toctree::
+   :maxdepth: 4
 
-      * - :ref:`reservoirpy.hyper`
-        - Tools for hyperparameters optimization with `hyperopt`
-      * - :ref:`reservoirpy.datasets`
-        - Ready-to-use datasets for model evaluation
+   reservoirpy.base
+   reservoirpy.compat
+   reservoirpy.datasets
+   reservoirpy.hyper
+   reservoirpy.nodes
+   reservoirpy.tests
+   reservoirpy.utils
+
+Submodules
+----------
+
+reservoirpy.activationsfunc module
+----------------------------------
+
+.. automodule:: reservoirpy.activationsfunc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+reservoirpy.mat\_gen module
+---------------------------
+
+.. automodule:: reservoirpy.mat_gen
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+reservoirpy.observables module
+------------------------------
+
+.. automodule:: reservoirpy.observables
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: reservoirpy
+   :members:
+   :undoc-members:
+   :show-inheritance:

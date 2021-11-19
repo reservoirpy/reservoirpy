@@ -55,25 +55,33 @@ def spectral_radius(W, maxiter: int = None) -> float:
     return max(abs(linalg.eig(W)[0]))
 
 
-def compute_error_NRMSE(teacher_signal, predicted_signal, verbose=False):
-    """ Computes Normalized Root-Mean-Squarred Error between a teacher signal and a predicted signal
-    Return the errors in this order: nmrse mean, nmrse max-min, rmse, mse.
-    By default, only NMRSE mean should be considered as a general measure to be
-    compared for different datasets.
+def mse(y_true, y_pred):
+    return np.mean((y_true - y_pred)**2)
 
-    For more information, see:
-    - Mean Squared Error https://en.wikipedia.org/wiki/Mean_squared_error
-    - Root Mean Squared Error https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
-    """
-    errorLen = len(predicted_signal[:])
-    mse = np.mean((teacher_signal - predicted_signal)**2)
-    rmse = np.sqrt(mse)
-    nmrse_mean = abs(rmse / np.mean(predicted_signal[:])) # Normalised RMSE (based on mean)
-    nmrse_maxmin = rmse / abs(np.max(predicted_signal[:]) - np.min(predicted_signal[:])) # Normalised RMSE (based on max - min)
-    if verbose:
-        print("Errors computed over %d time steps" % (errorLen))
-        print("\nMean Squared error (MSE):\t\t%.4e" % (mse) )
-        print("Root Mean Squared error (RMSE):\t\t%.4e\n" % rmse )
-        print("Normalized RMSE (based on mean):\t%.4e" % (nmrse_mean) )
-        print("Normalized RMSE (based on max - min):\t%.4e" % (nmrse_maxmin) )
-    return nmrse_mean, nmrse_maxmin, rmse, mse
+
+def rmse(y_true, y_pred):
+    return np.sqrt(mse(y_true, y_pred))
+
+
+def nrmse(y_true, y_pred, norm="minmax", norm_value=None):
+    error = rmse(y_true, y_pred)
+    if norm_value is not None:
+        return error / norm_value
+
+    else:
+        norms = {"minmax": lambda y: y.ptp(),
+                 "var" : lambda y: y.var(),
+                 "mean": lambda y: y.mean(),
+                 "q1q3": lambda y: np.quantile(y, 0.75) - np.quantile(y, 0.25)}
+
+        if norms.get(norm) is None:
+            raise ValueError(f"Unknown normalization method. "
+                             f"Available methods are {list(norms.keys())}.")
+        else:
+            return error / norms[norm](y_true)
+
+
+def rsquare(y_true, y_pred):
+    d = (y_true - y_pred) ** 2
+    D = (y_true - y_true.mean())**2
+    return 1 - np.sum(d) / np.sum(D)
