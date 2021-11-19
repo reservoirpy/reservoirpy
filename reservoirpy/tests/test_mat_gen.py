@@ -11,8 +11,6 @@ from scipy import sparse
 from reservoirpy.mat_gen import fast_spectral_initialization
 from reservoirpy.mat_gen import generate_input_weights
 from reservoirpy.mat_gen import generate_internal_weights
-from reservoirpy.mat_gen import _get_rvs
-from reservoirpy.mat_gen import _get_generator
 
 
 @pytest.mark.parametrize("N,dim_input,input_bias,expected", [

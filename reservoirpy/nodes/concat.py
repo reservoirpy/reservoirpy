@@ -1,57 +1,60 @@
-# Author: Nathan Trouvain at 09/06/2021 <nathan.trouvain@inria.fr>
+# Author: Nathan Trouvain at 08/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from typing import Sequence
+
 import numpy as np
 
-from ..utils.validation import is_object_sequence
-from ..model import Node
+from reservoirpy.base.node import Node
+from ..utils.validation import check_node_io
 
 
-def forward(concat, *data):
+def concat_forward(concat: Node, data):
     axis = concat.axis
-    if len(data) <= 1:  # nothing to concat, data is a single array
-        return data[0]
-    return np.concatenate(data, axis=axis)
+
+    if not isinstance(data, np.ndarray):
+        if len(data) > 1:
+            return np.concatenate(data, axis=axis)
+        else:
+            return np.asarray(data)
+    else:
+        return data
 
 
-def initialize(concat, x=None):
+def concat_initialize(concat: Node, x=None, **kwargs):
     if x is not None:
-        # x is an array, no need to concatenate
         if isinstance(x, np.ndarray):
-            concat.set_input_dim(x.shape)
-            concat.set_output_dim(x.shape)
-
-        elif is_object_sequence(x):
-            shapes = [array.shape for array in x]
-
-            if not set([len(s) for s in shapes]) == 1:
-                raise ValueError(f"Impossible to concatenate "
-                                 f"inputs with different number of "
-                                 f"dimensions entering {concat.name}. "
-                                 f"Received inputs of shape {shapes}.")
-
-            for s in shapes.copy():
-                del s[concat.axis]
-
-            if not set(shapes) == 1:
-                raise ValueError(f"Impossible to concatenate inputs "
-                                 f"over axis {concat.axis} with mismatched "
-                                 f"dimensions over other axes entering "
-                                 f"{concat.name}. Received inputs of dimensions "
-                                 f"{shapes} over other axes.")
+            concat.set_input_dim(x.shape[1])
+            concat.set_output_dim(x.shape[1])
+        elif isinstance(x, Sequence):
+            result = concat_forward(concat, x)
+            concat.set_input_dim(tuple([u.shape[1] for u in x]))
+            if result.shape[0] > 1:
+                concat.set_output_dim(result.shape)
             else:
-                ndim = x[0].ndim
-                # output dim is the sum of arrays dims over the selected axis
-                output_dim = (sum([s[concat.axis] for s in shapes]), )
-                # the rest is left untouched
-                output_dim += tuple([shapes[ax] for ax in range(ndim) if ax != concat.axis])
-                concat.set_output_dim(output_dim)
-
+                concat.set_output_dim(result.shape[1])
 
 class Concat(Node):
 
-    def __init__(self, axis=0, name=None):
+    def __init__(self, axis=1, name=None):
         super(Concat, self).__init__(hypers={"axis": axis},
-                                     forward=forward,
-                                     initializer=initialize,
+                                     forward=concat_forward,
+                                     initializer=concat_initialize,
                                      name=name)
+
+    def _check_io(self, X, *args, io_type="input", **kwargs):
+        if io_type == "input":
+            if isinstance(X, np.ndarray):
+                return check_node_io(self, X, *args, io_type=io_type, **kwargs)
+            elif isinstance(X, Sequence):
+                checked_X = []
+                for i in range(len(X)):
+                    input_dim = None
+                    if self.is_initialized:
+                        input_dim = self.input_dim[i]
+                    checked_X.append(check_node_io(self, X[i],
+                                                   input_dim,
+                                                   **kwargs))
+                return checked_X
+            else:
+                return check_node_io(self, X, *args, io_type=io_type, **kwargs)

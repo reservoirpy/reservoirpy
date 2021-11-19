@@ -40,10 +40,12 @@ from scipy import stats
 import numpy as np
 
 from numpy.random import Generator, default_rng
-from numpy.random import RandomState, MT19937
 from scipy import sparse
+from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
 
 from .observables import spectral_radius
+from .utils.random import rand_generator
+
 
 __all__ = [
     "fast_spectral_initialization",
@@ -54,21 +56,6 @@ __all__ = [
 
 def _is_probability(proba: float) -> bool:
     return 1. - proba >= 0. and proba >= 0.
-
-
-def _get_generator(seed: Union[int, Generator]) -> Generator:
-    if isinstance(seed, Generator):
-        return seed
-    # provided to support legacy RandomState generator
-    # of Numpy. It is not the best thing to do however
-    # and recommend the user to keep using integer seeds
-    # and proper Numpŷ Generator API.
-    if isinstance(seed, RandomState):
-        mt19937 = MT19937()
-        mt19937.state = seed.get_state()
-        return Generator(mt19937)
-    else:
-        return default_rng(seed)
 
 
 def _get_rvs(dist: str,
@@ -199,7 +186,7 @@ def fast_spectral_initialization(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rg = _get_generator(seed)
+    rg = rand_generator(seed)
 
     if sr is None or proba <= 0.:
         a = 1
@@ -312,26 +299,37 @@ def generate_internal_weights(N: int,
     if not _is_probability(proba):
         raise ValueError(f"proba = {proba} not in [0; 1].")
 
-    rg = _get_generator(seed)
+    w = None
+    done = False
+    while not done:
+        rg = rand_generator(seed)
 
-    rvs = _get_rvs(dist,
-                   random_state=rg,
-                   **kwargs)
+        rvs = _get_rvs(dist,
+                       random_state=rg,
+                       **kwargs)
 
-    # sparse format (default)
-    if sparsity_type != "dense":
-        w = sparse.random(N, N, density=proba,
-                          format=sparsity_type,
-                          random_state=rg,
-                          data_rvs=rvs)
-    # dense format
-    else:
-        w = rvs(size=(N, N)).astype(typefloat)
-        w[rg.uniform(0.0, 1.0, (N, N)) > proba] = 0.0
+        # sparse format (default)
+        if sparsity_type != "dense":
+            w = sparse.random(N, N, density=proba,
+                              format=sparsity_type,
+                              random_state=rg,
+                              data_rvs=rvs)
+        # dense format
+        else:
+            w = rvs(size=(N, N)).astype(typefloat)
+            w[rg.uniform(0.0, 1.0, (N, N)) > proba] = 0.0
 
-    if sr is not None:
-        current_sr = spectral_radius(w)
-        w *= sr / current_sr
+        if sr is not None:
+            # make sure the eigenvalues are reachable.
+            # TODO: maybe find a better way to do this
+            try:
+                current_sr = spectral_radius(w)
+                w *= sr / current_sr
+                done = True
+            except ArpackNoConvergence:
+                seed = rg.integers(1, 999)
+        else:
+            done = True
 
     return w
 
@@ -420,7 +418,7 @@ def generate_input_weights(N: int,
     if input_bias:
         dim_input += 1
 
-    rg = _get_generator(seed)
+    rg = rand_generator(seed)
 
     rvs = _get_rvs(dist,
                    **kwargs,

@@ -4,7 +4,6 @@ Pipfile.lock
 
 # VScode
 .vscode/
-.idea/
 
 # Pycharm
 .idea/

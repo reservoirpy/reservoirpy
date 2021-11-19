@@ -2,6 +2,8 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
+import gc
+import sys
 import tempfile
 import uuid
 from collections import defaultdict
@@ -14,20 +16,37 @@ from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
 
+from reservoirpy.base.types import global_dtype
+
+# FIX waiting for a workaround to avoid crashing with multiprocessing
+# activated with Python < 3.8. Seems to be due to compatibility issues
+# with pickle5 protocol and loky library.
+if sys.version_info < (3, 8):
+    _BACKEND = "sequential"
+    _AVAILABLE_BACKENDS = ("sequential",)
+else:
+    _BACKEND = "loky"
+    _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
+                           "threading", "sequential")
+
 manager = Manager()
 lock = manager.Lock()
-
-_BACKEND = "loky"
-_AVAILABLE_BACKENDS = ["loky", "multiprocessing", "threading"]
 
 temp_registry = defaultdict(list)
 
 
-def get_joblib_backend(workers=-1):
+def get_joblib_backend(workers=-1, backend=None):
+    if backend is not None:
+        if backend in _AVAILABLE_BACKENDS:
+            return backend
+        else:
+            raise ValueError(f"'{backend}' is not a Joblib backend. Available "
+                             f"backends are {_AVAILABLE_BACKENDS}.")
     return _BACKEND if workers > 1 or workers == -1 else "sequential"
 
 
 def set_joblib_backend(backend):
+    global _BACKEND
     if backend in _AVAILABLE_BACKENDS:
         _BACKEND = backend
     else:
@@ -36,7 +55,34 @@ def set_joblib_backend(backend):
                          f"{_AVAILABLE_BACKENDS}.")
 
 
+def memmap_buffer(node, data=None, shape=None,
+                  dtype=None, mode="w+", name=None):
+    global temp_registry
+
+    caller = node.name
+    if data is None:
+        if shape is None:
+            raise ValueError(f"Impossible to create buffer for node {node}: "
+                             f"neither data nor shape were given.")
+
+    name = name if name is not None else uuid.uuid4()
+    temp = os.path.join(tempfile.gettempdir(), f"{caller + str(name)}")
+
+    temp_registry[node].append(temp)
+
+    shape = shape if shape is not None else data.shape
+    dtype = dtype if dtype is not None else global_dtype
+
+    memmap = np.memmap(temp, shape=shape, mode=mode, dtype=dtype)
+
+    if data is not None:
+        memmap[:] = data
+
+    return memmap
+
+
 def as_memmap(data, caller=None):
+    global temp_registry
     if caller is not None:
         caller_name = caller.__class__.__name__
     else:
@@ -71,6 +117,8 @@ def memmap(shape: Tuple, dtype: np.dtype,
             An empty memory-mapped array.
 
     """
+    global temp_registry
+
     if caller is not None:
         caller_name = caller.__class__.__name__
     else:
@@ -82,6 +130,9 @@ def memmap(shape: Tuple, dtype: np.dtype,
 
 
 def clean_tempfile(caller):
+    global temp_registry
+
+    gc.collect()
     for file in temp_registry[caller]:
         try:
             os.remove(file)

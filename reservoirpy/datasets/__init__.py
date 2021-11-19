@@ -17,6 +17,8 @@ Chaotic timeseries
 
     - :py:func:`henon_map`: Hénon map timeseries.
 
+    - :py:func:`narma`: NARMA timeseries.
+
     **Approximations of continuous timeseries**
 
     - :py:func:`mackey_glass`: Mackey-Glass delayed differential equations timeseries.
@@ -47,6 +49,8 @@ from ._chaos import lorenz
 from ._chaos import multiscroll
 from ._chaos import rabinovich_fabrikant
 from ._chaos import mackey_glass
+from ._chaos import narma
+from ._chaos import doublescroll
 
 from ._seed import set_seed, get_seed
 
@@ -58,6 +62,7 @@ __all__ = [
     "mackey_glass",
     "multiscroll",
     "rabinovich_fabrikant",
+    "narma", "doublescroll",
     "set_seed", "get_seed",
     "to_forecasting"
 ]

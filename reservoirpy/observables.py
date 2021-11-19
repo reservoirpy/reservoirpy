@@ -55,95 +55,33 @@ def spectral_radius(W, maxiter: int = None) -> float:
     return max(abs(linalg.eig(W)[0]))
 
 
-def mse(y: np.ndarray, ypred: np.ndarray) -> float:
-    """[summary]
-
-    Parameters
-    ----------
-    y : np.ndarray
-        [description]
-    ypred : np.ndarray
-        [description]
-
-    Returns
-    -------
-    float
-        [description]
-    """
-    return np.mean((y - ypred)**2)
+def mse(y_true, y_pred):
+    return np.mean((y_true - y_pred)**2)
 
 
-def rmse(y: np.ndarray, ypred: np.ndarray) -> float:
-    """[summary]
-
-    Parameters
-    ----------
-    y : np.ndarray
-        [description]
-    ypred : np.ndarray
-        [description]
-
-    Returns
-    -------
-    float
-        [description]
-    """
-    return np.sqrt(mse(y, ypred))
+def rmse(y_true, y_pred):
+    return np.sqrt(mse(y_true, y_pred))
 
 
-def nrmse(y: np.ndarray,
-          ypred: np.ndarray,
-          method: str = 'minmax',
-          feat_axis: int = 1) -> float:
-    """[summary]
+def nrmse(y_true, y_pred, norm="minmax", norm_value=None):
+    error = rmse(y_true, y_pred)
+    if norm_value is not None:
+        return error / norm_value
 
-    Parameters
-    ----------
-    y : np.ndarray
-        [description]
-    ypred : np.ndarray
-        [description]
-    method : str, optional
-        [description], by default 'minmax'
-    feat_axis : int, optional
-        [description], by default 1
+    else:
+        norms = {"minmax": lambda y: y.ptp(),
+                 "var" : lambda y: y.var(),
+                 "mean": lambda y: y.mean(),
+                 "q1q3": lambda y: np.quantile(y, 0.75) - np.quantile(y, 0.25)}
 
-    Returns
-    -------
-    float
-        [description]
-    """
-
-    if method == 'dev':
-        ymean = np.mean(y, axis=feat_axis).reshape(-1, 1)
-        numerator = np.mean((y - ypred)**2)
-        denominator = np.mean((y - ymean)**2)
-        return np.sqrt(numerator / denominator)
-
-    err = rmse(y, ypred)
-
-    if method == 'minmax':
-        return err / (np.max(y) - np.min(y))
-    if method == 'mean':
-        return err / np.mean(y)
+        if norms.get(norm) is None:
+            raise ValueError(f"Unknown normalization method. "
+                             f"Available methods are {list(norms.keys())}.")
+        else:
+            return error / norms[norm](y_true)
 
 
-def r2_coeff(y: np.ndarray, ypred: np.ndarray) -> float:
-    """[summary]
-
-    Parameters
-    ----------
-    y : np.ndarray
-        [description]
-    ypred : np.ndarray
-        [description]
-
-    Returns
-    -------
-    float
-        [description]
-    """
-    ymean = np.mean(y)
-    numerator = np.sum((y - ypred)**2)
-    denominator = np.sum((y - ymean)**2)
-    return 1.0 - numerator/denominator
+def rsquare(y_true, y_pred):
+    d = (y_true - y_pred) ** 2
+    D = (y_true - y_true.mean())**2
+    return 1 - np.sum(d) / np.sum(D)
