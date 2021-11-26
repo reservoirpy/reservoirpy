@@ -54,19 +54,27 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
     python minimalESN_MackeyGlass.py
     ```
 
-## Preprint with tutorials
-Tutorial on ReservoirPy can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+## Paper with tutorials
+Tutorial on ReservoirPy can be found in this [Paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
 ## Explore Hyper-Parameters with Hyperopt
-A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
 Take a look at our **advices and general method to explore hyperparameters** for reservoirs in our recent paper:
 "Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters", ICANN 2021
-[HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [Preprint](https://hal.inria.fr/hal-03203318/)
+[HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [PDF](https://hal.inria.fr/hal-03203318/)
 
 [Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization%20of%20hyperparameters)
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
+
+## Papers and projects using ReservoirPy
+- Trouvain & Hinaut (2021) Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) [HAL](https://hal.inria.fr/hal-03203374) [PDF](https://hal.inria.fr/hal-03203374/document)
+- Pagliarini et al. (2021) Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator. ICDL 2021. [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF) 
+- Pagliarini et al. (2021) What does the Canary Say? Low-Dimensional GAN Applied to Birdsong. HAL preprint. [HAL](https://hal.inria.fr/hal-03244723/) [PDF](https://hal.inria.fr/hal-03244723/document)
+- Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318) [PDF](https://hal.inria.fr/hal-03203318)
+
+
 
 ## Cite
 Nathan Trouvain, Luca Pedrelli, Thanh Trung Dinh, Xavier Hinaut. ReservoirPy: an Efficient and User-Friendly Library to Design Echo State Networks. 2020. ⟨hal-02595026⟩ https://hal.inria.fr/hal-02595026
