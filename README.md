@@ -60,9 +60,7 @@ Tutorial on ReservoirPy can be found in this [Paper (Trouvain et al. 2020)](http
 ## Explore Hyper-Parameters with Hyperopt
 A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
-Take a look at our **advices and general method to explore hyperparameters** for reservoirs in our recent paper:
-"Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters", ICANN 2021
-[HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [PDF](https://hal.inria.fr/hal-03203318/)
+Take a look at our **advices and general method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
 
 [Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization%20of%20hyperparameters)
 
