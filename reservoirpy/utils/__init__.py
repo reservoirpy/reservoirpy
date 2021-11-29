@@ -3,6 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
 from typing import Iterable
+from inspect import signature
 
 import numpy as np
 
@@ -57,3 +58,10 @@ def to_ragged_seq_set(data):
             return [np.atleast_2d(data)]
         else:
             return data
+
+
+def _obj_from_kwargs(klas, kwargs):
+    sig = signature(klas.__init__)
+    params = list(sig.parameters.keys())
+    klas_kwargs = {n: v for n, v in kwargs.items() if n in params}
+    return klas(**klas_kwargs)

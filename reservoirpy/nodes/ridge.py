@@ -1,17 +1,17 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from functools import partial
+
 import numpy as np
 
 from scipy import linalg
 
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
-
 from ..utils.parallel import lock
-
-from reservoirpy.base.node import Node
-from reservoirpy.base.types import global_dtype
+from ..base.node import Node
+from ..base.types import global_dtype
 
 
 def _solve_ridge(XXT, YXT, ridge):
@@ -62,9 +62,11 @@ def backward(readout: Node, X=None, Y=None):
 
 def initialize(readout: Node,
                x=None,
-               y=None):
+               y=None,
+               Wout_init=None):
 
-    _initialize_readout(readout, x, y, bias=readout.input_bias)
+    _initialize_readout(readout, x, y, bias=readout.input_bias,
+                        init_func=Wout_init)
 
 
 def initialize_buffers(readout):
@@ -86,7 +88,7 @@ def initialize_buffers(readout):
 
 class Ridge(Node):
 
-    def __init__(self, output_dim=None, ridge=0.0, transient=0,
+    def __init__(self, output_dim=None, ridge=0.0, transient=0, Wout=None,
                  input_bias=True, name=None):
         super(Ridge, self).__init__(params={"Wout": None, "bias": None},
                                     hypers={"ridge": ridge,
@@ -96,6 +98,7 @@ class Ridge(Node):
                                     partial_backward=partial_backward,
                                     backward=backward,
                                     output_dim=output_dim,
-                                    initializer=initialize,
+                                    initializer=partial(initialize,
+                                                        Wout_init=Wout),
                                     buffers_initializer=initialize_buffers,
                                     name=name)

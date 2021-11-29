@@ -15,6 +15,7 @@ scikit-learn = "*"
 matplotlib = "*"
 numba = "*"
 psutil = "*"
+twine = "*"
 
 [dev-packages]
 

@@ -12,7 +12,7 @@ from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
 from reservoirpy.base.model import FrozenModel
-from ..utils import to_ragged_seq_set, progress, verbosity
+from ..utils import to_ragged_seq_set, progress, verbosity, _obj_from_kwargs
 from reservoirpy.base.types import GenericNode
 from ..utils.validation import is_mapping
 from ..utils.parallel import get_joblib_backend
@@ -22,13 +22,6 @@ _LEARNING_METHODS = {"ridge": Ridge,
 
 _RES_METHODS = {"reservoir": Reservoir,
                 "nvar": NVAR}
-
-
-def _obj_from_kwargs(klas, kwargs):
-    sig = signature(klas.__init__)
-    params = list(sig.parameters.keys())
-    klas_kwargs = {n: v for n, v in kwargs.items() if n in params}
-    return klas(**klas_kwargs)
 
 
 def _allocate_returned_states(model, inputs=None, return_states=None):

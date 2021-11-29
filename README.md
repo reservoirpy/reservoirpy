@@ -21,8 +21,15 @@ esn = data >> reservoir >> readout
 forecast = esn.fit(X, y).run(timeseries)
 ```
 
-
-ReservoirPy is a simple user-friendly library based on Python scientific modules. It provides a flexible interface to implement efficient Reservoir Computing (RC) architectures with a particular focus on Echo State Networks (ESN). Advanced features of ReservoirPy allow to improve computation time efficiency on a simple laptop compared to basic Python implementation. Some of its features are: offline and online training, parallel implementation, sparse matrix computation, fast spectral initialization, etc. Moreover, graphical tools are included to easily explore hyperparameters with the help of the hyperopt library.
+ReservoirPy is a simple user-friendly library based on Python scientific modules. 
+It provides a flexible interface to implement efficient Reservoir Computing (RC) 
+architectures with a particular focus on Echo State Networks (ESN). 
+Advanced features of ReservoirPy allow to improve computation time efficiency 
+on a simple laptop compared to basic Python implementation. 
+Some of its features are: offline and online training, parallel implementation, 
+sparse matrix computation, fast spectral initialization, etc. 
+Moreover, graphical tools are included to easily explore hyperparameters 
+with the help of the hyperopt library.
 
 This library works for Python 3.8 and higher.
 
@@ -31,15 +38,95 @@ This library works for Python 3.8 and higher.
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process.
 
-## Examples and tutorials 🎓
+## Installation
 
-[Go to the tutorial folder](./tutorials/) for tutorials in Jupyter Notebooks.
+You can install ReservoirPy using `pip`:
 
-[Go to the examples folder](./examples/) for examples and papers with codes, also in Jupyter Notebooks.
+```bash
+pip install reservoirpy
+```
 
+⚠️ **The version currently displayed in the `master` branch is a 
+pre-release of ReservoirPy** ⚠️
+
+To install it, change the command to:
+
+```bash
+pip install --pre reservoirpy
+```
+
+or 
+
+```bash
+pip install reservoirpy==0.3.0b0
+```
 
 ## Quick try ⚡
-#### Chaotic timeseries prediction (MackeyGlass)
+### An example on Chaotic timeseries prediction (MackeyGlass)
+
+**Step 1: Load the dataset**
+
+ReservoirPy comes with some handy data generator able to create synthetic timeseries
+for well-known tasks such as Mackey-Glass timeseries forecasting.
+
+```python
+from reservoirpy.datasets import mackey_glass
+
+X = mackey_glass(n_timesteps=2000)
+```
+
+**Step 2: Create an Echo State Network...**
+
+...or any kind of model you wish to use to solve your task. In this simple
+use case, we will try out Echo State Networks (ESNs), one of the 
+most minimal architecture of Reservoir Computing machines.
+
+An ESN is made of 
+a *reservoir*, a random recurrent network used to encode our 
+inputs in a "close-to-chaos" high dimensional space, and a *readout*, a simple
+feed-forward layer of neurons in charge with *reading-out* the desired output from
+the activations of the reservoir. 
+```python
+from reservoirpy.nodes import Reservoir, Ridge
+
+reservoir = Reservoir(units=100, lr=0.3, sr=1.25)
+readout   = Ridge(output_dim=1, ridge=1e-5)
+```
+
+We here obtain a reservoir with 100 neurons, a *spectral radius* of 1.25 and 
+a *leak rate* of 0.3 (you can learn more about these hyperparameters going through
+the tutorial 
+[Introduction to Reservoir Computing](./tutorials/Introduction%20%20to%20Reservoir%20Computing)).
+Our readout is just a layer of one single neuron, that we will next connect to the
+reservoir neurons. Note that only the readout layer connections are trained! 
+This is one of the cornerstone of all Reservoir Computing techniques. In our
+case, we will train these connections using linear regression, with a regularization
+coefficient of 10<sup>-5</sup>.
+
+Now, let's connect everything using the `>>` operator. 
+
+```python
+esn = reservoir >> readout
+```
+
+That's it! Next step: fit the readout weights to perform the task we want.
+We will train the ESN to make one-step-ahead forecasts of our timeseries.
+
+**Step 3: Fit and run the ESN**
+
+```python
+predictions = esn.fit(X[:500], X[1:501]).run(X[501:-1])
+```
+
+Our ESN is now trained and ready to use. Let's evaluate its performances:
+
+**Step 4: Evaluate the ESN**
+
+```python
+from reservoirpy.observables import rmse, rsquare
+print("RMSE:", rmse(X[502:], predictions), 
+      "R^2 score:", rsquare(X[502:], predictions))
+```
 
 Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
@@ -53,6 +140,13 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
     ```bash
     python minimalESN_MackeyGlass.py
     ```
+
+## Examples and tutorials 🎓
+
+[Go to the tutorial folder](./tutorials/) for tutorials in Jupyter Notebooks.
+
+[Go to the examples folder](./examples/) for examples and papers with codes, also in Jupyter Notebooks.
+
 
 ## Preprint with tutorials
 Tutorial on ReservoirPy can be found in this [preprint (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).

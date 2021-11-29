@@ -16,8 +16,12 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
 
         if y is not None:
             out_dim = y.shape[1]
-        else:
+        elif readout.output_dim is not None:
             out_dim = readout.output_dim
+        else:
+            raise RuntimeError(f"Impossible to initialize {readout.name}: "
+                               f"output dimension was not specified at "
+                               f"creation, and no teacher vector was given.")
 
         readout.set_input_dim(in_dim)
         readout.set_output_dim(out_dim)
@@ -31,21 +35,21 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
 
             W = init_func((in_dim, out_dim), dtype=global_dtype)
 
-            if bias:
-                Wout = W[1:, :]
-                bias = W[:1, :].reshape((1, out_dim))
-            else:
-                Wout = W
-                bias = np.zeros((1, out_dim))
-
         elif isinstance(init_func, np.ndarray):
-            Wout = init_func
-            bias = np.zeros((1, out_dim))  # TODO: bias from callable
+            W = init_func
+            W = W.reshape(readout.input_dim + int(bias), readout.output_dim)
         else:
             raise ValueError(f"Data type {type(init_func)} not "
                              f"understood for matrix initializer "
                              f"'Wout_init'. It should be an array or "
                              f"a callable returning an array.")
+
+        if bias:
+            Wout = W[1:, :]
+            bias = W[:1, :].reshape((1, out_dim))
+        else:
+            Wout = W
+            bias = np.zeros((1, out_dim)) # TODO: bias from callable
 
         readout.set_param("Wout", Wout)
         readout.set_param("bias", bias)
