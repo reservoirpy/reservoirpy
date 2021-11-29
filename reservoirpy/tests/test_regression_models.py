@@ -114,8 +114,6 @@ def test_sklearn_regression(dummy_clf_data):
     for x, y in zip(X, Y):
         model.partial_fit(x, y)
 
-    assert len(model._X) == len(X)
-
     w = model.fit(X, Y)
 
     assert w.shape == (1, 3)

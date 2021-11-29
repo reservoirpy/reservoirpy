@@ -19,22 +19,15 @@ References
 # was used as inspiration for this code:
 # # http://minds.jacobs-university.de/mantas/code
 import time
-import warnings
 
-from typing import Sequence, Callable, Tuple, Union
-from pathlib import Path
-from functools import partial
+from typing import Sequence, Callable
+from multiprocessing import Manager
 
 import numpy as np
 
-from joblib import Parallel, delayed
-from tqdm import tqdm
-from numpy.random import default_rng, SeedSequence, Generator
-
-from .utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
-from .utils.validation import _check_values, add_bias, check_input_lists
-from .utils.save import _save
-from .utils.types import Weights, Data, Activation
+from .utils.parallel import parallelize, get_joblib_backend
+from .utils.validation import _check_values, check_input_lists
+from .utils.types import Data, Activation
 from .regression_models import RidgeRegression, SklearnLinearModel
 from ._base import _ESNBase
 
@@ -285,17 +278,36 @@ class ESN(_ESNBase):
             print(f"Training on {len(inputs)} inputs ({steps} steps) "
                   f"-- wash: {wash_nr_time_step} steps")
 
+        if workers > 1 and get_joblib_backend() != "sequential":
+            lock = Manager().Lock()
+        else:
+            lock = None
+
         def train_fn(*, x, y, pbar):
             s = self._compute_states(x, y, seed=seed, pbar=pbar)
-            self.model.partial_fit(s[wash_nr_time_step:], y)  # increment X.X^T and Y.X^T
-                                                              # or save data for sklearn fit
+
+            # increment X.X^T and Y.X^T
+            if lock is not None:
+                with lock:
+                    self.model.partial_fit(s[wash_nr_time_step:], y)
+            else:
+                self.model.partial_fit(s[wash_nr_time_step:], y)
+
             return s
+
+        if isinstance(self.model, SklearnLinearModel):
+            # Force the workers to return all reservoir states
+            # to feed the scikit-learn estimator, as most of them do not
+            # possess a partial_fit function
+            return_states = True
 
         _, states = parallelize(self, train_fn, workers, lengths, return_states,
                                 pbar_text="Train", verbose=verbose,
                                 x=inputs, y=teachers)
 
-        self.Wout = self.model.fit()  # perform Y.X^T.(X.X^T + ridge)^-1
-                                      # or sklearn fit
+        if isinstance(self.model, SklearnLinearModel):
+            self.Wout = self.model.fit(states, teachers)
+        else:
+            self.Wout = self.model.fit()  # perform Y.X^T.(X.X^T + ridge)^-1
 
         return states

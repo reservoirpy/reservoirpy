@@ -19,8 +19,7 @@ import numpy as np
 from joblib import Parallel, delayed
 from scipy import linalg
 
-from .utils.parallel import lock as global_lock
-from .utils.parallel import manager, get_joblib_backend, as_memmap, clean_tempfile
+from .utils.parallel import get_joblib_backend, as_memmap, clean_tempfile
 from .utils.types import Weights, Data
 from .utils.validation import check_vector, add_bias
 
@@ -213,9 +212,8 @@ class RidgeRegression(_OfflineModel):
 
         # Lock the memory map to avoid increment from
         # different processes at the same time (Numpy doesn't like that).
-        with global_lock:
-            self._XXT += xxt
-            self._YXT += yxt
+        self._XXT += xxt
+        self._YXT += yxt
 
     def fit(self, X=None, Y=None):
         if X is not None and Y is not None:
@@ -252,9 +250,6 @@ class SklearnLinearModel(_OfflineModel):
         self.workers = workers
         self.dtype = dtype
 
-        self._X = None
-        self._Y = None
-
     def initialize(self, dim_in=None, dim_out=None):
         """
         Initialize the model internal parameters.
@@ -272,50 +267,34 @@ class SklearnLinearModel(_OfflineModel):
             self._dim_out = dim_out
 
         if getattr(self, "Wout", None) is None:
-            self.Wout = np.zeros((self._dim_in + 1, self._dim_out), dtype=self.dtype)
-        if getattr(self, "_X", None) is None:
-            self._X = manager.list()
-        if getattr(self, "_Y", None) is None:
-            self._Y = manager.list()
+            self.Wout = np.zeros((self._dim_in + 1, self._dim_out),
+                                  dtype=self.dtype)
 
         self._initialized = True
 
     def clean(self):
         """Clean all internal parameters of the model."""
-        del self._X
-        del self._Y
         if self._initialized:
             self.initialize()
 
     def partial_fit(self, X, Y):
-
-        X, Y = _prepare_inputs(X, Y, bias=False)
-
-        if not self._initialized:
-            raise RuntimeError(f"SklearnLinearModel model was never initialized. Call "
-                               f"'initialize() first.")
-
-        with global_lock:
-            self._X.append(X)
-            self._Y.append(Y)
+        pass
 
     def fit(self, X=None, Y=None):
 
         if X is not None and Y is not None:
             X, Y = _prepare_inputs(X, Y, bias=False)
-        else:
-            X, Y = _prepare_inputs(self._X, self._Y, bias=False)
 
-        self.model.fit(X, Y)
+            self.model.fit(X, Y)
 
-        # linear_model provides Matrix A and Vector b
-        # such as A * X[1:, :] + b ~= Ytarget
-        A = np.asmatrix(self.model.coef_)
-        b = np.asmatrix(self.model.intercept_).T
+            # linear_model provides Matrix A and Vector b
+            # such as A * X[1:, :] + b ~= Ytarget
+            A = np.asmatrix(self.model.coef_)
+            b = np.asmatrix(self.model.intercept_).T
 
-        # Then the matrix W = "[b | A]" statisfies "W * X ~= Ytarget"
-        self.Wout = np.asarray(np.hstack([b, A]), dtype=self.dtype)
+            # Then the matrix W = "[b | A]" statisfies "W * X ~= Ytarget"
+            self.Wout = np.asarray(np.hstack([b, A]), dtype=self.dtype)
 
-        self.clean()
+            self.clean()
 
-        return self.Wout
+            return self.Wout
