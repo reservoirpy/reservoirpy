@@ -267,7 +267,11 @@ class ESN(FrozenModel):
 
         self.initialize_buffers()
 
-        lock = Manager().Lock()
+        if self.workers > 1 and \
+                self.backend not in ("sequential", "threading"):
+            lock = Manager().Lock()
+        else:
+            lock = None
 
         def run_partial_fit_fn(x, y):
             states = np.zeros((x.shape[0], self.reservoir.output_dim))
@@ -284,7 +288,10 @@ class ESN(FrozenModel):
 
             # Avoid any problem related to multiple
             # writes from multiple processes
-            with lock:
+            if lock is not None:
+                with lock:
+                    self.readout.partial_fit(states, y)
+            else:
                 self.readout.partial_fit(states, y)
 
         backend = get_joblib_backend(workers=self.workers,
