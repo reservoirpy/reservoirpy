@@ -267,7 +267,7 @@ class ESN(FrozenModel):
 
         self.initialize_buffers()
 
-        if self.workers > 1 and self.workers != -1 and  \
+        if (self.workers > 1 or self.workers == -1) and \
                 self.backend not in ("sequential", "threading"):
             lock = Manager().Lock()
         else:
