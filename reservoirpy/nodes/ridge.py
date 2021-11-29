@@ -9,7 +9,6 @@ from scipy import linalg
 
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
-from ..utils.parallel import lock
 from ..base.node import Node
 from ..base.types import global_dtype
 
@@ -33,10 +32,9 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
     YXT = readout.get_buffer("YXT")
 
     # This is not thread-safe, apparently, using Numpy memmap as buffers
-    # ok for parallelization then with a lock
-    with lock:
-        XXT += xxt
-        YXT += yxt
+    # ok for parallelization then with a lock (see ESN object)
+    XXT += xxt
+    YXT += yxt
 
 
 def backward(readout: Node, X=None, Y=None):

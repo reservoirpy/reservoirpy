@@ -29,9 +29,6 @@ else:
     _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
                            "threading", "sequential")
 
-manager = Manager()
-lock = manager.Lock()
-
 temp_registry = defaultdict(list)
 
 

@@ -3,6 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from inspect import signature
 from typing import Sequence
+from multiprocessing import Manager
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -266,6 +267,8 @@ class ESN(FrozenModel):
 
         self.initialize_buffers()
 
+        lock = Manager().Lock()
+
         def run_partial_fit_fn(x, y):
             states = np.zeros((x.shape[0], self.reservoir.output_dim))
 
@@ -279,7 +282,10 @@ class ESN(FrozenModel):
 
             self._clean_proxys()
 
-            self.readout.partial_fit(states, y)
+            # Avoid any problem related to multiple
+            # writes from multiple processes
+            with lock:
+                self.readout.partial_fit(states, y)
 
         backend = get_joblib_backend(workers=self.workers,
                                      backend=self.backend)

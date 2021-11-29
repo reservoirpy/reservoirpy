@@ -27,18 +27,15 @@ import numpy as np
 from ..utils.parallel import parallelize
 from ..utils.validation import _check_values, check_input_lists
 from ..base.types import Data, Activation
-from .regression_models import RidgeRegression, SklearnLinearModel
+from .regression_models import RidgeRegression
 from ._base import _ESNBase
 
 
 def _get_offline_model(ridge: float = 0.0,
-                       sklearn_model: Callable = None,
                        dtype: np.dtype = np.float64):
     if ridge > 0.0 and sklearn_model is not None:
         raise ValueError("Parameters 'ridge' and 'sklearn_model' can not be "
                          "defined at the same time.")
-    elif sklearn_model is not None:
-        return SklearnLinearModel(sklearn_model, dtype=dtype)
     else:
         return RidgeRegression(ridge, dtype=dtype)
 
