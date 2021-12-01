@@ -18,22 +18,24 @@ from tqdm import tqdm
 
 from reservoirpy.base.types import global_dtype
 
+_AVAILABLE_BACKENDS = ("loky", "multiprocessing",
+                       "threading", "sequential")
+
 # FIX waiting for a workaround to avoid crashing with multiprocessing
 # activated with Python < 3.8. Seems to be due to compatibility issues
 # with pickle5 protocol and loky library.
 if sys.version_info < (3, 8):
     _BACKEND = "sequential"
-    _AVAILABLE_BACKENDS = ("sequential",)
 else:
     _BACKEND = "loky"
-    _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
-                           "threading", "sequential")
 
 temp_registry = defaultdict(list)
 
 
 def get_joblib_backend(workers=-1, backend=None):
     if backend is not None:
+        if sys.version_info < (3, 8):
+            return _BACKEND
         if backend in _AVAILABLE_BACKENDS:
             return backend
         else:
