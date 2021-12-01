@@ -8,11 +8,7 @@ from scipy import sparse
 from sklearn.linear_model import LogisticRegression
 
 from .._esn import ESN
-<<<<<<< HEAD:reservoirpy/tests/test_esn.py
 from ..utils.save import load
-=======
-from reservoirpy.compat.utils.save import load
->>>>>>> v0.2.5:reservoirpy/compat/tests/test_esn.py
 
 
 @pytest.fixture(scope="session")
@@ -117,32 +113,6 @@ def test_esn_generate(matrices, dummy_data):
     assert out.shape[0] == 500
     assert warm_states.shape[0] == X.shape[0]
     assert warm_out.shape[0] == X.shape[0]
-
-
-def test_esn_sklearn(matrices, dummy_clf_data):
-    W, Win = matrices
-    model = LogisticRegression()
-    esn = ESN(lr=0.1, W=W, Win=Win, input_bias=False,
-              reg_model=model)
-
-    X, y = dummy_clf_data
-    states = esn.train([X], [y])
-
-    assert esn.Wout.shape == (1, 5)
-
-    outputs, states = esn.run([X], return_states=True)
-
-    assert states[0].shape[0] == X.shape[0]
-    assert outputs[0].shape[1] == 1
-
-    states = esn.train([X, X, X], [y, y, y])
-
-    assert esn.Wout.shape == (1, 5)
-
-    outputs, states = esn.run([X, X], return_states=True)
-
-    assert len(states) == 2
-    assert len(outputs) == 2
 
 
 def test_esn_ridge(matrices, dummy_data):

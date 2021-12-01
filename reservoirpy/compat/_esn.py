@@ -33,11 +33,7 @@ from ._base import _ESNBase
 
 def _get_offline_model(ridge: float = 0.0,
                        dtype: np.dtype = np.float64):
-    if ridge > 0.0 and sklearn_model is not None:
-        raise ValueError("Parameters 'ridge' and 'sklearn_model' can not be "
-                         "defined at the same time.")
-    else:
-        return RidgeRegression(ridge, dtype=dtype)
+    return RidgeRegression(ridge, dtype=dtype)
 
 
 class ESN(_ESNBase):
@@ -128,7 +124,7 @@ class ESN(_ESNBase):
                                   noise_out=noise_out,
                                   seed=seed,
                                   typefloat=typefloat)
-        self.model = _get_offline_model(ridge, reg_model, dtype=typefloat)
+        self.model = _get_offline_model(ridge, dtype=typefloat)
 
     @property
     def ridge(self):
@@ -181,8 +177,8 @@ class ESN(_ESNBase):
 
         # switch the regression model used at instanciation if needed.
         # WARNING: this change won't be saved by the save function.
-        if (ridge is not None) or (reg_model is not None):
-            offline_model = _get_offline_model(ridge, reg_model, dtype=self.typefloat)
+        if ridge is not None:
+            offline_model = _get_offline_model(ridge, dtype=self.typefloat)
         elif force_pinv:
             offline_model = _get_offline_model(ridge=0.0)
         else:

@@ -6,8 +6,7 @@ import numpy as np
 
 from sklearn.linear_model import LogisticRegression
 
-from ..regression_models import (RidgeRegression,
-                                 SklearnLinearModel)
+from ..regression_models import (RidgeRegression)
 
 
 @pytest.fixture(scope="session")
@@ -103,28 +102,3 @@ def test_ridge_regression_raises(bad_xdata, bad_ydata):
             model.partial_fit(x, y)
             XXT = model._XXT.copy()
             YXT = model._YXT.copy()
-
-
-def test_sklearn_regression(dummy_clf_data):
-    sklearn_model = LogisticRegression()
-    model = SklearnLinearModel(sklearn_model)
-    model.initialize(4, 1)
-
-    X, Y = dummy_clf_data
-    for x, y in zip(X, Y):
-        model.partial_fit(x, y)
-
-    assert len(model._X) == len(X)
-
-    w = model.fit(X, Y)
-
-    assert w.shape == (1, 3)
-
-    for x, y in zip([X, X, X], [Y, Y, Y]):
-        a = model.partial_fit(x, y)
-
-    assert a is None
-
-    w = model.fit([X, X, X], [Y, Y, Y])
-
-    assert w.shape == (1, 3)
