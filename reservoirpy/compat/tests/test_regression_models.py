@@ -4,8 +4,6 @@
 import pytest
 import numpy as np
 
-from sklearn.linear_model import LogisticRegression
-
 from ..regression_models import (RidgeRegression)
 
 

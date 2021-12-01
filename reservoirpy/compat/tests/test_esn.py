@@ -5,7 +5,6 @@ import pytest
 import numpy as np
 
 from scipy import sparse
-from sklearn.linear_model import LogisticRegression
 
 from .._esn import ESN
 from ..utils.save import load
