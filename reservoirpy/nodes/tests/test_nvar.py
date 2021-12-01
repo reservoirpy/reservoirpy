@@ -1,7 +1,12 @@
 # Author: Nathan Trouvain at 18/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import math
+import sys
+
+if sys.version_info < (3, 8):
+    from scipy.special import comb
+else:
+    from math import comb
 
 import numpy as np
 
@@ -10,7 +15,7 @@ from reservoirpy.nodes import NVAR
 
 def _get_output_dim(input_dim, delay, order):
     linear_dim = delay * input_dim
-    nonlinear_dim = math.comb(linear_dim + order - 1, order)
+    nonlinear_dim = comb(linear_dim + order - 1, order)
     return int(linear_dim + nonlinear_dim)
 
 

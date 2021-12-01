@@ -1,8 +1,14 @@
 # Author: Nathan Trouvain at 14/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import sys
+
 import itertools as it
-import math
+
+if sys.version_info < (3, 8):
+    from scipy.special import comb
+else:
+    from math import comb
 
 import numpy as np
 
@@ -45,7 +51,7 @@ def initialize(node, x=None, *args, **kwargs):
         # number of non linear components is (d + n - 1)! / (d - 1)! n!
         # i.e. number of all unique monomials of order n made from the
         # linear components.
-        nonlinear_dim = math.comb(linear_dim + order - 1, order)
+        nonlinear_dim = comb(linear_dim + order - 1, order)
 
         output_dim = output_dim = int(linear_dim + nonlinear_dim)
 
