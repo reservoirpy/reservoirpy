@@ -1,20 +1,44 @@
+"""Echo State Network demo with ReservoirPy on a chaotic timeseries prediciton
+task.
+
+This script provides some Reservoir Computing and ReservoirPy basics, applying
+them on a benchamrking classic: the Mackey-Glass timeseries prediction task.
+
+To go further, we encourage you to follow the "Introduction to Reservoir
+Computing" notebook that can be found in the eponym repertory,
+within the `tutorials/` repertory.
+
+This is an adaptation of Mantas Lukoševičius [1]_ 2012 great tutorial on
+Reservoir Computing, that can also be found in this repository under the name
+"minimalESN_MackeyGlass".
+
+References:
+-----------
+    .. [1] Mantas Lukoševičius personal website: https://mantas.info/
+"""
+# Author: Xavier Hinaut <xavier.hinaut@inria.fr> and
+# Nathan Trouvain at 01/12/2021 <nathan.trouvain@inria.fr>
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import matplotlib.pyplot as plt
 import numpy as np
 
 import reservoirpy as rpy
 from reservoirpy.datasets import mackey_glass
-from reservoirpy.nodes import ESN, Reservoir, Ridge, Input
+from reservoirpy.nodes import Reservoir, Ridge, Input
 
-## Set a particular seed for the random generator (for example seed = 42),
-# or use a "random" one (seed = None)
+# Set a particular seed for the random generator (for example seed = 42)
 # NB: reservoir performances should be averaged accross at least 30 random
 # instances (with the same set of parameters)
-SEED = 42  # None #42
+# If None, then a random seed will be used.
+SEED = 42
 VERBOSE = True
 
 if __name__ == '__main__':
 
-    rpy.set_seed(SEED)  # random.seed(seed)
+    rpy.set_seed(SEED)
+
+    # Set verbosity of ReservoirPy objects to 0 (no use here)
     rpy.verbosity(0)
 
     # ---- Loading data ----
@@ -25,18 +49,18 @@ if __name__ == '__main__':
     normalize = True
 
     if VERBOSE:
-        print("data dimensions", data.shape)
-        print("max", data.max(), "min", data.min())
-        print("mean", data.mean(), "std", data.std())
+        print("Data dimensions", data.shape)
+        print("max:", data.max(), "min:", data.min())
+        print("mean:", data.mean(), "std:", data.std())
 
-    # normalizing data
+    # Normalize data
     if normalize:
         data = (data - data.min()) / (data.max() - data.min())
         if VERBOSE:
-            print("max", data.max(), "min", data.min())
-            print("mean", data.mean(), "std", data.std())
+            print("Normalization...")
+            print("max:", data.max(), "min:", data.min())
+            print("mean:", data.mean(), "std:", data.std())
 
-    # plot some of it
     plt.figure()
     plt.plot(data[:1000])
     plt.title('A sample of input data')
@@ -47,16 +71,21 @@ if __name__ == '__main__':
     # Input dimension
     input_bias = True  # add a constant input to 1
     n_inputs   = 1     # input dimension (optional, can be infered at runtime)
-    n_outputs  = 1    # output dimension (optional, can be infered at runtime)
+    n_outputs  = 1     # output dimension (optional, can be infered at runtime)
 
     # Reservoir parameter
-    units              = 300  # number of recurrent units
-    leak_rate          = 0.3  # leaking rate (=1/time_constant_of_neurons)
+    units              = 300   # number of recurrent units
+    leak_rate          = 0.3   # leaking rate (=1/time_constant_of_neurons)
     rho                = 1.25  # Scaling of recurrent matrix
-    input_scaling      = 1.  # Scaling of input matrix
-    rc_connectivity    = 0.2  # Sparsity of recurrent matrix W: % of
-    input_connectivity = 1.  # Sparsity of input matrix
-    fb_connectivity    = 1.  # Sparsity of feedback matrix
+    input_scaling      = 1.    # Scaling of input matrix
+
+    # Connectivity
+    # Connectivity defines the probability that two neurons in the
+    # reservoir are being connected
+    # (the two neurons can be a neuron and itself)
+    rc_connectivity    = 0.2   # Connectivity of recurrent matrix W
+    input_connectivity = 1.    # Connectivity of input matrix
+    fb_connectivity    = 1.    # Connectivity of feedback matrix
 
     # Readout parameters
     regularization_coef = 1e-8
@@ -95,12 +124,11 @@ if __name__ == '__main__':
     Win = rng.random((units, n_inputs + int(input_bias))) - 0.5
     Wfb = rng.random((units, n_outputs)) - 0.5
 
-    # delete the fraction of connections given the sparsity (i.e. proba of
-    # non-zero connections):
+    # Delete the fraction of connections given the connectivity
+    # (i.e. proba of non-zero connections in the reservoir):
     mask = rng.random((units, units))  # create a mask Uniform[0;1]
     W[mask > rc_connectivity] = 0  # set to zero some connections
 
-    # given by the mask
     mask = rng.random((units, Win.shape[1]))
     Win[mask > input_connectivity] = 0
 
@@ -120,7 +148,8 @@ if __name__ == '__main__':
 
     from reservoirpy.observables import spectral_radius
 
-    #original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
+    # Spectral radius is the maximum absolute norm of the eignevectors of W.
+    # original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
     original_spectral_radius = spectral_radius(W)
 
     if VERBOSE:
@@ -137,7 +166,7 @@ if __name__ == '__main__':
 
     train_size = 2000
     test_size  = 2000
-    horizon    = 1
+    horizon    = 1  # horizon p of the forecast (predict X[t+p] from X[t])
 
     X = data[:train_size]
     y = data[horizon:  train_size+horizon]
@@ -170,6 +199,7 @@ if __name__ == '__main__':
 
     # ---- Create an Echo State Network ----
 
+    # Create a reservoir
     reservoir = Reservoir(units,
                           lr=leak_rate,
                           sr=rho,
@@ -180,6 +210,14 @@ if __name__ == '__main__':
                           fb_connectivity=fb_connectivity,
                           name="reservoir")
 
+    # If you want to use custom matrices, then use:
+    custom_reservoir = Reservoir(units,
+                                 lr=leak_rate,
+                                 input_bias=input_bias,
+                                 W=W, Win=Win, Wfb=Wfb,
+                                 name="custom-reservoir")
+
+    # create a readout layer equiped with an offline learning rule
     readout = Ridge(ridge=regularization_coef,
                     transient=warmup,
                     name="readout")
@@ -216,15 +254,19 @@ if __name__ == '__main__':
 
     from reservoirpy.observables import mse, rmse, nrmse
 
-    ## printing errors made on test set
-    # mse = sum( np.square( y_test[:] - y_pred[0] ) ) / errorLen
-    # print( 'MSE = ' + str( mse ))
-    mse_score = mse(y_test, y_pred)  # Mean Squared Error: see
+    # Mean Squared Error
     # https://en.wikipedia.org/wiki/Mean_squared_error
-    rmse_score = rmse(y_test, y_pred)# Root Mean Squared Error: see
-    # https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
-    nmrse_mean = nrmse(y_test, y_pred, norm_value=y.mean())  # Normalised RMSE (based on mean)
-    nmrse_maxmin = nrmse(y_test, y_pred, norm_value=y.max()-y.min())# Normalised RMSE (based on max - min)
+    mse_score = mse(y_test, y_pred)
+
+    # Root Mean Squared Error
+    # https://en.wikipedia.org/wiki/Root-mean-square_deviation
+    rmse_score = rmse(y_test, y_pred)
+
+    # Normalised RMSE (based on mean of training data)
+    nmrse_mean = nrmse(y_test, y_pred, norm_value=y.mean())
+
+    # Normalised RMSE (based on max - min of training data)
+    nmrse_maxmin = nrmse(y_test, y_pred, norm_value=y.max()-y.min())
 
     print("\n********************")
     print(f"Errors computed over {test_size} time steps")
