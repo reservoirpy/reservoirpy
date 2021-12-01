@@ -58,7 +58,7 @@ pip install --pre reservoirpy
 or 
 
 ```bash
-pip install reservoirpy==0.3.0b0
+pip install reservoirpy==0.3.0b1
 ```
 
 ## Quick try ⚡
