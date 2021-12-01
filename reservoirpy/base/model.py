@@ -7,7 +7,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import ExitStack, contextmanager
 from typing import Dict, List, Optional, Tuple
-from collections import Iterable
+from collections.abc import Iterable
 from functools import partial
 
 import numpy as np

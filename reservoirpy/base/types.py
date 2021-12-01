@@ -5,12 +5,12 @@ import sys
 from contextlib import contextmanager
 from typing import (Any, Callable, Dict, Iterable, Iterator, Optional, Tuple,
                     TypeVar, Union, Sequence, List)
-from typing import overload, runtime_checkable
+from typing import overload
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
+    from typing_extensions import Protocol, runtime_checkable
 else:
-    from typing import Protocol
+    from typing import Protocol, runtime_checkable
 
 import numpy as np
 from scipy.sparse import coo_matrix, csc_matrix, csr_matrix
