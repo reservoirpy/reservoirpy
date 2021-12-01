@@ -5,7 +5,7 @@
 [![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
 
 
-# ReservoirPy (v0.3.0-**beta**) 🌀 🧠
+# ReservoirPy (v0.3.0-**beta1**) 🌀 🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
