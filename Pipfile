@@ -16,6 +16,7 @@ matplotlib = "*"
 numba = "*"
 psutil = "*"
 twine = "*"
+pydata-sphinx-theme = "*"
 
 [dev-packages]
 
