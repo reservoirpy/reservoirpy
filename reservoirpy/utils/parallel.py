@@ -35,7 +35,7 @@ temp_registry = defaultdict(list)
 def get_joblib_backend(workers=-1, backend=None):
     if backend is not None:
         if sys.version_info < (3, 8):
-            return _BACKEND
+            return "sequential"
         if backend in _AVAILABLE_BACKENDS:
             return backend
         else:
