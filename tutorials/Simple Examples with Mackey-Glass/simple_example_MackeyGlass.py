@@ -1,204 +1,242 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from reservoirpy import ESN
+import reservoirpy as rpy
 from reservoirpy.datasets import mackey_glass
+from reservoirpy.nodes import ESN, Reservoir, Ridge, Input
 
+## Set a particular seed for the random generator (for example seed = 42),
+# or use a "random" one (seed = None)
+# NB: reservoir performances should be averaged accross at least 30 random
+# instances (with the same set of parameters)
+SEED = 42  # None #42
+VERBOSE = True
 
-def set_seed(seed=None):
-    """Making the seed (for random values) variable if None"""
+if __name__ == '__main__':
 
-    # Set the seed
-    if seed is None:
-        import time
-        seed = int((time.time()*10**6) % 4294967295)
-    try:
-        np.random.seed(seed)
-    except Exception as e:
-        print( "!!! WARNING !!!: Seed was not set correctly.")
-        print( "!!! Seed that we tried to use: "+str(seed))
-        print( "!!! Error message: "+str(e))
-        seed = None
-    print( "Seed used for random values:", seed)
-    return seed
+    rpy.set_seed(SEED)  # random.seed(seed)
+    rpy.verbosity(0)
 
-def get_last_state(internal_trained):
-    return internal_trained[-1][-1:,:].T
+    # ---- Loading data ----
+    units = 10000
+    tau = 17
+    data = mackey_glass(10000, tau=tau)
 
-## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
-# NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
-seed = 42 #None #42
-verbose_mode = True
+    normalize = True
 
-set_seed(seed) #random.seed(seed)
+    if VERBOSE:
+        print("data dimensions", data.shape)
+        print("max", data.max(), "min", data.min())
+        print("mean", data.mean(), "std", data.std())
 
+    # normalizing data
+    if normalize:
+        data = (data - data.min()) / (data.max() - data.min())
+        if VERBOSE:
+            print("max", data.max(), "min", data.min())
+            print("mean", data.mean(), "std", data.std())
 
-########################################
-########################################
-# loading data
-#data = np.loadtxt('MackeyGlass_t17.txt')
-data = mackey_glass(10000)
+    # plot some of it
+    plt.figure()
+    plt.plot(data[:1000])
+    plt.title('A sample of input data')
+    plt.show()
 
-normalization_auto = True #False #True
+    # ---- A look into Echo State Networks parameters ----
 
-## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
-# 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size (resSize) = 300
-initLen = 100 # number of time steps during which internal activations are washed-out during training
-# we consider trainLen including the warming-up period (i.e. internal activations that are washed-out when training)
-trainLen = initLen + 1900 # number of time steps during which we train the network
-testLen = 2000 # number of time steps during which we test/run the network
-########################################
-########################################
+    # Input dimension
+    input_bias = True  # add a constant input to 1
+    n_inputs   = 1     # input dimension (optional, can be infered at runtime)
+    n_outputs  = 1    # output dimension (optional, can be infered at runtime)
 
-if verbose_mode:
-    print( "data dimensions", data.shape)
-    print("data not normalized",data)
-    print("max",data.max())
-    print("min",data.min())
-    print("mean",data.mean())
-    print("std",data.std())
+    # Reservoir parameter
+    units              = 300  # number of recurrent units
+    leak_rate          = 0.3  # leaking rate (=1/time_constant_of_neurons)
+    rho                = 1.25  # Scaling of recurrent matrix
+    input_scaling      = 1.  # Scaling of input matrix
+    rc_connectivity    = 0.2  # Sparsity of recurrent matrix W: % of
+    input_connectivity = 1.  # Sparsity of input matrix
+    fb_connectivity    = 1.  # Sparsity of feedback matrix
 
-# normalizing data
-if normalization_auto:
-    data = data / (data.max() - data.min())
-    if verbose_mode:
-        print("data normalized",data)
-        print("max",data.max())
-        print("min",data.min())
-        print("mean",data.mean())
-        print("std",data.std())
+    # Readout parameters
+    regularization_coef = 1e-8
+    warmup = 100
 
+    # Enable feedback
+    feedback = False
 
-# plot some of it
-plt.figure(0)
-plt.plot(data[0:1000])
-plt.title('A sample of input data')
+    # ---- Generating random weight matrices with toolbox methods ----
+    # (this is optional)
 
-# generate the ESN reservoir
-n_inputs = 1
-input_bias = True # add a constant input to 1
-n_outputs = 1
-n_reservoir = 300 # number of recurrent units
-leak_rate = 0.3 # leaking rate (=1/time_constant_of_neurons)
-spectral_radius = 1.25 # Scaling of recurrent matrix
-input_scaling = 1. # Scaling of input matrix
-proba_non_zero_connec_W = 0.2 # Sparsity of recurrent matrix W: % of non-zero connections
-proba_non_zero_connec_Win = 1. # Sparsity of input matrix
-proba_non_zero_connec_Wfb = 1. # Sparsity of feedback matrix
-regularization_coef =  1e-8
-#None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
-# out_func_activation = lambda x: x
+    # !! uncomment if you want to test the more
+    # detailed matrix generation method !!
 
-N = n_reservoir#100
-dim_inp = n_inputs #26
+    # from reservoirpy import mat_gen
+    # W = mat_gen.generate_internal_weights(units, spectral_radius=rho,
+    #                                       proba=rc_connectivity, seed=SEED)
+    #
+    # Win = mat_gen.generate_input_weights(units, n_inputs,
+    #                                      input_scaling=input_scaling,
+    #                                      proba=input_connectivity,
+    #                                      input_bias=input_bias,
+    #                                      seed=SEED)
+    #
+    # Wfb = mat_gen.generate_input_weights(units, n_outputs,
+    #                                      proba=fb_connectivity,
+    #                                      input_bias=False,
+    #                                      seed=SEED)
 
-## Generating random weight matrices with toolbox methods
-#TODO: uncomment if you want to test the more detailed matrix generation method
-#import mat_gen
-# W = mat_gen.generate_internal_weights(N=self.N, spectral_radius=self.sr, proba=self.w_proba,
-# #                                            seed=seed, verbose=verbose)
-#                                 Wstd=self.Wstd, seed=current_seed, verbose=verbose)
-# Win = mat_gen.generate_input_weights(nbr_neuron=self.N, dim_input=self.stim_sent_train[0].shape[1], #TODO stim_sent_train[0].shape
-#                                 input_scaling=self.iss, proba=self.w_in_proba, input_bias=self.input_bias, seed=current_seed, verbose=verbose)
-# Wfb = mat_gen.generate_input_weights(nbr_neuron=self.N, dim_input=self.dim_output, #TODO stim_sent_train[0].shape
-#                                 input_scaling=self.fbscale, proba=self.fbproba, input_bias=None, seed=current_seed, verbose=verbose)
+    # ---- Generating random weight matrices with custom method ----
+    # (this is also optional)
 
-### Generating random weight matrices with custom method
-W = np.random.rand(N,N) - 0.5
-if input_bias:
-    Win = np.random.rand(N,dim_inp+1) - 0.5
-else:
-    Win = np.random.rand(N,dim_inp) - 0.5
-Wfb = np.random.rand(N,n_outputs) - 0.5
+    rng = np.random.default_rng(SEED)
 
-# # Mantas way
-# Win = (np.random.rand(N,1+dim_in)-0.5) * input_scaling
-# W = np.random.rand(N,N)-0.5
+    W = rng.random((units, units)) - 0.5
+    Win = rng.random((units, n_inputs + int(input_bias))) - 0.5
+    Wfb = rng.random((units, n_outputs)) - 0.5
 
-## delete the fraction of connections given the sparsity (i.e. proba of non-zero connections):
-mask = np.random.rand(N,N) # create a mask Uniform[0;1]
-W[mask > proba_non_zero_connec_W] = 0 # set to zero some connections given by the mask
-mask = np.random.rand(N,Win.shape[1])
-Win[mask > proba_non_zero_connec_Win] = 0
-# mask = np.random.rand(N,Wfb.shape[1])
-# Wfb[mask > proba_non_zero_connec_Wfb] = 0
+    # delete the fraction of connections given the sparsity (i.e. proba of
+    # non-zero connections):
+    mask = rng.random((units, units))  # create a mask Uniform[0;1]
+    W[mask > rc_connectivity] = 0  # set to zero some connections
 
-## SCALING of matrices
-# scaling of input matrix
-Win = Win * input_scaling
-# scaling of recurrent matrix
-# compute the spectral radius of these weights:
-print( 'Computing spectral radius...')
-original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
-#TODO: check if this operation is quicker: max(abs(linalg.eig(W)[0])) #from scipy import linalg
-print( "default spectral radius before scaling:", original_spectral_radius)
-# rescale them to reach the requested spectral radius:
-W = W * (spectral_radius / original_spectral_radius)
-print( "spectral radius after scaling", np.max(np.abs(np.linalg.eigvals(W))))
+    # given by the mask
+    mask = rng.random((units, Win.shape[1]))
+    Win[mask > input_connectivity] = 0
 
+    mask = rng.random((units, Wfb.shape[1]))
+    Wfb[mask > fb_connectivity] = 0
 
-reservoir = ESN(lr=leak_rate, W=W, Win=Win, input_bias=input_bias, ridge=regularization_coef, Wfb=None, fbfunc=None)
+    # Scaling of matrices
 
+    # Scaling of input matrix
+    Win = Win * input_scaling
 
-train_in = data[None,0:trainLen]
-train_out = data[None,0+1:trainLen+1]
-test_in = data[None,trainLen:trainLen+testLen]
-test_out = data[None,trainLen+1:trainLen+testLen+1]
+    # Scaling of recurrent matrix using a specific spectral radius
+    # First compute the spectral radius of these weights:
 
-# train_in, train_out =  np.vstack([data[0:trainLen],data[0:trainLen]]), np.vstack([data[0+1:trainLen+1], data[0+1:trainLen+1]])
-# test_in, test_out =  np.vstack([data[trainLen:trainLen+testLen],data[trainLen:trainLen+testLen]]) , np.vstack([data[trainLen+1:trainLen+testLen+1],data[trainLen+1:trainLen+testLen+1]])
+    if VERBOSE:
+        print('Computing spectral radius...')
 
-# train_in, train_out =  np.atleast_2d(data[0:trainLen]), np.atleast_2d(data[0+1:trainLen+1])
-# test_in, test_out =  np.atleast_2d(data[trainLen:trainLen+testLen]), np.atleast_2d(data[trainLen+1:trainLen+testLen+1])
+    from reservoirpy.observables import spectral_radius
 
+    #original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
+    original_spectral_radius = spectral_radius(W)
 
-# rearange inputs in correct dimensions
-train_in, train_out = train_in.T, train_out.T
-test_in, test_out = test_in.T, test_out.T
+    if VERBOSE:
+        print("Default spectral radius before scaling:",
+              original_spectral_radius)
 
-# Dimensions of input/output train/test data
-print( "train_in, train_out dimensions", train_in.shape, train_out.shape)
-print( "test_in, test_out dimensions", test_in.shape, test_out.shape)
+    # Rescale them to reach the requested spectral radius:
+    W = W * (rho / original_spectral_radius)
 
-#plt.figure()
-#plt.plot(train_in, train_out)
-#plt.ylim([-1.1,1.1])
-#plt.title('Recurrence plot of training data: input(t+1) vs. input(t)')
-#plt.figure()
-#plt.plot(train_in)
-#plt.plot(train_out)
-#plt.ylim([-1.1,1.1])
-#plt.legend(['train_in','train_out'])
-#plt.title('train_in & train_out')
+    if VERBOSE:
+        print("Spectral radius after scaling:", spectral_radius(W))
 
-internal_trained = reservoir.train(inputs=[train_in], teachers=[train_out], wash_nr_time_step=initLen, verbose=False)
-#output_pred, internal_pred = reservoir.run(inputs=[test_in,], init_state=np.zeros((N, 1)))
-output_pred, internal_pred = reservoir.run(inputs=[test_in], init_state=get_last_state(internal_trained))
-errorLen = len(test_out[:]) #testLen #2000
+    # ---- Prepare dataset ----
 
-## printing errors made on test set
-# mse = sum( np.square( test_out[:] - output_pred[0] ) ) / errorLen
-# print( 'MSE = ' + str( mse ))
-mse = np.mean((test_out[:] - output_pred[0])**2) # Mean Squared Error: see https://en.wikipedia.org/wiki/Mean_squared_error
-rmse = np.sqrt(mse) # Root Mean Squared Error: see https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
-nmrse_mean = abs(rmse / np.mean(test_out[:])) # Normalised RMSE (based on mean)
-nmrse_maxmin = rmse / abs(np.max(test_out[:]) - np.min(test_out[:])) # Normalised RMSE (based on max - min)
-print("\n********************")
-print("Errors computed over %d time steps" % (errorLen))
-print("\nMean Squared error (MSE):\t\t%.4e" % (mse) )
-print("Root Mean Squared error (RMSE):\t\t%.4e\n" % rmse )
-print("Normalized RMSE (based on mean):\t%.4e" % (nmrse_mean) )
-print("Normalized RMSE (based on max - min):\t%.4e <<<" % (nmrse_maxmin) )
-print("********************\n")
+    train_size = 2000
+    test_size  = 2000
+    horizon    = 1
 
-plt.figure()
-plt.plot( internal_trained[0][:200,:21])
-plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 20 for 200 time steps')
+    X = data[:train_size]
+    y = data[horizon:  train_size+horizon]
 
-plt.figure(figsize=(12,4))
-plt.plot(output_pred[0], color='red', lw=1.5, label="output predictions")
-plt.plot(test_out, lw=0.75, label="real timeseries")
-plt.title("Output predictions against real timeseries")
-plt.legend()
-# plt.ylim(-1.1,1.1)
-plt.show()
+    X_test = data[train_size: train_size+test_size]
+    y_test = data[train_size+horizon: train_size+test_size+horizon]
+
+    if VERBOSE:
+        print("X, y dimensions", X.shape, y.shape)
+        print("X_test, y_test dimensions", X_test.shape, y_test.shape)
+
+    plt.figure()
+    plt.plot(X, y)
+    plt.xlabel("$X[t]$")
+    plt.ylabel("$y[t]=X[t+p]$")
+    if normalize:
+        plt.ylim([-1.1, 1.1])
+    plt.title('Recurrence plot of training data: input(t+1) vs. input(t)')
+    plt.show()
+
+    plt.figure()
+    plt.plot(X, label="X")
+    plt.plot(y, label="y")
+    plt.xlabel("t")
+    if normalize:
+        plt.ylim([-1.1, 1.1])
+    plt.legend()
+    plt.title("$X[t] and y[t]=X[t+p]$")
+    plt.show()
+
+    # ---- Create an Echo State Network ----
+
+    reservoir = Reservoir(units,
+                          lr=leak_rate,
+                          sr=rho,
+                          input_bias=input_bias,
+                          input_scaling=input_scaling,
+                          rc_connectivity=rc_connectivity,
+                          input_connectivity=input_connectivity,
+                          fb_connectivity=fb_connectivity,
+                          name="reservoir")
+
+    readout = Ridge(ridge=regularization_coef,
+                    transient=warmup,
+                    name="readout")
+
+    if feedback:
+        reservoir = reservoir << readout
+
+    esn = reservoir >> readout
+
+    # (optional) Connect the inputs directly to the readout
+    # inputs = Input(name="input")
+    # esn = [inputs >> reservoir, inputs] >> readout
+
+    # ---- Let's have a look at internal states ----
+
+    internal_trained = reservoir.run(X)
+
+    # Reset the reservoir state: we want to start training from scratch
+    reservoir.reset()
+
+    plt.figure()
+    plt.plot(internal_trained[:200, :21])
+    plt.title('Activations $\\mathbf{x}(n)$ from Reservoir '
+              'Neurons ID 0 to 20 for 200 time steps')
+    plt.show()
+
+    # ---- Train the ESN ----
+
+    esn = esn.fit(X, y)
+
+    # ---- Evaluate the ESN ----
+
+    y_pred = esn.run(X_test)
+
+    from reservoirpy.observables import mse, rmse, nrmse
+
+    ## printing errors made on test set
+    # mse = sum( np.square( y_test[:] - y_pred[0] ) ) / errorLen
+    # print( 'MSE = ' + str( mse ))
+    mse_score = mse(y_test, y_pred)  # Mean Squared Error: see
+    # https://en.wikipedia.org/wiki/Mean_squared_error
+    rmse_score = rmse(y_test, y_pred)# Root Mean Squared Error: see
+    # https://en.wikipedia.org/wiki/Root-mean-square_deviation for more info
+    nmrse_mean = nrmse(y_test, y_pred, norm_value=y.mean())  # Normalised RMSE (based on mean)
+    nmrse_maxmin = nrmse(y_test, y_pred, norm_value=y.max()-y.min())# Normalised RMSE (based on max - min)
+
+    print("\n********************")
+    print(f"Errors computed over {test_size} time steps")
+    print("\nMean Squared error (MSE):\t%.4e" % mse_score)
+    print("Root Mean Squared error (RMSE):\t%.4e" % rmse_score)
+    print("Normalized RMSE (based on mean):\t%.4e" % nmrse_mean)
+    print("Normalized RMSE (based on max - min):\t%.4e" % nmrse_maxmin)
+    print("********************")
+
+    plt.figure(figsize=(12, 4))
+    plt.plot(y_pred, color='red', lw=1.5, label="Predictions")
+    plt.plot(y_test, color='blue', lw=0.75, label="Ground truth")
+    plt.title("Output predictions against real timeseries")
+    plt.legend()
+    plt.show()
