@@ -128,7 +128,7 @@ print("RMSE:", rmse(X[502:], predictions),
       "R^2 score:", rsquare(X[502:], predictions))
 ```
 
-Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
+Run and analyse these two files (in the "tutorials/Simple Examples with Mackey-Glass" folder) to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
 
     ```bash
