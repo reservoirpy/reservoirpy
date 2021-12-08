@@ -18,7 +18,7 @@ MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, nathan.trouvain@inria.fr"
 DESCRIPTION = ("A simple and flexible code for Reservoir "
                "Computing architectures like Echo State Networks.")
 
-with open("README.md", "r") as f:
+with open("README.md", "r", encoding="utf-8") as f:
     LONG_DESCRIPTION = f.read()
 
 URL = "https://github.com/reservoirpy/reservoirpy"
@@ -39,41 +39,42 @@ PROJECT_URLS = {
     'Source Code': URL
 }
 
-setup(
-    name=NAME,
-    version=__version__,
-    author=AUTHOR,
-    author_email=AUTHOR_EMAIL,
-    maintainer=MAINTAINERS,
-    maintainer_email=MAINTAINERS_EMAIL,
-    description=DESCRIPTION,
-    long_description=LONG_DESCRIPTION,
-    long_description_content_type="text/markdown",
-    url=URL,
-    project_urls=PROJECT_URLS,
-    download_url=DOWNLOAD_URL,
-    packages=find_packages(),
-    classifiers=[
-        'Intended Audience :: Science/Research',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python',
-        'Topic :: Scientific/Engineering',
-        ('Topic :: Scientific/Engineering :: '
-         'Artificial Intelligence'),
-        'Operating System :: Microsoft :: Windows',
-        'Operating System :: POSIX',
-        'Operating System :: Unix',
-        'Operating System :: MacOS',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        ('Programming Language :: Python :: '
-         'Implementation :: PyPy')
-    ],
-    python_requires='>=3.6',
-    install_requires=INSTALL_REQUIRES
-)
+if __name__ == "__main__":
+    setup(
+        name=NAME,
+        version=__version__,
+        author=AUTHOR,
+        author_email=AUTHOR_EMAIL,
+        maintainer=MAINTAINERS,
+        maintainer_email=MAINTAINERS_EMAIL,
+        description=DESCRIPTION,
+        long_description=LONG_DESCRIPTION,
+        long_description_content_type="text/markdown",
+        url=URL,
+        project_urls=PROJECT_URLS,
+        download_url=DOWNLOAD_URL,
+        packages=find_packages(),
+        classifiers=[
+            'Intended Audience :: Science/Research',
+            'Intended Audience :: Developers',
+            'License :: OSI Approved :: MIT License',
+            'Programming Language :: Python',
+            'Topic :: Scientific/Engineering',
+            ('Topic :: Scientific/Engineering :: '
+             'Artificial Intelligence'),
+            'Operating System :: Microsoft :: Windows',
+            'Operating System :: POSIX',
+            'Operating System :: Unix',
+            'Operating System :: MacOS',
+            'Operating System :: OS Independent',
+            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            ('Programming Language :: Python :: '
+             'Implementation :: PyPy')
+        ],
+        python_requires='>=3.6',
+        install_requires=INSTALL_REQUIRES
+    )
