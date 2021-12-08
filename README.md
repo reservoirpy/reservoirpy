@@ -1,11 +1,13 @@
-![ReservoirPy banner](static/rpy_banner_bw.png)
+<div align="center">
+  <img src="https://github.com/reservoirpy/reservoirpy/raw/master/static/rpy_banner_bw.png"><br>
+</div>
 
 [![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
 [![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
 
 
-# ReservoirPy (v0.3.0-**beta2**) 🌀 🧠
+# ReservoirPy (v0.3.0-**beta2**) :cyclone:
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
@@ -33,7 +35,7 @@ with the help of the hyperopt library.
 
 This library works for Python 3.8 and higher.
 
-## Offcial documentation 📖
+## Offcial documentation :closed_book:
 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process.
@@ -46,8 +48,8 @@ You can install ReservoirPy using `pip`:
 pip install reservoirpy
 ```
 
-⚠️ **The version currently displayed in the `master` branch is a 
-pre-release of ReservoirPy** ⚠️
+:warning: **The version currently displayed in the `master` branch is a 
+pre-release of ReservoirPy** :warning:
 
 To install it, change the command to:
 
@@ -61,7 +63,7 @@ or
 pip install reservoirpy==0.3.0b2
 ```
 
-## Quick try ⚡
+## Quick try :zap:
 ### An example on Chaotic timeseries prediction (MackeyGlass)
 
 **Step 1: Load the dataset**
