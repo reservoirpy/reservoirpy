@@ -42,16 +42,12 @@ to learn more about the main features of ReservoirPy, its API and the installati
 
 ## Installation
 
-You can install ReservoirPy using `pip`:
+⚠️ **The version currently displayed in the `master` branch is a 
+pre-release of ReservoirPy** ⚠️
 
-```bash
-pip install reservoirpy
-```
+Recommended: use Python 3.8 and not higher versions.
 
-:warning: **The version currently displayed in the `master` branch is a 
-pre-release of ReservoirPy** :warning:
-
-To install it, change the command to:
+To install it, use one of the following command:
 
 ```bash
 pip install --pre reservoirpy
@@ -63,7 +59,14 @@ or
 pip install reservoirpy==0.3.0b2
 ```
 
+If you want to use the previous version 0.2.4 (stable), you can install ReservoirPy using:
+
+```bash
+pip install reservoirpy
+```
+
 ## Quick try :zap:
+
 ### An example on Chaotic timeseries prediction (MackeyGlass)
 
 **Step 1: Load the dataset**
@@ -130,7 +133,7 @@ print("RMSE:", rmse(X[502:], predictions),
       "R^2 score:", rsquare(X[502:], predictions))
 ```
 
-Run and analyse these two files to see how to make timeseries prediction with Echo State Networks:
+Run and analyse these two files (in the "tutorials/Simple Examples with Mackey-Glass" folder) to see how to make timeseries prediction with Echo State Networks:
 - simple_example_MackeyGlass.py (using the ESN class)
 
     ```bash
@@ -142,6 +145,8 @@ Run and analyse these two files to see how to make timeseries prediction with Ec
     ```bash
     python minimalESN_MackeyGlass.py
     ```
+  
+If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/installation.html#additional-dependencies-and-requirements).
   
 ## Examples and tutorials 🎓
 
