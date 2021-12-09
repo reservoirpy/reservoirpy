@@ -45,8 +45,6 @@ to learn more about the main features of ReservoirPy, its API and the installati
 ⚠️ **The version currently displayed in the `master` branch is a 
 pre-release of ReservoirPy** ⚠️
 
-Recommended: use Python 3.8 and not higher versions.
-
 To install it, use one of the following command:
 
 ```bash
@@ -56,7 +54,7 @@ pip install --pre reservoirpy
 or 
 
 ```bash
-pip install reservoirpy==0.3.0b2
+pip install reservoirpy==0.3.0b3
 ```
 
 If you want to use the previous version 0.2.4 (stable), you can install ReservoirPy using:
