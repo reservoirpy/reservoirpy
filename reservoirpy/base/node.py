@@ -1026,7 +1026,7 @@ class Node(GenericNode):
                 if call:
                     s = self.call(x)
                 else:
-                    s = self.zero_state()
+                    s = self.state()
 
                 if force_teachers:
                     self.set_state_proxy(y)

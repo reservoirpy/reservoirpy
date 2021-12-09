@@ -7,7 +7,7 @@
 [![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
 
 
-# ReservoirPy (v0.3.0-**beta2**) :cyclone:
+# ReservoirPy (v0.3.0-**beta2**) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
@@ -35,7 +35,7 @@ with the help of the hyperopt library.
 
 This library works for Python 3.8 and higher.
 
-## Offcial documentation :closed_book:
+## Offcial documentation 📖
 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process.
@@ -65,7 +65,7 @@ If you want to use the previous version 0.2.4 (stable), you can install Reservoi
 pip install reservoirpy
 ```
 
-## Quick try :zap:
+## Quick try ⚡
 
 ### An example on Chaotic timeseries prediction (MackeyGlass)
 
