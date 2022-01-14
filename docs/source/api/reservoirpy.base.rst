@@ -1,61 +1,23 @@
-reservoirpy.base package
-========================
+.. _reservoirpy.base:
 
-Subpackages
------------
+{{ header }}
 
-.. toctree::
-   :maxdepth: 4
+.. automodule:: reservoirpy.model
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
 
-   reservoirpy.base.tests
+.. automodule:: reservoirpy.ops
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
 
-Submodules
-----------
+.. automodule:: reservoirpy.types
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:
 
-reservoirpy.base.graphflow module
----------------------------------
-
-.. automodule:: reservoirpy.base.graphflow
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-reservoirpy.base.model module
------------------------------
-
-.. automodule:: reservoirpy.base.model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-reservoirpy.base.node module
-----------------------------
-
-.. automodule:: reservoirpy.base.node
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-reservoirpy.base.ops module
----------------------------
-
-.. automodule:: reservoirpy.base.ops
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-reservoirpy.base.types module
------------------------------
-
-.. automodule:: reservoirpy.base.types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: reservoirpy.base
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. automodule:: reservoirpy.graphflow
+   :no-members:
+   :no-inherited-members:
+   :no-special-members:

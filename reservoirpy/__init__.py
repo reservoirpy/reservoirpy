@@ -14,10 +14,11 @@ from . import activationsfunc
 from . import hyper
 from . import nodes
 from . import compat
+from . import types
 
-from .base.node import Node
-from .base.model import Model
-from .base.ops import link, merge, link_feedback
+from .node import Node
+from .model import Model
+from .ops import link, merge, link_feedback
 from .compat import load_compat
 
 

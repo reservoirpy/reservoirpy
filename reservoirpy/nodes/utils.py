@@ -4,8 +4,8 @@
 import numpy as np
 
 from ..utils.validation import check_vector, add_bias
-from reservoirpy.base.types import global_dtype
-from reservoirpy.base.node import Node
+from ..types import global_dtype
+from reservoirpy.node import Node
 
 
 def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
@@ -14,10 +14,10 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
 
         in_dim = x.shape[1]
 
-        if y is not None:
-            out_dim = y.shape[1]
-        elif readout.output_dim is not None:
+        if readout.output_dim is not None:
             out_dim = readout.output_dim
+        elif y is not None:
+            out_dim = y.shape[1]
         else:
             raise RuntimeError(f"Impossible to initialize {readout.name}: "
                                f"output dimension was not specified at "

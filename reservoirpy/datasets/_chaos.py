@@ -13,7 +13,6 @@ from ..utils.validation import check_vector
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
     """
     Mackey-Glass time delay diffential equation, at values x(t) and x(t-tau).
-
     """
     return -b * xt + a * xtau / (1 + xtau ** n)
 
@@ -21,7 +20,6 @@ def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
 def _mg_rk4(xt, xtau, a, b, n, h=1.0):
     """
     Runge-Kuta method (RK4) for Mackey-Glass timeseries discretization.
-
     """
     k1 = h * _mg_eq(xt, xtau, a, b, n)
     k2 = h * _mg_eq(xt + 0.5 * k1, xtau, a, b, n)
@@ -35,7 +33,7 @@ def henon_map(n_timesteps: int,
               a: float = 1.4,
               b: float = 0.3,
               x0: Union[list, np.ndarray] = [0.0, 0.0]) -> np.ndarray:
-    """Hénon map discrete timeseries [#]_ [#]_:
+    """Hénon map discrete timeseries [2]_ [3]_:
 
     .. math::
 
@@ -63,9 +61,10 @@ def henon_map(n_timesteps: int,
 
     References
     ----------
-        .. [#] M. Hénon, ‘A two-dimensional mapping with a strange
+        .. [2] M. Hénon, ‘A two-dimensional mapping with a strange
                attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
-        .. [#] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
+
+        .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
                on Wikipédia
 
     """
@@ -82,7 +81,7 @@ def henon_map(n_timesteps: int,
 def logistic_map(n_timesteps: int,
                  r: float = 3.9,
                  x0: float = 0.5) -> np.ndarray:
-    """Logistic map discrete timeseries [#]_ [#]_:
+    """Logistic map discrete timeseries [4]_ [5]_:
 
     .. math::
 
@@ -106,11 +105,11 @@ def logistic_map(n_timesteps: int,
 
     References
     ----------
-        .. [#] R. M. May, ‘Simple mathematical models with very
+        .. [4] R. M. May, ‘Simple mathematical models with very
                complicated dynamics’, Nature, vol. 261, no. 5560,
                Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
 
-        .. [#] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
+        .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
                on Wikipédia
     """
     if r > 0 and 0 < x0 < 1:
@@ -134,7 +133,7 @@ def lorenz(n_timesteps: int,
            x0: Union[list, np.ndarray] = [1.0, 1.0, 1.0],
            h: float = 0.03,
            **kwargs) -> np.ndarray:
-    """Lorenz attractor timeseries [#]_ [#]_:
+    """Lorenz attractor timeseries [6]_ [7]_:
 
     .. math::
 
@@ -174,11 +173,11 @@ def lorenz(n_timesteps: int,
     References
     ----------
 
-        .. [#] E. N. Lorenz, ‘Deterministic Nonperiodic Flow’,
+        .. [6] E. N. Lorenz, ‘Deterministic Nonperiodic Flow’,
                Journal of the Atmospheric Sciences, vol. 20, no. 2,
                pp. 130–141, Mar. 1963,
                doi: 10.1175/1520-0469(1963)020<0130:DNF>2.0.CO;2.
-        .. [#] `Lorenz system <https://en.wikipedia.org/wiki/Lorenz_system>`_
+        .. [7] `Lorenz system <https://en.wikipedia.org/wiki/Lorenz_system>`_
                on Wikipedia.
     """
 
@@ -206,7 +205,7 @@ def mackey_glass(n_timesteps: int,
                  h: float = 1.0,
                  seed: Union[
                      int, RandomState, Generator] = None) -> np.ndarray:
-    """Mackey-Glass timeseries [#]_ [#]_, computed from the Mackey-Glass
+    """Mackey-Glass timeseries [8]_ [9]_, computed from the Mackey-Glass
     delayed differential equation:
 
     .. math::
@@ -255,16 +254,16 @@ def mackey_glass(n_timesteps: int,
         initial timesteps based on the value of the initial condition
         passed as parameter. A default seed is hard-coded to ensure
         reproducibility in any case. It can be changed with the
-        :py:func:`reservoirpy.datasets.seed` function.
+        :py:func:`set_seed` function.
 
     References
     ----------
-        .. [#] M. C. Mackey and L. Glass, ‘Oscillation and chaos in
-        physiological
+        .. [8] M. C. Mackey and L. Glass, ‘Oscillation and chaos in
+               physiological
                control systems’, Science, vol. 197, no. 4300, pp. 287–289,
                Jul. 1977,
                doi: 10.1126/science.267326.
-        .. [#] `Mackey-Glass equations
+        .. [9] `Mackey-Glass equations
                 <https://en.wikipedia.org/wiki/Mackey-Glass_equations>`_
                 on Wikipedia.
 
@@ -308,7 +307,7 @@ def multiscroll(n_timesteps: int,
                 c: float = 28.0,
                 x0: Union[list, np.ndarray] = [-0.1, 0.5, -0.6],
                 h: float = 0.01) -> np.ndarray:
-    """Double scroll attractor timeseries [#]_ [#]_,
+    """Double scroll attractor timeseries [10]_ [11]_,
     a particular case of multiscroll attractor timeseries.
 
     .. math::
@@ -345,10 +344,10 @@ def multiscroll(n_timesteps: int,
 
     References
     ----------
-        .. [#] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
+        .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
                Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
                Jul. 1999, doi: 10.1142/S0218127499001024.
-        .. [#] `Chen double scroll attractor
+        .. [11] `Chen double scroll attractor
                <https://en.wikipedia.org/wiki/Multiscroll_attractor
                #Chen_attractor>`_
                on Wikipedia.
@@ -383,7 +382,7 @@ def doublescroll(n_timesteps: int,
                                                 -0.08167691],
                  h: float = 0.01,
                  **kwargs) -> np.ndarray:
-    """Double scroll attractor timeseries [#]_ [#]_,
+    """Double scroll attractor timeseries [10]_ [11]_,
     a particular case of multiscroll attractor timeseries.
 
     .. math::
@@ -420,10 +419,10 @@ def doublescroll(n_timesteps: int,
 
     References
     ----------
-        .. [#] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
+        .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
                Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
                Jul. 1999, doi: 10.1142/S0218127499001024.
-        .. [#] `Chen double scroll attractor
+        .. [11] `Chen double scroll attractor
                <https://en.wikipedia.org/wiki/Multiscroll_attractor
                #Chen_attractor>`_
                on Wikipedia.
@@ -458,7 +457,7 @@ def rabinovich_fabrikant(n_timesteps: int,
                          x0: Union[list, np.ndarray] = [-1, 0, 0.5],
                          h: float = 0.05,
                          **kwargs) -> np.ndarray:
-    """Rabinovitch-Fabrikant system [#]_ [#]_ timeseries.
+    """Rabinovitch-Fabrikant system [12]_ [13]_ timeseries.
 
     .. math::
 
@@ -494,10 +493,10 @@ def rabinovich_fabrikant(n_timesteps: int,
 
     References
     ----------
-        .. [#] M. I. Rabinovich and A. L. Fabrikant,
+        .. [12] M. I. Rabinovich and A. L. Fabrikant,
                ‘Stochastic self-modulation of waves in
                nonequilibrium media’, p. 8, 1979.
-        .. [#] `Rabinovich-Fabrikant equations
+        .. [13] `Rabinovich-Fabrikant equations
                <https://en.wikipedia.org/wiki/Rabinovich%E2%80
                %93Fabrikant_equations>`_
                on Wikipedia.
@@ -531,60 +530,59 @@ def narma(n_timesteps: int,
           x0: float = 0,
           seed: Union[int, RandomState] = None):
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
-    as first defined in [1]_, and as used in [2]_.
+    as first defined in [14]_, and as used in [15]_.
 
     NARMA n-th order dynamical system is defined by the recurrent relation:
 
-        .. math::
+    .. math::
 
-            y[t+1] = a_1 y[t] + a_2 y[t] (\\sum_{0}{n-1} y[t-i]) + b u[t-(
-            n-1)]u[t] + c
+        y[t+1] = a_1 y[t] + a_2 y[t] (\\sum_{i=0}^{n-1} y[t-i]) + b u[t-(
+        n-1)]u[t] + c
 
-    where :math:`u[t]` are sampled following an uniform distribution in
+    where :math:`u[t]` are sampled following a uniform distribution in
     :math:`[0, 0.5]`.
 
-        Parameters
-        ----------
-            n_timesteps : int
-                Number of timesteps to generate.
-            order: int, optional
-                Order of the system, by default 30.
-            a1 : float, optional
-                :math:`a_1` parameter of the system.
-                By default, equals to 0.2.
-            a2 : float, optional
-                :math:`a_2` parameter of the system.
-                By default, equals to 0.04.
-            b : float, optional
-                :math:`b` parameter of the system.
-                By default, equals to 1.5.
-            c : float, optional
-                :math:`c` parameter of the system.
-                By default, equals to 0.001.
-            x0 : list or numpy.ndarray, optional
-                Initial conditions of the system.
-                By default, initial steps are 0.
+    Parameters
+    ----------
+        n_timesteps : int
+            Number of timesteps to generate.
+        order: int, optional
+            Order of the system, by default 30.
+        a1 : float, optional
+            :math:`a_1` parameter of the system.
+            By default, equals to 0.2.
+        a2 : float, optional
+            :math:`a_2` parameter of the system.
+            By default, equals to 0.04.
+        b : float, optional
+            :math:`b` parameter of the system.
+            By default, equals to 1.5.
+        c : float, optional
+            :math:`c` parameter of the system.
+            By default, equals to 0.001.
+        x0 : list or numpy.ndarray, optional
+            Initial conditions of the system.
+            By default, initial steps are 0.
 
-        Returns
-        -------
-            numpy.ndarray
-                NARMA timeseries.
+    Returns
+    -------
+        numpy.ndarray
+            NARMA timeseries.
 
-        References
-        ----------
-            .. [1] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
-                   network training: unifying the algorithms and accelerating
-                   convergence,‘ in IEEE Transactions on Neural Networks,
-                   vol. 11, no. 3, pp. 697-709, May 2000,
-                   doi: 10.1109/72.846741.
+    References
+    ----------
+        .. [14] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
+               network training: unifying the algorithms and accelerating
+               convergence,‘ in IEEE Transactions on Neural Networks,
+               vol. 11, no. 3, pp. 697-709, May 2000,
+               doi: 10.1109/72.846741.
 
-            .. [2] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
-                   D. Stroobandt, ‘Improving reservoirs using intrinsic
-                   plasticity‘,
-                   Neurocomputing, 71. 1159-1171, 2008,
-                   doi: 10.1016/j.neucom.2007.12.020.
-
-        """
+        .. [15] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
+               D. Stroobandt, ‘Improving reservoirs using intrinsic
+               plasticity‘,
+               Neurocomputing, 71. 1159-1171, 2008,
+               doi: 10.1016/j.neucom.2007.12.020.
+    """
 
     if seed is None:
         seed = get_seed()

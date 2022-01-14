@@ -9,8 +9,8 @@ from scipy import linalg
 
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
-from ..base.node import Node
-from ..base.types import global_dtype
+from reservoirpy.node import Node
+from ..types import global_dtype
 
 
 def _solve_ridge(XXT, YXT, ridge):

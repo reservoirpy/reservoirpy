@@ -1,3 +1,6 @@
+# Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import partial
 from typing import Callable, Optional, Union
 
@@ -5,13 +8,17 @@ import numpy as np
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
-from reservoirpy.base.node import Node
-from reservoirpy.base.types import Weights
+from reservoirpy.node import Node
+from ..types import Weights
 from ..utils.validation import is_array
 from ..utils.random import noise
 
 
 def _reservoir_kernel(reservoir, u, r):
+    """
+    Reservoir base forward function. Computes:
+    s[t+1] = W.r[t] + Win.(u[t] + noise) + Wfb.(y[t] + noise) + bias
+    """
     W = reservoir.W
     Win = reservoir.Win
     bias = reservoir.bias
@@ -225,6 +232,104 @@ def initialize_feedback(reservoir,
 
 
 class Reservoir(Node):
+    """
+    Pool of leaky-integrator neurons with random recurrent connexions.
+
+    Parameters
+    ----------
+    units : int, optional
+        Number of reservoir units, by default None
+    lr : float, optional
+        Neurons leak rate. Must be in [0; 1], by default 1.0
+    sr : float, optional
+        Spectral radius of recurrent weight matrix, by default None
+    input_bias : bool, optional
+        If ``False``, no bias is added to inputs, by default True
+    noise_rc : float, optional
+        Gain of noise applied to reservoir internal states, by default 0.0
+    noise_in : float, optional
+        Gain of noise applied to inputs, by default 0.0
+    noise_fb : float, optional
+        Gain of noise applied to feedback signal, by default 0.0
+    noise_type : str, optional
+        Distribution of noise. Must be a Numpy random variable generator
+        distribution (see :py:class:`numpy.random.Generator`),
+        by default "normal"
+    input_scaling : float, optional
+        Input gain, by default 1.0
+    fb_scaling : float, optional
+        Feedback gain, by default 1.0
+    input_connectivity : float, optional
+        Connectivity of input neurons, i.e. ratio of input neurons connected
+        to reservoir neurons. Must be in ]0, 1], by default 0.1
+    rc_connectivity : float, optional
+        Connectivity of recurrent weights matrix, i.e. ratio of reservoir
+        neurons connected to other reservoir neurons, including themselves.
+        Must be in ]0, 1], by default 0.1
+    fb_connectivity : float, optional
+        Connectivity of feedback neurons, i.e. ratio of feedabck neurons
+        connected to reservoir neurons. Must be in ]0, 1], by default 0.1
+    Win : Union[Weights, Callable], optional
+        Input weights matrix initializer.
+        - If a :py:class:`numpy.ndarray` or :py:mod:`scipy.sparse` matrix,
+        should be of shape ``(input_dim + bias, units)``.
+        - If a callable, should accept keywords parameters such as ``N`` to
+        specify number of reservoir units and ``dim_input`` to specify input
+        dimension. By default :py:func:`mat_gen.generate_input_weights`.
+    W : Union[Weights, Callable], optional
+        Reccurent weights matrix initializer.
+        - If a :py:class:`numpy.ndarray` or :py:mod:`scipy.sparse` matrix,
+        should be of shape ``(units, units)``.
+        - If a callable, should accept keywords parameters such as ``N`` to
+        specify number of reservoir units.
+        By default :py:func:`mat_gen.generate_internal_weights`
+    Wfb : Union[Weights, Callable], optional
+        Feedback weights matrix initializer.
+        - If a :py:class:`numpy.ndarray` or :py:mod:`scipy.sparse` matrix,
+        should be of shape ``(feedback_dim, units)``.
+        - If a callable, should accept keywords parameters such as ``N`` to
+        specify number of reservoir units and ``dim_input`` to specify feedback
+        dimension. By default :py:func:`mat_gen.generate_input_weights`
+    fb_dim : int, optional
+        Feedback dimension, by default None
+    fb_activation : Union[str, Callable], optional
+        Feedback activation function.
+        - If a str, should be a :py:mod:`reservoirpy.activationfunc`
+        function name.
+        - If a callable, should be an element-wise operator on ndarray.
+        By default, :py:func:`activationfunc.identity`.
+    activation : Union[str, Callable], optional
+        Reservoir activation function.
+        - If a str, should be a :py:mod:`reservoirpy.activationfunc`
+        function name.
+        - If a callable, should be an element-wise operator on ndarray.
+        By default, :py:func:`activationfunc.tanh`.
+    equation : {"internal", "external"}, optional
+        - If "internal", then leaky integration happens on states transformed
+        by the activation function:
+
+        .. math::
+
+            r[n+1] = (1 - \\alpha) \\cdot r[t] + \\alpha
+             \\cdot f(W_{in} \\cdot u[n] + W \\cdot r[t])
+
+        - If "external", then leaky integration happens on internal states of
+        each neuron, stored in an ``internal_state`` parameter (:math:`x` in
+        the equation below).
+        A neuron internal state is the value of its state before applying
+        the activation function :math:`f`:
+
+        .. math::
+
+            x[n+1] &= (1 - \\alpha) \\cdot x[t] + \\alpha \\cdot f(W_{in} \\cdot u[n] + W \\cdot r[t]) \\\\
+            r[n+1] &= f(x[n+1])
+
+        By default, "internal".
+    name : str, optional
+        Node name, by default None
+    seed : int or :py:class:`numpy.random.Generator`, optional
+        A random state seed, for noise generation, by default None
+    """
 
     def __init__(self,
                  units: int = None,

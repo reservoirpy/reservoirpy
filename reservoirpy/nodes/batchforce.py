@@ -13,7 +13,7 @@ import numpy as np
 from .utils import (readout_forward, _initialize_readout,
                     _prepare_inputs_for_learning)
 
-from reservoirpy.base.node import Node
+from reservoirpy.node import Node
 
 
 def _reset_buffers(step, rTPs, factors):

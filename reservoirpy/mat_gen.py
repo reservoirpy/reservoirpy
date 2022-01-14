@@ -1,35 +1,56 @@
-"""Quick tools for weight matrices initialization.
+"""
+===================================================
+Weights initialization (:mod:`reservoirpy.mat_gen`)
+===================================================
+
+Quick tools for weight matrices initialization.
 
 This module provides simples tools for reservoir internal weights
 and input/feedback weights initialization. Spectral radius of the
 internal weights, input scaling and sparsity are fully parametrizable.
 
-Because most of the architectures developped in *reservoir computing*
+Because most of the architectures developped in Reservoir Computing
 involve sparsely-connected neuronal units, the prefered format for all
-generated matrices is a
-`scipy.sparse <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_
-format (in most cases *csr*).
+generated matrices is a :py:mod:`scipy.sparse` format (in most cases *csr*).
 Sparse arrays allow fast computations and compact representations of
 weights matrices, and remains easily readable. They can be parsed back to
 simple Numpy arrays just by calling their ``toarray()`` method.
 
-All functions can take as paramater a `numpy.random.Generator`
+All functions can take as paramater a :py:class:`numpy.random.Generator`
 instance, or a seed number, to ensure reproducibility. Both distribution
 of weights and distribution of non-zero connections are controled with the
 seed.
 
+.. autosummary::
+   :toctree: generated/
+
+    generate_internal_weights
+    generate_input_weights
+    fast_spectral_initialization
+
 Example
--------
+=======
 
 Here, we generate a 1000 units reservoir `W` with a spectral radius of 0.5,
 connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
 
-.. code-block:: python
+.. ipython:: python
 
     from reservoirpy.mat_gen import fast_spectral_initialization
     from reservoirpy.mat_gen import generate_input_weights
     W = fast_spectral_initialization(1000, sr=0.5)
     Win = generate_input_weights(1000, 5, input_scaling=0.9)
+    print(W.shape, Win.shape)
+
+References
+==========
+
+    .. [1] C. Gallicchio, A. Micheli, and L. Pedrelli,
+           ‘Fast Spectral Radius Initialization for Recurrent
+           Neural Networks’, in Recent Advances in Big Data and
+           Deep Learning, Cham, 2020, pp. 380–390,
+           doi: 10.1007/978-3-030-16841-4_39.
+
 """
 import warnings
 
@@ -116,7 +137,7 @@ def fast_spectral_initialization(N: int,
                                  typefloat=np.float64,
                                  **kwargs,):
     """Fast spectral radius (FSI) approach for weights
-    initialization [#]_.
+    initialization [1]_.
 
     This method is well suited for computation and rescaling of
     very large weights matrices, with a number of neurons typically
@@ -131,7 +152,7 @@ def fast_spectral_initialization(N: int,
         Spectral radius, i.e. maximum desired eigenvalue of the
         reservoir weights matrix, by default None.
     proba : float, optional
-        Probability of non zero connection,
+        Probability of non-zero connection,
         density of the weight matrix, by default 0.1
     seed : int or RandomState, optional
         Random state generator seed, for reproducibility,
@@ -142,9 +163,6 @@ def fast_spectral_initialization(N: int,
         is chosen, the matrix will be a Numpy array and not a
         Scipy sparse matrix.
     typefloat : np.dtype, optional
-    spectral_radius: float, optional
-        Same as ``sr``. It is deprecated since version 0.2.2
-        and will be removed soon.
 
     Returns
     -------
@@ -154,12 +172,12 @@ def fast_spectral_initialization(N: int,
     Raises
     ------
     ValueError
-        Invalid non zero connection probability.
+        Invalid non-zero connection probability.
 
     References
     -----------
 
-        .. [#] C. Gallicchio, A. Micheli, and L. Pedrelli,
+        .. [1] C. Gallicchio, A. Micheli, and L. Pedrelli,
                ‘Fast Spectral Radius Initialization for Recurrent
                Neural Networks’, in Recent Advances in Big Data and
                Deep Learning, Cham, 2020, pp. 380–390,
@@ -215,11 +233,11 @@ def generate_internal_weights(N: int,
                               typefloat=np.float64,
                               Wstd: float = None,
                               **kwargs):
-    """Method that generate the weight matrix that will be used
+    """Generate the weights matrix that will be used
     for the internal connections of the reservoir.
 
     Weights will follow a normal distribution  by default,
-    of mean 0 and scale `Wstd` (by default 1), and can then be rescale to
+    of mean 0 and scale `Wstd` (by default 1), and can then be rescaled to
     reach a specific spectral radius.
 
     Parameters
@@ -231,13 +249,12 @@ def generate_internal_weights(N: int,
         Spectral_radius, i.e. maximum desired eigenvalue of the
         reservoir weights matrix, by default None
     proba : float, optional
-        Probability of non zero connection,
+        Probability of non-zero connection,
         density of the weight matrix, by default 0.1
     Wstd : float, optional
         Standard deviation of internal weights, by default 1.0
     dist: str, optional
-        A distribution name from `scipy.stats
-        <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+        A distribution name from :py:mod:`scipy.stats`
         module. Parameters like ``loc`` and ``scale``
         can be passed to the distribution functions
         as keyword arguments to this function.
@@ -257,9 +274,6 @@ def generate_internal_weights(N: int,
         Random state generator seed, for reproducibility,
         by default None
     typefloat : numpy.dtype, optional
-    spectral_radius: float, optional
-        Same as ``sr``. It is deprecated since version 0.2.2
-        and will be removed soon.
 
     Returns
     -------
@@ -269,7 +283,7 @@ def generate_internal_weights(N: int,
     Raises
     ------
     ValueError
-        Invalid non zero connection probability.
+        Invalid non-zero connection probability.
 
     Example
     -------
@@ -368,8 +382,7 @@ def generate_input_weights(N: int,
             Probability of non-zero connections, density of
             the matrix, by default 0.1.
         dist: str, optional
-            A distribution name from `scipy.stats
-            <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+            A distribution name from :py:mod:`scipy.stats`
             module. Parameters like ``loc`` and ``scale``
             can be passed to the distribution functions
             as keyword arguments to this function.

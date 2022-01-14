@@ -104,9 +104,9 @@ def test_ridge_feedback():
 
 def test_hierarchical_esn():
 
-    readout1 = Ridge(10, ridge=1e-8, transient=10, name='r1')
+    readout1 = Ridge(ridge=1e-8, transient=10, name='r1')
     reservoir1 = Reservoir(100)
-    readout2 = Ridge(10, ridge=1e-8, transient=10, name='r2')
+    readout2 = Ridge(ridge=1e-8, transient=10, name='r2')
     reservoir2 = Reservoir(100)
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2

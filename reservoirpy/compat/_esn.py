@@ -1,17 +1,3 @@
-"""Simple, fast, parallelizable and object-oriented
-implementation of Echo State Networks [#]_ [#]_, using offline
-learning methods.
-
-References
-----------
-
-    .. [#] H. Jaeger, ‘The “echo state” approach to analysing
-           and training recurrent neural networks – with an
-           Erratum note’, p. 48.
-    .. [#] M. Lukoševičius, ‘A Practical Guide to Applying Echo
-           State Networks’, Jan. 2012, doi: 10.1007/978-3-642-35289-8_36.
-
-"""
 # @author: Xavier HINAUT
 # xavier.hinaut@inria.fr
 # Copyright Xavier Hinaut 2018
@@ -26,7 +12,7 @@ import numpy as np
 
 from ..utils.parallel import parallelize
 from ..utils.validation import _check_values, check_input_lists
-from ..base.types import Data, Activation
+from ..types import Data, Activation
 from .regression_models import RidgeRegression
 from ._base import _ESNBase
 
@@ -39,62 +25,76 @@ def _get_offline_model(ridge: float = 0.0,
 class ESN(_ESNBase):
     """Base class of Echo State Networks.
 
-    The :py:class:`reservoirpy.ESN` class is the angular stone of ReservoirPy
+    Simple, fast, parallelizable and object-oriented
+    implementation of Echo State Networks [#]_ [#]_, using offline
+    learning methods.
+
+    Warning
+    -------
+
+        The v0.2 model :py:class:`compat.ESN` is deprecated. Consider using
+        the new Node API introduced in v0.3 (see :ref:`node`).
+
+    The :py:class:`compat.ESN` class is the angular stone of ReservoirPy
     offline learning methods using reservoir computing.
     Echo State Network allows one to:
-        - quickly build ESNs, using the :py:mod:`reservoirpy.mat_gen` module
-          to initialize weights,
-        - train and test ESNs on the task of your choice,
-        - use the trained ESNs on the task of your choice, either in
-          predictive mode or generative mode.
+
+    - quickly build ESNs, using the :py:mod:`reservoirpy.mat_gen`
+      module to initialize weights,
+    - train and test ESNs on the task of your choice,
+    - use the trained ESNs on the task of your choice,
+      either in predictive mode or generative mode.
 
     Parameters
     ----------
         lr: float
             Leaking rate
-
         W: np.ndarray
             Reservoir weights matrix
-
         Win: np.ndarray
             Input weights matrix
-
         input_bias: bool, optional
             If True, will add a constant bias
             to the input vector. By default, True.
-
         reg_model: Callable, optional
             A scikit-learn linear model function to use for
             regression. Should be None if ridge is used.
-
         ridge: float, optional
             Ridge regularization coefficient for Tikonov regression.
             Should be None if reg_model is used. By default, pseudo-inversion
             of internal states and teacher signals is used.
-
         Wfb: np.array, optional
             Feedback weights matrix.
-
         fbfunc: Callable, optional
             Feedback activation function.
-
         typefloat: numpy.dtype, optional
 
     Attributes
     ----------
-        Wout: np.ndarray
-            Readout matrix
-        dim_out: int
-            Output dimension
-        dim_in: int
-            Input dimension
-        N: int
-            Number of neuronal units
+        lr : float
+            Leaking rate.
+        activation: Callable
+            Reservoir activation function.
+        fbfunc: Callable
+            Feedback activation function.
+        noise_in: float
+            Input noise gain.
+        noise_rc: float
+            Reservoir states noise gain.
+        noise_out: float
+            Feedback noise gain.
+        seed: int
+            Random state seed.
+        typefloat: numpy.dtype
 
-    See also
-    --------
-        reservoirpy.ESNOnline for ESN with online learning using FORCE.
+    References
+    ----------
 
+        .. [#] H. Jaeger, ‘The “echo state” approach to analysing
+               and training recurrent neural networks – with an
+               Erratum note’, p. 48.
+        .. [#] M. Lukoševičius, ‘A Practical Guide to Applying Echo
+               State Networks’, Jan. 2012, doi: 10.1007/978-3-642-35289-8_36.
     """
     def __init__(self,
                  lr: float,
@@ -128,6 +128,7 @@ class ESN(_ESNBase):
 
     @property
     def ridge(self):
+        """L2 regularization coefficient for readout fitting."""
         return getattr(self.model, "ridge", None)
 
     @ridge.setter

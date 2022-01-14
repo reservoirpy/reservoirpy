@@ -17,6 +17,72 @@ from .utils.save import _save
 
 
 class ESNOnline:
+    """Echo State Networks using FORCE algorithm as
+    an online learning rule.
+
+    Warning
+    -------
+
+    The v0.2 model :py:class:`compat.ESNOnline` is deprecated.
+    Consider using the new Node API introduced in v0.3 (see
+    :ref:`node`).
+
+    The :py:class:`compat.ESNOnline` implements FORCE, an
+    online learning method.
+    Online Echo State Networks allow one to:
+    - quickly build online ESNs, using the
+    :py:mod:`reservoirpy.mat_gen` module to initialize weights,
+    - train and test ESNs on the task of your choice in an online
+    fashion, i.e. continuously in time.
+
+    Parameters
+    ----------
+    lr: float
+        Leaking rate
+    W: np.ndarray
+        Reservoir weights matrix
+    Win: np.ndarray
+        Input weights matrix
+    Wout: np.ndarray
+        Readout weights matrix
+    alpha_coef : float, optional
+        Coefficient to scale the inversed state correlation matrix
+        used for FORCE learning. By defautl, equal to
+        :math:`1e^{-6}`.
+    use_raw_input : bool, optional
+        If True, input is used directly when computing output.
+        By default, is False.
+    input_bias: bool, optional
+        If True, will add a constant bias
+        to the input vector. By default, True.
+    Wfb: np.array, optional
+        Feedback weights matrix.
+    fbfunc: Callable, optional
+        Feedback activation function.
+    typefloat: numpy.dtype, optional
+
+    Attributes
+    ----------
+    Wout: np.ndarray
+        Readout matrix
+    dim_out: int
+        Output dimension
+    dim_in: int
+        Input dimension
+    N: int
+        Number of neuronal units
+    state : numpy.ndarray
+        Last internal state computed, used to
+        store internal dynamics of the reservoir
+        over time, to enable online learning.
+    output_values : numpy.ndarray
+        Last values predicted by the network,
+        used to store the last response of the
+        reservoir to enable online learning.
+    state_corr_inv : numpy.ndarray
+        Inverse correlation matrix used in FORCE learning
+        algorithm.
+    """
 
     def __init__(self,
                  lr: float,
@@ -29,69 +95,6 @@ class ESNOnline:
                  Wfb: np.ndarray = None,
                  fbfunc: Callable = None,
                  typefloat: np.dtype = np.float64):
-        """Echo State Networks using FORCE algorithm as
-        an online learning rule.
-
-        The :py:class:`reservoirpy.ESNOnline` implements FORCE, an
-        online learning method.
-        Online Echo State Networks allow one to:
-            - quickly build online ESNs, using the :py:mod:`reservoirpy.mat_gen` module
-            to initialize weights,
-            - train and test ESNs on the task of your choice in an online fashion, i.e.
-            continuously in time.
-
-    Parameters
-    ----------
-        lr: float
-            Leaking rate
-        W: np.ndarray
-            Reservoir weights matrix
-        Win: np.ndarray
-            Input weights matrix
-        Wout: np.ndarray
-            Readout weights matrix
-        alpha_coef : float, optional
-            Coefficient to scale the inversed state correlation matrix
-            used for FORCE learning. By defautl, equal to :math:`1e^{-6}`.
-        use_raw_input : bool, optional
-            If True, input is used directly when computing output.
-            By default, is False.
-        input_bias: bool, optional
-            If True, will add a constant bias
-            to the input vector. By default, True.
-        Wfb: np.array, optional
-            Feedback weights matrix.
-        fbfunc: Callable, optional
-            Feedback activation function.
-        typefloat: numpy.dtype, optional
-
-    Attributes
-    ----------
-        Wout: np.ndarray
-            Readout matrix
-        dim_out: int
-            Output dimension
-        dim_in: int
-            Input dimension
-        N: int
-            Number of neuronal units
-        state : numpy.ndarray
-            Last internal state computed, used to
-            store internal dynamics of the reservoir
-            over time, to enable online learning.
-        output_values : numpy.ndarray
-            Last values predicted by the network,
-            used to store the last response of the
-            reservoir to enable online learning.
-        state_corr_inv : numpy.ndarray
-            Inverse correlation matrix used in FORCE learning
-            algorithm.
-
-    See also
-    --------
-        reservoirpy.ESN for ESN with offline learning.
-
-    """
         self.W = W
         self.Win = Win
         self.Wfb = Wfb

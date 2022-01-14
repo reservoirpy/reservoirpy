@@ -1,0 +1,5 @@
+.. _generation:
+
+=================
+Generative models
+=================
