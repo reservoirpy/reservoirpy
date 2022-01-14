@@ -13,7 +13,7 @@ See the following guides to:
 - **Learn how to subclass Node to make your own**: :ref:`create_new_node`
 
 
-Node API: simple tools for complex reservoir computing architectures.
+**Simple tools for complex reservoir computing architectures.**
 
 The Node API features a simple implementation of computational graphs, similar
 to what can be found in other popular deep learning and differenciable calculus
@@ -136,6 +136,7 @@ from reservoirpy.utils.validation import (check_node_io, check_node_state,
 
 
 def _initialize_with_seq_set(node, X, Y=None):
+    """Initialize a Node with a sequence of inputs/targets."""
     X = to_ragged_seq_set(X)
 
     if Y is not None:
@@ -150,6 +151,7 @@ def _initialize_with_seq_set(node, X, Y=None):
 
 
 def _node_fb_init_general(node, fb):
+    """Void feedback initializer. Works in any case."""
     fb_dim = None
     if isinstance(fb, list):
         fb_dim = tuple([fb.shape[1] for fb in fb])
@@ -160,6 +162,9 @@ def _node_fb_init_general(node, fb):
 
 
 def _remove_input_for_feedback(model: Model) -> Union["Node", Model]:
+    """Remove inputs nodes from feedback Model and gather remaining nodes
+    into a new Model. Allow to get inputs for feedback model from its input
+    nodes states."""
     all_nodes = set(model.nodes)
     input_nodes = set(model.input_nodes)
     filtered_nodes = all_nodes - input_nodes
@@ -175,28 +180,6 @@ def _remove_input_for_feedback(model: Model) -> Union["Node", Model]:
 
 class Node(GenericNode):
     """Node base class.
-
-    Attributes
-    ----------
-    is_initialized: bool
-        Tells wether the Node have been initialized or not.
-    has_feedback: bool
-        Tells wether the Node currently receives feedback from another Node
-        or not.
-    is_trained_offline: bool
-        Tell wether the Node can be trained using an offline learning rule
-        or not.
-    is_trained_online: bool
-        Tells wether the Node can be trained using an online learning rule
-        or not
-    is_trainable: bool
-        Tells wether the Node can be trained or not. Can be set to `False` to
-        deactivate training on a Node.
-    fitted: bool
-        Tells wether the Node has been fitted using an offline learning rule
-        or not.
-    is_fb_initialized: bool
-        Tells wether the Node has initialized its feedback connections or not.
 
     Parameters
     ----------
@@ -700,6 +683,7 @@ class Node(GenericNode):
         return self
 
     def clean_buffers(self):
+        """Clean Node's buffer arrays."""
         if len(self._buffers) > 0:
             self._buffers = dict()
             clean_tempfile(self)
@@ -883,7 +867,7 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        x : numpy.array or list of Numpy arrays
+        x : numpy.ndarray
             One single step of input data.
         from_state : numpy.ndarray
             Node state value to use at begining of computation.
@@ -915,8 +899,8 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        X : numpy.array or list of Numpy arrays
-            One single step of input data.
+        X : numpy.array
+            A sequence of data of shape (timesteps, features).
         from_state : numpy.ndarray
             Node state value to use at begining of computation.
         stateful : bool, default to True
@@ -927,7 +911,7 @@ class Node(GenericNode):
         Returns
         -------
             numpy.ndarray
-                An output vector.
+                A sequence of output vectors.
         """
 
         X = self._check_io(X, self.input_dim, allow_timespans=True)
@@ -958,7 +942,7 @@ class Node(GenericNode):
         X : numpy.ndarray
             Input sequence of data.
         Y : numpy.ndarray, optional.
-            Teacher sequence of data. If None, the Node will search a feedback
+            Target sequence of data. If None, the Node will search a feedback
             signal, or train in an unsupervised way, if possible.
         force_teachers : bool, default to True
             If True, this Node will broadcast the available ground truth signal

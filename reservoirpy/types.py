@@ -30,6 +30,7 @@ MappedData = TypeVar("MappedData",
 
 @runtime_checkable
 class GenericNode(Protocol):
+    """Node base Protocol class for type checking and interface inheritance."""
 
     _factory_id: int = -1
     _registry: List = list()
@@ -103,12 +104,15 @@ class GenericNode(Protocol):
 
     @property
     def name(self) -> str: return self._name
+    """Name of the Node or Model."""
 
     @property
     def params(self) -> Dict[str, Any]: return self._params
+    """Parameters of the Node or Model."""
 
     @property
     def hypers(self) -> Dict[str, Any]: return self._hypers
+    """Hyperparameters of the Node or Model."""
 
     @property
     def is_initialized(self) -> bool: return self._is_initialized
@@ -172,6 +176,20 @@ class GenericNode(Protocol):
             Iterator["GenericNode"]: ...
 
     def link(self, other: "GenericNode", name: str = None) -> "GenericNode":
+        """Link the Node to another Node or Model.
+
+        Parameters
+        ----------
+        other: GenericNode
+            Other Node or Model to link this Node with.
+        name: str, optional
+            Name for the created Model.
+
+        Returns
+        -------
+        Model
+            A new Model instance including the two Nodes.
+        """
         from .ops import link
         return link(self, other, name=name)
 

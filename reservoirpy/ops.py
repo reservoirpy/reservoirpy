@@ -1,4 +1,20 @@
-"""Operations on :py:class:`Node` and :py:class:`Model`."""
+"""
+=========================================================
+Node operations - link, merge (:py:mod:`reservoirpy.ops`)
+=========================================================
+
+Operations on :py:class:`Node` and :py:class:`Model`.
+
+.. currentmodule:: reservoirpy.ops
+
+.. autosummary::
+   :toctree: generated/
+   :template: autosummary/class.rst
+
+   link - Link Nodes into a Model.
+   link_feedback - Link Nodes through feedback connections.
+   merge - Merge Models.
+"""
 # Author: Nathan Trouvain at 25/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>

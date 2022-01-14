@@ -1,8 +1,8 @@
-.. _mat_gen:
+.. _reservoirpy.ops:
 
 {{ header }}
 
-.. automodule:: reservoirpy.mat_gen
+.. automodule:: reservoirpy.ops
    :no-members:
    :no-inherited-members:
    :no-special-members:

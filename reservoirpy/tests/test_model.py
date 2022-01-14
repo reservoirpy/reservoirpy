@@ -1,7 +1,7 @@
 # Author: Nathan Trouvain at 10/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-
+import numpy as np
 from numpy.testing import assert_array_equal
 
 from .dummy_nodes import *
@@ -97,6 +97,33 @@ def test_model_call(plus_node, minus_node):
             assert_array_equal(node.state(), data + 2)
         else:
             assert_array_equal(node.state(), data - 2)
+
+
+def test_model_with_state(plus_node, minus_node):
+
+    model = plus_node >> minus_node
+
+    data = np.zeros((1, 5))
+    res = model(data)
+
+    assert_array_equal(res, data)
+
+    input_node = Input()
+    branch1 = input_node >> plus_node
+    branch2 = input_node >> minus_node
+
+    model = branch1 & branch2
+
+    res = model(data)
+
+    with model.with_state(state={plus_node.name:
+                                 np.zeros_like(plus_node.state())}):
+        assert_array_equal(plus_node.state(),
+                           np.zeros_like(plus_node.state()))
+
+    with pytest.raises(TypeError):
+        with model.with_state(state=np.zeros_like(plus_node.state())):
+            pass
 
 
 def test_model_run(plus_node, minus_node):

@@ -3,33 +3,38 @@
 Models (:class:`reservoirpy.Model`)
 ===================================
 
-Model API
+Note
+----
+
+See the following guides to:
+
+- **Learn more about how to work with ReservoirPy Nodes**: :ref:`node`
+- **Learn more about how to combine nodes within a Model**: :ref:`model`
+
+
+Models are an extension of the Node API. They allow to combine nodes into
+complex computational graphs, to create complicated Reservoir Computing
+architecture like *Deep Echo State Networks*.
+
+See :ref:`model` to learn more about how to create and manipulate
+a :py:class:`Model`.
 
 .. currentmodule:: reservoirpy.model
 
 .. autoclass:: Model
-
 
    .. rubric:: Methods
 
    .. autosummary::
 
       ~Model.call
-      ~Model.copy
       ~Model.fit
       ~Model.get_node
-      ~Model.get_param
       ~Model.initialize
       ~Model.initialize_buffers
       ~Model.link
-      ~Model.partial_fit
       ~Model.reset
       ~Model.run
-      ~Model.set_feedback_dim
-      ~Model.set_input_dim
-      ~Model.set_output_dim
-      ~Model.set_param
-      ~Model.state
       ~Model.train
       ~Model.update_graph
       ~Model.with_feedback
@@ -60,29 +65,32 @@ Model API
       ~Model.params
       ~Model.trainable_nodes
 
+.. autoclass:: FrozenModel
+
 """
+from collections.abc import Iterable
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import ExitStack, contextmanager
-from typing import Dict, List, Optional, Tuple
-from collections.abc import Iterable
 from functools import partial
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from reservoirpy.utils import progress, verbosity
+from reservoirpy.utils.validation import check_vector, is_mapping
+from ._utils import (_allocate_returned_states, _build_forward_sumodels,
+                     _dist_states_to_next_subgraph, to_ragged_seq_set, )
 from .graphflow import (DataDispatcher, find_entries_and_exits,
                         get_offline_subgraphs, topological_sort, )
-from ._utils import (_allocate_returned_states, _dist_states_to_next_subgraph,
-                     _build_forward_sumodels, to_ragged_seq_set, )
-from .types import MappedData, GenericNode
-from reservoirpy.utils.validation import check_vector, is_mapping
+from .types import GenericNode, MappedData
 
 
 def _run_and_partial_fit(model, offlines, relations, x_seq, y_seq,
                          stateful=True, reset=False, return_states=None,
                          force_teachers=True):
+    """Run a submodel and call its partial fit function."""
 
     if not model.is_empty:
         x_seq = {n: x for n, x in x_seq.items()
@@ -150,6 +158,9 @@ def forward(model: "Model",
 
 
 def train(model: "Model", x=None, y: MappedData = None, force_teachers=True):
+    """Training function for a Model. Run all train functions of all online
+    nodes within the Model. Nodes have already been called. Only training
+    is performed."""
 
     data = model.data_dispatcher.load(X=x, Y=y)
 
@@ -193,14 +204,34 @@ def initializer(model: "Model",
 
 
 class Model(GenericNode):
+    """Model base class.
+
+    Parameters
+    ----------
+    nodes : list of Node, optional
+        Nodes to include in the Model., by default ()
+    edges : list of (Node, Node), optional
+        Edges between Nodes in the graph. An edge between a
+        Node A and a Node B is created as a tuple (A, B).
+    name : str, optional
+        Name of the Model.
+    """
+
     _node_registry: Dict[str, GenericNode]
-    _nodes:    List[GenericNode]
-    _edges:    List[Tuple[GenericNode, GenericNode]]
-    _inputs:   List[GenericNode]
-    _outputs:  List[GenericNode]
+    _nodes: List[GenericNode]
+    _edges: List[Tuple[GenericNode, GenericNode]]
+    _inputs: List[GenericNode]
+    _outputs: List[GenericNode]
     _dispatcher: "DataDispatcher"
 
-    def __init__(self, nodes=(), edges=(), name=None):
+    def __init__(self, nodes: Sequence[GenericNode] = None,
+                 edges: Sequence[Tuple[GenericNode, GenericNode]] = None,
+                 name: str = None):
+
+        if nodes is None:
+            nodes = tuple()
+        if edges is None:
+            edges = tuple()
 
         self._forward = forward
         self._train = train
@@ -210,6 +241,7 @@ class Model(GenericNode):
 
         self._edges = edges
 
+        # always maintain nodes in topological order
         if len(nodes) > 0:
             self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
             self._nodes = topological_sort(nodes, edges, self._inputs)
@@ -297,12 +329,14 @@ class Model(GenericNode):
                                f"offline nodes.")
 
     def _load_proxys(self, keep=False):
+        """Save states of all nodes into their state_proxy"""
         for node in self._nodes:
             if keep and node._state_proxy is not None:
                 continue
             node._state_proxy = node.state()
 
     def _clean_proxys(self):
+        """Destroy state_proxy of all nodes"""
         for node in self._nodes:
             node._state_proxy = None
 
@@ -348,7 +382,24 @@ class Model(GenericNode):
 
         return state
 
-    def update_graph(self, new_nodes, new_edges):
+    def update_graph(self, new_nodes: Sequence[GenericNode],
+                     new_edges: Sequence[
+                         Tuple[GenericNode, GenericNode]]) -> "Model":
+        """Update current Model's with new nodes and edges, inplace (a copy
+        is not performed).
+
+        Parameters
+        ----------
+        new_nodes : list of Node
+            New nodes.
+        new_edges : list of (Node, Node)
+            New edges between nodes.
+
+        Returns
+        -------
+        Model
+            The updated Model.
+        """
         self._nodes = list(set(new_nodes) | set(self.nodes))
         self._edges = list(set(new_edges) | set(self.edges))
 
@@ -367,7 +418,24 @@ class Model(GenericNode):
 
         return self
 
-    def get_node(self, name):
+    def get_node(self, name: str) -> GenericNode:
+        """Get Node in Model, by name.
+
+        Parameters
+        ----------
+        name : str
+            Node name.
+
+        Returns
+        -------
+        Node
+            The requested Node.
+
+        Raises
+        ------
+        KeyError
+            Node not found.
+        """
         if self._node_registry.get(name) is not None:
             return self._node_registry[name]
         else:
@@ -375,19 +443,24 @@ class Model(GenericNode):
                            f"model {self.name}.")
 
     @property
-    def nodes(self):
+    def nodes(self) -> List[GenericNode]:
+        """Nodes in the Model, in topological order."""
         return self._nodes
 
     @property
     def node_names(self):
+        """Names of all the Nodes in the Model."""
         return list(self._node_registry.keys())
 
     @property
     def edges(self):
+        """All edges between Nodes, in the form (sender, receiver)."""
         return self._edges
 
     @property
     def input_dim(self):
+        """Input dimension of the Model;
+        input dimensions of all input Nodes."""
         dims = [n.input_dim for n in self.input_nodes]
         if len(dims) == 0:
             return 0
@@ -397,6 +470,8 @@ class Model(GenericNode):
 
     @property
     def output_dim(self):
+        """Ouptut dimension of the Model;
+        output dimensions of all output Nodes."""
         dims = [n.output_dim for n in self.output_nodes]
         if len(dims) == 0:
             return 0
@@ -406,41 +481,76 @@ class Model(GenericNode):
 
     @property
     def input_nodes(self):
+        """First Nodes in the graph held by the Model."""
         return self._inputs
 
     @property
     def output_nodes(self):
+        """Last Nodes in the graph held by the Model."""
         return self._outputs
 
     @property
     def trainable_nodes(self):
+        """Returns all offline and online
+        trainable Nodes in the Model."""
         return [n for n in self.nodes if n.is_trainable]
 
     @property
     def feedback_nodes(self):
+        """Returns all Nodes equiped with a feedback connection
+        in the Model."""
         return [n for n in self.nodes if n.has_feedback]
 
     @property
     def data_dispatcher(self):
+        """DataDispatcher object of the Model. Used to
+        distribute data to Nodes when
+        calling/running/fitting the Model."""
         return self._dispatcher
 
     @property
     def is_empty(self):
+        """Returns True if the Model contains no Nodes."""
         return len(self.nodes) == 0
 
     @property
     def is_trainable(self) -> bool:
+        """Returns True if at least one Node in the Model is trainable."""
         return any([n.is_trainable for n in self.nodes])
 
     @is_trainable.setter
     def is_trainable(self, value):
+        """Freeze or unfreeze trainable Nodes in the Model."""
         trainables = [n for n in self.nodes
                       if n.is_trained_offline or n.is_trained_online]
         for node in trainables:
             node.is_trainable = value
 
     @contextmanager
-    def with_state(self, state=None, stateful=False, reset=False):
+    def with_state(self, state: Dict[str, np.ndarray] = None,
+                   stateful=False, reset=False) -> "Model":
+        """Modify the state of one or several Nodes in the Model
+        using a context manager.
+        The modification will have effect only within the context defined,
+        before all states return back to their previous value.
+
+        Parameters
+        ----------
+        state : dict, optional
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray state vectors.
+        stateful : bool, default to False
+            If set to True, then all modifications made in the context manager
+            will remain after leaving the context.
+        reset : bool, default to False
+            If True, all Nodes will be reset using their :py:meth:`Node.reset`
+            method.
+
+        Returns
+        -------
+            Model
+                Modifyed Model.
+        """
         if state is None and not reset:
             current_state = None
             if not stateful:
@@ -448,6 +558,10 @@ class Model(GenericNode):
             yield self
             if not stateful:
                 self.reset(to_state=current_state)
+        elif isinstance(state, np.ndarray):
+            raise TypeError(f"Impossible to set state of {self.name} with "
+                            f"an array. State should be a dict mapping state "
+                            f"to a Node name within the model.")
         else:
             if state is None:
                 state = {}
@@ -461,7 +575,36 @@ class Model(GenericNode):
                 yield self
 
     @contextmanager
-    def with_feedback(self, feedback=None, stateful=False, reset=False):
+    def with_feedback(self, feedback: Dict[str, np.ndarray] = None,
+                      stateful=False, reset=False) -> "Model":
+        """Modify the feedback received or sent by Nodes in the Model using
+        a context manager.
+        The modification will have effect only within the context defined,
+        before the feedbacks return to their previous states.
+
+        If the Nodes are receiving feedback, then this function will alter the
+        states of the Nodes connected to it through feedback connections.
+
+        If the Nodes are sending feedback, then this function will alter the
+        states (or state proxies, see :py:meth:`Node.state_proxy`) of the
+        Nodes.
+
+        Parameters
+        ----------
+        feedback : dict, optional
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray feedback vectors.
+        stateful : bool, default to False
+            If set to True, then all modifications made in the context manager
+            will remain after leaving the context.
+        reset : bool, default to False
+            If True, all feedbacks  will be reset to zero.
+
+        Returns
+        -------
+            Model
+                Modifyed Model.
+        """
 
         if feedback is None and not reset:
             yield self
@@ -476,15 +619,15 @@ class Model(GenericNode):
                                                            reset=reset))
             yield self
 
-    def reset(self, to_state: Dict = None):
-        """Reset the last state saved to zero or to
-        another state value `from_state`.
+    def reset(self, to_state: Dict[str, np.ndarray] = None):
+        """Reset the last state saved to zero for all Nodes in
+        the Model or to other state values.
 
         Parameters
         ----------
-        to_state : np.ndarray, optional
-            New state value for stateful
-            computations, by default None.
+        to_state : dict, optional
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray state vectors.
         """
         if to_state is None:
             for node in self.nodes:
@@ -494,23 +637,82 @@ class Model(GenericNode):
                 self[node_name].reset(to_state=current_state)
         return self
 
-    def initialize(self, x=None, y=None):
+    def initialize(self, x=None, y=None) -> "Model":
+        """Call the Model initializers on some data points.
+        Model will be virtually run to infer shapes of all nodes given
+        inputs and targets vectors.
+
+        Parameters
+        ----------
+        x : numpy.ndarray or list of numpy.ndarray
+            Input data.
+        y : numpy.ndarray
+            Groudn truth data. Used to infer output dimension
+            of trainable nodes.
+
+        Returns
+        -------
+            Model
+                Initialized Model.
+        """
         self._is_initialized = False
         self._initializer(self, x=x, y=y)
         self.reset()
         self._is_initialized = True
         return self
 
-    def initialize_buffers(self):
+    def initialize_buffers(self) -> "Model":
+        """Call all Nodes buffer initializers. Buffer initializers will create
+        buffer arrays on demand to store transient values of the parameters,
+        typically during training.
+
+        Returns
+        -------
+            Model
+                Initialized Model.
+        """
         for node in self.nodes:
             if node._buffers_initializer is not None:
                 node.initialize_buffers()
 
-    def call(self, x=None, forced_feedback=None, from_state=None,
-             stateful=True, reset=False, return_states=None):
+    def call(self, x: MappedData, forced_feedback: MappedData = None,
+             from_state: Dict[str, np.ndarray] = None, stateful=True,
+             reset=False,
+             return_states: Sequence[str] = None) -> MappedData:
+        """Call the Model forward function on a single step of data.
+        Model forward function is a composition of all its Nodes forward
+        functions.
 
-        if x is not None:
-            x = self._check_input(x)
+        Can update the state its Nodes.
+
+        Parameters
+        ----------
+        x : numpy.ndarray or dict
+            One single step of input data. If dict, then
+            pairs of keys and values, where keys are Model input
+            nodes names and values are single steps of input data.
+        forced_feedback: dict, optional
+            Pairs of keys and values, where keys are Model nodes names and
+            value are feedback vectors to force into the nodes.
+        from_state : dict, optional
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray state vectors.
+        stateful : bool, default to True
+            If True, Node state will be updated by this operation.
+        reset : bool, default to False
+            If True, Nodes states will be reset to zero before this operation.
+        return_states: list of str, optional
+            Names of Nodes from which to return states as output.
+
+        Returns
+        -------
+            numpy.ndarray or dict
+                An output vector or pairs of keys and values
+                where keys are output nodes names and values
+                are corresponding output vectors.
+        """
+
+        x = self._check_input(x)
 
         if not self._is_initialized:
             self.initialize(x)
@@ -531,8 +733,48 @@ class Model(GenericNode):
 
         return state
 
-    def run(self, X=None, forced_feedbacks=None, from_state=None,
-            stateful=True, reset=False, shift_fb=True, return_states=None):
+    def run(self, X: MappedData = None,
+            forced_feedbacks: Dict[str, np.ndarray] = None,
+            from_state: Dict[str, np.ndarray] = None,
+            stateful=True, reset=False, shift_fb=True,
+            return_states: Sequence[str] = None) -> MappedData:
+        """Run the Model forward function on a sequence of data.
+        Model forward function is a composition of all its Nodes forward
+        functions.
+        Can update the state of the
+        Nodes several times.
+
+        Parameters
+        ----------
+        X : numpy.array or dict
+            A sequence of data of shape (timesteps, features).
+            If dict, then pairs of keys and values, where keys are Model input
+            nodes names and values are sequence of input data.
+        forced_feedback: dict
+            Pairs of keys and values, where keys are Model nodes names and
+            value are sequences of feedback vectors to force into the nodes.
+        from_state : dict
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray state vectors.
+        stateful : bool, default to True
+            If True, Node state will be updated by this operation.
+        reset : bool, default to False
+            If True, Nodes states will be reset to zero before this operation.
+        shift_fb: bool, defaults to True
+            If True, then forced feedbacks are fed to nodes with a
+            one timestep delay. If forced feedbacks are a sequence
+            of target vectors matching the sequence of input
+            vectors, then this parameter should be set to True.
+        return_states: list of str, optional
+            Names of Nodes from which to return states as output.
+
+        Returns
+        -------
+            numpy.ndarray or dict
+                A sequence of output vectors or pairs of keys and values
+                where keys are output nodes names and values
+                are corresponding sequences of output vectors.
+        """
 
         self._initialize_on_sequence(X, forced_feedbacks)
 
@@ -566,7 +808,56 @@ class Model(GenericNode):
 
     def train(self, X, Y=None, force_teachers=True, learn_every=1,
               from_state=None, stateful=True,
-              reset=False, return_states=None):
+              reset=False, return_states=None) -> MappedData:
+        """Train all online Nodes in the Model
+        using their online learning rule.
+
+        Parameters
+        ----------
+        X : numpy.ndarray or dict.
+            Input sequence of data. If dict, then pairs
+            of keys and values, where keys are Model input
+            nodes names and values are sequence of input data.
+        Y : numpy.ndarray or dict, optional.
+            Target sequence of data.
+            If dict, then pairs of keys and values, where keys are Model
+            online trainable nodes names values are sequences
+            of target data. If None, the Nodes will search a feedback
+            signal, or train in an unsupervised way, if possible.
+        force_teachers : bool, default to True
+            If True, this Model will broadcast the available ground truth
+            signal
+            to all online nodes sending feedabck to other nodes. Otherwise,
+            the real state of these nodes will be sent to the feedback
+            receivers
+            during training.
+        call : bool, default to True
+            It True, call the Model and update its Nodes states before
+            applying the
+            learning rule. Otherwise, use the train method
+            on the nodes current states.
+        learn_every : int, default to 1
+            Time interval at which training must occur, when dealing with a
+            sequence of input data. By default, the training method is called
+            every time the Model receive an input.
+        from_state : dict
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray state vectors.
+        stateful : bool, default to True
+            If True, Node state will be updated by this operation.
+        reset : bool, default to False
+            If True, Nodes states will be reset to zero before this operation.
+
+        Returns
+        -------
+            numpy.ndarray or dict
+                All outputs computed during the training
+                or pairs of keys and values
+                where keys are output nodes names and values
+                are corresponding outputs computed.
+                If `call` is False,
+                outputs will be null vectors.
+        """
 
         self._check_if_only_online()
 
@@ -613,9 +904,42 @@ class Model(GenericNode):
 
         return states
 
-    def fit(self, X=None, Y=None, force_teachers=True,
-            from_state=None, stateful=True, reset=False,
-            workers=1):
+    def fit(self, X: MappedData, Y: MappedData,
+            force_teachers=True,
+            from_state=None, stateful=True, reset=False) -> "Model":
+        """Fit all offline Nodes in the Model
+        using their offline learning rule.
+
+        Parameters
+        ----------
+        X : numpy.ndarray or dict.
+            Input sequence of data. If dict, then pairs
+            of keys and values, where keys are Model input
+            nodes names and values are sequence of input data.
+        Y : numpy.ndarray or dict.
+            Target sequence of data. If dict, then pairs
+            of keys and values, where keys are Model input
+            nodes names and values are sequence of target data.
+        force_teachers : bool, default to True
+            If True, this Model will broadcast the available ground truth
+            signal
+            to all online nodes sending feedback to other nodes. Otherwise,
+            the real state of these nodes will be sent to the feedback
+            receivers
+            during training.
+        from_state : dict
+            Pairs of keys and values, where keys are Model nodes names and
+            value are new ndarray state vectors.
+        stateful : bool, default to True
+            If True, Node state will be updated by this operation.
+        reset : bool, default to False
+            If True, Nodes states will be reset to zero before this operation.
+
+        Returns
+        -------
+            Model
+                Model trained offline.
+        """
 
         if not any([n for n in self.trainable_nodes if n.is_trained_offline]):
             raise TypeError(f"Impossible to fit model {self} offline: "
@@ -675,11 +999,11 @@ class Model(GenericNode):
 
         return self
 
-    def partial_fit(self, *args, **kwargs):
-        return self
-
 
 class FrozenModel(Model):
+    """A FrozenModel is a Model that can not be
+    linked to other nodes or models.
+    """
 
     def __init__(self, *args, **kwargs):
         super(FrozenModel, self).__init__(*args, **kwargs)
