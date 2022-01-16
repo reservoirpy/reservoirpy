@@ -15,26 +15,10 @@ from numpy.random import default_rng, SeedSequence, Generator
 from ..utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
 from ..utils.validation import add_bias, check_input_lists, check_reservoir_matrices
 from .utils.save import _save
-from ..base.types import Weights, Data, Activation
+from ..types import Weights, Data, Activation
 
 
 class _ESNBase(metaclass=ABCMeta):
-
-    _W: Weights
-    _Win: Weights
-    _Wout: Weights
-    _Wfb: Weights
-    lr: float
-    activation: Activation
-    fbfunc: Activation
-    noise_in: float
-    noise_rc: float
-    noise_out: float
-    seed: int
-    dtype: np.dtype
-    _dim_in: int
-    _dim_out: int
-    _N: int
 
     def __init__(self,
                  W: Weights,
@@ -59,7 +43,7 @@ class _ESNBase(metaclass=ABCMeta):
         self._Wout = Wout
         self._Wfb = Wfb
 
-        self.lr = lr  # leaking rate
+        self.lr = lr
         self.activation = activation
         self.noise_in = noise_in
         self.noise_rc = noise_rc
@@ -93,26 +77,32 @@ class _ESNBase(metaclass=ABCMeta):
 
     @property
     def N(self):
+        """Number of units."""
         return self._N
 
     @property
     def dim_in(self):
+        """Input dimension."""
         return self._dim_in
 
     @property
     def dim_out(self):
+        """Output (readout) dimension."""
         return self._dim_out
 
     @property
     def input_bias(self):
+        """If True, constant bias is added to inputs."""
         return self._input_bias
 
     @property
     def use_raw_input(self):
+        """If True, raw inputs are concatenated to states before readout."""
         return self._use_raw_input
 
     @property
     def Win(self):
+        """Input weight matrix."""
         return self._Win
 
     @Win.setter
@@ -128,6 +118,7 @@ class _ESNBase(metaclass=ABCMeta):
 
     @property
     def W(self):
+        """Recurrent weight matrix."""
         return self._W
 
     @W.setter
@@ -142,6 +133,7 @@ class _ESNBase(metaclass=ABCMeta):
 
     @property
     def Wfb(self):
+        """Feedback weight matrix."""
         return self._Wfb
 
     @Wfb.setter
@@ -156,6 +148,7 @@ class _ESNBase(metaclass=ABCMeta):
 
     @property
     def Wout(self):
+        """Readout weight matrix."""
         return self._Wout
 
     @Wout.setter
@@ -169,9 +162,11 @@ class _ESNBase(metaclass=ABCMeta):
         self._dim_out = self._Wout.shape[0]
 
     def zero_state(self):
+        """Returns zero state vector."""
         return np.zeros((1, self.N), dtype=self.typefloat)
 
     def zero_feedback(self):
+        """Returns a zero feedabck vector."""
         if self.Wfb is not None:
             return np.zeros((1, self.dim_out), dtype=self.typefloat)
         else:

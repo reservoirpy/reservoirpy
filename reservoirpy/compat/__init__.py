@@ -1,3 +1,44 @@
+"""
+==================================================
+ReservoirPy v0.2 tools (:mod:`reservoirpy.compat`)
+==================================================
+
+ReservoirPy v0.2 tools, kept for compatibility with older projects.
+
+Warning
+-------
+
+    ReservoirPy v0.2 tools are deprecated. No removal date has been set,
+    however, we encourage users to switch to newer versions (v0.3) of the
+    library. The function :py:func:`load_compat` can help you load v0.2 models
+    using the new Node API (see :ref:`node`), introduced in version v0.3.
+
+Load and backport
+=================
+
+.. autosummary::
+    :toctree: generated/
+
+    load_compat - Load v0.2 models into v0.3
+    load - Load old v0.2 models
+
+ESN and ESNOnline
+=================
+
+.. autosummary::
+    :toctree: generated/
+
+    ESN - ESN model with parallelized training
+    ESNOnline - ESN with FORCE learning
+
+Regression models
+=================
+
+.. autosummary::
+    :toctree: generated/
+
+    regression_models.RidgeRegression - Tikhonov regression solver
+"""
 import json
 import pathlib
 import dill
@@ -91,7 +132,7 @@ def load_compat(directory: Union[str, pathlib.Path]) -> ESN_v3:
 
     Returns
     -------
-        ESN
+        reservoirpy.nodes.ESN
             A ReservoirPy v0.3 ESN instance.
     """
     dirpath = pathlib.Path(directory)

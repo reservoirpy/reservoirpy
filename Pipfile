@@ -17,8 +17,15 @@ numba = "*"
 psutil = "*"
 twine = "*"
 pydata-sphinx-theme = "*"
+sphinx-panels = "*"
+sphinx = "*"
+sphinx-autobuild = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.8"
+
+[packages.e1839a8]
+path = "."
+editable = true

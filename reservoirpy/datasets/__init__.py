@@ -1,43 +1,108 @@
-"""ReservoirPy toy and life-sized datasets.
+"""
+======================================
+Datasets (:mod:`reservoirpy.datasets`)
+======================================
 
-Chaotic timeseries
-------------------
-    Timeseries expressing a chaotic behaviour, generated at will.
+.. currentmodule:: reservoirpy.datasets
 
-    All timeseries defined by differential equations on a
-    continuous space are approximated using 4-5th order
-    Runge-Kuta method [#]_, either homemade (for Mackey-Glass timeseries)
-    or from Scipy `solve_ivp`_ tool.
+Chaotic timeseries on continuous time
+=====================================
 
-    Available chaotic attractors:
+Timeseries expressing a chaotic behaviour and defined on a continuous
+time axis, generated at will.
 
-    **Discrete timeseries**
+All timeseries defined by differential equations on a
+continuous space are by default approximated using 4-5th order
+Runge-Kuta method [1]_, either homemade (for Mackey-Glass timeseries)
+or from Scipy :py:func:`scipy.integrate.solve_ivp` tool.
 
-    - :py:func:`logistic_map`: Logistic map timeseries.
+.. autosummary::
+   :toctree: generated/
 
-    - :py:func:`henon_map`: Hénon map timeseries.
+    mackey_glass - Mackey-Glass delayed differential equations timeseries.
+    lorenz - Lorenz system timeseries.
+    multiscroll - Multi scroll attractor timeseries.
+    doublescroll - Double scroll attractor timeseries.
+    rabinovich_fabrikant - Rabinovitch-Fabrikant differential equations timeseries.
 
-    - :py:func:`narma`: NARMA timeseries.
+Chaotic timeseries on discrete time
+===================================
 
-    **Approximations of continuous timeseries**
+Timeseries expressing a chaotic behaviour and defined on a discrete
+time axis, generated at will.
 
-    - :py:func:`mackey_glass`: Mackey-Glass delayed differential equations timeseries.
+Discrete timeseries are defined using recurrent time-delay relations.
 
-    - py:func:`lorenz`: Lorenz system timeseries.
+.. autosummary::
+    :toctree: generated/
 
-    - :py:func:`multiscroll`: Double scroll attractor timeseries.
+    logistic_map - Logistic map timeseries
+    henon_map - Hénon map timeseries
+    narma - NARMA timeseries
 
-    - :py:func:`rabinovich_fabrikant`: Rabinovitch-Fabrikant differential
-      equations timeseries.
+
+Miscellaneous
+=============
+
+.. autosummary::
+    :toctree: generated/
+
+    to_forecasting - Timeseries splitting utility
+    set_seed - Change random seed for dataset generation
+    get_seed - Return random seed used for dataset generation
+
 
 References
-----------
-    .. [#] `Runge–Kutta methods
+==========
+
+    .. [1] `Runge–Kutta methods
            <https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods>`_
            on Wikipedia.
-
-
-.. _solve_ivp: https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
+    .. [2] M. Hénon, ‘A two-dimensional mapping with a strange
+           attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
+    .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
+           on Wikipédia
+    .. [4] R. M. May, ‘Simple mathematical models with very
+           complicated dynamics’, Nature, vol. 261, no. 5560,
+           Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
+    .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
+           on Wikipédia
+    .. [6] E. N. Lorenz, ‘Deterministic Nonperiodic Flow’,
+           Journal of the Atmospheric Sciences, vol. 20, no. 2,
+           pp. 130–141, Mar. 1963,
+           doi: 10.1175/1520-0469(1963)020<0130:DNF>2.0.CO;
+    .. [7] `Lorenz system <https://en.wikipedia.org/wiki/Lorenz_system>`_
+           on Wikipedia.
+    .. [8] M. C. Mackey and L. Glass, ‘Oscillation and chaos in
+           physiological control systems’, Science, vol. 197, no. 4300,
+           pp. 287–289, Jul. 1977, doi: 10.1126/science.267326.
+    .. [9] `Mackey-Glass equations
+            <https://en.wikipedia.org/wiki/Mackey-Glass_equations>`_
+            on Wikipedia.
+    .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
+       Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
+       Jul. 1999, doi: 10.1142/S0218127499001024.
+    .. [11] `Chen double scroll attractor
+           <https://en.wikipedia.org/wiki/Multiscroll_attractor
+           #Chen_attractor>`_
+           on Wikipedia.
+    .. [12] M. I. Rabinovich and A. L. Fabrikant,
+       ‘Stochastic self-modulation of waves in
+       nonequilibrium media’, p. 8, 1979.
+    .. [13] `Rabinovich-Fabrikant equations
+           <https://en.wikipedia.org/wiki/Rabinovich%E2%80
+           %93Fabrikant_equations>`_
+           on Wikipedia.
+    .. [14] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
+       network training: unifying the algorithms and accelerating
+       convergence,‘ in IEEE Transactions on Neural Networks,
+       vol. 11, no. 3, pp. 697-709, May 2000,
+       doi: 10.1109/72.846741.
+    .. [15] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
+           D. Stroobandt, ‘Improving reservoirs using intrinsic
+           plasticity‘,
+           Neurocomputing, 71. 1159-1171, 2008,
+           doi: 10.1016/j.neucom.2007.12.020.
 """
 from typing import Union
 

@@ -7,7 +7,7 @@
 [![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
 
 
-# ReservoirPy (v0.3.0-**beta2**) :cyclone:
+# ReservoirPy (v0.3.0) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
@@ -35,37 +35,39 @@ with the help of the hyperopt library.
 
 This library works for Python 3.8 and higher.
 
-## Offcial documentation :closed_book:
+## Offcial documentation 📖
 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process.
 
 ## Installation
 
-⚠️ **The version currently displayed in the `master` branch is a 
-pre-release of ReservoirPy** ⚠️
-
-Recommended: use Python 3.8 and not higher versions.
-
 To install it, use one of the following command:
-
-```bash
-pip install --pre reservoirpy
-```
-
-or 
-
-```bash
-pip install reservoirpy==0.3.0b2
-```
-
-If you want to use the previous version 0.2.4 (stable), you can install ReservoirPy using:
 
 ```bash
 pip install reservoirpy
 ```
 
-## Quick try :zap:
+or 
+
+```bash
+pip install reservoirpy==0.3.0
+```
+
+If you want to use the previous version 0.2.4, you can install ReservoirPy using:
+
+```bash
+pip install reservoirpy==0.2.4
+```
+
+If you want to enable the `hyper` package and its hyperparameter optimization helpers using
+[hyperopt](http://hyperopt.github.io/hyperopt/), use:
+
+```bash
+pip install reservoirpy[hyper]
+```
+
+## Quick try ⚡
 
 ### An example on Chaotic timeseries prediction (MackeyGlass)
 

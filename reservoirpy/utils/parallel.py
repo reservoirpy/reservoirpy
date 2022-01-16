@@ -16,7 +16,7 @@ from joblib import Parallel, delayed
 import numpy as np
 from tqdm import tqdm
 
-from reservoirpy.base.types import global_dtype
+from ..types import global_dtype
 
 _AVAILABLE_BACKENDS = ("loky", "multiprocessing",
                        "threading", "sequential")
@@ -199,7 +199,7 @@ class ParallelProgressQueue:
     def __init__(self, total, text, verbose):
         self._verbose = verbose
         if verbose is True:
-            self._queue = manager.Queue()
+            self._queue = Manager().Queue()
             self._process = Process(target=self._listen)
         else:
             self._queue = None

@@ -5,13 +5,13 @@ to compute the readout matrix coefficients with simple
 linear regression algorithms, like ridge regularized regression
 or any linear model from scikit-learn API.
 
-These models are already packed in the :py:class:`reservoirpy.ESN`
+These models are already packed in the :py:class:`compat.ESN`
 class, and can instanciated by passing them as arguments to the `ESN`
 object.
 
 In most cases, you won't need to call this module directly. Simply
 pass the models to the `ESN` object as parameters.
-See the :py:class:`reservoirpy.ESN` documentation for more information.
+See the :py:class:`compat.ESN` documentation for more information.
 """
 from abc import ABCMeta
 
@@ -20,7 +20,7 @@ from joblib import Parallel, delayed
 from scipy import linalg
 
 from ..utils.parallel import get_joblib_backend, as_memmap, clean_tempfile
-from ..base.types import Weights, Data
+from ..types import Weights, Data
 from ..utils.validation import check_vector, add_bias
 
 

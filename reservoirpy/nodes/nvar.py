@@ -12,7 +12,7 @@ else:
 
 import numpy as np
 
-from reservoirpy.base.node import Node
+from reservoirpy.node import Node
 
 
 def forward(node, x):

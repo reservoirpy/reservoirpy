@@ -130,7 +130,14 @@ def _new_from_save(base_cls, restored_attr):
 
 
 def load(directory: str):
-    """Load an ESN model.
+    """Load an ESN model in v0.2 format.
+
+    Warning
+    -------
+
+        v0.2 models are deprecated. Consider using :py:func:`load_compat` to
+        translate saved models from v0.2 to new Node API (see :ref:`node`)
+        introduced in v0.3.
 
     Parameters
     ----------
@@ -139,7 +146,7 @@ def load(directory: str):
 
     Returns
     -------
-        :py:class:`reservoirpy.ESN`
+        :py:class:`compat.ESN`
             Loaded ESN.
     """
     with open(os.path.join(directory, "esn.json"), "r") as f:

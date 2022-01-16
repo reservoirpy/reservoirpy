@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from inspect import signature
 from typing import Sequence
 from multiprocessing import Manager
 
@@ -12,9 +11,10 @@ from .force import FORCE
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
-from reservoirpy.base.model import FrozenModel
-from ..utils import to_ragged_seq_set, progress, verbosity, _obj_from_kwargs
-from reservoirpy.base.types import GenericNode
+from ..model import FrozenModel
+from ..utils import progress, verbosity, _obj_from_kwargs
+from reservoirpy._utils import to_ragged_seq_set
+from ..types import GenericNode
 from ..utils.validation import is_mapping
 from ..utils.parallel import get_joblib_backend
 
