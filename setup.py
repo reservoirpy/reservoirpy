@@ -15,8 +15,8 @@ AUTHOR_EMAIL = "xavier.hinaut@inria.fr"
 MAINTAINERS = "Xavier Hinaut, Nathan Trouvain"
 MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, nathan.trouvain@inria.fr"
 
-DESCRIPTION = ("A simple and flexible code for Reservoir "
-               "Computing architectures like Echo State Networks.")
+DESCRIPTION = "A simple and flexible code for Reservoir " \
+               "Computing architectures like Echo State Networks."
 
 with open("README.md", "r", encoding="utf-8") as f:
     LONG_DESCRIPTION = f.read()
@@ -29,9 +29,13 @@ INSTALL_REQUIRES = [
     "joblib>=0.12",
     "dill>=0.3.0"
     'numpy>=1.15.0',
-    'scipy>=1.0.0',
+    'scipy>=1.0.0,<=1.7.3',
     'joblib>=0.12',
 ]
+
+EXTRA_REQUIRES = {
+    'hyper': ['matplotlib>=2.2.0', 'hyperopt', 'seaborn'],
+}
 
 PROJECT_URLS = {
     'Bug Tracker': 'https://github.com/reservoirpy/reservoirpy/issues',
@@ -76,5 +80,6 @@ if __name__ == "__main__":
              'Implementation :: PyPy')
         ],
         python_requires='>=3.6',
-        install_requires=INSTALL_REQUIRES
+        install_requires=INSTALL_REQUIRES,
+        extra_require=EXTRA_REQUIRES,
     )

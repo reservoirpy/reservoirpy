@@ -1,4 +1,4 @@
-.. _reservoirpy.ops:
+.. _reservoirpy:
 
 {{ header }}
 

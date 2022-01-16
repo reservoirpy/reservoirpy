@@ -1,10 +1,10 @@
 .. _node:
 
+{{ header }}
+
 .. |warrow| image:: ../_static/user_guide/node/w_weight.svg
 
 .. |winarrow| image:: ../_static/user_guide/node/win_weight.svg
-
-{{ header }}
 
 ===================
 Node functional API
@@ -29,19 +29,19 @@ layer of linear neurons connected with the neurons of the reservoir. The readout
 a learning rule such as ridge regression.
 
 To define an ESN in ReservoirPy, we therefore need to connect
-two nodes in a graph: a :py:class:`Reservoir` node and a :py:class:`Ridge` node. The graph defines that the reservoir
+two nodes in a graph: a :py:class:`~.Reservoir` node and a :py:class:`~.Ridge` node. The graph defines that the reservoir
 internal states must be given as input to the readout.
 
 These two nodes give access to all characteristics of the reservoir and the readout we define for the task: their
 parameters, their hyperparameters, their states, their functions, and so on.
 
-In the following guide, you will learn more about how to work with :py:class:`Node` objects. If you want to learn more
+In the following guide, you will learn more about how to work with :py:class:`~.Node` objects. If you want to learn more
 about how to define computational graphs of nodes, you can read :ref:`model`.
 
 What is a Node, really ?
 ------------------------
 
-In a computational graph, each operation is represented by a :py:class:`Node`. A node is able
+In a computational graph, each operation is represented by a :py:class:`~.Node`. A node is able
 to apply the operation it holds on any data reaching it through all the connections with other nodes in the
 graph. Within ReservoirPy, we define a Node as a simple object holding a function and an internal state
 (:numref:`node_t0`):
@@ -52,7 +52,7 @@ graph. Within ReservoirPy, we define a Node as a simple object holding a functio
     :width: 100px
     :alt: A Node wraps a function and an internal state.
 
-    The most simple schema of a :py:class:`Node`.
+    The most simple schema of a :py:class:`~.Node`.
 
 
 Here, a node is given a function :math:`f`, called a **forward function**,
@@ -76,20 +76,20 @@ where :math:`x[t]` represents some input data arriving to the node at time :math
     :width: 300px
     :alt: The function held by the Node can compute next state of the Node given its current state and some inputs.
 
-    A :py:class:`Node` is used to executes the forward function :math:`f`, which computes its next state
+    A :py:class:`~.Node` is used to executes the forward function :math:`f`, which computes its next state
     :math:`s[t+1]` given the current state of the Node :math:`s[t]` and some input data :math:`x[t]`.
 
 
 Accessing state
 ---------------
 
-In ReservoirPy, a node internal state is accessible through the :py:meth:`Node.state` method:
+In ReservoirPy, a node internal state is accessible through the :py:meth:`~.Node.state` method:
 
 .. code-block:: python
 
     s_t0 = node.state()
 
-The state is always a :py:class:`numpy.ndarray` vector, of shape ``(1, ndim)``, where ``ndim`` is the dimension of the
+The state is always a :py:class:`~.numpy.ndarray` vector, of shape ``(1, ndim)``, where ``ndim`` is the dimension of the
 node internal state.
 
 To learn how to modify or initialize a node state, see :ref:`state`.
@@ -97,7 +97,7 @@ To learn how to modify or initialize a node state, see :ref:`state`.
 Applying node function and updating state
 -----------------------------------------
 
-And to apply the forwardfunction :math:`f` to some input data, one can simply use the :py:meth:`Node.call` method of a
+And to apply the forwardfunction :math:`f` to some input data, one can simply use the :py:meth:`~.Node.call` method of a
 node, or directory call the node on some data:
 
 .. code-block:: python
@@ -122,7 +122,7 @@ To learn how to modify this automatic update, see :ref:`state`.
     :width: 300px
     :alt: Calling a Node on some input data returns the new value of the internal state of the Node, and stores this state in the Node.
 
-    Calling a :py:class:`Node` returns next state value :math:`s[t+1]` and updates the node internal state with this new value.
+    Calling a :py:class:`~.Node` returns next state value :math:`s[t+1]` and updates the node internal state with this new value.
 
 Parametrized nodes
 ------------------
@@ -140,7 +140,7 @@ We call them **hyperparameters**.
     :width: 100px
     :alt: A Node can also hold parameters and hyperparameters.
 
-    A :py:class:`Node` can also hold parameters and hyperparameter to parametrize :math:`f`.
+    A :py:class:`~.Node` can also hold parameters and hyperparameter to parametrize :math:`f`.
 
 A node can therefore be more generally described as :eq:`rec_node_params`:
 
@@ -207,9 +207,9 @@ steps of the timeseries, and the node state will be updated accordingly (:numref
     :width: 400px
     :alt: A node can apply its function on some timeseries while updating its state at every time step.
 
-    A :py:class:`Node` can apply its function on some timeseries while updating its state at every time step.
+    A :py:class:`~.Node` can apply its function on some timeseries while updating its state at every time step.
 
-To apply a :py:class:`Node` on a timeseries, you can use the :py:meth:`Node.run` method:
+To apply a :py:class:`~.Node` on a timeseries, you can use the :py:meth:`~.Node.run` method:
 
 .. code-block::
 
@@ -218,10 +218,10 @@ To apply a :py:class:`Node` on a timeseries, you can use the :py:meth:`Node.run`
     # states = [s[t+1], s[t+2], ..., s[t+n+1]]
 
 
-An example using :py:class:`Reservoir` node
--------------------------------------------
+An example using :py:class:`~.Reservoir` node
+---------------------------------------------
 
-Let's use the :py:class:`Reservoir` class as an example of node. :py:class:`Reservoir` class is one of the cornerstone
+Let's use the :py:class:`~.Reservoir` class as an example of node. :py:class:`~.Reservoir` class is one of the cornerstone
 of reservoir computing tools in ReservoirPy. It models a pool of leaky integrator rate neurons,
 sparsely connected together. All connections within the pool are random, and neurons can be connected to themselves.
 The forward function of a Reservoir node can be seen in equation :eq:`res_equation`.
@@ -243,10 +243,10 @@ Connections stored in :math:`W` are represented using |warrow| in figure :numref
     :width: 400px
     :alt: A reservoir node.
 
-    A :py:class:`Reservoir`. Internal state of the node is a vector containing activations of all neurons in the
+    A :py:class:`~.Reservoir`. Internal state of the node is a vector containing activations of all neurons in the
     reservoir.
 
-To instanciate a :py:class:`Reservoir`, only the number of units within it is required. Leaking rate will have in that
+To instanciate a :py:class:`~.Reservoir`, only the number of units within it is required. Leaking rate will have in that
 case a default value of 1, and :math:`W` and :math:`W_{in}` will be randomly initialized with a 80% sparsity.
 
 .. ipython:: python
@@ -270,7 +270,7 @@ a null vector. We first create some dummy timeseries ``X``:
 
 Notice that all nodes require data to be 2-dimensional arrays, with first axis representing time and second axis
 representing features. We can now call the resevoir on some data, to update its internal state as shown below.
-Reservoir state is accessible using its :py:meth:`Reservoir.state` method.
+Reservoir state is accessible using its :py:meth:`~.Reservoir.state` method.
 
 .. ipython:: python
 
@@ -283,10 +283,10 @@ Reservoir state is accessible using its :py:meth:`Reservoir.state` method.
     :width: 400px
     :alt: A reservoir node is updated.
 
-    A :py:class:`Reservoir` is called on some data point :math:`x[t]`, which activates the pool of neurons to update
+    A :py:class:`~.Reservoir` is called on some data point :math:`x[t]`, which activates the pool of neurons to update
     their state according to equation :eq:`res_equation`.
 
-We can also retrieve all activations of the reservoir on the full timeseries, using :py:meth:`Reservoir.run`:
+We can also retrieve all activations of the reservoir on the full timeseries, using :py:meth:`~.Reservoir.run`:
 
 .. ipython:: python
 
@@ -317,7 +317,7 @@ Learn more
 
 Now that you are more familiar with the basic concepts of the Node API, you can see:
 
-- :ref:`model` on how to connect nodes together to create :py:class:`Model` objects,
+- :ref:`model` on how to connect nodes together to create :py:class:`~.Model` objects,
 
 - :ref:`learning_rules` on how to make your nodes and models learn from data,
 

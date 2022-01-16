@@ -9,7 +9,7 @@ In ReservoirPy, these learning rules are sorted in two categories: **offline** l
 and **online** learning rules.
 
 Nodes can be equiped with such learning rules, and learning can be triggered by using their,
-:py:meth:`Node.fit` (offline learning) and :py:meth:`Node.train` (online learning) methods.
+:py:meth:`~.Node.fit` (offline learning) and :py:meth:`~.Node.train` (online learning) methods.
 
 Offline learning rules - Linear regression
 ------------------------------------------
@@ -23,7 +23,7 @@ given all available samples of data and all available samples of target values. 
 be updated without training the model on the whole dataset another time. Training and data gathering happen in two
 separate phases.
 
-Linear regression is implemented in ReservoirPy through the :py:class:`Ridge` node. Ridge node is equiped with a
+Linear regression is implemented in ReservoirPy through the :py:class:`~.Ridge` node. Ridge node is equiped with a
 regularized linear regression learning rule, of the form :eq:`ridge`:
 
 .. math::
@@ -33,8 +33,8 @@ regularized linear regression learning rule, of the form :eq:`ridge`:
 
 Where :math:`X` is a series of inputs, and :math:`Y` is a series of target values that the network must learn to
 predict. :math:`\lambda` is a regularization
-parameter used to avoid overfitting. In most cases, as the :py:class:`Ridge` node will be used within an Echo State
-Network (ESN), :math:`X` wil represent the series of activations of a :py:class:`Reservoir` node over a timeseries.
+parameter used to avoid overfitting. In most cases, as the :py:class:`~.Ridge` node will be used within an Echo State
+Network (ESN), :math:`X` wil represent the series of activations of a :py:class:`~.Reservoir` node over a timeseries.
 The algorithm will therefore compute a matrix of neuronal weights :math:`W_{out}` (and a bias term)
 such as predictions can be computed using equation :eq:`ridgeforward`.
 :math:`W_{out}` (and bias) is stored in the node :py:attr:`Node.params` attribute.
@@ -48,11 +48,11 @@ which is the forward function of the Ridge node. :math:`y[t]` represents the sta
 :math:`t`, and also the predicted value given the input :math:`x[t]`.
 
 
-Offline learning with :py:meth:`Node.fit`
------------------------------------------
+Offline learning with :py:meth:`~.Node.fit`
+-------------------------------------------
 
-Offline learning can be performed using the :py:meth:`Node.fit` method.
-In the following example, we will use the :py:class:`Ridge` node.
+Offline learning can be performed using the :py:meth:`~.Node.fit` method.
+In the following example, we will use the :py:class:`~.Ridge` node.
 
 We start by creating some input data ``X`` and some target data ``Y`` that the model has to predict.
 
@@ -61,7 +61,7 @@ We start by creating some input data ``X`` and some target data ``Y`` that the m
     X = np.arange(100)[:, np.newaxis]
     Y = np.arange(100)[:, np.newaxis]
 
-Then, we create a :py:class:`Ridge` node. Notice that it is not necessary to indicate the number of neurons in that
+Then, we create a :py:class:`~.Ridge` node. Notice that it is not necessary to indicate the number of neurons in that
 node. ReservoirPy will infer it from the shape of the target data.
 
 .. ipython:: python
@@ -81,12 +81,12 @@ function, with a weight of 1 and a bias of 0.
 Ridge regression can obviously handle much more complex tasks, such as chaotic attractor modeling or timeseries
 forecasting, when coupled with a reservoir inside an ESN.
 
-Offline learning with :py:meth:`Model.fit`
-------------------------------------------
+Offline learning with :py:meth:`~.Model.fit`
+--------------------------------------------
 
-Models also have a :py:meth:`Model.fit` method, working similarly to the one of the Node class presented above.
-The :py:meth:`Model.fit` method can only be used if all nodes in the model are offline nodes, or are not trainable.
-If all nodes are offlines, then the :py:meth:`Node.fit` method of all offline nodes in the model will be called
+Models also have a :py:meth:`~.Model.fit` method, working similarly to the one of the Node class presented above.
+The :py:meth:`~.Model.fit` method can only be used if all nodes in the model are offline nodes, or are not trainable.
+If all nodes are offlines, then the :py:meth:`~.Node.fit` method of all offline nodes in the model will be called
 as soon as all input data is available. If input data for an offline node B comes from another offline node A,
 then the model will fit A on all available data, then run it, and finally resume training B.
 
@@ -98,11 +98,11 @@ task we need the ESN to perform is to predict the cosinus form of a wave given i
     X = np.sin(np.linspace(0, 20, 100))[:, np.newaxis]
     Y = np.cos(np.linspace(0, 20, 100))[:, np.newaxis]
 
-Then, we create an ESN model by linking a :py:class:`Reservoir` node with a :py:class:`Ridge` node. The
-:py:class:`Ridge` node will be used as readout and trained to learn a mapping between reservoir states
+Then, we create an ESN model by linking a :py:class:`~.Reservoir` node with a :py:class:`~.Ridge` node. The
+:py:class:`~.Ridge` node will be used as readout and trained to learn a mapping between reservoir states
 and targeted outputs. We will regularize its activity using a ridge parameter of :math:`10^{-3}`. We will also tune
 some of the reservoir hyperparameters to obtain better results.
-We can then train the model using :py:meth:`Model.fit`.
+We can then train the model using :py:meth:`~.Model.fit`.
 
 .. ipython:: python
 
@@ -154,11 +154,11 @@ convergence, Reservoir Computing algorithms can use this kind of rules. Indeed, 
 trained. A single layer of neurons can be trained using only local information (no need for gradients coming from
 upper layers in the models and averaged over several runs).
 
-Online learning with :py:meth:`Node.train`
-------------------------------------------
+Online learning with :py:meth:`~.Node.train`
+--------------------------------------------
 
-Online learning can be performed using the :py:meth:`Node.train` method.
-In the following example, we will use the :py:class:`FORCE` node, a single layer of neurons equiped with
+Online learning can be performed using the :py:meth:`~.Node.train` method.
+In the following example, we will use the :py:class:`~.FORCE` node, a single layer of neurons equiped with
 an online learning rule called FORCE algorithm.
 
 We start by creating some input data ``X`` and some target data ``Y`` that the model has to predict.
@@ -168,7 +168,7 @@ We start by creating some input data ``X`` and some target data ``Y`` that the m
     X = np.arange(100)[:, np.newaxis]
     Y = np.arange(100)[:, np.newaxis]
 
-Then, we create a :py:class:`FORCE` node. Notice that it is not necessary to indicate the number of neurons in that
+Then, we create a :py:class:`~.FORCE` node. Notice that it is not necessary to indicate the number of neurons in that
 node. ReservoirPy will infer it from the shape of the target data.
 
 .. ipython:: python
@@ -176,7 +176,7 @@ node. ReservoirPy will infer it from the shape of the target data.
     from reservoirpy.nodes import FORCE
     force = FORCE()
 
-The :py:meth:`Node.train` method can be used as the call method of a Node. Every time the method is called, it updates
+The :py:meth:`~.Node.train` method can be used as the call method of a Node. Every time the method is called, it updates
 the parameter of the node along with its internal state, and return the state.
 
 .. ipython:: python
@@ -186,8 +186,8 @@ the parameter of the node along with its internal state, and return the state.
     s_t1 = force.train(X[1], Y[1])
     print("Parameters after second update:", force.Wout, force.bias)
 
-The :py:meth:`Node.train` method can also be called on a timeseries of variables and targets, in a similar way to
-what can be done with the :py:meth:`Node.run` function. All states computed during the training will be returned
+The :py:meth:`~.Node.train` method can also be called on a timeseries of variables and targets, in a similar way to
+what can be done with the :py:meth:`~.Node.run` function. All states computed during the training will be returned
 by the node.
 
 .. ipython:: python
@@ -223,12 +223,12 @@ We can access the learned parameters looking at the ``Wout`` and ``bias`` parame
 As ``X`` and ``Y`` where the same timeseries, we can see learning was successful: the node has learned the identity
 function, with a weight of 1 and a bias close to 0.
 
-Online learning with :py:meth:`Model.train`
--------------------------------------------
+Online learning with :py:meth:`~.Model.train`
+---------------------------------------------
 
-Models also have a :py:meth:`Model.train` method, working similarly to the one of the Node class presented above.
-The :py:meth:`Model.train` method can only be used if all nodes in the model are online nodes, or are not trainable.
-If all nodes are online, then the :py:meth:`Node.train` methods of all online nodes in the model will be called in the
+Models also have a :py:meth:`~.Model.train` method, working similarly to the one of the Node class presented above.
+The :py:meth:`~.Model.train` method can only be used if all nodes in the model are online nodes, or are not trainable.
+If all nodes are online, then the :py:meth:`~.Node.train` methods of all online nodes in the model will be called in the
 topological order of the graph defined by the model. At each timesteps, onlines nodes are trained, called, and their
 updated states are given to the next nodes in the graph.
 
@@ -240,10 +240,10 @@ task we need the ESN to perform is to predict the cosinus form of a wave given i
     X = np.sin(np.linspace(0, 20, 100))[:, np.newaxis]
     Y = np.cos(np.linspace(0, 20, 100))[:, np.newaxis]
 
-Then, we create an ESN model by linking a :py:class:`Reservoir` node with a :py:class:`FORCE` node. The
-:py:class:`FORCE` node will be used as readout and trained to learn a mapping between reservoir states
+Then, we create an ESN model by linking a :py:class:`~.Reservoir` node with a :py:class:`~.FORCE` node. The
+:py:class:`~.FORCE` node will be used as readout and trained to learn a mapping between reservoir states
 and targeted outputs. We will tune some of the reservoir hyperparameters to obtain better results.
-We can then train the model using :py:meth:`Model.train`.
+We can then train the model using :py:meth:`~.Model.train`.
 
 .. ipython:: python
 

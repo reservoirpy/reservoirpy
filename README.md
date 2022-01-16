@@ -7,7 +7,7 @@
 [![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
 
 
-# ReservoirPy (v0.3.0-**beta2**) 🌀🧠
+# ReservoirPy (v0.3.0) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
@@ -42,25 +42,29 @@ to learn more about the main features of ReservoirPy, its API and the installati
 
 ## Installation
 
-⚠️ **The version currently displayed in the `master` branch is a 
-pre-release of ReservoirPy** ⚠️
-
 To install it, use one of the following command:
 
 ```bash
-pip install --pre reservoirpy
+pip install reservoirpy
 ```
 
 or 
 
 ```bash
-pip install reservoirpy==0.3.0b3
+pip install reservoirpy==0.3.0
 ```
 
-If you want to use the previous version 0.2.4 (stable), you can install ReservoirPy using:
+If you want to use the previous version 0.2.4, you can install ReservoirPy using:
 
 ```bash
-pip install reservoirpy
+pip install reservoirpy==0.2.4
+```
+
+If you want to enable the `hyper` package and its hyperparameter optimization helpers using
+[hyperopt](http://hyperopt.github.io/hyperopt/), use:
+
+```bash
+pip install reservoirpy[hyper]
 ```
 
 ## Quick try ⚡

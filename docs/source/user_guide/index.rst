@@ -22,12 +22,5 @@ see :ref:`quick`.
     model
     learning_rules
     feedback
-    generation
-    initialization
-    state
-    distributed
-    hyperparams
     create_new_node
-    datasets
-    cookbook
     compat

@@ -3,7 +3,7 @@
 Node operations - link, merge (:py:mod:`reservoirpy.ops`)
 =========================================================
 
-Operations on :py:class:`Node` and :py:class:`Model`.
+Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 
 .. currentmodule:: reservoirpy.ops
 
@@ -84,7 +84,7 @@ def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
 def link(node1: Union[GenericNode, Sequence[GenericNode]],
          node2: Union[GenericNode, Sequence[GenericNode]],
          name: str = None) -> Model:
-    """Link two :py:class:`Node` instances to form a :py:class:`Model`
+    """Link two :py:class:`~.Node` instances to form a :py:class:`~.Model`
     instance. `node1` output will be used as input for `node2` in the
     created model. This is similar to a function composition operation:
 
@@ -100,8 +100,8 @@ def link(node1: Union[GenericNode, Sequence[GenericNode]],
 
         model = link(node1, node2)
 
-    -`node1` and `node2` can also be :py:class:`Model` instances. In this
-    case, the new :py:class:`Model` created will contain all nodes previously
+    -`node1` and `node2` can also be :py:class:`~.Model` instances. In this
+    case, the new :py:class:`~.Model` created will contain all nodes previously
     contained in all the models, and link all `node1` outputs to all `node2`
     inputs. This allows to chain the  ``>>`` operator::
 
@@ -109,8 +109,8 @@ def link(node1: Union[GenericNode, Sequence[GenericNode]],
         step2 = step1 >> node2  # this is another
 
     -`node1` and `node2` can finally be lists or tuples of nodes. In this
-    case, all `node1` outputs will be linked to a :py:class:`Concat` node to
-    concatenate them, and the :py:class:`Concat` node will be linked to all
+    case, all `node1` outputs will be linked to a :py:class:`~.Concat` node to
+    concatenate them, and the :py:class:`~.Concat` node will be linked to all
     `node2` inputs. You can still use the ``>>`` operator in this situation,
     except for many-to-many nodes connections::
 
@@ -131,7 +131,7 @@ def link(node1: Union[GenericNode, Sequence[GenericNode]],
     Returns
     -------
         Model
-            A :py:class:`Model` instance chaining the nodes.
+            A :py:class:`~.Model` instance chaining the nodes.
 
     Raises
     ------
@@ -207,7 +207,7 @@ def link_feedback(node: Node,
     node. If `inplace` is set to `True`, then `node` is not copied and the
     feedback is directly connected to `node`. If `feedback` is a list of nodes
     or models, then all nodes in the list are first connected to a
-    :py:class:`Concat` node to create a model gathering all data from all nodes
+    :py:class:`~.Concat` node to create a model gathering all data from all nodes
     in a single feedback vector.
 
      You can also perform this operation using the ``<<`` operator::
@@ -250,10 +250,10 @@ def link_feedback(node: Node,
     Raises
     ------
         TypeError
-            - If `node` is a :py:class:`Model`.
+            - If `node` is a :py:class:`~.Model`.
             Models can not receive feedback.
 
-            - If any of the feedback nodes are not :py:class:`GenericNode`
+            - If any of the feedback nodes are not :py:class:`~.GenericNode`
             instances.
     """
 
@@ -290,10 +290,10 @@ def link_feedback(node: Node,
 
 def merge(model: GenericNode, *models: GenericNode, inplace: bool = False,
           name: str = None) -> GenericNode:
-    """Merge different :py:class:`Model` or :py:class:`Node`
-    instances into a single :py:class:`Model` instance.
+    """Merge different :py:class:`~.Model` or :py:class:`~.Node`
+    instances into a single :py:class:`~.Model` instance.
 
-    :py:class:`Node` instances contained in the models to merge will be
+    :py:class:`~.Node` instances contained in the models to merge will be
     gathered in a single model, along with all previously defined connections
     between them, if they exists.
 
@@ -330,7 +330,7 @@ def merge(model: GenericNode, *models: GenericNode, inplace: bool = False,
     Returns
     -------
     Model
-        A new :py:class:`Model` instance.
+        A new :py:class:`~.Model` instance.
 
     Raises
     ------

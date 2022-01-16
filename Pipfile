@@ -19,6 +19,7 @@ twine = "*"
 pydata-sphinx-theme = "*"
 sphinx-panels = "*"
 sphinx = "*"
+sphinx-autobuild = "*"
 
 [dev-packages]
 

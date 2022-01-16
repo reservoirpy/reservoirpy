@@ -6,17 +6,17 @@
 From Nodes to Models
 ====================
 
-While the :py:class:`Node` class alone provides tools to define recurrently defined functions, such as the equations
+While the :py:class:`~.Node` class alone provides tools to define recurrently defined functions, such as the equations
 of recurrent neural networks, most users will need to combine nodes together to build powerful models.
 
 Now that you have learned more about nodes in ReservoirPy in the :ref:`node` guide, read this guide to understand how
-to combine nodes within complex computational graphs, using the :py:class:`Model` class.
+to combine nodes within complex computational graphs, using the :py:class:`~.Model` class.
 
 Definition
 ----------
 
 Models are object storing nodes and relations between them, to allow **functional composition**. Nodes combined within
-a :py:class:`Model` instance will combine their forward function into one complex forward function :math:`F`. A Model
+a :py:class:`~.Model` instance will combine their forward function into one complex forward function :math:`F`. A Model
 forward function :math:`F` can therefore be seen as a specific composition of all nodes forward functions within it,
 used to update all nodes internal states at once :eq:`model_forward`:
 
@@ -27,7 +27,7 @@ used to update all nodes internal states at once :eq:`model_forward`:
            &= f_n(s_n[t], \dots f_2(s_2[t], f_1(s_1[t], x[t]))) \\
            &= (f_n \circ \dots \circ f_2 \circ f_1)(\{s_n[t], \dots, s_2[t], s_1[t]\}, x[t])
 
-where :math:`S` is the set of all internal states of the :math:`n` nodes in the :py:class:`Model`, and the
+where :math:`S` is the set of all internal states of the :math:`n` nodes in the :py:class:`~.Model`, and the
 :math:`f_n, \dots, f_2, f_1` are the forward functions of these nodes.
 
 We can represent this model as a *computational graph*, where composition of forward functions is represented as an
@@ -47,10 +47,10 @@ can be represented as the graph in :numref:`ABgraph`.
     :math:`f_B`.
 
 
-Create a :py:class:`Model`
---------------------------
+Create a :py:class:`~.Model`
+----------------------------
 
-To define a :py:class:`Model`, the simplest way is to use the ``>>`` operator on some nodes:
+To define a :py:class:`~.Model`, the simplest way is to use the ``>>`` operator on some nodes:
 
 .. code-block:: python
 
@@ -58,7 +58,7 @@ To define a :py:class:`Model`, the simplest way is to use the ``>>`` operator on
 
 This wille create a very simple model storing the graph in :numref:`ABgraph`.
 
-The ``>>`` operation between models uses the function :py:func:`link` of ReservoirPy. You can either use the function
+The ``>>`` operation between models uses the function :py:func:`~.link` of ReservoirPy. You can either use the function
 or the ``>>`` operator to define models:
 
 .. code-block:: python
@@ -66,7 +66,7 @@ or the ``>>`` operator to define models:
     from reservoirpy import link
     model = link(nodeA, nodeB)
 
-As Models are essentially a subclass of :py:class:`Node`, it is also possible to link models together, or nodes to
+As Models are essentially a subclass of :py:class:`~.Node`, it is also possible to link models together, or nodes to
 models. This allow to chain the ``>>`` operator:
 
 .. code-block:: python
@@ -79,7 +79,7 @@ Call and run a Model
 --------------------
 
 Models display the same interface as nodes. They can be called on some data points, or on a timeseries using the
-:py:meth:`Model.run` method. Consider the very simple model defined by:
+:py:meth:`~.Model.run` method. Consider the very simple model defined by:
 
 .. code-block:: python
 
@@ -96,7 +96,7 @@ We can call or run this model:
     # running on a sequence X
     S = model.run(X)
 
-In that case, the variable ``s_t1`` (or ``S`` when using :py:meth:`Model.run`)
+In that case, the variable ``s_t1`` (or ``S`` when using :py:meth:`~.Model.run`)
 stores the internal state of the model output node. Taking the model in
 :numref:`ABgraph` as example, the variable would contain the state of node B, as it is the last one to be visited
 in the graph.
@@ -114,7 +114,7 @@ Access nodes attributes
 -----------------------
 
 A list of all nodes in the model can be retrieved using the :py:attr:`Model.nodes` attribute. You can also retrieve
-them using their names (see :ref:`naming_nodes`) with the method :py:meth:`Model.get_node`:
+them using their names (see :ref:`naming_nodes`) with the method :py:meth:`~.Model.get_node`:
 
 .. code-block:: python
 
@@ -140,8 +140,8 @@ connected neurons, and a *readout*, a simple feed-forward neural network connect
 the reservoir and the readout layer of neurons can be learned (see :ref:`learning_rules` to learn how to train an ESN).
 For now, these connections are kept constant.
 
-In ReservoirPy, a reservoir can be built using a :py:class:`Reservoir` node. A readout equiped with a simple linear
-regression mechanism for connection weight learning can be created using the :py:class:`Ridge` node. We start with
+In ReservoirPy, a reservoir can be built using a :py:class:`~.Reservoir` node. A readout equiped with a simple linear
+regression mechanism for connection weight learning can be created using the :py:class:`~.Ridge` node. We start with
 creating a readout and a reservoir node. The reservoir contains 100 neurons, while the readout is a layer of only
 one neuron.
 
@@ -193,7 +193,7 @@ to node B.
 
 .. note::
 
-    Concatenation of A1 and A2 states will be handled by a :py:class:`Concat` node. This node will be automatically inserted
+    Concatenation of A1 and A2 states will be handled by a :py:class:`~.Concat` node. This node will be automatically inserted
     between nodes A1, A2 and B in that case.
 
 To run this model, we can either give a single data point that will be used by both A1 and A2, or give
@@ -266,10 +266,10 @@ Imagine now that we want to create the model defined by the complicated graph in
     A complicated model.
 
 To create this model, we must decompose it into several path of connections between nodes, or several sub-models. All
-sub-models can then be merged using the ``&`` operator, or the :py:func:`merge` function.
+sub-models can then be merged using the ``&`` operator, or the :py:func:`~.merge` function.
 
 First, let's connect inputs
-to nodes A, B and C. To do this, we can use the :py:class:`Input` node to indicate to the model where inputs should be
+to nodes A, B and C. To do this, we can use the :py:class:`~.Input` node to indicate to the model where inputs should be
 fed.
 
 .. code-block::
@@ -277,7 +277,7 @@ fed.
     path1 = Input() >> [A, B, C]
 
 Now, we can create the big loop of connections going from node A to node F. To ensure that only node F will be used as
-output to the Model, we can use the :py:class:`Output` node.
+output to the Model, we can use the :py:class:`~.Output` node.
 
 .. code-block::
 
@@ -290,7 +290,7 @@ Only two more connections to create! We can now connect A to F and B to E:
     path3 = A >> F
     path4 = B >> E
 
-To create the final model, we will use the :py:func:`merge` function, triggered by the ``&`` operator between models.
+To create the final model, we will use the :py:func:`~.merge` function, triggered by the ``&`` operator between models.
 This operation will gather all nodes and connections defined in all models named ``path#`` into one single model.
 
 .. code-block::

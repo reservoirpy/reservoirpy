@@ -19,7 +19,7 @@ Installation
     :card: + install-card
     :column: col-lg-6 col-md-6 col-sm-12 col-xs-12 p-3
 
-    Installing stable release (v0.2.4)
+    Installing stable release (v0.3.0)
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     ReservoirPy can be installed via pip from `PyPI <https://pypi.org/project/reservoirpy>`__.
@@ -32,16 +32,16 @@ Installation
 
     ---
 
-    Installing beta release (v0.3)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    Installing previous stable release (v0.2.4)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    Current documentation is valid for ReservoirPy pre-release v0.3.
+    User guide of v0.2.4 can be found at :ref:`compat`.
 
         ++++++++++++++++++++++
 
         .. code-block:: bash
 
-            pip install --pre reservoirpy
+            pip install reservoirpy==0.2.4
 
     ---
     :column: col-12 p-3
