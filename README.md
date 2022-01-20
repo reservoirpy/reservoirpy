@@ -28,7 +28,9 @@ It provides a flexible interface to implement efficient Reservoir Computing (RC)
 architectures with a particular focus on Echo State Networks (ESN).
 Advanced features of ReservoirPy allow to improve computation time efficiency
 on a simple laptop compared to basic Python implementation, with datasets of
-any size. Some of its features are: offline and online training, parallel implementation,
+any size. 
+
+Some of its features are: offline and online training, parallel implementation,
 sparse matrix computation, fast spectral initialization, advanced learning rules 
 (e.g. Intrinsic Plasticity) etc. It also makes possible
 to easily create complex architectures with multiple reservoirs (e.g. *deep reservoirs*), 
@@ -37,6 +39,7 @@ Moreover, graphical tools are included to easily explore hyperparameters
 with the help of the *hyperopt* library.
 Finally, it includes several tutorials exploring exotic architectures
 and examples of scientific papers reproduction.
+
 This library works for Python 3.8 and higher.
 
 ## Offcial documentation 📖
