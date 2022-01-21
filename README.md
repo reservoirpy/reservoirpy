@@ -16,7 +16,7 @@ from reservoirpy.nodes import Reservoir, Ridge, Input
 
 data      = Input(input_dim=1)
 reservoir = Reservoir(100, lr=0.3, sr=1.1)
-readout   = Ridge(1, ridge=1e-6)
+readout   = Ridge(ridge=1e-6)
 
 esn = data >> reservoir >> readout
 
