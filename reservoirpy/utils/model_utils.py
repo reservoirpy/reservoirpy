@@ -11,7 +11,7 @@ from reservoirpy.utils.validation import is_mapping
 
 
 def _build_forward_sumodels(nodes, edges, already_trained):
-    from .model import Model
+    from ..model import Model
 
     offline_nodes = [n for n in nodes
                      if n.is_trained_offline and n not in already_trained]
@@ -82,6 +82,9 @@ def to_ragged_seq_set(data):
     # data is an array or a list
     else:
         if not is_sequence_set(data):
-            return [np.atleast_2d(data)]
+            if data.ndim < 3:
+                return [np.atleast_2d(data)]
+            else:
+                return data
         else:
             return data

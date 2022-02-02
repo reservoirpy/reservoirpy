@@ -40,6 +40,20 @@ def check_node_io(node, x, expected_dim,
         else:
             raise TypeError(f"Data type not understood. Expected a single "
                             f"Numpy array but received list in {node}: {x}")
+    # if X is a teacher Node
+    elif io_type == "output" and \
+            hasattr(x, "is_initialized") and \
+            hasattr(x, "output_dim"):
+        if x.is_initialized and expected_dim is not None:
+            if x.output_dim != expected_dim:
+                raise ValueError(msg.format(node.name, expected_dim,
+                                            x.output_dim))
+    # if X is a teacher Node
+    elif io_type == "input" and \
+            hasattr(x, "is_initialized") and \
+            hasattr(x, "output_dim"):
+        raise ValueError("Impossible to use a Node as input X. Nodes can only "
+                         "be used to generate targets Y.")
     return x
 
 
