@@ -80,7 +80,7 @@ import numpy as np
 
 from reservoirpy.utils import progress, verbosity
 from reservoirpy.utils.validation import check_vector, is_mapping
-from ._utils import (_allocate_returned_states, _build_forward_sumodels,
+from .utils.model_utils import (_allocate_returned_states, _build_forward_sumodels,
                      _dist_states_to_next_subgraph, to_ragged_seq_set, )
 from .graphflow import (DataDispatcher, find_entries_and_exits,
                         get_offline_subgraphs, topological_sort, )
@@ -119,6 +119,18 @@ def _run_and_partial_fit(model, offlines, relations, x_seq, y_seq,
 
         return dist_states
 
+
+def _filter_teacher_nodes(Y):
+    if is_mapping(Y):
+        sequences = {n: v for n, v in Y.items()
+                     if not isinstance(v, GenericNode)}
+        teachers = {n: v for n, v in Y.items()
+                    if isinstance(v, GenericNode)}
+        return sequences, teachers
+    elif isinstance(Y, GenericNode):
+        return None, Y
+    else:
+        return Y, None
 
 def forward(model: "Model",
             x: MappedData) -> List[np.ndarray]:
@@ -360,6 +372,26 @@ class Model(GenericNode):
 
             self.initialize(x_init, y_init)
 
+    def _initialize_on_nodes_or_sequence(self, X=None, Y=None):
+        if not self._is_initialized:
+            x_init = None
+            if X is not None:
+                if is_mapping(X):
+                    x_init = {name: np.atleast_2d(x[0])
+                              for name, x in X.items()}
+                else:
+                    x_init = np.atleast_2d(X[0])
+
+            y_init = None
+            if Y is not None:
+                if is_mapping(Y):
+                    y_init = {name: np.atleast_2d(y[0])
+                              for name, y in Y.items()}
+                else:
+                    y_init = np.atleast_2d(Y[0])
+
+            self.initialize(x_init, y_init)
+
     def _call(self, x=None, return_states=None, *args, **kwargs):
 
         self._forward(self, x)
@@ -381,6 +413,24 @@ class Model(GenericNode):
                 state = self.output_nodes[0].state()
 
         return state
+
+    def _register_teachers(self, Y=None):
+        """Register all teachers provided in all targetted nodes,
+        and remove them from Y."""
+        if Y is not None:
+            if is_mapping(Y):
+                for node, value in Y.items():
+                    if isinstance(value, GenericNode):
+                        self.get_node(node)._register_teacher(value)
+
+            elif isinstance(Y, GenericNode):
+                for node in self.trainable_nodes:
+                    if node.is_trained_online:
+                        node._register_teacher(Y)
+
+    def _unregister_teachers(self):
+        for node in self.trainable_nodes:
+            node._teacher = None
 
     def update_graph(self, new_nodes: Sequence[GenericNode],
                      new_edges: Sequence[
@@ -717,11 +767,12 @@ class Model(GenericNode):
         if not self._is_initialized:
             self.initialize(x)
 
-        # load current states in proxys interfaces accessible
-        # through feedback. These proxys are not updated during the graph call.
-        self._load_proxys()
-
         with self.with_state(from_state, stateful=stateful, reset=reset):
+            # load current states in proxys interfaces accessible
+            # through feedback. These proxys are not updated during the
+            # graph call.
+            self._load_proxys(keep=True)
+
             # maybe load forced feedbacks in proxys ?
             with self.with_feedback(forced_feedback,
                                     stateful=stateful,
@@ -785,9 +836,11 @@ class Model(GenericNode):
             f"Running {self.name}", total=len(X))
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
+            # load proxys after state update to make it have an
+            # impact on feedback
+            self._load_proxys(keep=True)
             for i, (x, forced_feedback, _) in enumerate(seq):
 
-                self._load_proxys()
                 with self.with_feedback(forced_feedback):
                     state = self._call(x, return_states=return_states)
 
@@ -796,6 +849,8 @@ class Model(GenericNode):
                         states[name][i, :] = value
                 else:
                     states[self.output_nodes[0].name][i, :] = state
+
+                self._load_proxys()
 
         self._clean_proxys()
 
@@ -861,17 +916,26 @@ class Model(GenericNode):
 
         self._check_if_only_online()
 
-        self._initialize_on_sequence(X, Y)
+        filt_Y, teacher_nodes = _filter_teacher_nodes(Y)
+
+        self._initialize_on_sequence(X, filt_Y)
+
+        self._register_teachers(teacher_nodes)
 
         states = _allocate_returned_states(self, X, return_states)
 
         seq_len = X.shape[0]
-        dispatch = self._dispatcher.dispatch(X, Y, return_targets=True)
+        dispatch = self._dispatcher.dispatch(X, filt_Y,
+                                             return_targets=True,
+                                             force_teachers=force_teachers)
+
         seq = progress(dispatch, f"Training {self.name}", total=seq_len) \
             if seq_len > 1 else dispatch
 
-        self._load_proxys()
         with self.with_state(from_state, stateful=stateful, reset=reset):
+            # load proxys after state update to make it have an
+            # impact on feedback
+            self._load_proxys(keep=True)
             for i, (x, forced_feedback, y) in enumerate(seq):
 
                 if not force_teachers:
@@ -881,7 +945,7 @@ class Model(GenericNode):
                     state = self._call(x, return_states=return_states)
 
                 # reload feedbacks from training. Some nodes may need
-                # feedback signals to train.
+                # updated feedback signals to train.
                 self._load_proxys()
 
                 y = self._check_targets(y)
@@ -896,6 +960,7 @@ class Model(GenericNode):
                     states[self.output_nodes[0].name][i, :] = state
 
         self._clean_proxys()
+        self._unregister_teachers()
 
         # dicts are only relevant if model has several outputs (len > 1) or
         # if we want to return states from hidden nodes

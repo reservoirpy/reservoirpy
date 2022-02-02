@@ -2,6 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 
 from .dummy_nodes import *
@@ -354,3 +355,76 @@ def test_offline_fit_simple_model_fb(offline_node, offline_node2,
     exp = np.tile(np.array([26, 54.5, 85.5, 119, 155]), 5).reshape(5, 5).T
 
     assert_array_equal(exp, res)
+
+
+def test_online_train_simple(online_node, plus_node):
+
+    model = plus_node >> online_node
+
+    X = np.ones((5, 5)) * 0.5
+    Y = np.ones((5, 5))
+
+    model.train(X, Y)
+
+    assert_array_equal(online_node.b, np.array([42.5]))
+
+    model.train(X, Y, reset=True)
+
+    assert_array_equal(online_node.b, np.array([85]))
+
+
+def test_online_train_fb_forced(online_node, plus_node, feedback_node):
+
+    model = plus_node >> feedback_node >> online_node
+
+    feedback_node <<= online_node
+
+    X = np.ones((5, 5)) * 0.5
+    Y = np.ones((5, 5))
+
+    model.train(X, Y)
+
+    assert_array_equal(online_node.b, np.array([51.5]))
+
+    model.train(X, Y, reset=True)
+
+    assert_array_equal(online_node.b, np.array([103.]))
+
+
+def test_online_train_fb_no_forced(online_node, plus_node, feedback_node):
+
+    model = plus_node >> feedback_node >> online_node
+
+    feedback_node <<= online_node
+
+    X = np.ones((5, 5)) * 0.5
+    Y = np.ones((5, 5))
+
+    model.train(X, Y, force_teachers=False)
+
+    assert_array_equal(online_node.b, np.array([189.5]))
+
+    model.train(X, Y, reset=True, force_teachers=False)
+
+    assert_array_equal(online_node.b, np.array([3221.5]))
+
+
+def test_online_train_teacher_nodes(online_node, plus_node, minus_node):
+
+    X = np.ones((5, 5)) * 0.5
+    model = plus_node >> online_node
+
+    with pytest.raises(RuntimeError):
+        model.train(X, minus_node)  # Impossible to init node nor infer shape
+
+    model = plus_node >> [minus_node, online_node]
+
+    minus_node.set_output_dim(5)
+
+    model.train(X, minus_node)
+
+    assert_array_equal(online_node.b, np.array([54.]))
+
+    model.train(X, minus_node, reset=True)
+
+    assert_array_equal(online_node.b, np.array([108.]))

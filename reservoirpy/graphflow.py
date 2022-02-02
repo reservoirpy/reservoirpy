@@ -4,8 +4,11 @@
 from collections import defaultdict, namedtuple, deque
 from typing import Dict, List
 
-from reservoirpy.utils import safe_defaultdict_copy
-from reservoirpy.utils.validation import is_mapping, is_node
+import numpy as np
+
+from .types import GenericNode
+from .utils import safe_defaultdict_copy
+from .utils.validation import is_mapping, is_node
 
 DataPoint = namedtuple("DataPoint", "x, y")
 
@@ -226,23 +229,29 @@ class DataDispatcher:
                         self._teachers[node] = Y
         return self
 
-    def dispatch(self, X, Y=None, shift_fb=True, return_targets=False):
+    def dispatch(self, X, Y=None, shift_fb=True, return_targets=False,
+                 force_teachers=True):
 
         if not is_mapping(X):
-            X = {inp.name: X for inp in self._inputs}
-        self._check_inputs(X)
+            X_map = {inp.name: X for inp in self._inputs}
+        else:
+            X_map = X.copy()
+        self._check_inputs(X_map)
 
+        Y_map = None
         if Y is not None:
             if not is_mapping(Y):
-                Y = {trainable.name: Y for trainable in self._trainables}
-            self._check_targets(Y)
+                Y_map = {trainable.name: Y for trainable in self._trainables}
+            else:
+                Y_map = Y.copy()
+            self._check_targets(Y_map)
 
         # check if all sequences have same length,
         # taking the length of the first input sequence
         # as reference
-        current_node = list(X.keys())[0]
-        sequence_length = len(X[current_node])
-        for node, sequence in X.items():
+        current_node = list(X_map.keys())[0]
+        sequence_length = len(X_map[current_node])
+        for node, sequence in X_map.items():
             if sequence_length != len(sequence):
                 raise ValueError(f"Impossible to use data with inconsistent "
                                  f"number of timesteps: {node} is given "
@@ -251,35 +260,45 @@ class DataDispatcher:
                                  f"while {current_node} is given a sequence "
                                  f"of length {sequence_length}")
 
-        if Y is not None:
-            for node, sequence in Y.items():
-                if sequence_length != len(sequence):
-                    raise ValueError(
-                        f"Impossible to use data with inconsistent "
-                        f"number of timesteps: {node} is given "
-                        f"a sequence of length {len(sequence)} as "
-                        f"targets/feedbacks while {current_node} is "
-                        f"given a sequence of length {sequence_length}.")
+        if Y_map is not None:
+            # Pad teacher nodes in a sequence
+            for node, value in Y_map.items():
+                if isinstance(value, GenericNode):
+                    Y_map[node] = [value for _ in range(sequence_length)]
+
+            for node, sequence in Y_map.items():
+                # Y_map might be a teacher node (not a sequence)
+                if hasattr(Y_map, "__len__"):
+                    if sequence_length != len(sequence):
+                        raise ValueError(
+                            f"Impossible to use data with inconsistent "
+                            f"number of timesteps: {node} is given "
+                            f"a sequence of length {len(sequence)} as "
+                            f"targets/feedbacks while {current_node} is "
+                            f"given a sequence of length {sequence_length}.")
 
         for i in range(sequence_length):
-            x = {node: X[node][i] for node in X.keys()}
-            if Y is not None:
+            x = {node: X_map[node][i] for node in X_map.keys()}
+            if Y_map is not None:
                 y = None
                 if return_targets:
-                    y = {node: Y[node][i] for node in Y.keys()}
+                    y = {node: Y_map[node][i] for node in Y_map.keys()}
                 # if feedbacks vectors are meant to be fed
-                # with a delay in time of one timestep w.r.t. 'X'
+                # with a delay in time of one timestep w.r.t. 'X_map'
                 if shift_fb:
                     if i == 0:
-                        fb = {node: None for node in
-                              Y.keys()}
+                        if force_teachers:
+                            fb = {node: np.zeros_like(Y_map[node][i])
+                                  for node in Y_map.keys()}
+                        else:
+                            fb = {node: None for node in Y_map.keys()}
                     else:
-                        fb = {node: Y[node][i-1] for node in Y.keys()}
+                        fb = {node: Y_map[node][i-1] for node in Y_map.keys()}
                 # else assume that all feedback vectors must be instantaneously
-                # fed to the network. This means that 'Y' already contains data
-                # that is delayed by one timestep w.r.t. 'X'.
+                # fed to the network. This means that 'Y_map' already contains
+                # data that is delayed by one timestep w.r.t. 'X_map'.
                 else:
-                    fb = {node: Y[node][i] for node in Y.keys()}
+                    fb = {node: Y_map[node][i] for node in Y_map.keys()}
             else:
                 fb = y = None
 

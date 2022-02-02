@@ -69,6 +69,29 @@ def test_node_init(plus_node):
         plus_node.set_output_dim(45)
 
 
+def test_node_init_empty(plus_node):
+    data = np.zeros((1, 5))
+
+    plus_node.set_input_dim(5)
+
+    plus_node.initialize()
+
+    assert plus_node.is_initialized
+    assert plus_node.input_dim == 5
+    assert plus_node.output_dim == 5
+    assert plus_node.c == 1
+
+    data = np.zeros((1, 8))
+
+    with pytest.raises(ValueError):
+        plus_node(data)
+
+    with pytest.raises(TypeError):
+        plus_node.set_input_dim(9)
+    with pytest.raises(TypeError):
+        plus_node.set_output_dim(45)
+
+
 def test_node_call(plus_node):
     data = np.zeros((1, 5))
     res = plus_node(data)
@@ -288,19 +311,17 @@ def test_train_learn_every(online_node):
     assert_array_equal(online_node.b, np.array([25.0]))
 
 
-def test_train_supervised_by_feedback(online_node, plus_node):
-
-    online_node <<= plus_node
+def test_train_supervised_by_teacher_node(online_node, plus_node):
 
     X = np.ones((1, 5))
 
     # using not initialized node
     with pytest.raises(RuntimeError):
-        online_node.train(X)
+        online_node.train(X, plus_node)
 
     plus_node(np.ones((1, 5)))
 
-    online_node.train(X)
+    online_node.train(X, plus_node)
 
     assert_array_equal(online_node.b, np.array([4.0]))
 
