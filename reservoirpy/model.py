@@ -386,24 +386,6 @@ class Model(GenericNode):
 
             self.initialize(x_init, y_init)
 
-    def _initialize_on_nodes_or_sequence(self, X=None, Y=None):
-        if not self._is_initialized:
-            x_init = None
-            if X is not None:
-                if is_mapping(X):
-                    x_init = {name: np.atleast_2d(x[0]) for name, x in X.items()}
-                else:
-                    x_init = np.atleast_2d(X[0])
-
-            y_init = None
-            if Y is not None:
-                if is_mapping(Y):
-                    y_init = {name: np.atleast_2d(y[0]) for name, y in Y.items()}
-                else:
-                    y_init = np.atleast_2d(Y[0])
-
-            self.initialize(x_init, y_init)
-
     def _call(self, x=None, return_states=None, *args, **kwargs):
 
         self._forward(self, x)
