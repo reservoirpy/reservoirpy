@@ -127,16 +127,20 @@ __all__ = [
     "mackey_glass",
     "multiscroll",
     "rabinovich_fabrikant",
-    "narma", "doublescroll",
-    "set_seed", "get_seed",
-    "to_forecasting"
+    "narma",
+    "doublescroll",
+    "set_seed",
+    "get_seed",
+    "to_forecasting",
 ]
 
 
-def to_forecasting(timeseries: np.ndarray,
-                   forecast: int = 1,
-                   axis: Union[int, float] = 0,
-                   test_size: int = None):
+def to_forecasting(
+    timeseries: np.ndarray,
+    forecast: int = 1,
+    axis: Union[int, float] = 0,
+    test_size: int = None,
+):
     """Split a timeseries for forecasting tasks.
 
     Transform a timeseries :math:`X` into a series of
@@ -191,9 +195,11 @@ def to_forecasting(timeseries: np.ndarray,
         elif isinstance(test_size, int):
             test_len = test_size
         else:
-            raise ValueError("invalid test_size argument: "
-                             "test_size can be an integer or a float "
-                             f"in [0, 1[, but is {test_size}.")
+            raise ValueError(
+                "invalid test_size argument: "
+                "test_size can be an integer or a float "
+                f"in [0, 1[, but is {test_size}."
+            )
     else:
         test_len = 0
 

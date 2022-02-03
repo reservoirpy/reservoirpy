@@ -22,21 +22,26 @@ if __name__ == "__main__":
 
         instances = config["instances_per_trial"]
 
-        losses = []; rmse = [];
+        losses = []
+        rmse = []
         for n in range(instances):
             # builds an ESN given the input parameters
             W = mat_gen.fast_spectral_initialization(N=N, sr=sr)
 
-            Win = mat_gen.generate_input_weights(nbr_neuron=N, dim_input=nb_features,
-                                                input_bias=True, input_scaling=iss)
-
+            Win = mat_gen.generate_input_weights(
+                nbr_neuron=N, dim_input=nb_features, input_bias=True, input_scaling=iss
+            )
 
             reservoir = ESN(lr=leak, W=W, Win=Win, input_bias=True, ridge=ridge)
 
-
             # train and test the model
-            reservoir.train(inputs=[x_train], teachers=[y_train],
-                            wash_nr_time_step=20, verbose=False, workers=1)
+            reservoir.train(
+                inputs=[x_train],
+                teachers=[y_train],
+                wash_nr_time_step=20,
+                verbose=False,
+                workers=1,
+            )
 
             outputs, _ = reservoir.run(inputs=[x_test], verbose=False, workers=1)
 
@@ -45,11 +50,10 @@ if __name__ == "__main__":
 
         # returns a dictionnary of metrics. The 'loss' key is mandatory when
         # using Hyperopt.
-        return {'loss': np.mean(losses),
-                'rmse': np.mean(rmse)}
+        return {"loss": np.mean(losses), "rmse": np.mean(rmse)}
 
     # 10,000 timesteps of Mackey-Glass timeseries
-    mackey_glass = np.loadtxt('MackeyGlass_t17.txt').reshape(-1, 1)
+    mackey_glass = np.loadtxt("MackeyGlass_t17.txt").reshape(-1, 1)
 
     # split data
     train_frac = 0.6
@@ -57,8 +61,14 @@ if __name__ == "__main__":
     test_start, test_end = train_end, len(mackey_glass) - 2
 
     # pack it
-    train_data = (mackey_glass[train_start:train_end], mackey_glass[train_start+1:train_end+1])
-    test_data = (mackey_glass[test_start:test_end], mackey_glass[test_start+1:test_end+1])
+    train_data = (
+        mackey_glass[train_start:train_end],
+        mackey_glass[train_start + 1 : train_end + 1],
+    )
+    test_data = (
+        mackey_glass[test_start:test_end],
+        mackey_glass[test_start + 1 : test_end + 1],
+    )
 
     dataset = (train_data, test_data)
 
@@ -68,6 +78,8 @@ if __name__ == "__main__":
     best = research(objective, dataset, "mackeyglass-config.json", "report")
 
     # plot the results (fetch results from the report directory)
-    fig = plot_hyperopt_report("report/hyperopt-mackeyglass", params=["sr", "leak", "ridge"], metric='loss')
+    fig = plot_hyperopt_report(
+        "report/hyperopt-mackeyglass", params=["sr", "leak", "ridge"], metric="loss"
+    )
 
     fig.savefig("test.png")

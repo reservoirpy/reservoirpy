@@ -18,8 +18,7 @@ from tqdm import tqdm
 
 from ..types import global_dtype
 
-_AVAILABLE_BACKENDS = ("loky", "multiprocessing",
-                       "threading", "sequential")
+_AVAILABLE_BACKENDS = ("loky", "multiprocessing", "threading", "sequential")
 
 # FIX waiting for a workaround to avoid crashing with multiprocessing
 # activated with Python < 3.8. Seems to be due to compatibility issues
@@ -39,8 +38,10 @@ def get_joblib_backend(workers=-1, backend=None):
         if backend in _AVAILABLE_BACKENDS:
             return backend
         else:
-            raise ValueError(f"'{backend}' is not a Joblib backend. Available "
-                             f"backends are {_AVAILABLE_BACKENDS}.")
+            raise ValueError(
+                f"'{backend}' is not a Joblib backend. Available "
+                f"backends are {_AVAILABLE_BACKENDS}."
+            )
     return _BACKEND if workers > 1 or workers == -1 else "sequential"
 
 
@@ -49,20 +50,23 @@ def set_joblib_backend(backend):
     if backend in _AVAILABLE_BACKENDS:
         _BACKEND = backend
     else:
-        raise ValueError(f"'{backend}' is not a valid joblib "
-                         f"backend value. Available backends are "
-                         f"{_AVAILABLE_BACKENDS}.")
+        raise ValueError(
+            f"'{backend}' is not a valid joblib "
+            f"backend value. Available backends are "
+            f"{_AVAILABLE_BACKENDS}."
+        )
 
 
-def memmap_buffer(node, data=None, shape=None,
-                  dtype=None, mode="w+", name=None):
+def memmap_buffer(node, data=None, shape=None, dtype=None, mode="w+", name=None):
     global temp_registry
 
     caller = node.name
     if data is None:
         if shape is None:
-            raise ValueError(f"Impossible to create buffer for node {node}: "
-                             f"neither data nor shape were given.")
+            raise ValueError(
+                f"Impossible to create buffer for node {node}: "
+                f"neither data nor shape were given."
+            )
 
     name = name if name is not None else uuid.uuid4()
     temp = os.path.join(tempfile.gettempdir(), f"{caller + str(name)}")
@@ -86,14 +90,15 @@ def as_memmap(data, caller=None):
         caller_name = caller.__class__.__name__
     else:
         caller_name = ""
-    filename = os.path.join(tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat")
+    filename = os.path.join(
+        tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat"
+    )
     joblib.dump(data, filename)
     temp_registry[caller].append(filename)
     return joblib.load(filename, mmap_mode="r+")
 
 
-def memmap(shape: Tuple, dtype: np.dtype,
-           mode: str = "w+", caller=None) -> np.memmap:
+def memmap(shape: Tuple, dtype: np.dtype, mode: str = "w+", caller=None) -> np.memmap:
     """Create a new numpy.memmap object, stored in a temporary
     folder on disk.
 
@@ -122,7 +127,9 @@ def memmap(shape: Tuple, dtype: np.dtype,
         caller_name = caller.__class__.__name__
     else:
         caller_name = ""
-    filename = os.path.join(tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat")
+    filename = os.path.join(
+        tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat"
+    )
     if caller is not None:
         temp_registry[caller].append(filename)
     return np.memmap(filename, shape=shape, mode=mode, dtype=dtype)
@@ -139,14 +146,16 @@ def clean_tempfile(caller):
             pass
 
 
-def parallelize(esn,
-                func,
-                workers,
-                lengths,
-                return_states,
-                pbar_text=None,
-                verbose=False,
-                **func_kwargs):
+def parallelize(
+    esn,
+    func,
+    workers,
+    lengths,
+    return_states,
+    pbar_text=None,
+    verbose=False,
+    **func_kwargs,
+):
     workers = min(len(lengths), workers)
     backend = get_joblib_backend() if workers > 1 or workers == -1 else "sequential"
 
@@ -154,8 +163,9 @@ def parallelize(esn,
     ends = np.cumsum(lengths)
     starts = ends - np.asarray(lengths)
 
-    fn_kwargs = ({k: func_kwargs[k][i] for k in func_kwargs.keys()}
-                 for i in range(len(lengths)))
+    fn_kwargs = (
+        {k: func_kwargs[k][i] for k in func_kwargs.keys()} for i in range(len(lengths))
+    )
 
     states = None
     if return_states:
@@ -182,12 +192,13 @@ def parallelize(esn,
 
                 return out
 
-            outputs = parallel(delayed(func_wrapper)(states, start, end, **kwargs)
-                               for start, end, kwargs in zip(starts, ends, fn_kwargs))
+            outputs = parallel(
+                delayed(func_wrapper)(states, start, end, **kwargs)
+                for start, end, kwargs in zip(starts, ends, fn_kwargs)
+            )
 
     if return_states:
-        states = [np.array(states[start:end])
-                  for start, end in zip(starts, ends)]
+        states = [np.array(states[start:end]) for start, end in zip(starts, ends)]
 
     clean_tempfile(esn)
 
@@ -195,7 +206,6 @@ def parallelize(esn,
 
 
 class ParallelProgressQueue:
-
     def __init__(self, total, text, verbose):
         self._verbose = verbose
         if verbose is True:
@@ -225,7 +235,6 @@ class ParallelProgressQueue:
 
 
 class _ProgressBarQueue:
-
     def __init__(self, queue, verbose):
         self._queue = queue
         self._verbose = verbose

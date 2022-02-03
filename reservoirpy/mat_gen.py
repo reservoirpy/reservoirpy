@@ -71,37 +71,35 @@ from .utils.random import rand_generator
 __all__ = [
     "fast_spectral_initialization",
     "generate_internal_weights",
-    "generate_input_weights"
+    "generate_input_weights",
 ]
 
 
 def _is_probability(proba: float) -> bool:
-    return 1. - proba >= 0. and proba >= 0.
+    return 1.0 - proba >= 0.0 and proba >= 0.0
 
 
-def _get_rvs(dist: str,
-             random_state: Generator,
-             **kwargs) -> Callable:
+def _get_rvs(dist: str, random_state: Generator, **kwargs) -> Callable:
     # override scipy.stats uniform rvs
     # to allow user to set the distribution with
     # common low/high values and not loc/scale
     if dist == "uniform":
-        return _uniform_rvs(**kwargs,
-                            random_state=random_state)
+        return _uniform_rvs(**kwargs, random_state=random_state)
     elif dist == "bimodal":
-        return _bimodal_discrete_rvs(**kwargs,
-                                     random_state=random_state)
+        return _bimodal_discrete_rvs(**kwargs, random_state=random_state)
     elif dist in dir(stats):
         distribution = getattr(stats, dist)
-        return partial(distribution(**kwargs).rvs,
-                       random_state=random_state)
+        return partial(distribution(**kwargs).rvs, random_state=random_state)
     else:
-        raise ValueError(f"'{dist}' is not a valid distribution name. "
-                         "See 'scipy.stats' for all available distributions.")
+        raise ValueError(
+            f"'{dist}' is not a valid distribution name. "
+            "See 'scipy.stats' for all available distributions."
+        )
 
 
-def _bimodal_discrete_rvs(value: float = 1.,
-                          random_state: Union[Generator, int] = None) -> Callable:
+def _bimodal_discrete_rvs(
+    value: float = 1.0, random_state: Union[Generator, int] = None
+) -> Callable:
 
     if isinstance(random_state, Generator):
         rg = random_state
@@ -114,9 +112,9 @@ def _bimodal_discrete_rvs(value: float = 1.,
     return rvs
 
 
-def _uniform_rvs(low: float = -1.0,
-                 high: float = 1.0,
-                 random_state: Union[Generator, int] = None) -> Callable:
+def _uniform_rvs(
+    low: float = -1.0, high: float = 1.0, random_state: Union[Generator, int] = None
+) -> Callable:
 
     if isinstance(random_state, Generator):
         rg = random_state
@@ -124,18 +122,19 @@ def _uniform_rvs(low: float = -1.0,
         rg = default_rng(random_state)
 
     distribution = getattr(stats, "uniform")
-    return partial(distribution(loc=low, scale=high-low).rvs,
-                   random_state=rg)
+    return partial(distribution(loc=low, scale=high - low).rvs, random_state=rg)
 
 
-def fast_spectral_initialization(N: int,
-                                 sr: float = None,
-                                 proba: float = 0.1,
-                                 seed: Union[int, Generator] = None,
-                                 verbose: bool = False,
-                                 sparsity_type: str = 'csr',
-                                 typefloat=np.float64,
-                                 **kwargs,):
+def fast_spectral_initialization(
+    N: int,
+    sr: float = None,
+    proba: float = 0.1,
+    seed: Union[int, Generator] = None,
+    verbose: bool = False,
+    sparsity_type: str = "csr",
+    typefloat=np.float64,
+    **kwargs,
+):
     """Fast spectral radius (FSI) approach for weights
     initialization [1]_.
 
@@ -196,9 +195,11 @@ def fast_spectral_initialization(N: int,
                [ 0.        ,  0.72101228,  0.        ,  0.        ,  0.        ]])
     """
     if kwargs.get("spectral_radius") is not None:
-        warnings.warn("Deprecation warning: spectral_radius parameter "
-                      "is deprecated since 0.2.2 and will be removed. "
-                      "Please use sr instead.")
+        warnings.warn(
+            "Deprecation warning: spectral_radius parameter "
+            "is deprecated since 0.2.2 and will be removed. "
+            "Please use sr instead."
+        )
         sr = kwargs.get("spectral_radius")
 
     if not _is_probability(proba):
@@ -206,33 +207,32 @@ def fast_spectral_initialization(N: int,
 
     rg = rand_generator(seed)
 
-    if sr is None or proba <= 0.:
+    if sr is None or proba <= 0.0:
         a = 1
     else:
         a = -(6 * sr) / (np.sqrt(12) * np.sqrt((proba * N)))
 
-    rvs = _get_rvs("uniform",
-                   low=min(a, -a),
-                   high=max(a, -a),
-                   random_state=rg)
+    rvs = _get_rvs("uniform", low=min(a, -a), high=max(a, -a), random_state=rg)
 
     if proba < 1 and sparsity_type != "dense":
-        return sparse.random(N, N, density=proba,
-                             random_state=rg, format=sparsity_type,
-                             data_rvs=rvs)
+        return sparse.random(
+            N, N, density=proba, random_state=rg, format=sparsity_type, data_rvs=rvs
+        )
     else:
         return rvs(size=(N, N))
 
 
-def generate_internal_weights(N: int,
-                              sr: float = None,
-                              proba: float = 0.1,
-                              dist: str = "norm",
-                              sparsity_type: str = 'csr',
-                              seed: Union[int, Generator] = None,
-                              typefloat=np.float64,
-                              Wstd: float = None,
-                              **kwargs):
+def generate_internal_weights(
+    N: int,
+    sr: float = None,
+    proba: float = 0.1,
+    dist: str = "norm",
+    sparsity_type: str = "csr",
+    seed: Union[int, Generator] = None,
+    typefloat=np.float64,
+    Wstd: float = None,
+    **kwargs,
+):
     """Generate the weights matrix that will be used
     for the internal connections of the reservoir.
 
@@ -297,17 +297,21 @@ def generate_internal_weights(N: int,
                [ 0.        ,  0.24196227, -0.90802408,  0.        , -0.56228753],
                [ 0.        ,  0.31424733,  0.        ,  0.        ,  0.        ]])
     """
-    if 'spectral_radius' in kwargs:
-        warnings.warn("Deprecation warning: 'spectral_radius' parameter "
-                      "is deprecated since 0.2.2 and will be removed. "
-                      "Please use 'sr' instead.")
-        sr = kwargs['spectral_radius']
-        kwargs.pop('spectral_radius')
+    if "spectral_radius" in kwargs:
+        warnings.warn(
+            "Deprecation warning: 'spectral_radius' parameter "
+            "is deprecated since 0.2.2 and will be removed. "
+            "Please use 'sr' instead."
+        )
+        sr = kwargs["spectral_radius"]
+        kwargs.pop("spectral_radius")
 
     if Wstd is not None:
-        warnings.warn("Deprecation warning: 'Wstd' parameter "
-                      "is deprecated since 0.2.2 and will be removed. "
-                      "Please use 'scale' instead.")
+        warnings.warn(
+            "Deprecation warning: 'Wstd' parameter "
+            "is deprecated since 0.2.2 and will be removed. "
+            "Please use 'scale' instead."
+        )
         kwargs["scale"] = Wstd
 
     if not _is_probability(proba):
@@ -318,16 +322,13 @@ def generate_internal_weights(N: int,
     while not done:
         rg = rand_generator(seed)
 
-        rvs = _get_rvs(dist,
-                       random_state=rg,
-                       **kwargs)
+        rvs = _get_rvs(dist, random_state=rg, **kwargs)
 
         # sparse format (default)
         if sparsity_type != "dense":
-            w = sparse.random(N, N, density=proba,
-                              format=sparsity_type,
-                              random_state=rg,
-                              data_rvs=rvs)
+            w = sparse.random(
+                N, N, density=proba, format=sparsity_type, random_state=rg, data_rvs=rvs
+            )
         # dense format
         else:
             w = rvs(size=(N, N)).astype(typefloat)
@@ -348,15 +349,17 @@ def generate_internal_weights(N: int,
     return w
 
 
-def generate_input_weights(N: int,
-                           dim_input: int,
-                           input_scaling: float = 1.,
-                           proba: float = 0.1,
-                           input_bias: bool = False,
-                           dist: str = "bimodal",
-                           seed: Union[int, Generator] = None,
-                           typefloat=np.float64,
-                           **kwargs):
+def generate_input_weights(
+    N: int,
+    dim_input: int,
+    input_scaling: float = 1.0,
+    proba: float = 0.1,
+    input_bias: bool = False,
+    dist: str = "bimodal",
+    seed: Union[int, Generator] = None,
+    typefloat=np.float64,
+    **kwargs,
+):
     """
     Generate input or feedback weights for the reservoir.
 
@@ -433,9 +436,7 @@ def generate_input_weights(N: int,
 
     rg = rand_generator(seed)
 
-    rvs = _get_rvs(dist,
-                   **kwargs,
-                   random_state=rg)
+    rvs = _get_rvs(dist, **kwargs, random_state=rg)
 
     w = rvs(size=(N, dim_input))
     w[rg.random((N, dim_input)) > proba] = 0.0

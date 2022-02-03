@@ -210,8 +210,7 @@ def test_hierarchical_esn():
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
 
-    X, Y = np.ones((200, 5)), {"r1": np.ones((200, 10)),
-                               "r2": np.ones((200, 3))}
+    X, Y = np.ones((200, 5)), {"r1": np.ones((200, 10)), "r2": np.ones((200, 3))}
     res = esn.train(X, Y)
 
     assert readout1.Wout.shape == (100, 10)
@@ -246,8 +245,7 @@ def test_dummy_mutual_supervision():
 
     X = np.ones((200, 5))
 
-    res = model.train(X, Y={"r1": readout2,
-                            "r2": readout1}, force_teachers=True)
+    res = model.train(X, Y={"r1": readout2, "r2": readout1}, force_teachers=True)
 
     assert readout1.Wout.shape == (100, 1)
     assert readout1.bias.shape == (1, 1)

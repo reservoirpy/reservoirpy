@@ -44,14 +44,18 @@ def _prepare_inputs(X, Y, bias=True, allow_reshape=False):
 
 def _check_tikhnonv_terms(XXT, YXT, x, y):
     if x.shape[0] != y.shape[0]:
-        raise ValueError(f"Impossible to perform _ridge regression: dimension mismatch "
-                         f"between target sequence of shape {y.shape} and state sequence "
-                         f"of shape {x.shape} ({x.shape[0]} != {y.shape[0]}).")
+        raise ValueError(
+            f"Impossible to perform _ridge regression: dimension mismatch "
+            f"between target sequence of shape {y.shape} and state sequence "
+            f"of shape {x.shape} ({x.shape[0]} != {y.shape[0]})."
+        )
 
     if y.shape[1] != YXT.shape[0]:
-        raise ValueError(f"Impossible to perform _ridge regression: dimension mismatch "
-                         f"between target sequence of shape {y.shape} and expected ouptut "
-                         f"dimension ({YXT.shape[0]}) ({y.shape[1]} != {YXT.shape[0]})")
+        raise ValueError(
+            f"Impossible to perform _ridge regression: dimension mismatch "
+            f"between target sequence of shape {y.shape} and expected ouptut "
+            f"dimension ({YXT.shape[0]}) ({y.shape[1]} != {YXT.shape[0]})"
+        )
 
 
 class _Model(metaclass=ABCMeta):
@@ -101,7 +105,6 @@ class _Model(metaclass=ABCMeta):
 
 
 class _OfflineModel(_Model, metaclass=ABCMeta):
-
     def partial_fit(self, X: Data, Y: Data):
         """Partially fit the states X to the targets values
         Y. This method can be used to pre-comppute some
@@ -162,7 +165,7 @@ class RidgeRegression(_OfflineModel):
             self._reset_ridge_matrix()
 
     def _reset_ridge_matrix(self):
-        self._ridgeid = (self._ridge * np.eye(self._dim_in + 1, dtype=self._dtype))
+        self._ridgeid = self._ridge * np.eye(self._dim_in + 1, dtype=self._dtype)
 
     def initialize(self, dim_in: int = None, dim_out: int = None):
         """
@@ -183,9 +186,15 @@ class RidgeRegression(_OfflineModel):
         if getattr(self, "Wout", None) is None:
             self.Wout = np.zeros((self._dim_in + 1, self._dim_out), dtype=self._dtype)
         if getattr(self, "_XXT", None) is None:
-            self._XXT = as_memmap(np.zeros((self._dim_in + 1, self._dim_in + 1), dtype=self._dtype), caller=self)
+            self._XXT = as_memmap(
+                np.zeros((self._dim_in + 1, self._dim_in + 1), dtype=self._dtype),
+                caller=self,
+            )
         if getattr(self, "_YXT", None) is None:
-            self._YXT = as_memmap(np.zeros((self._dim_out, self._dim_in + 1), dtype=self._dtype), caller=self)
+            self._YXT = as_memmap(
+                np.zeros((self._dim_out, self._dim_in + 1), dtype=self._dtype),
+                caller=self,
+            )
         if getattr(self, "_ridgeid", None) is None:
             self._reset_ridge_matrix()
 
@@ -202,8 +211,10 @@ class RidgeRegression(_OfflineModel):
         X, Y = _prepare_inputs(X, Y, allow_reshape=True)
 
         if not self._initialized:
-            raise RuntimeError(f"RidgeRegression model was never initialized. Call "
-                               f"'initialize() first.")
+            raise RuntimeError(
+                f"RidgeRegression model was never initialized. Call "
+                f"'initialize() first."
+            )
 
         _check_tikhnonv_terms(self._XXT, self._YXT, X, Y)
 
@@ -226,8 +237,7 @@ class RidgeRegression(_OfflineModel):
                 workers = min(self.workers, len(X))
                 backend = get_joblib_backend(workers)
                 with Parallel(n_jobs=workers, backend=backend) as parallel:
-                    parallel(delayed(self.partial_fit)(x, y)
-                             for x, y in zip(X, Y))
+                    parallel(delayed(self.partial_fit)(x, y) for x, y in zip(X, Y))
 
         self.Wout = _solve_ridge(self._XXT, self._YXT, self._ridgeid)
 

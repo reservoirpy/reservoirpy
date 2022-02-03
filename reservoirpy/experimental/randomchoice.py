@@ -17,19 +17,20 @@ def initialize(node, x=None, *args, **kwargs):
         node.set_input_dim(x.shape[1])
         node.set_output_dim(node.n)
 
-        choice = rand_generator(node.seed).choice(np.arange(x.shape[1]),
-                                                  node.n,
-                                                  replace=False)
+        choice = rand_generator(node.seed).choice(
+            np.arange(x.shape[1]), node.n, replace=False
+        )
 
         node.set_param("choice", choice)
 
 
 class RandomChoice(Node):
-
     def __init__(self, n, seed=None, name=None):
-        super(RandomChoice, self).__init__(params={"choice": None},
-                                           hypers={"n": n},
-                                           forward=forward,
-                                           initializer=initialize,
-                                           name=name)
+        super(RandomChoice, self).__init__(
+            params={"choice": None},
+            hypers={"n": n},
+            forward=forward,
+            initializer=initialize,
+            name=name,
+        )
         self.seed = seed

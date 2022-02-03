@@ -17,41 +17,49 @@ def initialize(node: Node, x=None, *args, **kwargs):
 
 class Softmax(Node):
     def __init__(self):
-        super(Softmax, self).__init__(hypers={"f": get_function("softmax")},
-                                      forward=forward,
-                                      initializer=initialize)
+        super(Softmax, self).__init__(
+            hypers={"f": get_function("softmax")},
+            forward=forward,
+            initializer=initialize,
+        )
 
 
 class Softplus(Node):
     def __init__(self):
-        super(Softplus, self).__init__(hypers={"f": get_function("softplus")},
-                                       forward=forward,
-                                       initializer=initialize)
+        super(Softplus, self).__init__(
+            hypers={"f": get_function("softplus")},
+            forward=forward,
+            initializer=initialize,
+        )
 
 
 class Sigmoid(Node):
     def __init__(self):
-        super(Sigmoid, self).__init__(hypers={"f": get_function("sigmoid")},
-                                      forward=forward,
-                                      initializer=initialize)
+        super(Sigmoid, self).__init__(
+            hypers={"f": get_function("sigmoid")},
+            forward=forward,
+            initializer=initialize,
+        )
 
 
 class Tanh(Node):
     def __init__(self):
-        super(Tanh, self).__init__(hypers={"f": get_function("tanh")},
-                                   forward=forward,
-                                   initializer=initialize)
+        super(Tanh, self).__init__(
+            hypers={"f": get_function("tanh")}, forward=forward, initializer=initialize
+        )
 
 
 class Identity(Node):
     def __init__(self):
-        super(Identity, self).__init__(hypers={"f": get_function("identity")},
-                                       forward=forward,
-                                       initializer=initialize)
+        super(Identity, self).__init__(
+            hypers={"f": get_function("identity")},
+            forward=forward,
+            initializer=initialize,
+        )
 
 
 class ReLU(Node):
     def __init__(self):
-        super(ReLU, self).__init__(hypers={"f": get_function("relu")},
-                                   forward=forward,
-                                   initializer=initialize)
+        super(ReLU, self).__init__(
+            hypers={"f": get_function("relu")}, forward=forward, initializer=initialize
+        )

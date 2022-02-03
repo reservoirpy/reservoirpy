@@ -62,8 +62,8 @@ def initialize(node, x=None, *args, **kwargs):
         # of the n components involved, n being the order of the
         # monomials. Precompute them to improve efficiency.
         idx = np.array(
-            list(it.combinations_with_replacement(np.arange(linear_dim),
-                                                  order)))
+            list(it.combinations_with_replacement(np.arange(linear_dim), order))
+        )
 
         node.set_param("_monomial_idx", idx)
 
@@ -72,13 +72,11 @@ def initialize(node, x=None, *args, **kwargs):
 
 
 class NVAR(Node):
-
     def __init__(self, delay, order, strides=1, name=None):
-        super(NVAR, self).__init__(params={"store": None,
-                                           "_monomial_idx": None},
-                                   hypers={"delay": delay,
-                                           "order": order,
-                                           "strides": strides},
-                                   forward=forward,
-                                   initializer=initialize,
-                                   name=name)
+        super(NVAR, self).__init__(
+            params={"store": None, "_monomial_idx": None},
+            hypers={"delay": delay, "order": order, "strides": strides},
+            forward=forward,
+            initializer=initialize,
+            name=name,
+        )

@@ -9,7 +9,7 @@ from reservoirpy.mat_gen import generate_internal_weights, generate_input_weight
 from reservoirpy.activationsfunc import tanh, sigmoid
 from tqdm import tqdm
 
-LR = 1.
+LR = 1.0
 N = 100
 DENSITY = 0.1
 SR = 0.9
@@ -24,25 +24,29 @@ rng = default_rng(123456789)
 
 
 def narma(steps, order=30):
-    y = np.zeros(steps+order)
-    noise = rng.uniform(0, 0.5, size=steps+order)
-    for t in range(order, order+steps-1):
-        y[t+1] = 0.2*y[t] + 0.04*y[t]*np.sum(y[t-order:t]) \
-                 + 1.5*noise[t-order]*noise[t] + 0.001
+    y = np.zeros(steps + order)
+    noise = rng.uniform(0, 0.5, size=steps + order)
+    for t in range(order, order + steps - 1):
+        y[t + 1] = (
+            0.2 * y[t]
+            + 0.04 * y[t] * np.sum(y[t - order : t])
+            + 1.5 * noise[t - order] * noise[t]
+            + 0.001
+        )
     return y[order:].reshape(-1, 1)
 
 
 def gaussian_gradients(x, y, a, sigma, mu):
     sig2 = sigma**2
-    delta_b = (mu/sig2) - (y/sig2) * (2*sig2 + 1 - y**2 + mu*y)
-    delta_a = (1/a) + delta_b*x
+    delta_b = (mu / sig2) - (y / sig2) * (2 * sig2 + 1 - y**2 + mu * y)
+    delta_a = (1 / a) + delta_b * x
     return delta_a, delta_b
 
 
 def exp_gradients(x, y, a, mu):
     mu_inv = 1 / mu
-    delta_b = 1 - (2 + mu_inv)*y + mu_inv*y**2
-    delta_a = (1/a) + delta_b*x
+    delta_b = 1 - (2 + mu_inv) * y + mu_inv * y**2
+    delta_a = (1 / a) + delta_b * x
     return delta_a, delta_b
 
 
@@ -67,10 +71,10 @@ def sigmoid_activation(s, a, b):
 
 
 def esn():
-    W = generate_internal_weights(N, sr=SR, proba=1.,
-                                  dist="uniform", seed=rng)
-    Win = generate_input_weights(N, 1, input_scaling=IS,
-                                 proba=1, input_bias=True, seed=rng)
+    W = generate_internal_weights(N, sr=SR, proba=1.0, dist="uniform", seed=rng)
+    Win = generate_input_weights(
+        N, 1, input_scaling=IS, proba=1, input_bias=True, seed=rng
+    )
 
     a = np.ones((1, N))
     b = np.zeros((1, N))

@@ -37,11 +37,11 @@ def initialize(node, x=None, *args, **kwargs):
 
 
 class AsabukiNorm(Node):
-
     def __init__(self, window, beta=3, name=None):
-        super(AsabukiNorm, self).__init__(params={"store": None},
-                                          hypers={"window": window,
-                                                  "beta": beta},
-                                          forward=forward,
-                                          initializer=initialize,
-                                          name=name)
+        super(AsabukiNorm, self).__init__(
+            params={"store": None},
+            hypers={"window": window, "beta": beta},
+            forward=forward,
+            initializer=initialize,
+            name=name,
+        )

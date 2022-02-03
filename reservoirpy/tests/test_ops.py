@@ -6,8 +6,7 @@ import pytest
 from .dummy_nodes import *
 
 
-def test_node_link(plus_node, minus_node, offline_node,
-                   offline_node2, inverter_node):
+def test_node_link(plus_node, minus_node, offline_node, offline_node2, inverter_node):
 
     model1 = plus_node >> minus_node
     model2 = minus_node >> plus_node
@@ -21,9 +20,11 @@ def test_node_link(plus_node, minus_node, offline_node,
 
     model = model3 >> model4
 
-    assert set(model.edges) == {(plus_node, offline_node),
-                                (offline_node, minus_node),
-                                (minus_node, offline_node2)}
+    assert set(model.edges) == {
+        (plus_node, offline_node),
+        (offline_node, minus_node),
+        (minus_node, offline_node2),
+    }
     assert set(model.nodes) == set(model3.nodes) | set(model4.nodes)
 
     # cycles in the model !
@@ -63,8 +64,7 @@ def test_node_link_several(plus_node, minus_node, offline_node):
     model = plus_node >> [offline_node, minus_node]
 
     assert set(model.nodes) == {plus_node, minus_node, offline_node}
-    assert set(model.edges) == {(plus_node, offline_node),
-                                (plus_node, minus_node)}
+    assert set(model.edges) == {(plus_node, offline_node), (plus_node, minus_node)}
 
 
 def test_node_link_feedback(plus_node, minus_node):

@@ -104,15 +104,17 @@ def test_ridge_feedback():
 
 def test_hierarchical_esn():
 
-    readout1 = Ridge(ridge=1e-8, transient=10, name='r1')
+    readout1 = Ridge(ridge=1e-8, transient=10, name="r1")
     reservoir1 = Reservoir(100)
-    readout2 = Ridge(ridge=1e-8, transient=10, name='r2')
+    readout2 = Ridge(ridge=1e-8, transient=10, name="r2")
     reservoir2 = Reservoir(100)
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
 
-    X, Y = np.ones((5, 200, 5)), {"r1": np.ones((5, 200, 10)),
-                                  "r2": np.ones((5, 200, 3))}
+    X, Y = np.ones((5, 200, 5)), {
+        "r1": np.ones((5, 200, 10)),
+        "r2": np.ones((5, 200, 3)),
+    }
     res = esn.fit(X, Y)
 
     assert readout1.Wout.shape == (100, 10)

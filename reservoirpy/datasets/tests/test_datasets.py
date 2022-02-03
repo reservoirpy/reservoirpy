@@ -7,15 +7,18 @@ from reservoirpy import datasets
 from reservoirpy.datasets import to_forecasting
 
 
-@pytest.mark.parametrize("dataset_func", [
-    datasets.henon_map,
-    datasets.logistic_map,
-    datasets.lorenz,
-    datasets.mackey_glass,
-    datasets.multiscroll,
-    datasets.rabinovich_fabrikant,
-    datasets.narma,
-])
+@pytest.mark.parametrize(
+    "dataset_func",
+    [
+        datasets.henon_map,
+        datasets.logistic_map,
+        datasets.lorenz,
+        datasets.mackey_glass,
+        datasets.multiscroll,
+        datasets.rabinovich_fabrikant,
+        datasets.narma,
+    ],
+)
 def test_generation(dataset_func):
 
     timesteps = 2000
@@ -25,9 +28,7 @@ def test_generation(dataset_func):
     assert len(X) == timesteps
 
 
-@pytest.mark.parametrize("dataset_func", [
-    datasets.mackey_glass
-])
+@pytest.mark.parametrize("dataset_func", [datasets.mackey_glass])
 def test_seed(dataset_func):
     x1 = dataset_func(200)
     x2 = dataset_func(200)
@@ -35,9 +36,7 @@ def test_seed(dataset_func):
     assert_allclose(x1, x2)
 
 
-@pytest.mark.parametrize("dataset_func", [
-    datasets.mackey_glass
-])
+@pytest.mark.parametrize("dataset_func", [datasets.mackey_glass])
 def test_reseed(dataset_func):
 
     s = datasets.get_seed()
@@ -54,10 +53,7 @@ def test_reseed(dataset_func):
     assert (np.abs(x1 - x2) > 1e-3).sum() > 0
 
 
-@pytest.mark.parametrize("dataset_func", [
-    datasets.mackey_glass,
-    datasets.lorenz
-])
+@pytest.mark.parametrize("dataset_func", [datasets.mackey_glass, datasets.lorenz])
 def test_to_forecasting(dataset_func):
     x = dataset_func(200)
 
@@ -68,10 +64,7 @@ def test_to_forecasting(dataset_func):
     assert x.shape[0] == y.shape[0]
 
 
-@pytest.mark.parametrize("dataset_func", [
-    datasets.mackey_glass,
-    datasets.lorenz
-])
+@pytest.mark.parametrize("dataset_func", [datasets.mackey_glass, datasets.lorenz])
 def test_to_forecasting_with_test(dataset_func):
     x = dataset_func(200)
 

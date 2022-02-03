@@ -69,6 +69,7 @@ a :py:class:`Model`.
 
 """
 from collections.abc import Iterable
+
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -80,60 +81,69 @@ import numpy as np
 
 from reservoirpy.utils import progress, verbosity
 from reservoirpy.utils.validation import check_vector, is_mapping
-from .utils.model_utils import (_allocate_returned_states, _build_forward_sumodels,
-                     _dist_states_to_next_subgraph, to_ragged_seq_set, )
-from .graphflow import (DataDispatcher, find_entries_and_exits,
-                        get_offline_subgraphs, topological_sort, )
+from .utils.model_utils import (
+    _allocate_returned_states,
+    _build_forward_sumodels,
+    _dist_states_to_next_subgraph,
+    to_ragged_seq_set,
+)
+from .graphflow import (
+    DataDispatcher,
+    find_entries_and_exits,
+    get_offline_subgraphs,
+    topological_sort,
+)
 from .types import GenericNode, MappedData
 
 
-def _run_and_partial_fit(model, offlines, relations, x_seq, y_seq,
-                         stateful=True, reset=False, return_states=None,
-                         force_teachers=True):
+def _run_and_partial_fit(
+    model,
+    offlines,
+    relations,
+    x_seq,
+    y_seq,
+    stateful=True,
+    reset=False,
+    return_states=None,
+    force_teachers=True,
+):
     """Run a submodel and call its partial fit function."""
 
     if not model.is_empty:
-        x_seq = {n: x for n, x in x_seq.items()
-                 if n in model.node_names}
+        x_seq = {n: x for n, x in x_seq.items() if n in model.node_names}
 
         if force_teachers:
-            y_seq = {n: y for n, y in y_seq.items()
-                     if n in [o.name for o in offlines]}
+            y_seq = {n: y for n, y in y_seq.items() if n in [o.name for o in offlines]}
         else:
             y_seq = None
 
         model._is_initialized = True
-        states = model.run(x_seq, y_seq,
-                           return_states=return_states,
-                           stateful=stateful,
-                           reset=reset)
+        states = model.run(
+            x_seq, y_seq, return_states=return_states, stateful=stateful, reset=reset
+        )
 
-        dist_states = _dist_states_to_next_subgraph(states,
-                                                    relations)
+        dist_states = _dist_states_to_next_subgraph(states, relations)
     else:
         dist_states = x_seq
 
     for node in offlines:
-        node.partial_fit(dist_states[node.name],
-                         y_seq[node.name])
+        node.partial_fit(dist_states[node.name], y_seq[node.name])
 
         return dist_states
 
 
 def _filter_teacher_nodes(Y):
     if is_mapping(Y):
-        sequences = {n: v for n, v in Y.items()
-                     if not isinstance(v, GenericNode)}
-        teachers = {n: v for n, v in Y.items()
-                    if isinstance(v, GenericNode)}
+        sequences = {n: v for n, v in Y.items() if not isinstance(v, GenericNode)}
+        teachers = {n: v for n, v in Y.items() if isinstance(v, GenericNode)}
         return sequences, teachers
     elif isinstance(Y, GenericNode):
         return None, Y
     else:
         return Y, None
 
-def forward(model: "Model",
-            x: MappedData) -> List[np.ndarray]:
+
+def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
     """Function applied by a :py:class:`Model` instance.
 
     This function if basically a composition of the forward functions of all
@@ -178,14 +188,12 @@ def train(model: "Model", x=None, y: MappedData = None, force_teachers=True):
 
     for node in model.nodes:
         if node.is_trained_online:
-            node.train(data[node].x, data[node].y,
-                       force_teachers=force_teachers,
-                       call=False)
+            node.train(
+                data[node].x, data[node].y, force_teachers=force_teachers, call=False
+            )
 
 
-def initializer(model: "Model",
-                x: MappedData,
-                y: Optional[MappedData] = None):
+def initializer(model: "Model", x: MappedData, y: Optional[MappedData] = None):
     """Initializes a :py:class:`Model` instance at runtime, using samples of
     data to infer all :py:class:`Node` dimensions.
 
@@ -236,9 +244,12 @@ class Model(GenericNode):
     _outputs: List[GenericNode]
     _dispatcher: "DataDispatcher"
 
-    def __init__(self, nodes: Sequence[GenericNode] = None,
-                 edges: Sequence[Tuple[GenericNode, GenericNode]] = None,
-                 name: str = None):
+    def __init__(
+        self,
+        nodes: Sequence[GenericNode] = None,
+        edges: Sequence[Tuple[GenericNode, GenericNode]] = None,
+        name: str = None,
+    ):
 
         if nodes is None:
             nodes = tuple()
@@ -282,6 +293,7 @@ class Model(GenericNode):
 
     def __iand__(self, other):
         from .ops import merge
+
         return merge(self, other, inplace=True)
 
     def _check_input(self, x):
@@ -292,7 +304,8 @@ class Model(GenericNode):
                 if input_name not in x:
                     raise NameError(
                         f"Missing input data for node '{input_name}' "
-                        f"of model {self.name}.")
+                        f"of model {self.name}."
+                    )
 
             for name, value in x.items():
                 value = check_vector(value)
@@ -304,12 +317,15 @@ class Model(GenericNode):
                             f"Impossible to call node {name} in model "
                             f"{self}: node input "
                             f"dimension is (1, {self[name].input_dim}) "
-                            f"and input dimension is {value.shape}.")
+                            f"and input dimension is {value.shape}."
+                        )
         return x
 
     def _check_targets(self, y):
-        msg = "Impossible to fit/train node {} in model, {}: node output " \
-              "dimension is (1, {}) and target dimension is {}."
+        msg = (
+            "Impossible to fit/train node {} in model, {}: node output "
+            "dimension is (1, {}) and target dimension is {}."
+        )
 
         if is_mapping(y):
             for name, value in y.items():
@@ -318,27 +334,27 @@ class Model(GenericNode):
 
                 if self._is_initialized:
                     if value.shape[1] != self[name].output_dim:
-                        raise ValueError(msg.format(name,
-                                                    self,
-                                                    self[name].output_dim,
-                                                    value.shape))
+                        raise ValueError(
+                            msg.format(name, self, self[name].output_dim, value.shape)
+                        )
         elif y is not None:
             y = check_vector(y)
             if self._is_initialized:
                 for node in self.trainable_nodes:
                     if node.is_trained_online:
                         if y.shape[1] != node.output_dim:
-                            raise ValueError(msg.format(node.name,
-                                                        self,
-                                                        node.output_dim,
-                                                        y.shape))
+                            raise ValueError(
+                                msg.format(node.name, self, node.output_dim, y.shape)
+                            )
         return y
 
     def _check_if_only_online(self):
         if any([n.is_trained_offline and not n.fitted for n in self.nodes]):
-            raise RuntimeError(f"Impossible to train model {self.name} using "
-                               f"online method: model contains untrained "
-                               f"offline nodes.")
+            raise RuntimeError(
+                f"Impossible to train model {self.name} using "
+                f"online method: model contains untrained "
+                f"offline nodes."
+            )
 
     def _load_proxys(self, keep=False):
         """Save states of all nodes into their state_proxy"""
@@ -357,16 +373,14 @@ class Model(GenericNode):
             x_init = None
             if X is not None:
                 if is_mapping(X):
-                    x_init = {name: np.atleast_2d(x[0])
-                              for name, x in X.items()}
+                    x_init = {name: np.atleast_2d(x[0]) for name, x in X.items()}
                 else:
                     x_init = np.atleast_2d(X[0])
 
             y_init = None
             if Y is not None:
                 if is_mapping(Y):
-                    y_init = {name: np.atleast_2d(y[0])
-                              for name, y in Y.items()}
+                    y_init = {name: np.atleast_2d(y[0]) for name, y in Y.items()}
                 else:
                     y_init = np.atleast_2d(Y[0])
 
@@ -377,16 +391,14 @@ class Model(GenericNode):
             x_init = None
             if X is not None:
                 if is_mapping(X):
-                    x_init = {name: np.atleast_2d(x[0])
-                              for name, x in X.items()}
+                    x_init = {name: np.atleast_2d(x[0]) for name, x in X.items()}
                 else:
                     x_init = np.atleast_2d(X[0])
 
             y_init = None
             if Y is not None:
                 if is_mapping(Y):
-                    y_init = {name: np.atleast_2d(y[0])
-                              for name, y in Y.items()}
+                    y_init = {name: np.atleast_2d(y[0]) for name, y in Y.items()}
                 else:
                     y_init = np.atleast_2d(Y[0])
 
@@ -432,9 +444,11 @@ class Model(GenericNode):
         for node in self.trainable_nodes:
             node._teacher = None
 
-    def update_graph(self, new_nodes: Sequence[GenericNode],
-                     new_edges: Sequence[
-                         Tuple[GenericNode, GenericNode]]) -> "Model":
+    def update_graph(
+        self,
+        new_nodes: Sequence[GenericNode],
+        new_edges: Sequence[Tuple[GenericNode, GenericNode]],
+    ) -> "Model":
         """Update current Model's with new nodes and edges, inplace (a copy
         is not performed).
 
@@ -456,8 +470,7 @@ class Model(GenericNode):
         self._params = {n.name: n.params for n in self._nodes}
         self._hypers = {n.name: n.hypers for n in self._nodes}
 
-        self._inputs, self._outputs = find_entries_and_exits(self._nodes,
-                                                             self._edges)
+        self._inputs, self._outputs = find_entries_and_exits(self._nodes, self._edges)
         self._nodes = topological_sort(self._nodes, self._edges, self._inputs)
         self._node_registry = {n.name: n for n in self.nodes}
 
@@ -489,8 +502,7 @@ class Model(GenericNode):
         if self._node_registry.get(name) is not None:
             return self._node_registry[name]
         else:
-            raise KeyError(f"No node named '{name}' found in "
-                           f"model {self.name}.")
+            raise KeyError(f"No node named '{name}' found in model {self.name}.")
 
     @property
     def nodes(self) -> List[GenericNode]:
@@ -571,14 +583,16 @@ class Model(GenericNode):
     @is_trainable.setter
     def is_trainable(self, value):
         """Freeze or unfreeze trainable Nodes in the Model."""
-        trainables = [n for n in self.nodes
-                      if n.is_trained_offline or n.is_trained_online]
+        trainables = [
+            n for n in self.nodes if n.is_trained_offline or n.is_trained_online
+        ]
         for node in trainables:
             node.is_trainable = value
 
     @contextmanager
-    def with_state(self, state: Dict[str, np.ndarray] = None,
-                   stateful=False, reset=False) -> "Model":
+    def with_state(
+        self, state: Dict[str, np.ndarray] = None, stateful=False, reset=False
+    ) -> "Model":
         """Modify the state of one or several Nodes in the Model
         using a context manager.
         The modification will have effect only within the context defined,
@@ -609,9 +623,11 @@ class Model(GenericNode):
             if not stateful:
                 self.reset(to_state=current_state)
         elif isinstance(state, np.ndarray):
-            raise TypeError(f"Impossible to set state of {self.name} with "
-                            f"an array. State should be a dict mapping state "
-                            f"to a Node name within the model.")
+            raise TypeError(
+                f"Impossible to set state of {self.name} with "
+                f"an array. State should be a dict mapping state "
+                f"to a Node name within the model."
+            )
         else:
             if state is None:
                 state = {}
@@ -619,14 +635,15 @@ class Model(GenericNode):
             with ExitStack() as stack:
                 for node in self.nodes:
                     value = state.get(node.name)
-                    stack.enter_context(node.with_state(value,
-                                                        stateful=stateful,
-                                                        reset=reset))
+                    stack.enter_context(
+                        node.with_state(value, stateful=stateful, reset=reset)
+                    )
                 yield self
 
     @contextmanager
-    def with_feedback(self, feedback: Dict[str, np.ndarray] = None,
-                      stateful=False, reset=False) -> "Model":
+    def with_feedback(
+        self, feedback: Dict[str, np.ndarray] = None, stateful=False, reset=False
+    ) -> "Model":
         """Modify the feedback received or sent by Nodes in the Model using
         a context manager.
         The modification will have effect only within the context defined,
@@ -664,9 +681,9 @@ class Model(GenericNode):
             if feedback is not None:
                 for node in self.nodes:
                     value = feedback.get(node.name)
-                    stack.enter_context(node.with_feedback(value,
-                                                           stateful=stateful,
-                                                           reset=reset))
+                    stack.enter_context(
+                        node.with_feedback(value, stateful=stateful, reset=reset)
+                    )
             yield self
 
     def reset(self, to_state: Dict[str, np.ndarray] = None):
@@ -725,10 +742,15 @@ class Model(GenericNode):
             if node._buffers_initializer is not None:
                 node.initialize_buffers()
 
-    def call(self, x: MappedData, forced_feedback: MappedData = None,
-             from_state: Dict[str, np.ndarray] = None, stateful=True,
-             reset=False,
-             return_states: Sequence[str] = None) -> MappedData:
+    def call(
+        self,
+        x: MappedData,
+        forced_feedback: MappedData = None,
+        from_state: Dict[str, np.ndarray] = None,
+        stateful=True,
+        reset=False,
+        return_states: Sequence[str] = None,
+    ) -> MappedData:
         """Call the Model forward function on a single step of data.
         Model forward function is a composition of all its Nodes forward
         functions.
@@ -774,9 +796,7 @@ class Model(GenericNode):
             self._load_proxys(keep=True)
 
             # maybe load forced feedbacks in proxys ?
-            with self.with_feedback(forced_feedback,
-                                    stateful=stateful,
-                                    reset=reset):
+            with self.with_feedback(forced_feedback, stateful=stateful, reset=reset):
                 state = self._call(x, return_states)
 
         # wash states proxys
@@ -784,11 +804,16 @@ class Model(GenericNode):
 
         return state
 
-    def run(self, X: MappedData = None,
-            forced_feedbacks: Dict[str, np.ndarray] = None,
-            from_state: Dict[str, np.ndarray] = None,
-            stateful=True, reset=False, shift_fb=True,
-            return_states: Sequence[str] = None) -> MappedData:
+    def run(
+        self,
+        X: MappedData = None,
+        forced_feedbacks: Dict[str, np.ndarray] = None,
+        from_state: Dict[str, np.ndarray] = None,
+        stateful=True,
+        reset=False,
+        shift_fb=True,
+        return_states: Sequence[str] = None,
+    ) -> MappedData:
         """Run the Model forward function on a sequence of data.
         Model forward function is a composition of all its Nodes forward
         functions.
@@ -833,7 +858,9 @@ class Model(GenericNode):
 
         seq = progress(
             self._dispatcher.dispatch(X, forced_feedbacks, shift_fb=shift_fb),
-            f"Running {self.name}", total=len(X))
+            f"Running {self.name}",
+            total=len(X),
+        )
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             # load proxys after state update to make it have an
@@ -861,9 +888,17 @@ class Model(GenericNode):
 
         return states
 
-    def train(self, X, Y=None, force_teachers=True, learn_every=1,
-              from_state=None, stateful=True,
-              reset=False, return_states=None) -> MappedData:
+    def train(
+        self,
+        X,
+        Y=None,
+        force_teachers=True,
+        learn_every=1,
+        from_state=None,
+        stateful=True,
+        reset=False,
+        return_states=None,
+    ) -> MappedData:
         """Train all online Nodes in the Model
         using their online learning rule.
 
@@ -925,12 +960,15 @@ class Model(GenericNode):
         states = _allocate_returned_states(self, X, return_states)
 
         seq_len = X.shape[0]
-        dispatch = self._dispatcher.dispatch(X, filt_Y,
-                                             return_targets=True,
-                                             force_teachers=force_teachers)
+        dispatch = self._dispatcher.dispatch(
+            X, filt_Y, return_targets=True, force_teachers=force_teachers
+        )
 
-        seq = progress(dispatch, f"Training {self.name}", total=seq_len) \
-            if seq_len > 1 else dispatch
+        seq = (
+            progress(dispatch, f"Training {self.name}", total=seq_len)
+            if seq_len > 1
+            else dispatch
+        )
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             # load proxys after state update to make it have an
@@ -969,9 +1007,15 @@ class Model(GenericNode):
 
         return states
 
-    def fit(self, X: MappedData, Y: MappedData,
-            force_teachers=True,
-            from_state=None, stateful=True, reset=False) -> "Model":
+    def fit(
+        self,
+        X: MappedData,
+        Y: MappedData,
+        force_teachers=True,
+        from_state=None,
+        stateful=True,
+        reset=False,
+    ) -> "Model":
         """Fit all offline Nodes in the Model
         using their offline learning rule.
 
@@ -1007,8 +1051,10 @@ class Model(GenericNode):
         """
 
         if not any([n for n in self.trainable_nodes if n.is_trained_offline]):
-            raise TypeError(f"Impossible to fit model {self} offline: "
-                            "no offline nodes found in model.")
+            raise TypeError(
+                f"Impossible to fit model {self} offline: "
+                "no offline nodes found in model."
+            )
 
         X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
@@ -1018,17 +1064,14 @@ class Model(GenericNode):
         self._initialize_on_sequence(X[0], Y[0])
         self.initialize_buffers()
 
-        subgraphs = get_offline_subgraphs(self.nodes,
-                                          self.edges)
+        subgraphs = get_offline_subgraphs(self.nodes, self.edges)
 
         trained = set()
         next_X = None
 
         with self.with_state(from_state, reset=reset, stateful=stateful):
             for i, ((nodes, edges), relations) in enumerate(subgraphs):
-                submodel, offlines = _build_forward_sumodels(nodes,
-                                                             edges,
-                                                             trained)
+                submodel, offlines = _build_forward_sumodels(nodes, edges, trained)
 
                 if next_X is not None:
                     for j in range(len(X)):
@@ -1042,14 +1085,16 @@ class Model(GenericNode):
                 next_X = []
                 seq = progress(X, f"Running {self.name}")
 
-                _partial_fit_fn = partial(_run_and_partial_fit,
-                                          force_teachers=force_teachers,
-                                          model=submodel,
-                                          reset=reset,
-                                          offlines=offlines,
-                                          relations=relations,
-                                          stateful=stateful,
-                                          return_states=return_states)
+                _partial_fit_fn = partial(
+                    _run_and_partial_fit,
+                    force_teachers=force_teachers,
+                    model=submodel,
+                    reset=reset,
+                    offlines=offlines,
+                    relations=relations,
+                    stateful=stateful,
+                    return_states=return_states,
+                )
 
                 # for seq/batch in dataset
                 for x_seq, y_seq in zip(seq, Y):
@@ -1074,5 +1119,7 @@ class FrozenModel(Model):
         super(FrozenModel, self).__init__(*args, **kwargs)
 
     def update_graph(self, new_nodes, new_edges):
-        raise TypeError(f"Impossible to update FrozenModel {self}: "
-                        f"model is frozen and cannot be modified.")
+        raise TypeError(
+            f"Impossible to update FrozenModel {self}: "
+            f"model is frozen and cannot be modified."
+        )

@@ -10,8 +10,7 @@
 from functools import partial
 import numpy as np
 
-from .utils import (readout_forward, _initialize_readout,
-                    _prepare_inputs_for_learning)
+from .utils import readout_forward, _initialize_readout, _prepare_inputs_for_learning
 
 from reservoirpy.node import Node
 
@@ -26,8 +25,9 @@ def train(readout: "BatchFORCE", x=None, y=None):
 
     if x is not None:
 
-        x, y = _prepare_inputs_for_learning(x, y, bias=readout.has_bias,
-                                            allow_reshape=True)
+        x, y = _prepare_inputs_for_learning(
+            x, y, bias=readout.has_bias, allow_reshape=True
+        )
 
         W = readout.Wout
         if readout.has_bias:
@@ -69,11 +69,7 @@ def train(readout: "BatchFORCE", x=None, y=None):
             _reset_buffers(steps, rTPs, factors)
 
 
-def initialize(readout: "BatchFORCE",
-               x=None,
-               y=None,
-               init_func=None,
-               bias=None):
+def initialize(readout: "BatchFORCE", x=None, y=None, init_func=None, bias=None):
 
     _initialize_readout(readout, x, y, init_func, bias)
 
@@ -93,10 +89,9 @@ def initialize_buffers(readout: "BatchFORCE"):
     if readout.has_bias:
         bias_dim = 1
 
-    readout.create_buffer("rTPs", (readout.input_dim + bias_dim,
-                                   readout.batch_size))
-    readout.create_buffer("factors", (readout.batch_size, ))
-    readout.create_buffer("step", (1, ))
+    readout.create_buffer("rTPs", (readout.input_dim + bias_dim, readout.batch_size))
+    readout.create_buffer("factors", (readout.batch_size,))
+    readout.create_buffer("step", (1,))
 
 
 class BatchFORCE(Node):
@@ -104,19 +99,22 @@ class BatchFORCE(Node):
     # A special thanks to Lionel Eyraud-Dubois and
     # Olivier Beaumont for their improvement of this method.
 
-    def __init__(self, output_dim=None, alpha=1e-6, batch_size=1,
-                 Wout_init=np.zeros, bias=True, name=None):
-        super(BatchFORCE, self).__init__(params={"Wout": None,
-                                            "bias": None,
-                                            "P": None},
-                                    hypers={"alpha": alpha,
-                                            "batch_size": batch_size,
-                                            "has_bias": bias},
-                                    forward=readout_forward,
-                                    train=train,
-                                    initializer=partial(initialize,
-                                                        init_func=Wout_init,
-                                                        bias=bias),
-                                    buffers_initializer=initialize_buffers,
-                                    output_dim=output_dim,
-                                    name=name)
+    def __init__(
+        self,
+        output_dim=None,
+        alpha=1e-6,
+        batch_size=1,
+        Wout_init=np.zeros,
+        bias=True,
+        name=None,
+    ):
+        super(BatchFORCE, self).__init__(
+            params={"Wout": None, "bias": None, "P": None},
+            hypers={"alpha": alpha, "batch_size": batch_size, "has_bias": bias},
+            forward=readout_forward,
+            train=train,
+            initializer=partial(initialize, init_func=Wout_init, bias=bias),
+            buffers_initializer=initialize_buffers,
+            output_dim=output_dim,
+            name=name,
+        )

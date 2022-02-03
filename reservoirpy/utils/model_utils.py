@@ -13,8 +13,9 @@ from reservoirpy.utils.validation import is_mapping
 def _build_forward_sumodels(nodes, edges, already_trained):
     from ..model import Model
 
-    offline_nodes = [n for n in nodes
-                     if n.is_trained_offline and n not in already_trained]
+    offline_nodes = [
+        n for n in nodes if n.is_trained_offline and n not in already_trained
+    ]
 
     forward_nodes = list(set(nodes) - set(offline_nodes))
     forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
@@ -48,20 +49,18 @@ def _allocate_returned_states(model, inputs=None, return_states=None):
         else:
             seq_len = inputs.shape[0]
     else:
-        raise ValueError("'X' and 'n' parameters can't be None at the "
-                         "same time.")
+        raise ValueError("'X' and 'n' parameters can't be None at the same time.")
 
     # pre-allocate states
     if return_states == "all":
-        states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in model.nodes}
+        states = {n.name: np.zeros((seq_len, n.output_dim)) for n in model.nodes}
     elif isinstance(return_states, Iterable):
-        states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in [model[name]
-                            for name in return_states]}
+        states = {
+            n.name: np.zeros((seq_len, n.output_dim))
+            for n in [model[name] for name in return_states]
+        }
     else:
-        states = {n.name: np.zeros((seq_len, n.output_dim))
-                  for n in model.output_nodes}
+        states = {n.name: np.zeros((seq_len, n.output_dim)) for n in model.output_nodes}
 
     return states
 

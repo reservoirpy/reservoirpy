@@ -35,9 +35,18 @@ tempfile.tempdir = _TEMPDIR
 
 __all__ = [
     "__version__",
-    "mat_gen", "activationsfunc",
+    "mat_gen",
+    "activationsfunc",
     "observables",
-    "hyper", "nodes", "load", "Node", "Model",
-    "link", "link_feedback", "merge", "set_seed",
-    "verbosity", "load_compat"
-    ]
+    "hyper",
+    "nodes",
+    "load",
+    "Node",
+    "Model",
+    "link",
+    "link_feedback",
+    "merge",
+    "set_seed",
+    "verbosity",
+    "load_compat",
+]

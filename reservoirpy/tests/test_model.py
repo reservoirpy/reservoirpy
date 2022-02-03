@@ -18,12 +18,12 @@ def test_node_link(plus_node, minus_node):
     model1 = plus_node >> minus_node
     model2 = minus_node >> plus_node
 
-    assert model1.name == 'Model-0'
+    assert model1.name == "Model-0"
     assert model1.params["PlusNode-0"]["c"] is None
     assert model1.hypers["PlusNode-0"]["h"] == 1
     assert model1["PlusNode-0"].input_dim is None
 
-    assert model2.name == 'Model-1'
+    assert model2.name == "Model-1"
     assert model2.params["PlusNode-0"]["c"] is None
     assert model2.hypers["PlusNode-0"]["h"] == 1
     assert model2["PlusNode-0"].input_dim is None
@@ -117,10 +117,8 @@ def test_model_with_state(plus_node, minus_node):
 
     res = model(data)
 
-    with model.with_state(state={plus_node.name:
-                                 np.zeros_like(plus_node.state())}):
-        assert_array_equal(plus_node.state(),
-                           np.zeros_like(plus_node.state()))
+    with model.with_state(state={plus_node.name: np.zeros_like(plus_node.state())}):
+        assert_array_equal(plus_node.state(), np.zeros_like(plus_node.state()))
 
     with pytest.raises(TypeError):
         with model.with_state(state=np.zeros_like(plus_node.state())):
@@ -173,12 +171,10 @@ def test_model_run(plus_node, minus_node):
         assert name in [out.name for out in model.output_nodes]
         if name == "PlusNode-0":
             assert_array_equal(arr, expected_plus2)
-            assert_array_equal(expected_plus[-1][np.newaxis, :],
-                               plus_node.state())
+            assert_array_equal(expected_plus[-1][np.newaxis, :], plus_node.state())
         else:
             assert_array_equal(arr, expected_minus2)
-            assert_array_equal(expected_minus[-1][np.newaxis, :],
-                               minus_node.state())
+            assert_array_equal(expected_minus[-1][np.newaxis, :], minus_node.state())
 
 
 def test_model_feedback(plus_node, minus_node, feedback_node):
@@ -217,8 +213,7 @@ def test_model_feedback_forcing_sender(plus_node, minus_node, feedback_node):
     feedback_node <<= minus_node
 
     data = np.zeros((3, 5))
-    res = model.run(data, forced_feedbacks={"MinusNode-0": data + 1},
-                    shift_fb=False)
+    res = model.run(data, forced_feedbacks={"MinusNode-0": data + 1}, shift_fb=False)
     expected = np.array([[2] * 5, [2] * 5, [4] * 5])
 
     assert_array_equal(res, expected)
@@ -231,17 +226,14 @@ def test_model_feedback_forcing_receiver(plus_node, minus_node, feedback_node):
     feedback_node <<= minus_node
 
     data = np.zeros((3, 5))
-    res = model.run(data, forced_feedbacks={"FBNode-0": data + 1},
-                    shift_fb=False)
+    res = model.run(data, forced_feedbacks={"FBNode-0": data + 1}, shift_fb=False)
     expected = np.array([[2] * 5, [2] * 5, [4] * 5])
 
     assert_array_equal(res, expected)
     assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 8)
 
 
-def test_model_feedback_from_previous_node(plus_node,
-                                           minus_node,
-                                           feedback_node):
+def test_model_feedback_from_previous_node(plus_node, minus_node, feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
     feedback_node <<= plus_node  # feedback in time, not in space anymore
@@ -255,11 +247,10 @@ def test_model_feedback_from_previous_node(plus_node,
     assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 11)
 
 
-def test_model_feedback_from_outsider(plus_node, feedback_node,
-                                      inverter_node):
+def test_model_feedback_from_outsider(plus_node, feedback_node, inverter_node):
 
     model = plus_node >> feedback_node
-    feedback_node <<= (plus_node >> inverter_node)
+    feedback_node <<= plus_node >> inverter_node
 
     data = np.zeros((1, 5))
     res = model(data)
@@ -274,8 +265,9 @@ def test_model_feedback_from_outsider(plus_node, feedback_node,
     assert_array_equal(inverter_node.state(), data - 2)
 
 
-def test_model_feedback_from_outsider_complex(plus_node, feedback_node,
-                                              inverter_node, minus_node):
+def test_model_feedback_from_outsider_complex(
+    plus_node, feedback_node, inverter_node, minus_node
+):
 
     model = plus_node >> feedback_node
     fb_model = plus_node >> inverter_node >> minus_node
@@ -295,8 +287,7 @@ def test_model_feedback_from_outsider_complex(plus_node, feedback_node,
     assert_array_equal(minus_node.state(), data - 2)
 
 
-def test_offline_fit_simple_model(offline_node, offline_node2,
-                                  plus_node, minus_node):
+def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_node):
 
     model = plus_node >> offline_node
 
@@ -320,14 +311,14 @@ def test_offline_fit_simple_model(offline_node, offline_node2,
 
     res = model.run(X[0], reset=True)
 
-    exp = np.tile(np.array([22., 24.5, 27., 29.5, 32.]), 5).reshape(5, 5).T
+    exp = np.tile(np.array([22.0, 24.5, 27.0, 29.5, 32.0]), 5).reshape(5, 5).T
 
     assert_array_equal(exp, res)
 
 
-def test_offline_fit_simple_model_fb(offline_node, offline_node2,
-                                     plus_node, minus_node,
-                                     feedback_node):
+def test_offline_fit_simple_model_fb(
+    offline_node, offline_node2, plus_node, minus_node, feedback_node
+):
 
     model = plus_node >> feedback_node >> offline_node
     feedback_node <<= offline_node
@@ -388,7 +379,7 @@ def test_online_train_fb_forced(online_node, plus_node, feedback_node):
 
     model.train(X, Y, reset=True)
 
-    assert_array_equal(online_node.b, np.array([103.]))
+    assert_array_equal(online_node.b, np.array([103.0]))
 
 
 def test_online_train_fb_no_forced(online_node, plus_node, feedback_node):
@@ -423,8 +414,8 @@ def test_online_train_teacher_nodes(online_node, plus_node, minus_node):
 
     model.train(X, minus_node)
 
-    assert_array_equal(online_node.b, np.array([54.]))
+    assert_array_equal(online_node.b, np.array([54.0]))
 
     model.train(X, minus_node, reset=True)
 
-    assert_array_equal(online_node.b, np.array([108.]))
+    assert_array_equal(online_node.b, np.array([108.0]))

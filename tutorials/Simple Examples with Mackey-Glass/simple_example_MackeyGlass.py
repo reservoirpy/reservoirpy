@@ -34,7 +34,7 @@ from reservoirpy.nodes import Reservoir, Ridge, Input
 SEED = 42
 VERBOSE = True
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     rpy.set_seed(SEED)
 
@@ -63,29 +63,29 @@ if __name__ == '__main__':
 
     plt.figure()
     plt.plot(data[:1000])
-    plt.title('A sample of input data')
+    plt.title("A sample of input data")
     plt.show()
 
     # ---- A look into Echo State Networks parameters ----
 
     # Input dimension
     input_bias = True  # add a constant input to 1
-    n_inputs   = 1     # input dimension (optional, can be infered at runtime)
-    n_outputs  = 1     # output dimension (optional, can be infered at runtime)
+    n_inputs = 1  # input dimension (optional, can be infered at runtime)
+    n_outputs = 1  # output dimension (optional, can be infered at runtime)
 
     # Reservoir parameter
-    units              = 300   # number of recurrent units
-    leak_rate          = 0.3   # leaking rate (=1/time_constant_of_neurons)
-    rho                = 1.25  # Scaling of recurrent matrix
-    input_scaling      = 1.    # Scaling of input matrix
+    units = 300  # number of recurrent units
+    leak_rate = 0.3  # leaking rate (=1/time_constant_of_neurons)
+    rho = 1.25  # Scaling of recurrent matrix
+    input_scaling = 1.0  # Scaling of input matrix
 
     # Connectivity
     # Connectivity defines the probability that two neurons in the
     # reservoir are being connected
     # (the two neurons can be a neuron and itself)
-    rc_connectivity    = 0.2   # Connectivity of recurrent matrix W
-    input_connectivity = 1.    # Connectivity of input matrix
-    fb_connectivity    = 1.    # Connectivity of feedback matrix
+    rc_connectivity = 0.2  # Connectivity of recurrent matrix W
+    input_connectivity = 1.0  # Connectivity of input matrix
+    fb_connectivity = 1.0  # Connectivity of feedback matrix
 
     # Readout parameters
     regularization_coef = 1e-8
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     # First compute the spectral radius of these weights:
 
     if VERBOSE:
-        print('Computing spectral radius...')
+        print("Computing spectral radius...")
 
     from reservoirpy.observables import spectral_radius
 
@@ -153,8 +153,7 @@ if __name__ == '__main__':
     original_spectral_radius = spectral_radius(W)
 
     if VERBOSE:
-        print("Default spectral radius before scaling:",
-              original_spectral_radius)
+        print("Default spectral radius before scaling:", original_spectral_radius)
 
     # Rescale them to reach the requested spectral radius:
     W = W * (rho / original_spectral_radius)
@@ -165,14 +164,14 @@ if __name__ == '__main__':
     # ---- Prepare dataset ----
 
     train_size = 2000
-    test_size  = 2000
-    horizon    = 1  # horizon p of the forecast (predict X[t+p] from X[t])
+    test_size = 2000
+    horizon = 1  # horizon p of the forecast (predict X[t+p] from X[t])
 
     X = data[:train_size]
-    y = data[horizon:  train_size+horizon]
+    y = data[horizon : train_size + horizon]
 
-    X_test = data[train_size: train_size+test_size]
-    y_test = data[train_size+horizon: train_size+test_size+horizon]
+    X_test = data[train_size : train_size + test_size]
+    y_test = data[train_size + horizon : train_size + test_size + horizon]
 
     if VERBOSE:
         print("X, y dimensions", X.shape, y.shape)
@@ -184,7 +183,7 @@ if __name__ == '__main__':
     plt.ylabel("$y[t]=X[t+p]$")
     if normalize:
         plt.ylim([-1.1, 1.1])
-    plt.title('Recurrence plot of training data: input(t+1) vs. input(t)')
+    plt.title("Recurrence plot of training data: input(t+1) vs. input(t)")
     plt.show()
 
     plt.figure()
@@ -200,27 +199,31 @@ if __name__ == '__main__':
     # ---- Create an Echo State Network ----
 
     # Create a reservoir
-    reservoir = Reservoir(units,
-                          lr=leak_rate,
-                          sr=rho,
-                          input_bias=input_bias,
-                          input_scaling=input_scaling,
-                          rc_connectivity=rc_connectivity,
-                          input_connectivity=input_connectivity,
-                          fb_connectivity=fb_connectivity,
-                          name="reservoir")
+    reservoir = Reservoir(
+        units,
+        lr=leak_rate,
+        sr=rho,
+        input_bias=input_bias,
+        input_scaling=input_scaling,
+        rc_connectivity=rc_connectivity,
+        input_connectivity=input_connectivity,
+        fb_connectivity=fb_connectivity,
+        name="reservoir",
+    )
 
     # If you want to use custom matrices, then use:
-    custom_reservoir = Reservoir(units,
-                                 lr=leak_rate,
-                                 input_bias=input_bias,
-                                 W=W, Win=Win, Wfb=Wfb,
-                                 name="custom-reservoir")
+    custom_reservoir = Reservoir(
+        units,
+        lr=leak_rate,
+        input_bias=input_bias,
+        W=W,
+        Win=Win,
+        Wfb=Wfb,
+        name="custom-reservoir",
+    )
 
     # create a readout layer equiped with an offline learning rule
-    readout = Ridge(ridge=regularization_coef,
-                    transient=warmup,
-                    name="readout")
+    readout = Ridge(ridge=regularization_coef, transient=warmup, name="readout")
 
     if feedback:
         reservoir = reservoir << readout
@@ -240,8 +243,10 @@ if __name__ == '__main__':
 
     plt.figure()
     plt.plot(internal_trained[:200, :21])
-    plt.title('Activations $\\mathbf{x}(n)$ from Reservoir '
-              'Neurons ID 0 to 20 for 200 time steps')
+    plt.title(
+        "Activations $\\mathbf{x}(n)$ from Reservoir "
+        "Neurons ID 0 to 20 for 200 time steps"
+    )
     plt.show()
 
     # ---- Train the ESN ----
@@ -266,7 +271,7 @@ if __name__ == '__main__':
     nmrse_mean = nrmse(y_test, y_pred, norm_value=y.mean())
 
     # Normalised RMSE (based on max - min of training data)
-    nmrse_maxmin = nrmse(y_test, y_pred, norm_value=y.max()-y.min())
+    nmrse_maxmin = nrmse(y_test, y_pred, norm_value=y.max() - y.min())
 
     print("\n********************")
     print(f"Errors computed over {test_size} time steps")
@@ -277,8 +282,8 @@ if __name__ == '__main__':
     print("********************")
 
     plt.figure(figsize=(12, 4))
-    plt.plot(y_pred, color='red', lw=1.5, label="Predictions")
-    plt.plot(y_test, color='blue', lw=0.75, label="Ground truth")
+    plt.plot(y_pred, color="red", lw=1.5, label="Predictions")
+    plt.plot(y_test, color="blue", lw=0.75, label="Ground truth")
     plt.title("Output predictions against real timeseries")
     plt.legend()
     plt.show()

@@ -14,7 +14,7 @@ import os
 import sys
 from cycler import cycler
 
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath(".."))
 
 import reservoirpy
 from reservoirpy import __version__
@@ -34,9 +34,9 @@ master_doc = "index"
 
 # -- Project information -----------------------------------------------------
 
-project = 'ReservoirPy'
-copyright = '2021, Xavier Hinaut, Nathan Trouvain'
-author = 'Xavier Hinaut, Nathan Trouvain'
+project = "ReservoirPy"
+copyright = "2021, Xavier Hinaut, Nathan Trouvain"
+author = "Xavier Hinaut, Nathan Trouvain"
 
 # The full version, including alpha/beta/rc tags
 release = str(__version__)
@@ -51,27 +51,27 @@ pygments_style = "sphinx"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.napoleon',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.linkcode',
-    'sphinx_copybutton',
-    'sphinx.ext.autosummary',
-    'sphinx_panels',
-    'sphinx.ext.intersphinx',
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.linkcode",
+    "sphinx_copybutton",
+    "sphinx.ext.autosummary",
+    "sphinx_panels",
+    "sphinx.ext.intersphinx",
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
     "matplotlib.sphinxext.plot_directive",
     "nbsphinx",
-    ]
+]
 
 # Intersphinx links
 intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "python": ("https://docs.python.org/3/", None),
-    "joblib": ("https://joblib.readthedocs.io/en/latest/", None)
-    }
+    "joblib": ("https://joblib.readthedocs.io/en/latest/", None),
+}
 
 # matplotlib plot directive
 plot_include_source = False
@@ -79,12 +79,25 @@ plot_formats = [("png", 90)]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 plot_pre_code = """import numpy as np;import matplotlib.pyplot as plt;from reservoirpy import set_seed;set_seed(42)"""
-plot_rcparams = {'axes.prop_cycle': cycler(color=
-    ['#F54309', '#78A6F5', '#FFC240', '#00D1C7', '#5918C2',
-     '#A4E3FA', '#F5250A', '#3AFA98', '#923ADB', '#D1B971',])}
+plot_rcparams = {
+    "axes.prop_cycle": cycler(
+        color=[
+            "#F54309",
+            "#78A6F5",
+            "#FFC240",
+            "#00D1C7",
+            "#5918C2",
+            "#A4E3FA",
+            "#F5250A",
+            "#3AFA98",
+            "#923ADB",
+            "#D1B971",
+        ]
+    )
+}
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -98,7 +111,7 @@ exclude_patterns = []
 #
 html_logo = "_static/rpy_navbar.png"
 
-html_theme = 'pydata_sphinx_theme'
+html_theme = "pydata_sphinx_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -111,7 +124,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 
 html_css_files = [
@@ -134,9 +147,7 @@ header = f"""\
    os.chdir(r'{os.path.dirname(os.path.dirname(__file__))}')
 """
 
-html_context = {
-    "header": header
-    }
+html_context = {"header": header}
 
 # If false, no module index is generated.
 html_use_modindex = True
@@ -161,9 +172,9 @@ autosummary_generate = True
 # -----------------------------------------------------------------------------
 
 autodoc_default_options = {
-    'inherited-members': None,
+    "inherited-members": None,
 }
-autodoc_typehints = 'none'
+autodoc_typehints = "none"
 
 
 # from pandas conf.py (https://github.com/pandas-dev/pandas/blob/master/doc/source/conf.py)
@@ -179,6 +190,7 @@ def rstjinja(app, docname, source):
     rendered = app.builder.templates.render_string(src, app.config.html_context)
     source[0] = rendered
 
+
 import re
 import inspect
 from os.path import relpath, dirname
@@ -188,18 +200,18 @@ def linkcode_resolve(domain, info):
     """
     Determine the URL corresponding to Python object
     """
-    if domain != 'py':
+    if domain != "py":
         return None
 
-    modname = info['module']
-    fullname = info['fullname']
+    modname = info["module"]
+    fullname = info["fullname"]
 
     submod = sys.modules.get(modname)
     if submod is None:
         return None
 
     obj = submod
-    for part in fullname.split('.'):
+    for part in fullname.split("."):
         try:
             obj = getattr(obj, part)
         except Exception:
@@ -227,12 +239,14 @@ def linkcode_resolve(domain, info):
     else:
         linespec = ""
 
-    startdir = os.path.abspath(os.path.join(dirname(reservoirpy.__file__), '..'))
-    fn = relpath(fn, start=startdir).replace(os.path.sep, '/')
+    startdir = os.path.abspath(os.path.join(dirname(reservoirpy.__file__), ".."))
+    fn = relpath(fn, start=startdir).replace(os.path.sep, "/")
 
-    if fn.startswith('reservoirpy/'):
+    if fn.startswith("reservoirpy/"):
         return "https://github.com/reservoirpy/reservoirpy/blob/master/%s%s" % (
-            fn, linespec)
+            fn,
+            linespec,
+        )
     else:
         return None
 

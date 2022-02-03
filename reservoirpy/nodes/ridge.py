@@ -7,8 +7,7 @@ import numpy as np
 
 from scipy import linalg
 
-from .utils import (readout_forward, _initialize_readout,
-                    _prepare_inputs_for_learning)
+from .utils import readout_forward, _initialize_readout, _prepare_inputs_for_learning
 from reservoirpy.node import Node
 from ..types import global_dtype
 
@@ -20,10 +19,13 @@ def _solve_ridge(XXT, YXT, ridge):
 def partial_backward(readout: Node, X_batch, Y_batch=None):
     transient = readout.transient
 
-    X, Y = _prepare_inputs_for_learning(X_batch, Y_batch,
-                                        transient=transient,
-                                        bias=readout.input_bias,
-                                        allow_reshape=True)
+    X, Y = _prepare_inputs_for_learning(
+        X_batch,
+        Y_batch,
+        transient=transient,
+        bias=readout.input_bias,
+        allow_reshape=True,
+    )
 
     xxt = X.T.dot(X)
     yxt = Y.T.dot(X)
@@ -46,7 +48,7 @@ def backward(readout: Node, X=None, Y=None):
     if readout.input_bias:
         input_dim += 1
 
-    ridgeid = (ridge * np.eye(input_dim, dtype=global_dtype))
+    ridgeid = ridge * np.eye(input_dim, dtype=global_dtype)
 
     Wout_raw = _solve_ridge(XXT, YXT, ridgeid)
 
@@ -58,13 +60,9 @@ def backward(readout: Node, X=None, Y=None):
         readout.set_param("Wout", Wout_raw)
 
 
-def initialize(readout: Node,
-               x=None,
-               y=None,
-               Wout_init=None):
+def initialize(readout: Node, x=None, y=None, Wout_init=None):
 
-    _initialize_readout(readout, x, y, bias=readout.input_bias,
-                        init_func=Wout_init)
+    _initialize_readout(readout, x, y, bias=readout.input_bias, init_func=Wout_init)
 
 
 def initialize_buffers(readout):
@@ -78,10 +76,8 @@ def initialize_buffers(readout):
     if readout.input_bias:
         input_dim += 1
 
-    readout.create_buffer("XXT", (input_dim,
-                                  input_dim))
-    readout.create_buffer("YXT", (output_dim,
-                                  input_dim))
+    readout.create_buffer("XXT", (input_dim, input_dim))
+    readout.create_buffer("YXT", (output_dim, input_dim))
 
 
 class Ridge(Node):
@@ -113,17 +109,23 @@ class Ridge(Node):
             Node name, by default None.
     """
 
-    def __init__(self, output_dim=None, ridge=0.0, transient=0, Wout=None,
-                 input_bias=True, name=None):
-        super(Ridge, self).__init__(params={"Wout": None, "bias": None},
-                                    hypers={"ridge": ridge,
-                                            "transient": transient,
-                                            "input_bias": input_bias},
-                                    forward=readout_forward,
-                                    partial_backward=partial_backward,
-                                    backward=backward,
-                                    output_dim=output_dim,
-                                    initializer=partial(initialize,
-                                                        Wout_init=Wout),
-                                    buffers_initializer=initialize_buffers,
-                                    name=name)
+    def __init__(
+        self,
+        output_dim=None,
+        ridge=0.0,
+        transient=0,
+        Wout=None,
+        input_bias=True,
+        name=None,
+    ):
+        super(Ridge, self).__init__(
+            params={"Wout": None, "bias": None},
+            hypers={"ridge": ridge, "transient": transient, "input_bias": input_bias},
+            forward=readout_forward,
+            partial_backward=partial_backward,
+            backward=backward,
+            output_dim=output_dim,
+            initializer=partial(initialize, Wout_init=Wout),
+            buffers_initializer=initialize_buffers,
+            name=name,
+        )

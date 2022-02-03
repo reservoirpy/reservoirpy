@@ -9,7 +9,7 @@ from .dummy_nodes import *
 
 
 def test_node_creation(plus_node):
-    assert plus_node.name == 'PlusNode-0'
+    assert plus_node.name == "PlusNode-0"
     assert plus_node.params["c"] is None
     assert plus_node.hypers["h"] == 1
     assert plus_node.input_dim is None
@@ -202,23 +202,23 @@ def test_offline_fit(offline_node):
 
     assert_array_equal(offline_node.b, np.array([0.5]))
 
-    X = np.ones((10, 5)) * 2.
+    X = np.ones((10, 5)) * 2.0
     Y = np.ones((10, 5))
 
     offline_node.fit(X, Y)
 
-    assert_array_equal(offline_node.b, np.array([1.]))
+    assert_array_equal(offline_node.b, np.array([1.0]))
 
-    X = [np.ones((10, 5)) * 2.] * 3
+    X = [np.ones((10, 5)) * 2.0] * 3
     Y = [np.ones((10, 5))] * 3
 
     offline_node.fit(X, Y)
 
-    assert_array_equal(offline_node.b, np.array([3.]))
+    assert_array_equal(offline_node.b, np.array([3.0]))
 
     offline_node.partial_fit(X, Y)
 
-    assert_array_equal(offline_node.get_buffer("b"), np.array([3.]))
+    assert_array_equal(offline_node.get_buffer("b"), np.array([3.0]))
 
 
 def test_unsupervised_fit(unsupervised_node):
@@ -234,13 +234,13 @@ def test_unsupervised_fit(unsupervised_node):
 
     assert_array_equal(unsupervised_node.b, np.array([1.0]))
 
-    X = np.ones((10, 5)) * 2.
+    X = np.ones((10, 5)) * 2.0
 
     unsupervised_node.fit(X)
 
     assert_array_equal(unsupervised_node.b, np.array([2.0]))
 
-    X = [np.ones((10, 5)) * 2.] * 3
+    X = [np.ones((10, 5)) * 2.0] * 3
 
     unsupervised_node.fit(X)
 
@@ -248,7 +248,7 @@ def test_unsupervised_fit(unsupervised_node):
 
     unsupervised_node.partial_fit(X)
 
-    assert_array_equal(unsupervised_node.get_buffer("b"), np.array([6.]))
+    assert_array_equal(unsupervised_node.get_buffer("b"), np.array([6.0]))
 
 
 def test_train_unsupervised(online_node):
@@ -260,13 +260,13 @@ def test_train_unsupervised(online_node):
 
     assert_array_equal(online_node.b, np.array([10.0]))
 
-    X = np.ones((10, 5)) * 2.
+    X = np.ones((10, 5)) * 2.0
 
     online_node.train(X)
 
     assert_array_equal(online_node.b, np.array([30.0]))
 
-    X = [np.ones((10, 5)) * 2.] * 3
+    X = [np.ones((10, 5)) * 2.0] * 3
 
     with pytest.raises(TypeError):
         online_node.train(X)
@@ -282,13 +282,13 @@ def test_train(online_node):
 
     assert_array_equal(online_node.b, np.array([20.0]))
 
-    X = np.ones((10, 5)) * 2.
+    X = np.ones((10, 5)) * 2.0
 
     online_node.train(X, Y)
 
     assert_array_equal(online_node.b, np.array([50.0]))
 
-    X = [np.ones((10, 5)) * 2.] * 3
+    X = [np.ones((10, 5)) * 2.0] * 3
 
     with pytest.raises(TypeError):
         online_node.train(X, Y)
@@ -304,7 +304,7 @@ def test_train_learn_every(online_node):
 
     assert_array_equal(online_node.b, np.array([10.0]))
 
-    X = np.ones((10, 5)) * 2.
+    X = np.ones((10, 5)) * 2.0
 
     online_node.train(X, Y, learn_every=2)
 

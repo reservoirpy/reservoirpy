@@ -20,17 +20,17 @@ from ..utils.random import noise
 
 
 def _gaussian_gradients(x, y, a, sigma, mu):
-    """Compute weight deltas """
+    """Compute weight deltas"""
     sig2 = sigma**2
-    delta_b = (mu/sig2) - (y/sig2) * (2*sig2 + 1 - y**2 + mu*y)
-    delta_a = (1/a) + delta_b*x
+    delta_b = (mu / sig2) - (y / sig2) * (2 * sig2 + 1 - y**2 + mu * y)
+    delta_a = (1 / a) + delta_b * x
     return delta_a, delta_b
 
 
 def _exp_gradients(x, y, a, mu):
     mu_inv = 1 / mu
-    delta_b = 1 - (2 + mu_inv)*y + mu_inv*y**2
-    delta_a = (1/a) + delta_b*x
+    delta_b = 1 - (2 + mu_inv) * y + mu_inv * y**2
+    delta_a = (1 / a) + delta_b * x
     return delta_a, delta_b
 
 
@@ -63,13 +63,11 @@ def forward(reservoir: "IPReservoir", x: np.ndarray) -> np.ndarray:
     u = x.reshape(-1, 1)
     r = reservoir.state().T
 
-    s_next = f(a * _reservoir_kernel(reservoir, u, r) + b) + \
-             noise_gen(dist, r.shape, g_rc)
+    s_next = f(a * _reservoir_kernel(reservoir, u, r) + b) + noise_gen(
+        dist, r.shape, g_rc
+    )
 
     return s_next.T
-
-
-
 
 
 def backward(reservoir: Node, X=None, Y=None, warmup=0):
@@ -90,7 +88,7 @@ def backward(reservoir: Node, X=None, Y=None, warmup=0):
     if readout.input_bias:
         input_dim += 1
 
-    ridgeid = (ridge * np.eye(input_dim, dtype=global_dtype))
+    ridgeid = ridge * np.eye(input_dim, dtype=global_dtype)
 
     Wout_raw = _solve_ridge(XXT, YXT, ridgeid)
 
@@ -102,9 +100,7 @@ def backward(reservoir: Node, X=None, Y=None, warmup=0):
         readout.set_param("Wout", Wout_raw)
 
 
-def initialize(reservoir,
-               *args,
-               **kwargs):
+def initialize(reservoir, *args, **kwargs):
 
     initialize_reservoir(reservoir, *args, **kwargs)
 
@@ -233,70 +229,87 @@ class IPReservoir(Node):
 
     """
 
-    def __init__(self,
-                 units: int = None,
-                 sr: Optional[float] = None,
-                 input_bias: bool = True,
-                 noise_rc: float = 0.0,
-                 noise_in: float = 0.0,
-                 noise_fb: float = 0.0,
-                 noise_type: str = "normal",
-                 input_scaling: Optional[float] = 1.0,
-                 fb_scaling: Optional[float] = 1.0,
-                 input_connectivity: Optional[float] = 0.1,
-                 rc_connectivity: Optional[float] = 0.1,
-                 fb_connectivity: Optional[float] = 0.1,
-                 Win: Union[Weights, Callable] = generate_input_weights,
-                 W: Union[Weights, Callable] = generate_internal_weights,
-                 Wfb: Union[Weights, Callable] = generate_input_weights,
-                 fb_dim: int = None,
-                 fb_activation: Union[str, Callable] = identity,
-                 activation: str = "tanh",
-                 name=None,
-                 seed=None):
+    def __init__(
+        self,
+        units: int = None,
+        sr: Optional[float] = None,
+        input_bias: bool = True,
+        noise_rc: float = 0.0,
+        noise_in: float = 0.0,
+        noise_fb: float = 0.0,
+        noise_type: str = "normal",
+        input_scaling: Optional[float] = 1.0,
+        fb_scaling: Optional[float] = 1.0,
+        input_connectivity: Optional[float] = 0.1,
+        rc_connectivity: Optional[float] = 0.1,
+        fb_connectivity: Optional[float] = 0.1,
+        Win: Union[Weights, Callable] = generate_input_weights,
+        W: Union[Weights, Callable] = generate_internal_weights,
+        Wfb: Union[Weights, Callable] = generate_input_weights,
+        fb_dim: int = None,
+        fb_activation: Union[str, Callable] = identity,
+        activation: str = "tanh",
+        name=None,
+        seed=None,
+    ):
         if units is None and not is_array(W):
             raise ValueError(
                 "'units' parameter must not be None if 'W' parameter is not "
-                "a matrix.")
+                "a matrix."
+            )
 
         if activation not in ["tanh", "sigmoid"]:
             raise ValueError(
                 f"Activation '{activation}' must be 'tanh' or 'sigmoid' when "
                 "appliying intrinsic plasticity."
-                )
+            )
 
         super(IPReservoir, self).__init__(
-            fb_initializer=partial(initialize_feedback,
-                                   Wfb_init=Wfb,
-                                   fb_scaling=fb_scaling,
-                                   fb_connectivity=fb_connectivity,
-                                   fb_dim=fb_dim,
-                                   seed=seed),
-            params={"W": None, "Win": None, "Wfb": None, "bias": None,
-                    "a": None, "b": None, "internal_state": None},
-            hypers={"sr": sr,
-                    "input_scaling": input_scaling,
-                    "fb_scaling": fb_scaling,
-                    "rc_connectivity": rc_connectivity,
-                    "input_connectivity": input_connectivity,
-                    "fb_connectivity": fb_connectivity,
-                    "noise_in": noise_in,
-                    "noise_rc": noise_rc,
-                    "noise_out": noise_fb,
-                    "noise_type": noise_type,
-                    "activation": activation,
-                    "fb_activation": fb_activation,
-                    "units": units,
-                    "noise_generator": partial(noise, seed=seed)},
+            fb_initializer=partial(
+                initialize_feedback,
+                Wfb_init=Wfb,
+                fb_scaling=fb_scaling,
+                fb_connectivity=fb_connectivity,
+                fb_dim=fb_dim,
+                seed=seed,
+            ),
+            params={
+                "W": None,
+                "Win": None,
+                "Wfb": None,
+                "bias": None,
+                "a": None,
+                "b": None,
+                "internal_state": None,
+            },
+            hypers={
+                "sr": sr,
+                "input_scaling": input_scaling,
+                "fb_scaling": fb_scaling,
+                "rc_connectivity": rc_connectivity,
+                "input_connectivity": input_connectivity,
+                "fb_connectivity": fb_connectivity,
+                "noise_in": noise_in,
+                "noise_rc": noise_rc,
+                "noise_out": noise_fb,
+                "noise_type": noise_type,
+                "activation": activation,
+                "fb_activation": fb_activation,
+                "units": units,
+                "noise_generator": partial(noise, seed=seed),
+            },
             forward=forward,
-            initializer=partial(initialize,
-                                sr=sr,
-                                input_scaling=input_scaling,
-                                input_connectivity=input_connectivity,
-                                rc_connectivity=rc_connectivity,
-                                W_init=W,
-                                Win_init=Win,
-                                input_bias=input_bias,
-                                seed=seed),
+            initializer=partial(
+                initialize,
+                sr=sr,
+                input_scaling=input_scaling,
+                input_connectivity=input_connectivity,
+                rc_connectivity=rc_connectivity,
+                W_init=W,
+                Win_init=Win,
+                input_bias=input_bias,
+                seed=seed,
+            ),
             output_dim=units,
-            name=name)
+            name=name,
+        )

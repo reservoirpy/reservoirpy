@@ -81,17 +81,19 @@ from .activations import Tanh, Sigmoid, Softmax, Softplus, Identity, ReLU
 from .io import Input, Output
 from .concat import Concat
 
-__all__ = ["Reservoir",
-           "Input",
-           "Output",
-           "Ridge",
-           "FORCE",
-           "Tanh",
-           "Softmax",
-           "Softplus",
-           "Identity",
-           "Sigmoid",
-           "ReLU",
-           "NVAR",
-           "ESN",
-           "Concat"]
+__all__ = [
+    "Reservoir",
+    "Input",
+    "Output",
+    "Ridge",
+    "FORCE",
+    "Tanh",
+    "Softmax",
+    "Softplus",
+    "Identity",
+    "Sigmoid",
+    "ReLU",
+    "NVAR",
+    "ESN",
+    "Concat",
+]

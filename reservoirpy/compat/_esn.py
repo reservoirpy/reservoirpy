@@ -17,8 +17,7 @@ from .regression_models import RidgeRegression
 from ._base import _ESNBase
 
 
-def _get_offline_model(ridge: float = 0.0,
-                       dtype: np.dtype = np.float64):
+def _get_offline_model(ridge: float = 0.0, dtype: np.dtype = np.float64):
     return RidgeRegression(ridge, dtype=dtype)
 
 
@@ -96,34 +95,39 @@ class ESN(_ESNBase):
         .. [#] M. Lukoševičius, ‘A Practical Guide to Applying Echo
                State Networks’, Jan. 2012, doi: 10.1007/978-3-642-35289-8_36.
     """
-    def __init__(self,
-                 lr: float,
-                 W: np.ndarray,
-                 Win: np.ndarray,
-                 input_bias: bool = True,
-                 reg_model: Callable = None,
-                 ridge: float = 0.0,
-                 Wfb: np.ndarray = None,
-                 fbfunc: Callable = lambda x: x,
-                 noise_in: float = 0.0,
-                 noise_rc: float = 0.0,
-                 noise_out: float = 0.0,
-                 activation: Activation = np.tanh,
-                 seed: int = None,
-                 typefloat: np.dtype = np.float64):
-        super(ESN, self).__init__(W,
-                                  Win,
-                                  lr=lr,
-                                  input_bias=input_bias,
-                                  activation=activation,
-                                  Wfb=Wfb,
-                                  fbfunc=fbfunc,
-                                  Wout=None,
-                                  noise_in=noise_in,
-                                  noise_rc=noise_rc,
-                                  noise_out=noise_out,
-                                  seed=seed,
-                                  typefloat=typefloat)
+
+    def __init__(
+        self,
+        lr: float,
+        W: np.ndarray,
+        Win: np.ndarray,
+        input_bias: bool = True,
+        reg_model: Callable = None,
+        ridge: float = 0.0,
+        Wfb: np.ndarray = None,
+        fbfunc: Callable = lambda x: x,
+        noise_in: float = 0.0,
+        noise_rc: float = 0.0,
+        noise_out: float = 0.0,
+        activation: Activation = np.tanh,
+        seed: int = None,
+        typefloat: np.dtype = np.float64,
+    ):
+        super(ESN, self).__init__(
+            W,
+            Win,
+            lr=lr,
+            input_bias=input_bias,
+            activation=activation,
+            Wfb=Wfb,
+            fbfunc=fbfunc,
+            Wout=None,
+            noise_in=noise_in,
+            noise_rc=noise_rc,
+            noise_out=noise_out,
+            seed=seed,
+            typefloat=typefloat,
+        )
         self.model = _get_offline_model(ridge, dtype=typefloat)
 
     @property
@@ -136,13 +140,15 @@ class ESN(_ESNBase):
         if hasattr(self.model, "ridge"):
             self.model.ridge = value
 
-    def fit_readout(self,
-                    states: Data,
-                    teachers: Data,
-                    reg_model: Callable = None,
-                    ridge: float = None,
-                    force_pinv: bool = False,
-                    verbose: bool = False) -> np.ndarray:
+    def fit_readout(
+        self,
+        states: Data,
+        teachers: Data,
+        reg_model: Callable = None,
+        ridge: float = None,
+        force_pinv: bool = False,
+        verbose: bool = False,
+    ) -> np.ndarray:
         """Compute a readout matrix by fitting the states computed by the ESN
         to the expected values, using the regression model defined
         in the ESN.
@@ -200,16 +206,18 @@ class ESN(_ESNBase):
 
         return self.Wout
 
-    def train(self,
-              inputs: Data,
-              teachers: Data,
-              wash_nr_time_step: int = 0,
-              workers: int = -1,
-              seed: int = None,
-              verbose: bool = False,
-              backend=None,
-              use_memmap=None,
-              return_states: bool = False) -> Sequence[np.ndarray]:
+    def train(
+        self,
+        inputs: Data,
+        teachers: Data,
+        wash_nr_time_step: int = 0,
+        workers: int = -1,
+        seed: int = None,
+        verbose: bool = False,
+        backend=None,
+        use_memmap=None,
+        return_states: bool = False,
+    ) -> Sequence[np.ndarray]:
         """Train the ESN model on set of input sequences.
 
         Parameters
@@ -258,8 +266,9 @@ class ESN(_ESNBase):
             is not (yet) well suited for this.
         """
         # autochecks of inputs and outputs
-        inputs, teachers = check_input_lists(inputs, self.dim_in,
-                                             teachers, self.dim_out)
+        inputs, teachers = check_input_lists(
+            inputs, self.dim_in, teachers, self.dim_out
+        )
 
         self._dim_out = teachers[0].shape[1]
         self.model.initialize(self.N, self.dim_out)
@@ -268,20 +277,32 @@ class ESN(_ESNBase):
         steps = sum(lengths)
 
         if verbose:
-            print(f"Training on {len(inputs)} inputs ({steps} steps) "
-                  f"-- wash: {wash_nr_time_step} steps")
+            print(
+                f"Training on {len(inputs)} inputs ({steps} steps) "
+                f"-- wash: {wash_nr_time_step} steps"
+            )
 
         def train_fn(*, x, y, pbar):
             s = self._compute_states(x, y, seed=seed, pbar=pbar)
-            self.model.partial_fit(s[wash_nr_time_step:], y)  # increment X.X^T and Y.X^T
-                                                              # or save data for sklearn fit
+            self.model.partial_fit(
+                s[wash_nr_time_step:], y
+            )  # increment X.X^T and Y.X^T
+            # or save data for sklearn fit
             return s
 
-        _, states = parallelize(self, train_fn, workers, lengths, return_states,
-                                pbar_text="Train", verbose=verbose,
-                                x=inputs, y=teachers)
+        _, states = parallelize(
+            self,
+            train_fn,
+            workers,
+            lengths,
+            return_states,
+            pbar_text="Train",
+            verbose=verbose,
+            x=inputs,
+            y=teachers,
+        )
 
         self.Wout = self.model.fit()  # perform Y.X^T.(X.X^T + ridge)^-1
-                                      # or sklearn fit
+        # or sklearn fit
 
         return states

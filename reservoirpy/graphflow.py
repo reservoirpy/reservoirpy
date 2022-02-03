@@ -44,9 +44,11 @@ def topological_sort(nodes, edges, inputs=None):
             if parents.get(m) is None or len(parents[m]) < 1:
                 inputs.append(m)
     if len(edges) > 0:
-        raise RuntimeError("Model has a cycle: impossible "
-                           "to automatically determine operations "
-                           "order in the model.")
+        raise RuntimeError(
+            "Model has a cycle: impossible "
+            "to automatically determine operations "
+            "order in the model."
+        )
     else:
         return ordered_nodes
 
@@ -56,16 +58,16 @@ def get_offline_subgraphs(nodes, edges):
     inputs, outputs = find_entries_and_exits(nodes, edges)
     parents, children = find_parents_and_children(edges)
 
-    offlines = set([n for n in nodes
-                    if n.is_trained_offline and not n.is_trained_online])
+    offlines = set(
+        [n for n in nodes if n.is_trained_offline and not n.is_trained_online]
+    )
     included, trained = set(), set()
     subgraphs, required = [], []
     _nodes = nodes.copy()
     while trained != offlines:
         subnodes, subedges = [], []
         for node in _nodes:
-            if node in inputs or \
-                    all([p in included for p in parents.get(node)]):
+            if node in inputs or all([p in included for p in parents.get(node)]):
 
                 if node.is_trained_offline and node not in trained:
                     trained.add(node)
@@ -75,8 +77,9 @@ def get_offline_subgraphs(nodes, edges):
                         subnodes.append(node)
                     included.add(node)
 
-        subedges = [edge for edge in edges
-                    if edge[0] in subnodes and edge[1] in subnodes]
+        subedges = [
+            edge for edge in edges if edge[0] in subnodes and edge[1] in subnodes
+        ]
         subgraphs.append((subnodes, subedges))
         _nodes = [n for n in nodes if n not in included]
 
@@ -97,10 +100,12 @@ def _get_required_nodes(subgraphs, children):
 
         fitted |= set([node for node in currs if node.is_trained_offline])
 
-    nexts = set([n for n in subgraphs[-1][0]
-                 if n.is_trained_offline and n not in fitted])
-    currs = set([n for n in subgraphs[-1][0]
-                 if not n.is_trained_offline or n in fitted])
+    nexts = set(
+        [n for n in subgraphs[-1][0] if n.is_trained_offline and n not in fitted]
+    )
+    currs = set(
+        [n for n in subgraphs[-1][0] if not n.is_trained_offline or n in fitted]
+    )
 
     req.append(_get_links(currs, nexts, children))
 
@@ -113,8 +118,7 @@ def _get_links(previous, nexts, children):
     for n in previous:
         next_children = []
         if n not in nexts:
-            next_children = [c.name for c in children.get(n, [])
-                             if c in nexts]
+            next_children = [c.name for c in children.get(n, []) if c in nexts]
 
         if len(next_children) > 0:
             links[n.name] = next_children
@@ -170,20 +174,26 @@ class DataDispatcher:
         if is_mapping(input_mapping):
             for node in self._inputs:
                 if input_mapping.get(node.name) is None:
-                    raise KeyError(f"Node {node.name} not found "
-                                   f"in data mapping. This node requires "
-                                   f"data to run.")
+                    raise KeyError(
+                        f"Node {node.name} not found "
+                        f"in data mapping. This node requires "
+                        f"data to run."
+                    )
 
     def _check_targets(self, target_mapping):
         if is_mapping(target_mapping):
             for node in self._nodes:
-                if node in self._trainables and \
-                        not node.fitted and \
-                        target_mapping.get(node.name) is None:
-                    raise KeyError(f"Trainable node {node.name} not found "
-                                   f"in target/feedback data mapping. This "
-                                   f"node requires "
-                                   f"target values.")
+                if (
+                    node in self._trainables
+                    and not node.fitted
+                    and target_mapping.get(node.name) is None
+                ):
+                    raise KeyError(
+                        f"Trainable node {node.name} not found "
+                        f"in target/feedback data mapping. This "
+                        f"node requires "
+                        f"target values."
+                    )
 
     def get(self, item):
         parents = self._parents.get(item, ())
@@ -229,8 +239,9 @@ class DataDispatcher:
                         self._teachers[node] = Y
         return self
 
-    def dispatch(self, X, Y=None, shift_fb=True, return_targets=False,
-                 force_teachers=True):
+    def dispatch(
+        self, X, Y=None, shift_fb=True, return_targets=False, force_teachers=True
+    ):
 
         if not is_mapping(X):
             X_map = {inp.name: X for inp in self._inputs}
@@ -253,12 +264,14 @@ class DataDispatcher:
         sequence_length = len(X_map[current_node])
         for node, sequence in X_map.items():
             if sequence_length != len(sequence):
-                raise ValueError(f"Impossible to use data with inconsistent "
-                                 f"number of timesteps: {node} is given "
-                                 f"a sequence of length {len(sequence)} as "
-                                 f"input "
-                                 f"while {current_node} is given a sequence "
-                                 f"of length {sequence_length}")
+                raise ValueError(
+                    f"Impossible to use data with inconsistent "
+                    f"number of timesteps: {node} is given "
+                    f"a sequence of length {len(sequence)} as "
+                    f"input "
+                    f"while {current_node} is given a sequence "
+                    f"of length {sequence_length}"
+                )
 
         if Y_map is not None:
             # Pad teacher nodes in a sequence
@@ -275,7 +288,8 @@ class DataDispatcher:
                             f"number of timesteps: {node} is given "
                             f"a sequence of length {len(sequence)} as "
                             f"targets/feedbacks while {current_node} is "
-                            f"given a sequence of length {sequence_length}.")
+                            f"given a sequence of length {sequence_length}."
+                        )
 
         for i in range(sequence_length):
             x = {node: X_map[node][i] for node in X_map.keys()}
@@ -288,12 +302,14 @@ class DataDispatcher:
                 if shift_fb:
                     if i == 0:
                         if force_teachers:
-                            fb = {node: np.zeros_like(Y_map[node][i])
-                                  for node in Y_map.keys()}
+                            fb = {
+                                node: np.zeros_like(Y_map[node][i])
+                                for node in Y_map.keys()
+                            }
                         else:
                             fb = {node: None for node in Y_map.keys()}
                     else:
-                        fb = {node: Y_map[node][i-1] for node in Y_map.keys()}
+                        fb = {node: Y_map[node][i - 1] for node in Y_map.keys()}
                 # else assume that all feedback vectors must be instantaneously
                 # fed to the network. This means that 'Y_map' already contains
                 # data that is delayed by one timestep w.r.t. 'X_map'.
