@@ -3,8 +3,8 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from ..utils.validation import is_object_sequence
-from ..model import Node
+from ..utils.validation import is_sequence_set
+from ..node import Node
 
 
 def forward(add, *data):
@@ -22,7 +22,7 @@ def initialize(add, x=None):
             add.set_input_dim(x.shape)
             add.set_output_dim((1, x.shape[1]))
 
-        elif is_object_sequence(x):
+        elif is_sequence_set(x):
             shapes = [array.shape for array in x]
 
             if not all([s[0] == 1 for s in shapes]):

@@ -15,3 +15,4 @@ ReservoirPy API reference
    reservoirpy.datasets
    reservoirpy.hyper
    reservoirpy.compat
+   reservoirpy.experimental
