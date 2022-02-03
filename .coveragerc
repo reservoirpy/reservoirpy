@@ -8,6 +8,8 @@ omit =
     */setup.py
     */tests/*
     */examples/*
+    */experimental/*
+    */compat/*
 
 [report]
 exclude_lines =
