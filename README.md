@@ -2,10 +2,11 @@
   <img src="https://github.com/reservoirpy/reservoirpy/raw/master/static/rpy_banner_bw.png"><br>
 </div>
 
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/reservoirpy)
 [![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
 [![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
-
+[![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
 
 # ReservoirPy (v0.3.1) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
@@ -26,7 +27,7 @@ forecast = esn.fit(X, y).run(timeseries)
 ReservoirPy is a simple user-friendly library based on Python scientific modules. 
 It provides a flexible interface to implement efficient Reservoir Computing (RC) 
 architectures with a particular focus on Echo State Networks (ESN). 
-Advanced features of ReservoirPy allow to improve computation time efficiency 
+Advanced features of ReservoirPy allow improving computation time efficiency 
 on a simple laptop compared to basic Python implementation. 
 Some of its features are: offline and online training, parallel implementation, 
 sparse matrix computation, fast spectral initialization, etc. 
