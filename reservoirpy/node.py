@@ -163,7 +163,7 @@ def _init_vectors_placeholders(node, x, y):
     elif isinstance(x, list):
         x_init = list()
         for i in range(len(x)):
-            x_init[i] = np.atleast_2d(check_vector(x[i], caller=node))
+            x_init.append(np.atleast_2d(check_vector(x[i], caller=node)))
     elif x is None:
         if node.input_dim is not None:
             if hasattr(node.input_dim, "__iter__"):

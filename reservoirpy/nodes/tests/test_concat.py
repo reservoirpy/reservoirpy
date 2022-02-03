@@ -19,8 +19,6 @@ def test_concat():
     assert c.input_dim == (5, 5, 5)
     assert_array_equal(res, np.ones((1, 15)))
 
-    res = c(x)
-
 
 def test_concat_no_list():
     x = np.ones((1, 5))
