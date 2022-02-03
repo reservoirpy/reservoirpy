@@ -19,6 +19,8 @@ pydata-sphinx-theme = "*"
 sphinx-panels = "*"
 Sphinx = "*"
 sphinx-autobuild = "*"
+black = "*"
+pre-commit = "*"
 
 [dev-packages]
 
