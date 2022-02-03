@@ -28,7 +28,7 @@ INSTALL_REQUIRES = [
     "tqdm>=4.43.0",
     "joblib>=0.12",
     "dill>=0.3.0"
-    'numpy>=1.15.0',
+    'numpy>=1.21.1',
     'scipy>=1.0.0,<=1.7.3',
     'joblib>=0.12',
 ]

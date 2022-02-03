@@ -4,21 +4,20 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-numpy = "==1.18.1"
-scipy = "*"
-tqdm = "==4.43.0"
-joblib = "==0.14.1"
-dill = "==0.3.1.1"
+numpy = ">=1.21.1"
+scipy = ">=1.4.1"
+tqdm = ">=4.43.0"
+joblib = ">=0.14.1"
+dill = ">=0.3.1.1"
 pytest = "*"
 pytest-coverage = "*"
-scikit-learn = "*"
 matplotlib = "*"
 numba = "*"
 psutil = "*"
 twine = "*"
 pydata-sphinx-theme = "*"
 sphinx-panels = "*"
-sphinx = "*"
+Sphinx = "*"
 sphinx-autobuild = "*"
 
 [dev-packages]
