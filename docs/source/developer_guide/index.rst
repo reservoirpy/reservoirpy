@@ -4,7 +4,8 @@
 Developer guide
 ===============
 
-.. toctree::
-    :maxdepth: 1
+The following guide provides usefull information for new contributors or developers.
 
-    advanced_install
+**See** :ref:`advanced_install` **to learn more about ReservoirPy complete/developer installation.**
+
+.. include:: ../../../CONTRIBUTING.rst
