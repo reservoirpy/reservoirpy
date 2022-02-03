@@ -316,7 +316,7 @@ class ESNOnline:
         where :math:`\\alpha` is the ``alpha_coef`` and :math:`N` is the
         number of units in the reservoir.
         """
-        self.state_corr_inv = np.asmatrix(np.eye(self.state_size)) / self.alpha_coef
+        self.state_corr_inv = np.eye(self.state_size) / self.alpha_coef
 
     def train_from_current_state(self,
                                  targeted_output: np.ndarray,
