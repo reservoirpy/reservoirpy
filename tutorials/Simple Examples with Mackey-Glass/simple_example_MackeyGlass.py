@@ -25,7 +25,7 @@ import numpy as np
 
 import reservoirpy as rpy
 from reservoirpy.datasets import mackey_glass
-from reservoirpy.nodes import Reservoir, Ridge, Input
+from reservoirpy.nodes import Input, Reservoir, Ridge
 
 # Set a particular seed for the random generator (for example seed = 42)
 # NB: reservoir performances should be averaged accross at least 30 random
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     y_pred = esn.run(X_test)
 
-    from reservoirpy.observables import mse, rmse, nrmse
+    from reservoirpy.observables import mse, nrmse, rmse
 
     # Mean Squared Error
     # https://en.wikipedia.org/wiki/Mean_squared_error

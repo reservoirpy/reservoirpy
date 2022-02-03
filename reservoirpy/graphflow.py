@@ -1,7 +1,7 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from collections import defaultdict, namedtuple, deque
+from collections import defaultdict, deque, namedtuple
 from typing import Dict, List
 
 import numpy as np

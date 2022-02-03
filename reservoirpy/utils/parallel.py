@@ -1,19 +1,19 @@
 # Author: Nathan Trouvain at 19/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import os
 import gc
+import os
 import sys
 import tempfile
 import uuid
 from collections import defaultdict
+from functools import partial
 from multiprocessing import Manager, Process
 from typing import Tuple
-from functools import partial
 
 import joblib
-from joblib import Parallel, delayed
 import numpy as np
+from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from ..types import global_dtype

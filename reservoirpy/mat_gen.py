@@ -38,6 +38,7 @@ connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
 
     from reservoirpy.mat_gen import fast_spectral_initialization
     from reservoirpy.mat_gen import generate_input_weights
+
     W = fast_spectral_initialization(1000, sr=0.5)
     Win = generate_input_weights(1000, 5, input_scaling=0.9)
     print(W.shape, Win.shape)
@@ -53,20 +54,16 @@ References
 
 """
 import warnings
-
 from functools import partial
-from typing import Union, Callable
+from typing import Callable, Union
 
-from scipy import stats
 import numpy as np
-
 from numpy.random import Generator, default_rng
-from scipy import sparse
+from scipy import sparse, stats
 from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
 
 from .observables import spectral_radius
 from .utils.random import rand_generator
-
 
 __all__ = [
     "fast_spectral_initialization",

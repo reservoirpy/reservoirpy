@@ -5,12 +5,12 @@ reservoirpy.nodes.FORCE
 
 .. autoclass:: FORCE
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~FORCE.__init__
       ~FORCE.call
       ~FORCE.clean_buffers
@@ -41,15 +41,15 @@ reservoirpy.nodes.FORCE
       ~FORCE.with_state
       ~FORCE.zero_feedback
       ~FORCE.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
       ~FORCE.feedback_dim
       ~FORCE.fitted
       ~FORCE.has_feedback
@@ -63,5 +63,4 @@ reservoirpy.nodes.FORCE
       ~FORCE.name
       ~FORCE.output_dim
       ~FORCE.params
-   
-   
+

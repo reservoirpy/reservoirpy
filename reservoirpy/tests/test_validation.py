@@ -1,8 +1,8 @@
 # Author: Nathan Trouvain at 23/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 from scipy.sparse import csr_matrix
 

@@ -9,7 +9,7 @@ References
            doi: 10.1016/j.neuron.2009.07.018.
 
 """
-from typing import Sequence, Callable, Tuple, Union
+from typing import Callable, Sequence, Tuple, Union
 
 import numpy as np
 

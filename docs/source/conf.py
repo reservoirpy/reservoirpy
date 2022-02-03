@@ -12,6 +12,7 @@
 #
 import os
 import sys
+
 from cycler import cycler
 
 sys.path.insert(0, os.path.abspath(".."))
@@ -135,16 +136,18 @@ header = f"""\
 .. currentmodule:: reservoirpy
 .. ipython:: python
    :suppress:
-   
+
    import numpy as np
    import matplotlib.pyplot as plt
    from reservoirpy import set_seed
    from reservoirpy import verbosity
+
    verbosity(0)
    set_seed(42)
    np.set_printoptions(precision=4, suppress=True)
    import os
-   os.chdir(r'{os.path.dirname(os.path.dirname(__file__))}')
+
+   os.chdir(r"{os.path.dirname(os.path.dirname(__file__))}")
 """
 
 html_context = {"header": header}
@@ -191,9 +194,10 @@ def rstjinja(app, docname, source):
     source[0] = rendered
 
 
-import re
 import inspect
-from os.path import relpath, dirname
+import re
+from os.path import dirname, relpath
+
 
 # from scipy conf.py (https://github.com/scipy/scipy/blob/3da3fb3de8beffc79797b7b62ea3c98cc8075d2e/doc/source/conf.py)
 def linkcode_resolve(domain, info):

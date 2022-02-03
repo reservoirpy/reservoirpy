@@ -108,17 +108,17 @@ from typing import Union
 
 import numpy as np
 
-from ._chaos import henon_map
-from ._chaos import logistic_map
-from ._chaos import lorenz
-from ._chaos import multiscroll
-from ._chaos import rabinovich_fabrikant
-from ._chaos import mackey_glass
-from ._chaos import narma
-from ._chaos import doublescroll
-
-from ._seed import set_seed, get_seed
-
+from ._chaos import (
+    doublescroll,
+    henon_map,
+    logistic_map,
+    lorenz,
+    mackey_glass,
+    multiscroll,
+    narma,
+    rabinovich_fabrikant,
+)
+from ._seed import get_seed, set_seed
 
 __all__ = [
     "henon_map",

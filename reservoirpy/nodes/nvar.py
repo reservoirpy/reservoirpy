@@ -1,9 +1,8 @@
 # Author: Nathan Trouvain at 14/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
-
 import itertools as it
+import sys
 
 if sys.version_info < (3, 8):
     from scipy.special import comb
@@ -12,7 +11,7 @@ else:
 
 import numpy as np
 
-from reservoirpy.node import Node
+from ..node import Node
 
 
 def forward(node, x):

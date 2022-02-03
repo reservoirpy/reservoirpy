@@ -27,9 +27,7 @@ Building your first Echo State Nertwork
         >>> import numpy as np
         >>> from reservoirpy import ESN
         >>> Win = np.array([[1, -1], [-1, 1], [1, -1]])
-        >>> W = np.array([[0.0, 0.1, 0.1],
-        ...               [0.5, 0., 0.0 ],
-        ...               [0.0, 0.2, 0.3]])
+        >>> W = np.array([[0.0, 0.1, 0.1], [0.5, 0.0, 0.0], [0.0, 0.2, 0.3]])
         >>> esn = ESN(lr=0.1, W=W, Win=Win)
         >>> esn
         ESN(trained=False, feedback=False, N=3, lr=0.1, input_bias=True, input_dim=3)
@@ -55,7 +53,7 @@ Building your first Echo State Nertwork
     .. doctest::
 
         >>> from reservoirpy.mat_gen import generate_input_weights
-        >>> Win = generate_input_weights(100, 2, input_bias=False, proba=1.)
+        >>> Win = generate_input_weights(100, 2, input_bias=False, proba=1.0)
 
     Here, we created a dense (``proba=1.``) input matrix able to connect a 2-dimensional input to a
     reservoir composed of 100 neuronal units, without adding a constant bias.
@@ -74,8 +72,10 @@ Training your ESN
 
         >>> from math import sin, cos
         >>> # some dummy sequential data
-        >>> Xn0 = np.array([[sin(x), cos(x)] for x in np.linspace(0, 4*np.pi, 500)])
-        >>> Xn1 = np.array([[sin(x), cos(x)] for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 500)])
+        >>> Xn0 = np.array([[sin(x), cos(x)] for x in np.linspace(0, 4 * np.pi, 500)])
+        >>> Xn1 = np.array(
+        ...     [[sin(x), cos(x)] for x in np.linspace(np.pi / 4, 4 * np.pi + np.pi / 4, 500)]
+        ... )
 
     The result is displayed below: two timeseries based on cosinus and sinus functions.
     The ESN will have to predict their future values :math:`\frac{\pi}{4}` timesteps towards

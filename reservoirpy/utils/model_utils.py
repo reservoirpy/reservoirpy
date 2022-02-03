@@ -1,13 +1,13 @@
 # Author: Nathan Trouvain at 19/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from uuid import uuid4
 from typing import Iterable
+from uuid import uuid4
 
 import numpy as np
 
-from reservoirpy.utils import is_sequence_set
-from reservoirpy.utils.validation import is_mapping
+from . import is_sequence_set
+from .validation import is_mapping
 
 
 def _build_forward_sumodels(nodes, edges, already_trained):

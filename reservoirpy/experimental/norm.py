@@ -3,8 +3,8 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from reservoirpy.node import Node
 from ..activationsfunc import relu, tanh
+from ..node import Node
 
 
 def forward(node: Node, x: np.ndarray) -> np.ndarray:

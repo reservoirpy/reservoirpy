@@ -8,10 +8,10 @@ import numpy as np
 
 from ..activationsfunc import identity, tanh
 from ..mat_gen import generate_input_weights, generate_internal_weights
-from reservoirpy.node import Node
+from ..node import Node
 from ..types import Weights
-from ..utils.validation import is_array
 from ..utils.random import noise
+from ..utils.validation import is_array
 
 
 def _reservoir_kernel(reservoir, u, r):

@@ -5,12 +5,12 @@ reservoirpy.nodes.Ridge
 
 .. autoclass:: Ridge
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~Ridge.__init__
       ~Ridge.call
       ~Ridge.clean_buffers
@@ -41,15 +41,15 @@ reservoirpy.nodes.Ridge
       ~Ridge.with_state
       ~Ridge.zero_feedback
       ~Ridge.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
       ~Ridge.feedback_dim
       ~Ridge.fitted
       ~Ridge.has_feedback
@@ -63,5 +63,4 @@ reservoirpy.nodes.Ridge
       ~Ridge.name
       ~Ridge.output_dim
       ~Ridge.params
-   
-   
+

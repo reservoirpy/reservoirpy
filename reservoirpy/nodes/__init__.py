@@ -72,14 +72,14 @@ Optimized ESN
 # Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
+from .concat import Concat
+from .esn import ESN
+from .force import FORCE
+from .io import Input, Output
+from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
-from .force import FORCE
-from .nvar import NVAR
-from .esn import ESN
-from .activations import Tanh, Sigmoid, Softmax, Softplus, Identity, ReLU
-from .io import Input, Output
-from .concat import Concat
 
 __all__ = [
     "Reservoir",

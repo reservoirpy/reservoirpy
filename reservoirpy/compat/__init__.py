@@ -41,24 +41,20 @@ Regression models
 """
 import json
 import pathlib
-import dill
 import re
-
 from typing import Union
 
+import dill
 import numpy as np
-
 from scipy import sparse
 
-from . import regression_models
-
-from ._esn import ESN
-from ._esn_online import ESNOnline
-
-from .utils.save import load
+from ..activationsfunc import identity
 from ..nodes import ESN as ESN_v3
 from ..nodes import Reservoir, Ridge
-from ..activationsfunc import identity
+from . import regression_models
+from ._esn import ESN
+from ._esn_online import ESNOnline
+from .utils.save import load
 
 
 def _load_files_from_v2(dirpath):

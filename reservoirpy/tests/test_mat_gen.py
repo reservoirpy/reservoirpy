@@ -1,16 +1,14 @@
-import pytest
 import numpy as np
-
+import pytest
 from numpy.random import default_rng
-from numpy.testing import assert_almost_equal
-from numpy.testing import assert_array_almost_equal
-from numpy.testing import assert_raises
-from scipy import linalg
-from scipy import sparse
+from numpy.testing import assert_almost_equal, assert_array_almost_equal, assert_raises
+from scipy import linalg, sparse
 
-from reservoirpy.mat_gen import fast_spectral_initialization
-from reservoirpy.mat_gen import generate_input_weights
-from reservoirpy.mat_gen import generate_internal_weights
+from reservoirpy.mat_gen import (
+    fast_spectral_initialization,
+    generate_input_weights,
+    generate_internal_weights,
+)
 
 
 @pytest.mark.parametrize(

@@ -1,11 +1,11 @@
 # Author: Nathan Trouvain at 06/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Union, Callable
 from functools import partial
+from typing import Callable, Union
 
 import numpy as np
-from numpy.random import Generator, MT19937, RandomState, default_rng
+from numpy.random import MT19937, Generator, RandomState, default_rng
 from scipy import stats
 
 __SEED = None

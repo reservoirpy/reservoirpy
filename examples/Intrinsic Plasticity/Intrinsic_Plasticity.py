@@ -1,13 +1,14 @@
 # Author: Nathan Trouvain at 20/01/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from numpy.random import default_rng
-from reservoirpy.datasets import mackey_glass
-from reservoirpy.mat_gen import generate_internal_weights, generate_input_weights
-from reservoirpy.activationsfunc import tanh, sigmoid
 from tqdm import tqdm
+
+from reservoirpy.activationsfunc import sigmoid, tanh
+from reservoirpy.datasets import mackey_glass
+from reservoirpy.mat_gen import generate_input_weights, generate_internal_weights
 
 LR = 1.0
 N = 100

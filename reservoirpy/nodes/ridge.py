@@ -4,12 +4,11 @@
 from functools import partial
 
 import numpy as np
-
 from scipy import linalg
 
-from .utils import readout_forward, _initialize_readout, _prepare_inputs_for_learning
-from reservoirpy.node import Node
+from ..node import Node
 from ..types import global_dtype
+from .utils import _initialize_readout, _prepare_inputs_for_learning, readout_forward
 
 
 def _solve_ridge(XXT, YXT, ridge):

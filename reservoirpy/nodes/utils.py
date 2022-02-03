@@ -3,9 +3,9 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from ..utils.validation import check_vector, add_bias
+from ..node import Node
 from ..types import global_dtype
-from reservoirpy.node import Node
+from ..utils.validation import add_bias, check_vector
 
 
 def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):

@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from reservoirpy import set_seed
-from reservoirpy.nodes import ESN, Ridge, Reservoir
+from reservoirpy.nodes import ESN, Reservoir, Ridge
 
 
 def test_esn_init():

@@ -9,14 +9,14 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
+    List,
     Optional,
+    Sequence,
     Tuple,
     TypeVar,
     Union,
-    Sequence,
-    List,
+    overload,
 )
-from typing import overload
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol, runtime_checkable

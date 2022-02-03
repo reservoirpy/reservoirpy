@@ -1,10 +1,9 @@
+import json
 import os
 import time
-import json
 
 import dill
 import numpy as np
-
 from scipy import sparse
 
 from ..._version import __version__

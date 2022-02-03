@@ -8,11 +8,15 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import partial
+
 import numpy as np
 
-from .utils import readout_forward, _initialize_readout, _prepare_inputs_for_learning
-
-from reservoirpy.node import Node
+from ..node import Node
+from ..nodes.utils import (
+    _initialize_readout,
+    _prepare_inputs_for_learning,
+    readout_forward,
+)
 
 
 def _reset_buffers(step, rTPs, factors):

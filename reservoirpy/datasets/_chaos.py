@@ -5,9 +5,9 @@ import numpy as np
 from numpy.random import Generator, RandomState
 from scipy.integrate import solve_ivp
 
-from ._seed import get_seed
 from ..utils.random import rand_generator
 from ..utils.validation import check_vector
+from ._seed import get_seed
 
 
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
@@ -433,13 +433,13 @@ def doublescroll(
     """
 
     def doublescroll(t, state):
-        V1, V2, I = state
+        V1, V2, i = state
 
         dV = V1 - V2
         factor = (dV / r2) + ir * np.sinh(beta * dV)
         dV1 = (V1 / r1) - factor
-        dV2 = factor - I
-        dI = V2 - r4 * I
+        dV2 = factor - i
+        dI = V2 - r4 * i
 
         return dV1, dV2, dI
 

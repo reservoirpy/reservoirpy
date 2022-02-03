@@ -5,16 +5,15 @@
 # was used as inspiration for this code:
 # # http://minds.jacobs-university.de/mantas/code
 import time
-
-from typing import Sequence, Callable
+from typing import Callable, Sequence
 
 import numpy as np
 
+from ..types import Activation, Data
 from ..utils.parallel import parallelize
 from ..utils.validation import _check_values, check_input_lists
-from ..types import Data, Activation
-from .regression_models import RidgeRegression
 from ._base import _ESNBase
+from .regression_models import RidgeRegression
 
 
 def _get_offline_model(ridge: float = 0.0, dtype: np.dtype = np.float64):

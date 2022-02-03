@@ -1,10 +1,8 @@
 import numpy as np
-
 from sklearn import metrics
 
 from reservoirpy import ESN, mat_gen
-from reservoirpy.hyper import research, plot_hyperopt_report
-
+from reservoirpy.hyper import plot_hyperopt_report, research
 
 if __name__ == "__main__":
 

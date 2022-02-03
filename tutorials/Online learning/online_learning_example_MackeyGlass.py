@@ -1,10 +1,10 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from reservoirpy import ESNOnline
-from reservoirpy.mat_gen import generate_internal_weights
-from reservoirpy.mat_gen import generate_input_weights
 from reservoirpy.datasets import mackey_glass
+from reservoirpy.mat_gen import generate_input_weights, generate_internal_weights
+
 
 ########################################
 ########################################

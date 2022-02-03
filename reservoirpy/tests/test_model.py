@@ -5,10 +5,11 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from .dummy_nodes import *
-from ..ops import merge
-from ..model import Model
 from reservoirpy.nodes.io import Input
+
+from ..model import Model
+from ..ops import merge
+from .dummy_nodes import *
 
 
 def test_node_link(plus_node, minus_node):

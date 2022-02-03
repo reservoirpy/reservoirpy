@@ -1,17 +1,16 @@
 # Author: Nathan Trouvain at 23/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import pytest
 import os
 import shutil
 from contextlib import contextmanager
 
 import numpy as np
+import pytest
 from scipy import sparse
 
-from .. import load_compat
-from .. import ESN
 from ... import activationsfunc as F
+from .. import ESN, load_compat
 
 
 @contextmanager

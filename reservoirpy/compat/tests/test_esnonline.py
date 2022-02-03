@@ -1,10 +1,11 @@
-from math import sin, cos
+from math import cos, sin
 
-import pytest
 import numpy as np
+import pytest
+
+from reservoirpy.datasets import lorenz
 
 from .._esn_online import ESNOnline
-from reservoirpy.datasets import lorenz
 
 
 @pytest.fixture(scope="session")

@@ -19,9 +19,9 @@ import numpy as np
 from joblib import Parallel, delayed
 from scipy import linalg
 
-from ..utils.parallel import get_joblib_backend, as_memmap, clean_tempfile
-from ..types import Weights, Data
-from ..utils.validation import check_vector, add_bias
+from ..types import Data, Weights
+from ..utils.parallel import as_memmap, clean_tempfile, get_joblib_backend
+from ..utils.validation import add_bias, check_vector
 
 
 def _solve_ridge(XXT, YXT, ridge):

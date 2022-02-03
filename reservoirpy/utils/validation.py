@@ -191,9 +191,7 @@ def check_vector(array, allow_reshape=True, allow_timespans=True, caller=None):
             raise TypeError(msg)
 
     if not (np.issubdtype(array.dtype, np.number)):
-        msg = (
-            f"Impossible to operate on non-numerical data, in array: {array}" + msg
-        )
+        msg = f"Impossible to operate on non-numerical data, in array: {array}" + msg
         raise TypeError(msg)
 
     if allow_reshape:

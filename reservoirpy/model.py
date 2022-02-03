@@ -79,14 +79,6 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from reservoirpy.utils import progress, verbosity
-from reservoirpy.utils.validation import check_vector, is_mapping
-from .utils.model_utils import (
-    _allocate_returned_states,
-    _build_forward_sumodels,
-    _dist_states_to_next_subgraph,
-    to_ragged_seq_set,
-)
 from .graphflow import (
     DataDispatcher,
     find_entries_and_exits,
@@ -94,6 +86,14 @@ from .graphflow import (
     topological_sort,
 )
 from .types import GenericNode, MappedData
+from .utils import progress, verbosity
+from .utils.model_utils import (
+    _allocate_returned_states,
+    _build_forward_sumodels,
+    _dist_states_to_next_subgraph,
+    to_ragged_seq_set,
+)
+from .utils.validation import check_vector, is_mapping
 
 
 def _run_and_partial_fit(

@@ -2,7 +2,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
-
 from numpy.testing import assert_array_equal
 
 from reservoirpy.nodes import Reservoir

@@ -5,12 +5,12 @@ reservoirpy.nodes.Softmax
 
 .. autoclass:: Softmax
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~Softmax.__init__
       ~Softmax.call
       ~Softmax.clean_buffers
@@ -41,15 +41,15 @@ reservoirpy.nodes.Softmax
       ~Softmax.with_state
       ~Softmax.zero_feedback
       ~Softmax.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
       ~Softmax.feedback_dim
       ~Softmax.fitted
       ~Softmax.has_feedback
@@ -63,5 +63,4 @@ reservoirpy.nodes.Softmax
       ~Softmax.name
       ~Softmax.output_dim
       ~Softmax.params
-   
-   
+

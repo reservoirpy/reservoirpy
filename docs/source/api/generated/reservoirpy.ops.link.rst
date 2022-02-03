@@ -5,10 +5,9 @@ reservoirpy.ops.link
 
 .. autoclass:: link
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+

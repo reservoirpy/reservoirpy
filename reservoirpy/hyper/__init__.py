@@ -22,7 +22,7 @@ these packages if they are not already installed.
     research
     plot_hyperopt_report
 """
-from ._hypersearch import research
 from ._hyperplot import plot_hyperopt_report
+from ._hypersearch import research
 
 __all__ = ["research", "plot_hyperopt_report"]

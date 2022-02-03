@@ -1,22 +1,22 @@
 # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Sequence
 from multiprocessing import Manager
+from typing import Sequence
 
 import numpy as np
 from joblib import Parallel, delayed
 
+from ..model import FrozenModel
+from ..types import GenericNode
+from ..utils import _obj_from_kwargs, progress, verbosity
+from ..utils.model_utils import to_ragged_seq_set
+from ..utils.parallel import get_joblib_backend
+from ..utils.validation import is_mapping
 from .force import FORCE
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
-from ..model import FrozenModel
-from ..utils import progress, verbosity, _obj_from_kwargs
-from ..utils.model_utils import to_ragged_seq_set
-from ..types import GenericNode
-from ..utils.validation import is_mapping
-from ..utils.parallel import get_joblib_backend
 
 _LEARNING_METHODS = {"ridge": Ridge, "force": FORCE}
 

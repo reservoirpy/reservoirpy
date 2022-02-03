@@ -1,7 +1,7 @@
 """Activations functions for reservoir, feedback and output.
 """
-from typing import Callable
 from functools import wraps
+from typing import Callable
 
 import numpy as np
 
@@ -53,9 +53,7 @@ def get_function(name: str) -> Callable:  # pragma: no cover
     }
 
     if index.get(name) is None:
-        raise ValueError(
-            f"Function name must be one of {[k for k in index.keys()]}"
-        )
+        raise ValueError(f"Function name must be one of {[k for k in index.keys()]}")
     else:
         return index[name]
 

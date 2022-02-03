@@ -1,5 +1,4 @@
 import numpy as np
-
 from scipy import linalg
 from scipy.sparse import issparse
 from scipy.sparse.linalg import eigs

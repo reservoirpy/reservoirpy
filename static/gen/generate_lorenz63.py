@@ -1,8 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from reservoirpy.datasets import lorenz
-from reservoirpy.activationsfunc import sigmoid
+import numpy as np
 from scipy.interpolate import make_interp_spline
+
+from reservoirpy.activationsfunc import sigmoid
+from reservoirpy.datasets import lorenz
 
 if __name__ == "__main__":
     dt = 0.025

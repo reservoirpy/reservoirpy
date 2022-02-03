@@ -19,14 +19,14 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from itertools import product
-from typing import Union, Sequence
+from typing import Sequence, Union
 from uuid import uuid4
 
-from .model import Model, FrozenModel
+from .model import FrozenModel, Model
 from .node import Node
+from .nodes.concat import Concat
 from .types import GenericNode
-from reservoirpy.utils.validation import check_all_nodes
-from reservoirpy.nodes.concat import Concat
+from .utils.validation import check_all_nodes
 
 
 def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:

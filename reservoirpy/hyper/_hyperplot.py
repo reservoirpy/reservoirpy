@@ -2,10 +2,9 @@
 hyperparameters results display and analysis.
 
 """
-import os
-import math
 import json
-
+import math
+import os
 from os import path
 
 import numpy as np

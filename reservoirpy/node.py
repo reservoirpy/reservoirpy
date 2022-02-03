@@ -119,7 +119,7 @@ References
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import contextmanager
 from copy import copy, deepcopy
-from typing import Any, Dict, Optional, List, Union, Generator
+from typing import Any, Dict, Generator, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
@@ -135,14 +135,10 @@ from .types import (
     PartialBackFn,
     Shape,
 )
-from reservoirpy.utils import progress
+from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
-from reservoirpy.utils.parallel import clean_tempfile, memmap_buffer
-from reservoirpy.utils.validation import (
-    check_node_io,
-    check_node_state,
-    check_vector,
-)
+from .utils.parallel import clean_tempfile, memmap_buffer
+from .utils.validation import check_node_io, check_node_state, check_vector
 
 
 def _initialize_with_seq_set(node, X, Y=None):
@@ -225,20 +221,8 @@ def _distant_model_inputs(model):
     return input_data
 
 
-def _intialize_distant_nodes(model, reduced_model, input_data):
-    """Initialize all Nodes that haven't been reached
-    before in a distant feedback Model."""
-    if isinstance(reduced_model, Model):
-        reduced_model.initialize(x=input_data)
-    else:
-        reduced_name = reduced_model.name
-        reduced_model.initialize(x=input_data[reduced_name])
-    model._is_initialized = True
-    return model
-
-
 def _call_distant_model(model, reduced_model):
-    """ Call a distant Model for feedback or teaching
+    """Call a distant Model for feedback or teaching
     (no need to run the input nodes again)"""
     input_data = _distant_model_inputs(model)
 
@@ -268,7 +252,12 @@ def _init_distant_model(caller, node, callback_type):
         reduced_model = _remove_input_for_feedback(node)
 
         if not reduced_model.is_initialized:
-            reduced_model = _init_distant_model(node, reduced_model, input_data)
+            if isinstance(reduced_model, Model):
+                reduced_model.initialize(x=input_data)
+            else:
+                reduced_name = reduced_model.name
+                reduced_model.initialize(x=input_data[reduced_name])
+            node._is_initialized = True
     else:
         try:
             node.initialize()
@@ -673,9 +662,7 @@ class Node(GenericNode):
         elif name in self._hypers:
             return self._hypers.get(name)
         else:
-            raise AttributeError(
-                f"No attribute named '{name}' found in node {self}"
-            )
+            raise AttributeError(f"No attribute named '{name}' found in node {self}")
 
     def set_param(self, name: str, value: Any):
         """Set the value of a parameter.
@@ -1201,9 +1188,7 @@ class Node(GenericNode):
                 Partially fitted Node.
         """
         if self._partial_backward is None:
-            raise TypeError(
-                f"Node {self} has no offline learning rule implemented."
-            )
+            raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
         X_batch, Y_batch = _initialize_with_seq_set(self, X_batch, Y_batch)
 
@@ -1236,9 +1221,7 @@ class Node(GenericNode):
         """
 
         if self._backward is None:
-            raise TypeError(
-                f"Node {self} has no offline learning rule implemented."
-            )
+            raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
         self._fitted = False
 

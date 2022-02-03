@@ -1,9 +1,8 @@
-from math import sin, cos
+from math import cos, sin
 from tempfile import TemporaryDirectory
 
-import pytest
 import numpy as np
-
+import pytest
 from scipy import sparse
 
 from .._esn import ESN

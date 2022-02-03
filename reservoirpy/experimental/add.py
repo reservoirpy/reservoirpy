@@ -3,8 +3,8 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from ..utils.validation import is_sequence_set
 from ..node import Node
+from ..utils.validation import is_sequence_set
 
 
 def forward(add, *data):

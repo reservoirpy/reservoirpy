@@ -1,21 +1,19 @@
 import time
 import warnings
-
-from typing import Sequence, Tuple, Union
-from pathlib import Path
-from functools import partial
 from abc import ABCMeta
+from functools import partial
+from pathlib import Path
+from typing import Sequence, Tuple, Union
 
 import numpy as np
-
 from joblib import Parallel, delayed
+from numpy.random import Generator, SeedSequence, default_rng
 from tqdm import tqdm
-from numpy.random import default_rng, SeedSequence, Generator
 
+from ..types import Activation, Data, Weights
 from ..utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
 from ..utils.validation import add_bias, check_input_lists, check_reservoir_matrices
 from .utils.save import _save
-from ..types import Weights, Data, Activation
 
 
 class _ESNBase(metaclass=ABCMeta):

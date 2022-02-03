@@ -1,8 +1,7 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-
-from reservoirpy.node import Node
+from ..node import Node
 
 
 def _io_initialize(io_node: "Node", x=None, **kwargs):

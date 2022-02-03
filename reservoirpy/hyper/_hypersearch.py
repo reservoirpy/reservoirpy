@@ -1,14 +1,13 @@
 """*Hyperopt* wrapper tools for hyperparameters optimization.
 
 """
+import json
 import os
 import time
-import json
 import warnings
-
-from os import path
 from functools import partial
 from glob import glob
+from os import path
 
 import numpy as np
 

@@ -1,15 +1,8 @@
-import pytest
 import numpy as np
+import pytest
+from numpy.testing import assert_almost_equal, assert_array_almost_equal
 
-from numpy.testing import assert_almost_equal
-from numpy.testing import assert_array_almost_equal
-
-from reservoirpy.activationsfunc import softmax
-from reservoirpy.activationsfunc import softplus
-from reservoirpy.activationsfunc import identity
-from reservoirpy.activationsfunc import tanh
-from reservoirpy.activationsfunc import sigmoid
-from reservoirpy.activationsfunc import relu
+from reservoirpy.activationsfunc import identity, relu, sigmoid, softmax, softplus, tanh
 
 
 @pytest.mark.parametrize(

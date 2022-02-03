@@ -1,13 +1,12 @@
 from collections import defaultdict
 
-import tqdm
 import numpy as np
+import tqdm
 
 from reservoirpy import ESN, ESNOnline
-from reservoirpy.mat_gen import generate_input_weights
-from reservoirpy.mat_gen import fast_spectral_initialization
 from reservoirpy.activationsfunc import get_function
 from reservoirpy.datasets import mackey_glass
+from reservoirpy.mat_gen import fast_spectral_initialization, generate_input_weights
 
 
 def init_esn(training_type):

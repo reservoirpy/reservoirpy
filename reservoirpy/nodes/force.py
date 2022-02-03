@@ -4,21 +4,20 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from functools import partial
 from numbers import Number
 from typing import Iterable
-from functools import partial
 
 import numpy as np
 
+from ..node import Node
 from .utils import (
-    readout_forward,
+    _assemble_wout,
     _initialize_readout,
     _prepare_inputs_for_learning,
-    _assemble_wout,
     _split_and_save_wout,
+    readout_forward,
 )
-
-from reservoirpy.node import Node
 
 
 def _rls_like_rule(P, r, e):

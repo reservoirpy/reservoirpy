@@ -8,11 +8,11 @@ http://minds.jacobs-university.de/mantas
 Modified by Xavier Hinaut: 2015-2016
 http://www.xavierhinaut.com
 """
-# from numpy import *
-import numpy as np
-
 # from matplotlib.pyplot import *
 import matplotlib.pyplot as plt
+
+# from numpy import *
+import numpy as np
 
 # import scipy.linalg
 from scipy import linalg
