@@ -84,7 +84,7 @@ def initialize_rls(readout: "FORCE",
         if readout.input_bias:
             input_dim += 1
 
-        P = np.asmatrix(np.eye(input_dim)) / alpha
+        P = np.eye(input_dim) / alpha
 
         readout.set_param("P", P)
 
