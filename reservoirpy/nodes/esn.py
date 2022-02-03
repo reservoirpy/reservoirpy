@@ -13,7 +13,7 @@ from .reservoir import Reservoir
 from .ridge import Ridge
 from ..model import FrozenModel
 from ..utils import progress, verbosity, _obj_from_kwargs
-from reservoirpy._utils import to_ragged_seq_set
+from ..utils.model_utils import to_ragged_seq_set
 from ..types import GenericNode
 from ..utils.validation import is_mapping
 from ..utils.parallel import get_joblib_backend

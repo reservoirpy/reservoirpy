@@ -36,12 +36,7 @@ def _lms_like_rule(alpha, r, e):
 
 def _compute_error(node, x, y=None):
     prediction = node.state()
-
-    if y is None and node.has_feedback:
-        y = node.feedback()
-
     error = prediction - y
-
     return error, x.T
 
 

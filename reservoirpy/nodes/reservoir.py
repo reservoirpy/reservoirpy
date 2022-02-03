@@ -235,6 +235,36 @@ class Reservoir(Node):
     """
     Pool of leaky-integrator neurons with random recurrent connexions.
 
+    Node parameters:
+
+    =============  ============================================
+    Name           Description
+    =============  ============================================
+    W              Recurrent weights matrix.
+    Win            Input weights matrix.
+    Wfb            Feedback weights matrix.
+    bias           Input bias vector.
+    inernal_state  Internal state used with equation="external"
+    =============  ============================================
+
+    Node hyperparameters:
+
+    lr
+    sr
+    input_scaling
+    fb_scaling
+    rc_connectivity
+    input_connectivity,
+    fb_connectivity
+    noise_in
+    noise_rc
+    noise_fb
+    noise_type
+    activation
+    fb_activation
+    units
+    noise_generator
+
     Parameters
     ----------
     units : int, optional
@@ -321,14 +351,15 @@ class Reservoir(Node):
 
         .. math::
 
-            x[n+1] &= (1 - \\alpha) \\cdot x[t] + \\alpha \\cdot f(W_{in} \\cdot u[n] + W \\cdot r[t]) \\\\
+            x[n+1] &= (1 - \\alpha) \\cdot x[t] + \\alpha \\cdot f(W_{in}
+            \\cdot u[n] + W \\cdot r[t]) \\\\
             r[n+1] &= f(x[n+1])
 
         By default, "internal".
     name : str, optional
-        Node name, by default None
+        Node name.
     seed : int or :py:class:`numpy.random.Generator`, optional
-        A random state seed, for noise generation, by default None
+        A random state seed, for noise generation.
     """
 
     def __init__(self,
@@ -352,8 +383,8 @@ class Reservoir(Node):
                  fb_activation: Union[str, Callable] = identity,
                  activation: Union[str, Callable] = tanh,
                  equation: str = "internal",
-                 name=None,
-                 seed=None):
+                 seed=None,
+                 **kwargs):
         if units is None and not is_array(W):
             raise ValueError(
                 "'units' parameter must not be None if 'W' parameter is not "
@@ -402,4 +433,4 @@ class Reservoir(Node):
                                 input_bias=input_bias,
                                 seed=seed),
             output_dim=units,
-            name=name)
+            **kwargs)

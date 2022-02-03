@@ -85,6 +85,33 @@ def initialize_buffers(readout):
 
 
 class Ridge(Node):
+    """A single layer of neurons learning with Tikhonov linear regression.
+
+    Output weights of the layer are computed following:
+
+    .. math::
+
+        W_{out} = \\mathbf{YX}^\\top ~ (\\mathbf{XX}^\\top +
+        ridge\\mathbf{Id})^{-1}
+
+    Parameters
+    ----------
+        output_dim: optional
+            Number of neurons in the layer, layer output dimension.
+            Can be inferred from data at when training if not set.
+        ridge: float, defaults to 0.0
+            L2 regularization parameter.
+        transient: int, defaults to 0
+            Number of timestep to consider as transients at the begining
+            of a sequence of input data and to discard before
+            linear regression.
+        Wout: np.ndarray, optional
+            A mmatrix storing connection weights for the readout.
+        input_bias: bool, default to True
+            If True, a bias term is learned by the linear regression model.
+        name: optional
+            Node name, by default None.
+    """
 
     def __init__(self, output_dim=None, ridge=0.0, transient=0, Wout=None,
                  input_bias=True, name=None):

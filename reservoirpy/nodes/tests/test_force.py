@@ -236,8 +236,6 @@ def test_dummy_mutual_supervision():
     readout2 = FORCE(1, name="r2")
     reservoir2 = Reservoir(100)
 
-    readout1 <<= readout2
-    readout2 <<= readout1
     reservoir1 <<= readout1
     reservoir2 <<= readout2
 
@@ -248,7 +246,8 @@ def test_dummy_mutual_supervision():
 
     X = np.ones((200, 5))
 
-    res = model.train(X, force_teachers=True)
+    res = model.train(X, Y={"r1": readout2,
+                            "r2": readout1}, force_teachers=True)
 
     assert readout1.Wout.shape == (100, 1)
     assert readout1.bias.shape == (1, 1)
