@@ -59,14 +59,8 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
         readout.set_param("bias", bias)
 
 
-def _prepare_inputs_for_learning(
-    X=None, Y=None, bias=True, transient=0, allow_reshape=False
-):
-
-    seq_len = None
+def _prepare_inputs_for_learning(X=None, Y=None, bias=True, allow_reshape=False):
     if X is not None:
-
-        seq_len = len(X)
 
         if bias:
             X = add_bias(X)
@@ -75,22 +69,12 @@ def _prepare_inputs_for_learning(
 
         X = check_vector(X, allow_reshape=allow_reshape)
 
-        if seq_len > transient:
-            X = X[transient:]
-
     if Y is not None:
 
         if not isinstance(Y, np.ndarray):
             Y = np.vstack(Y)
 
         Y = check_vector(Y, allow_reshape=allow_reshape)
-
-        if seq_len is None:
-            seq_len = len(Y)
-
-        if seq_len > transient:
-            Y = Y[transient:]
-        # TODO: else raise ?
 
     return X, Y
 

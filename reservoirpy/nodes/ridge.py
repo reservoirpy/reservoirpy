@@ -16,12 +16,9 @@ def _solve_ridge(XXT, YXT, ridge):
 
 
 def partial_backward(readout: Node, X_batch, Y_batch=None):
-    transient = readout.transient
-
     X, Y = _prepare_inputs_for_learning(
         X_batch,
         Y_batch,
-        transient=transient,
         bias=readout.input_bias,
         allow_reshape=True,
     )
