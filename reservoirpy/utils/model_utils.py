@@ -6,8 +6,7 @@ from uuid import uuid4
 
 import numpy as np
 
-from . import is_sequence_set
-from .validation import is_mapping
+from .validation import is_mapping, is_sequence_set
 
 
 def _build_forward_sumodels(nodes, edges, already_trained):

@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 08/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
@@ -345,3 +344,21 @@ def test_node_bad_learning_method(online_node, plus_node, offline_node):
 
     with pytest.raises(TypeError):
         plus_node.train(X, Y)
+
+
+def test_offline_node_bad_warmup(offline_node):
+
+    X = np.ones((10, 5))
+    Y = np.ones((10, 5))
+
+    with pytest.raises(ValueError):
+        offline_node.fit(X, Y, warmup=10)
+
+
+def test_offline_node_default_partial(basic_offline_node):
+
+    X = np.ones((10, 5))
+    Y = np.ones((10, 5))
+
+    basic_offline_node.partial_fit(X, Y, warmup=2)
+    assert_array_equal(basic_offline_node._X[0], X[2:])

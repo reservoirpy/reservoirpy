@@ -127,6 +127,21 @@ class Offline(Node):
         )
 
 
+def off_backward_basic(node: Node, X=None, Y=None):
+    b = np.mean(node._X)
+    node.set_param("b", np.array(b).copy())
+
+
+class BasicOffline(Node):
+    def __init__(self, **kwargs):
+        super(BasicOffline, self).__init__(
+            params={"b": 0},
+            forward=off_forward,
+            backward=off_backward_basic,
+            initializer=off_initialize,
+        )
+
+
 def off2_forward(node: Node, x):
     return x + node.b
 
@@ -308,3 +323,9 @@ def unsupervised_node():
 def online_node():
     clean_registry(OnlineNode)
     return OnlineNode()
+
+
+@pytest.fixture(scope="function")
+def basic_offline_node():
+    clean_registry(BasicOffline)
+    return BasicOffline()

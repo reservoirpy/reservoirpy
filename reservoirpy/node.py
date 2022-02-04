@@ -274,13 +274,13 @@ def _callback_distant_state(node, reduced_model=None):
         return node.state_proxy()
 
 
-def _partial_backward_default(node, X_batch, Y_batch=None, warmup=0):
+def _partial_backward_default(node, X_batch, Y_batch=None):
     """By default, for offline learners, partial_fit simply stores inputs and
     targets, waiting for fit to be called."""
 
-    node._X.append(X_batch[warmup:])
+    node._X.append(X_batch)
     if Y_batch is not None:
-        node._Y.append(Y_batch[warmup:])
+        node._Y.append(Y_batch)
 
 
 def _initialize_feedback_default(node, fb):
@@ -383,7 +383,7 @@ class Node(GenericNode):
         hypers: Dict[str, Any] = None,
         forward: ForwardFn = None,
         backward: BackwardFn = None,
-        partial_backward: PartialBackFn = None,
+        partial_backward: PartialBackFn = _partial_backward_default,
         train: PartialBackFn = None,
         initializer: ForwardInitFn = None,
         fb_initializer: ForwardInitFn = _initialize_feedback_default,
@@ -516,7 +516,7 @@ class Node(GenericNode):
     @property
     def is_trained_offline(self):
         """Returns if the Node can be fitted offline or not."""
-        return self.is_trainable and (self._backward is not None)
+        return self.is_trainable and self._backward is not None
 
     @property
     def is_trained_online(self):
@@ -1112,7 +1112,7 @@ class Node(GenericNode):
 
         """
 
-        if self._train is None:
+        if not self.is_trained_online:
             raise TypeError(f"Node {self} has no online learning rule implemented.")
 
         X = self._check_io(X, self.input_dim, allow_timespans=True, allow_list=False)
@@ -1170,49 +1170,70 @@ class Node(GenericNode):
 
             return states
 
-    def partial_fit(self, X_batch: Data, Y_batch: Data = None, **kwargs) -> "Node":
+    def partial_fit(
+        self,
+        X_batch: Data,
+        Y_batch: Data = None,
+        warmup=0,
+        **kwargs,
+    ) -> "Node":
         """Partial offline fitting method of a Node.
         Can be used to perform batched fitting or to precompute some variables
         used by the fitting method.
 
         Parameters
         ----------
-        X_batch : numpy.ndarray
-            A sequence of input data.
-        Y_batch : numpy.ndarray, optional
-            A sequence of teacher signals.
+        X_batch : array-like of shape ([series], timesteps, features)
+            A sequence or a batch of sequence of input data.
+        Y_batch : array-like of shape ([series], timesteps, features), optional
+            A sequence or a batch of sequence of teacher signals.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the begining of each timeseries before training.
 
         Returns
         -------
             Node
                 Partially fitted Node.
         """
-        if self._partial_backward is None:
+        if not self.is_trained_offline:
             raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
-        X_batch, Y_batch = _initialize_with_seq_set(self, X_batch, Y_batch)
+        X_ragged, Y_ragged = _initialize_with_seq_set(self, X_batch, Y_batch)
 
         self.initialize_buffers()
 
-        for X, Y in zip(X_batch, Y_batch):
-            self._partial_backward(self, X, Y)
+        for X, Y in zip(X_ragged, Y_ragged):
+            if X.shape[0] <= warmup:
+                raise ValueError(
+                    f"Warmup set to {warmup} timesteps, but one timeseries is only "
+                    f"{X.shape[0]} long."
+                )
+
+            if Y is not None:
+                self._partial_backward(self, X[warmup:], Y[warmup:])
+            else:
+                self._partial_backward(self, X[warmup:])
 
         return self
 
-    def fit(self, X: Data = None, Y: Data = None) -> "Node":
+    def fit(self, X: Data = None, Y: Data = None, warmup=0) -> "Node":
         """Offline fitting method of a Node.
 
         Parameters
         ----------
-        X : numpy.ndarray or list of numpy.ndarray, optional
+        X : array-like of shape ([series], timesteps, features), optional
             Input sequences dataset. If None, the method will try to fit
             the parameters of the Node using the precomputed values returned
             by previous call of :py:meth:`partial_fit`.
-        Y : numpy.ndarray or list of numpy.ndarray, optional
+        Y : array-like of shape ([series], timesteps, features), optional
             Teacher signals dataset. If None, the method will try to fit
             the parameters of the Node using the precomputed values returned
             by previous call of :py:meth:`partial_fit`, or to fit the Node in
             an unsupervised way, if possible.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the begining of each timeseries before training.
 
         Returns
         -------
@@ -1220,7 +1241,7 @@ class Node(GenericNode):
                 Node trained offline.
         """
 
-        if self._backward is None:
+        if not self.is_trained_offline:
             raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
         self._fitted = False
@@ -1228,11 +1249,11 @@ class Node(GenericNode):
         # Call the partial backward function on the dataset if it is
         # provided all at once.
         if X is not None:
-            X, Y = _initialize_with_seq_set(self, X, Y)
+            X_ragged, Y_ragged = _initialize_with_seq_set(self, X, Y)
 
             if self._partial_backward is not None:
-                for X_batch, Y_batch in zip(X, Y):
-                    self.partial_fit(X_batch, Y_batch)
+                # for X_batch, Y_batch in zip(X_ragged, Y_ragged):
+                self.partial_fit(X_ragged, Y_ragged, warmup=warmup)
 
         elif not self._is_initialized:
             raise RuntimeError(
@@ -1241,7 +1262,7 @@ class Node(GenericNode):
                 f"without input and teacher data."
             )
 
-        self._backward(self, X, Y)
+        self._backward(self)
 
         self._fitted = True
 

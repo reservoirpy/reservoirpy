@@ -102,6 +102,7 @@ def _run_and_partial_fit(
     relations,
     x_seq,
     y_seq,
+    warmup,
     stateful=True,
     reset=False,
     return_states=None,
@@ -127,7 +128,7 @@ def _run_and_partial_fit(
         dist_states = x_seq
 
     for node in offlines:
-        node.partial_fit(dist_states[node.name], y_seq[node.name])
+        node.partial_fit(dist_states[node.name], y_seq[node.name], warmup=warmup)
 
         return dist_states
 
@@ -993,6 +994,7 @@ class Model(GenericNode):
         self,
         X: MappedData,
         Y: MappedData,
+        warmup=0,
         force_teachers=True,
         from_state=None,
         stateful=True,
@@ -1003,22 +1005,25 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        X : numpy.ndarray or dict.
+        X : array-like or dict of array-like of shape ([series], timesteps, features)
             Input sequence of data. If dict, then pairs
             of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        Y : numpy.ndarray or dict.
+        Y : array-like or dict of array-like of shape ([series], timesteps, features)
             Target sequence of data. If dict, then pairs
             of keys and values, where keys are Model input
             nodes names and values are sequence of target data.
-        force_teachers : bool, default to True
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the begining of each timeseries before training.
+        force_teachers : bool, defaults to True
             If True, this Model will broadcast the available ground truth
             signal
             to all online nodes sending feedback to other nodes. Otherwise,
             the real state of these nodes will be sent to the feedback
             receivers
             during training.
-        from_state : dict
+        from_state : dict, optional
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         stateful : bool, default to True
@@ -1071,6 +1076,7 @@ class Model(GenericNode):
                     _run_and_partial_fit,
                     force_teachers=force_teachers,
                     model=submodel,
+                    warmup=warmup,
                     reset=reset,
                     offlines=offlines,
                     relations=relations,
