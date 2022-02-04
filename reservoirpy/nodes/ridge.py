@@ -96,10 +96,6 @@ class Ridge(Node):
             Can be inferred from data at when training if not set.
         ridge: float, defaults to 0.0
             L2 regularization parameter.
-        transient: int, defaults to 0
-            Number of timestep to consider as transients at the begining
-            of a sequence of input data and to discard before
-            linear regression.
         Wout: np.ndarray, optional
             A mmatrix storing connection weights for the readout.
         input_bias: bool, default to True
@@ -112,14 +108,13 @@ class Ridge(Node):
         self,
         output_dim=None,
         ridge=0.0,
-        transient=0,
         Wout=None,
         input_bias=True,
         name=None,
     ):
         super(Ridge, self).__init__(
             params={"Wout": None, "bias": None},
-            hypers={"ridge": ridge, "transient": transient, "input_bias": input_bias},
+            hypers={"ridge": ridge, "input_bias": input_bias},
             forward=readout_forward,
             partial_backward=partial_backward,
             backward=backward,
