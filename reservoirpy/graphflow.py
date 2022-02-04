@@ -195,54 +195,7 @@ class DataDispatcher:
                         f"target values."
                     )
 
-    def get(self, item):
-        parents = self._parents.get(item, ())
-        teacher = self._teachers.get(item, None)
-
-        x = []
-        for parent in parents:
-            if is_node(parent):
-                x.append(parent.state())
-            else:
-                x.append(parent)
-
-        # in theory, only operators can support several incoming signal
-        # i.e. several operands, so unpack data is the list is unecessary
-        if len(x) == 1:
-            x = x[0]
-
-        return DataPoint(x=x, y=teacher)
-
-    def load(self, X=None, Y=None):
-        self._parents = safe_defaultdict_copy(self.__parents)
-        self._teachers = dict()
-
-        if X is not None:
-            self._check_inputs(X)
-            if is_mapping(X):
-                for node in self._nodes:
-                    if X.get(node.name) is not None:
-                        self._parents[node] += [X[node.name]]
-
-            else:
-                for inp_node in self._inputs:
-                    self._parents[inp_node] += [X]
-
-        if Y is not None:
-            self._check_targets(Y)
-            for node in self._nodes:
-                if is_mapping(Y):
-                    if Y.get(node.name) is not None:
-                        self._teachers[node] = Y.get(node.name)
-                else:
-                    if node in self._trainables:
-                        self._teachers[node] = Y
-        return self
-
-    def dispatch(
-        self, X, Y=None, shift_fb=True, return_targets=False, force_teachers=True
-    ):
-
+    def _format_xy(self, X, Y):
         if not is_mapping(X):
             X_map = {inp.name: X for inp in self._inputs}
         else:
@@ -290,6 +243,68 @@ class DataDispatcher:
                             f"targets/feedbacks while {current_node} is "
                             f"given a sequence of length {sequence_length}."
                         )
+
+        return X_map, Y_map, sequence_length
+
+    def get(self, item):
+        parents = self._parents.get(item, ())
+        teacher = self._teachers.get(item, None)
+
+        x = []
+        for parent in parents:
+            if is_node(parent):
+                x.append(parent.state())
+            else:
+                x.append(parent)
+
+        # in theory, only operators can support several incoming signal
+        # i.e. several operands, so unpack data is the list is unecessary
+        if len(x) == 1:
+            x = x[0]
+
+        return DataPoint(x=x, y=teacher)
+
+    def load(self, X=None, Y=None):
+        self._parents = safe_defaultdict_copy(self.__parents)
+        self._teachers = dict()
+
+        if X is not None:
+            self._check_inputs(X)
+            if is_mapping(X):
+                for node in self._nodes:
+                    if X.get(node.name) is not None:
+                        self._parents[node] += [X[node.name]]
+
+            else:
+                for inp_node in self._inputs:
+                    self._parents[inp_node] += [X]
+
+        if Y is not None:
+            self._check_targets(Y)
+            for node in self._nodes:
+                if is_mapping(Y):
+                    if Y.get(node.name) is not None:
+                        self._teachers[node] = Y.get(node.name)
+                else:
+                    if node in self._trainables:
+                        self._teachers[node] = Y
+        return self
+
+    def dispatch(
+        self,
+        X,
+        Y=None,
+        shift_fb=True,
+        return_targets=False,
+        force_teachers=True,
+        format_xy=True,
+    ):
+        if format_xy:
+            X_map, Y_map, sequence_length = self._format_xy(X, Y)
+        else:
+            X_map, Y_map = X, Y
+            current_node = list(X_map.keys())[0]
+            sequence_length = len(X_map[current_node])
 
         for i in range(sequence_length):
             x = {node: X_map[node][i] for node in X_map.keys()}
