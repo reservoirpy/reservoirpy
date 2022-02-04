@@ -1016,7 +1016,7 @@ class Model(GenericNode):
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
             discard at the begining of each timeseries before training.
-        force_teachers : bool, defaults to True
+        force_teachers : bool, default to True
             If True, this Model will broadcast the available ground truth
             signal
             to all online nodes sending feedback to other nodes. Otherwise,
