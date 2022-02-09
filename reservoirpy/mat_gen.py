@@ -658,7 +658,7 @@ def _fast_spectral_initialization(
     Parameters
     ----------
     N : int, optional
-        Shape :math:`N \times N` of the array.
+        Shape :math:`N \\times N` of the array.
         This function only builds square matrices.
     connectivity: float, default to 1.0
         Also called density of the sparse matrix. By default, creates dense arrays.
