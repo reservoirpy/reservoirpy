@@ -9,6 +9,7 @@ from numbers import Number
 from typing import Iterable
 
 import numpy as np
+import scipy
 
 from ..node import Node
 from .utils import (
@@ -21,10 +22,10 @@ from .utils import (
 
 
 def _rls_like_rule(P, r, e):
-    k = np.dot(P, r)
-    rPr = np.dot(r.T, k)
+    k = P @ r
+    rPr = r.T @ k
     c = float(1.0 / (1.0 + rPr))
-    P = P - c * np.outer(k, k)
+    P.data = P.data - c * np.outer(k, k)
 
     dw = -c * np.outer(e, k)
 
@@ -81,7 +82,7 @@ def initialize_rls(readout: "FORCE", x=None, y=None, init_func=None, bias=None):
         if readout.input_bias:
             input_dim += 1
 
-        P = np.eye(input_dim) / alpha
+        P = scipy.sparse.csr_matrix(np.eye(input_dim)) / alpha
 
         readout.set_param("P", P)
 
