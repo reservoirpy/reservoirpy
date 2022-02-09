@@ -1,4 +1,9 @@
-ipython==7.29.0
+sphinx-rtd-theme==0.5.1
+sphinx-copybutton==0.3.1
+pydata-sphinx-theme==0.7.2
+nbsphinx==0.8.7
+ipython==7.31.1
+sphinx-panels==0.6.0
 matplotlib==3.5.1
 nbsphinx==0.8.7
 pydata-sphinx-theme==0.7.2

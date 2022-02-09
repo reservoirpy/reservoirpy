@@ -17,7 +17,7 @@ from reservoirpy.nodes import Reservoir, Ridge, Input
 
 data = Input(input_dim=1)
 reservoir = Reservoir(100, lr=0.3, sr=1.1)
-readout = Ridge(1, ridge=1e-6)
+readout   = Ridge(ridge=1e-6)
 
 esn = data >> reservoir >> readout
 
@@ -25,21 +25,29 @@ forecast = esn.fit(X, y).run(timeseries)
 ```
 
 ReservoirPy is a simple user-friendly library based on Python scientific modules.
-It provides a flexible interface to implement efficient Reservoir Computing (RC)
-architectures with a particular focus on Echo State Networks (ESN).
-Advanced features of ReservoirPy allow improving computation time efficiency
-on a simple laptop compared to basic Python implementation.
-Some of its features are: offline and online training, parallel implementation,
-sparse matrix computation, fast spectral initialization, etc.
-Moreover, graphical tools are included to easily explore hyperparameters
-with the help of the hyperopt library.
+It provides a **flexible interface to implement efficient Reservoir Computing** (RC)
+architectures with a particular focus on *Echo State Networks* (ESN).
+Advanced features of ReservoirPy allow to improve computation time efficiency
+on a simple laptop compared to basic Python implementation, with datasets of
+any size. 
 
-This library works for Python 3.8 and higher.
+Some of its features are: **offline and online training**, **parallel implementation**,
+**sparse matrix computation**, fast spectral initialization, **advanced learning rules**
+(e.g. *Intrinsic Plasticity*) etc. It also makes possible
+to **easily create complex architectures with multiple reservoirs** (e.g. *deep reservoirs*), 
+readouts, and **complex feedback loops**.
+Moreover, graphical tools are included to **easily explore hyperparameters**
+with the help of the *hyperopt* library.
+Finally, it includes several tutorials exploring exotic architectures
+and examples of scientific papers reproduction.
+
+This library works for **Python 3.8** and higher.
+
 
 ## Offcial documentation 📖
 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
-to learn more about the main features of ReservoirPy, its API and the installation process.
+to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
 
 ## Installation
 
@@ -91,7 +99,7 @@ most minimal architecture of Reservoir Computing machines.
 
 An ESN is made of
 a *reservoir*, a random recurrent network used to encode our
-inputs in a "close-to-chaos" high dimensional space, and a *readout*, a simple
+inputs in a high-dimensional (non-linear) space, and a *readout*, a simple
 feed-forward layer of neurons in charge with *reading-out* the desired output from
 the activations of the reservoir.
 ```python
@@ -104,9 +112,9 @@ readout = Ridge(output_dim=1, ridge=1e-5)
 We here obtain a reservoir with 100 neurons, a *spectral radius* of 1.25 and
 a *leak rate* of 0.3 (you can learn more about these hyperparameters going through
 the tutorial
-[Introduction to Reservoir Computing](./tutorials/Introduction%20%20to%20Reservoir%20Computing)).
-Our readout is just a layer of one single neuron, that we will next connect to the
-reservoir neurons. Note that only the readout layer connections are trained!
+[Understand and optimize hyperparameters](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)).
+Here, our readout layer is just a single unit, that we will receive connections from (all units of) the reservoir.
+Note that only the readout layer connections are trained.
 This is one of the cornerstone of all Reservoir Computing techniques. In our
 case, we will train these connections using linear regression, with a regularization
 coefficient of 10<sup>-5</sup>.
@@ -122,36 +130,44 @@ We will train the ESN to make one-step-ahead forecasts of our timeseries.
 
 **Step 3: Fit and run the ESN**
 
+We train our ESN on the first 500 timesteps of the timeseries.
+
+```python
+esn.fit(X[:500], X[1:501])
+```
+
+Our ESN is now trained and ready to use. Let's run it on the remainder of the timeseries:
+
+```python
+predictions = esn.run(X[501:-1])
+```
+
+As a shortcut, both operations can be performed in just one line!
+
 ```python
 predictions = esn.fit(X[:500], X[1:501]).run(X[501:-1])
 ```
 
-Our ESN is now trained and ready to use. Let's evaluate its performances:
+Let's now evaluate its performances.
 
 **Step 4: Evaluate the ESN**
 
 ```python
 from reservoirpy.observables import rmse, rsquare
-
-print("RMSE:", rmse(X[502:], predictions), "R^2 score:", rsquare(X[502:], predictions))
+print("RMSE:", rmse(X[502:], predictions),
+      "R^2 score:", rsquare(X[502:], predictions))
 ```
 
-Run and analyse these two files (in the "tutorials/Simple Examples with Mackey-Glass" folder) to see how to make timeseries prediction with Echo State Networks:
+Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-Glass" folder) to see a complete example of timeseries prediction with ESNs:
 - simple_example_MackeyGlass.py (using the ESN class)
 
     ```bash
     python simple_example_MackeyGlass.py
     ```
 
-- minimalESN_MackeyGlass.py (without the ESN class)
+If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
 
-    ```bash
-    python minimalESN_MackeyGlass.py
-    ```
-
-If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/installation.html#additional-dependencies-and-requirements).
-
-## Examples and tutorials 🎓
+## More examples and tutorials 🎓
 
 [Go to the tutorial folder](./tutorials/) for tutorials in Jupyter Notebooks.
 
@@ -163,9 +179,9 @@ Tutorial on ReservoirPy can be found in this [Paper (Trouvain et al. 2020)](http
 ## Explore Hyper-Parameters with Hyperopt
 A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
-Take a look at our **advices and general method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
+Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
 
-[Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization%20of%20hyperparameters)
+[Turorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
