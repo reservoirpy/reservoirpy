@@ -9,7 +9,7 @@ from ..utils.random import rand_generator
 
 def forward(node, x):
     choice = node.choice
-    return x[:, choice]
+    return x[:, choice.astype(int)]
 
 
 def initialize(node, x=None, *args, **kwargs):
