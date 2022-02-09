@@ -19,6 +19,7 @@ pydata-sphinx-theme = "*"
 sphinx-panels = "*"
 Sphinx = "*"
 sphinx-autobuild = "*"
+hyperopt = "*"
 
 [dev-packages]
 
