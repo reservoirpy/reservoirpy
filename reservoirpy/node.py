@@ -123,6 +123,7 @@ from typing import Any, Dict, Generator, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
+from scipy.sparse import issparse
 
 from .model import Model
 from .types import (
@@ -684,7 +685,10 @@ class Node(GenericNode):
         """
         if name in self._params:
             if hasattr(value, "dtype"):
-                value = value.astype(self.dtype)
+                if issparse(value):
+                    value.data = value.data.astype(self.dtype)
+                else:
+                    value = value.astype(self.dtype)
             self._params[name] = value
         elif name in self._hypers:
             self._hypers[name] = value
