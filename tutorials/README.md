@@ -9,11 +9,11 @@ with ReservoirPy API.
 
 See below the "Getting started" section.
 
-1. **[Getting Started](./0-Getting_Started.ipynb)**
+1. **[Getting Started](./1-Getting_Started.ipynb)**
 
 A short notebook to discover the basics of ReservoirPy, for beginners.
 
-2. **[Getting Started](./1-Advanced_Features.ipynb)**
+2. **[Advanced features](./2-Advanced_Features.ipynb)**
 
 A notebook presenting more advanced manipulations with ESNs like parallelization,
 feedback connections, deep ESNs, custom weigth matrices... for RC enthusiasts.
