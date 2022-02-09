@@ -1,26 +1,16 @@
-import os
 import logging
+import os
 import tempfile
 
+from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, types
 from ._version import __version__
-
-from .utils import verbosity
-from reservoirpy.compat.utils.save import load
-from .utils.random import set_seed
-
-from . import mat_gen
-from . import observables
-from . import activationsfunc
-from . import hyper
-from . import nodes
-from . import compat
-from . import types
-
-from .node import Node
-from .model import Model
-from .ops import link, merge, link_feedback
 from .compat import load_compat
-
+from .compat.utils.save import load
+from .model import Model
+from .node import Node
+from .ops import link, link_feedback, merge
+from .utils import verbosity
+from .utils.random import set_seed
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +25,18 @@ tempfile.tempdir = _TEMPDIR
 
 __all__ = [
     "__version__",
-    "mat_gen", "activationsfunc",
+    "mat_gen",
+    "activationsfunc",
     "observables",
-    "hyper", "nodes", "load", "Node", "Model",
-    "link", "link_feedback", "merge", "set_seed",
-    "verbosity", "load_compat"
-    ]
+    "hyper",
+    "nodes",
+    "load",
+    "Node",
+    "Model",
+    "link",
+    "link_feedback",
+    "merge",
+    "set_seed",
+    "verbosity",
+    "load_compat",
+]

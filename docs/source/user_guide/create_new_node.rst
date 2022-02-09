@@ -62,9 +62,9 @@ dimension, if the node requires feedback:
 .. ipython:: python
 
     def initialize_fb(node: Node, feedback=None):
-        '''This function is called at runtime and
+        """This function is called at runtime and
         infer feedback dimensions.
-        '''
+        """
         if node.has_feedback:
             # in our case, feedback dimension is just the dimension of the
             # feedback vector.
@@ -83,12 +83,14 @@ parametrized with the functions you have just written:
 
 .. ipython:: python
 
-    node = Node(forward=forward,
-                initializer=initialize,
-                fb_initializer=initialize_fb,
-                params={"const1": None},
-                hypers={"const2": -1},
-                name="custom_node")
+    node = Node(
+        forward=forward,
+        initializer=initialize,
+        fb_initializer=initialize_fb,
+        params={"const1": None},
+        hypers={"const2": -1},
+        name="custom_node",
+    )
 
 .. note::
     Do not forget to declare the mutable parameters `params` and immutable
@@ -108,12 +110,15 @@ You can also create a new subclass of :py:class:`Node` in a similar way:
 
     class CustomNode(Node):
         def __init__(self, const2=-1, name=None):
-            super().__init__(forward=forward,
-                             initializer=initialize,
-                             fb_initializer=initialize_fb,
-                             params={"const1": None},
-                             hypers={"const2": const2},
-                             name=name)
+            super().__init__(
+                forward=forward,
+                initializer=initialize,
+                fb_initializer=initialize_fb,
+                params={"const1": None},
+                hypers={"const2": const2},
+                name=name,
+            )
+
 
     node = CustomNode(const2=-1, name="custom_node")
 

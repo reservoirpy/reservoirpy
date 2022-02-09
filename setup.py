@@ -1,6 +1,6 @@
 import os
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 NAME = "reservoirpy"
 
@@ -15,32 +15,33 @@ AUTHOR_EMAIL = "xavier.hinaut@inria.fr"
 MAINTAINERS = "Xavier Hinaut, Nathan Trouvain"
 MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, nathan.trouvain@inria.fr"
 
-DESCRIPTION = "A simple and flexible code for Reservoir " \
-               "Computing architectures like Echo State Networks."
+DESCRIPTION = (
+    "A simple and flexible code for Reservoir "
+    "Computing architectures like Echo State Networks."
+)
 
 with open("README.md", "r", encoding="utf-8") as f:
     LONG_DESCRIPTION = f.read()
 
 URL = "https://github.com/reservoirpy/reservoirpy"
-DOWNLOAD_URL = (f"{URL}/v{__version__}.tar.gz")
+DOWNLOAD_URL = f"{URL}/v{__version__}.tar.gz"
 
 INSTALL_REQUIRES = [
     "tqdm>=4.43.0",
     "joblib>=0.12",
-    "dill>=0.3.0"
-    'numpy>=1.15.0',
-    'scipy>=1.0.0,<=1.7.3',
-    'joblib>=0.12',
+    "dill>=0.3.0" "numpy>=1.21.1",
+    "scipy>=1.0.0,<=1.7.3",
+    "joblib>=0.12",
 ]
 
 EXTRA_REQUIRES = {
-    'hyper': ['matplotlib>=2.2.0', 'hyperopt', 'seaborn'],
+    "hyper": ["matplotlib>=2.2.0", "hyperopt", "seaborn"],
 }
 
 PROJECT_URLS = {
-    'Bug Tracker': 'https://github.com/reservoirpy/reservoirpy/issues',
-    'Documentation': 'https://reservoirpy.readthedocs.io/en/latest/index.html',
-    'Source Code': URL
+    "Bug Tracker": "https://github.com/reservoirpy/reservoirpy/issues",
+    "Documentation": "https://reservoirpy.readthedocs.io/en/latest/index.html",
+    "Source Code": URL,
 }
 
 if __name__ == "__main__":
@@ -59,27 +60,25 @@ if __name__ == "__main__":
         download_url=DOWNLOAD_URL,
         packages=find_packages(),
         classifiers=[
-            'Intended Audience :: Science/Research',
-            'Intended Audience :: Developers',
-            'License :: OSI Approved :: MIT License',
-            'Programming Language :: Python',
-            'Topic :: Scientific/Engineering',
-            ('Topic :: Scientific/Engineering :: '
-             'Artificial Intelligence'),
-            'Operating System :: Microsoft :: Windows',
-            'Operating System :: POSIX',
-            'Operating System :: Unix',
-            'Operating System :: MacOS',
-            'Operating System :: OS Independent',
-            'Programming Language :: Python :: 3',
-            'Programming Language :: Python :: 3.6',
-            'Programming Language :: Python :: 3.7',
-            'Programming Language :: Python :: 3.8',
-            'Programming Language :: Python :: 3.9',
-            ('Programming Language :: Python :: '
-             'Implementation :: PyPy')
+            "Intended Audience :: Science/Research",
+            "Intended Audience :: Developers",
+            "License :: OSI Approved :: MIT License",
+            "Programming Language :: Python",
+            "Topic :: Scientific/Engineering",
+            ("Topic :: Scientific/Engineering :: " "Artificial Intelligence"),
+            "Operating System :: Microsoft :: Windows",
+            "Operating System :: POSIX",
+            "Operating System :: Unix",
+            "Operating System :: MacOS",
+            "Operating System :: OS Independent",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
+            ("Programming Language :: Python :: " "Implementation :: PyPy"),
         ],
-        python_requires='>=3.6',
+        python_requires=">=3.6",
         install_requires=INSTALL_REQUIRES,
         extra_require=EXTRA_REQUIRES,
     )

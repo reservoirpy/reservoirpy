@@ -5,12 +5,12 @@ reservoirpy.nodes.ReLU
 
 .. autoclass:: ReLU
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~ReLU.__init__
       ~ReLU.call
       ~ReLU.clean_buffers
@@ -41,15 +41,16 @@ reservoirpy.nodes.ReLU
       ~ReLU.with_state
       ~ReLU.zero_feedback
       ~ReLU.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
+      ~ReLU.dtype
       ~ReLU.feedback_dim
       ~ReLU.fitted
       ~ReLU.has_feedback
@@ -63,5 +64,4 @@ reservoirpy.nodes.ReLU
       ~ReLU.name
       ~ReLU.output_dim
       ~ReLU.params
-   
-   
+

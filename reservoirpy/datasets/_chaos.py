@@ -5,16 +5,16 @@ import numpy as np
 from numpy.random import Generator, RandomState
 from scipy.integrate import solve_ivp
 
-from ._seed import get_seed
 from ..utils.random import rand_generator
 from ..utils.validation import check_vector
+from ._seed import get_seed
 
 
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
     """
     Mackey-Glass time delay diffential equation, at values x(t) and x(t-tau).
     """
-    return -b * xt + a * xtau / (1 + xtau ** n)
+    return -b * xt + a * xtau / (1 + xtau**n)
 
 
 def _mg_rk4(xt, xtau, a, b, n, h=1.0):
@@ -29,10 +29,12 @@ def _mg_rk4(xt, xtau, a, b, n, h=1.0):
     return xt + k1 / 6 + k2 / 3 + k3 / 3 + k4 / 6
 
 
-def henon_map(n_timesteps: int,
-              a: float = 1.4,
-              b: float = 0.3,
-              x0: Union[list, np.ndarray] = [0.0, 0.0]) -> np.ndarray:
+def henon_map(
+    n_timesteps: int,
+    a: float = 1.4,
+    b: float = 0.3,
+    x0: Union[list, np.ndarray] = [0.0, 0.0],
+) -> np.ndarray:
     """Hénon map discrete timeseries [2]_ [3]_:
 
     .. math::
@@ -78,9 +80,7 @@ def henon_map(n_timesteps: int,
     return states
 
 
-def logistic_map(n_timesteps: int,
-                 r: float = 3.9,
-                 x0: float = 0.5) -> np.ndarray:
+def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5) -> np.ndarray:
     """Logistic map discrete timeseries [4]_ [5]_:
 
     .. math::
@@ -126,13 +126,15 @@ def logistic_map(n_timesteps: int,
         raise ValueError("Initial condition x0 should be in ]0;1[.")
 
 
-def lorenz(n_timesteps: int,
-           rho: float = 28.0,
-           sigma: float = 10.0,
-           beta: float = 8.0 / 3.0,
-           x0: Union[list, np.ndarray] = [1.0, 1.0, 1.0],
-           h: float = 0.03,
-           **kwargs) -> np.ndarray:
+def lorenz(
+    n_timesteps: int,
+    rho: float = 28.0,
+    sigma: float = 10.0,
+    beta: float = 8.0 / 3.0,
+    x0: Union[list, np.ndarray] = [1.0, 1.0, 1.0],
+    h: float = 0.03,
+    **kwargs,
+) -> np.ndarray:
     """Lorenz attractor timeseries [6]_ [7]_:
 
     .. math::
@@ -187,24 +189,23 @@ def lorenz(n_timesteps: int,
 
     t_eval = np.arange(0.0, n_timesteps * h, h)
 
-    sol = solve_ivp(lorenz_diff,
-                    y0=x0,
-                    t_span=(0.0, n_timesteps * h),
-                    t_eval=t_eval,
-                    **kwargs)
+    sol = solve_ivp(
+        lorenz_diff, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+    )
 
     return sol.y.T
 
 
-def mackey_glass(n_timesteps: int,
-                 tau: int = 17,
-                 a: float = 0.2,
-                 b: float = 0.1,
-                 n: int = 10,
-                 x0: float = 1.2,
-                 h: float = 1.0,
-                 seed: Union[
-                     int, RandomState, Generator] = None) -> np.ndarray:
+def mackey_glass(
+    n_timesteps: int,
+    tau: int = 17,
+    a: float = 0.2,
+    b: float = 0.1,
+    n: int = 10,
+    x0: float = 1.2,
+    h: float = 1.0,
+    seed: Union[int, RandomState, Generator] = None,
+) -> np.ndarray:
     """Mackey-Glass timeseries [8]_ [9]_, computed from the Mackey-Glass
     delayed differential equation:
 
@@ -279,8 +280,9 @@ def mackey_glass(n_timesteps: int,
     # generate random first step based on the value
     # of the initial condition
     history_length = int(np.floor(tau / h))
-    history = collections.deque(x0 * np.ones(history_length)
-                                + 0.2 * (rs.random(history_length) - 0.5))
+    history = collections.deque(
+        x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5)
+    )
     xt = x0
 
     X = np.zeros(n_timesteps)
@@ -301,12 +303,14 @@ def mackey_glass(n_timesteps: int,
     return X.reshape(-1, 1)
 
 
-def multiscroll(n_timesteps: int,
-                a: float = 40.0,
-                b: float = 3.0,
-                c: float = 28.0,
-                x0: Union[list, np.ndarray] = [-0.1, 0.5, -0.6],
-                h: float = 0.01) -> np.ndarray:
+def multiscroll(
+    n_timesteps: int,
+    a: float = 40.0,
+    b: float = 3.0,
+    c: float = 28.0,
+    x0: Union[list, np.ndarray] = [-0.1, 0.5, -0.6],
+    h: float = 0.01,
+) -> np.ndarray:
     """Double scroll attractor timeseries [10]_ [11]_,
     a particular case of multiscroll attractor timeseries.
 
@@ -363,25 +367,24 @@ def multiscroll(n_timesteps: int,
 
     t = np.arange(0.0, n_timesteps * h, h)
 
-    sol = solve_ivp(multiscroll_diff,
-                    y0=x0,
-                    t_span=(0.0, n_timesteps * h),
-                    dense_output=True)
+    sol = solve_ivp(
+        multiscroll_diff, y0=x0, t_span=(0.0, n_timesteps * h), dense_output=True
+    )
 
     return sol.sol(t).T
 
 
-def doublescroll(n_timesteps: int,
-                 r1: float = 1.2,
-                 r2: float = 3.44,
-                 r4: float = 0.193,
-                 ir: float = 2 * 2.25e-5,
-                 beta: float = 11.6,
-                 x0: Union[list, np.ndarray] = [0.37926545,
-                                                0.058339,
-                                                -0.08167691],
-                 h: float = 0.01,
-                 **kwargs) -> np.ndarray:
+def doublescroll(
+    n_timesteps: int,
+    r1: float = 1.2,
+    r2: float = 3.44,
+    r4: float = 0.193,
+    ir: float = 2 * 2.25e-5,
+    beta: float = 11.6,
+    x0: Union[list, np.ndarray] = [0.37926545, 0.058339, -0.08167691],
+    h: float = 0.25,
+    **kwargs,
+) -> np.ndarray:
     """Double scroll attractor timeseries [10]_ [11]_,
     a particular case of multiscroll attractor timeseries.
 
@@ -430,33 +433,33 @@ def doublescroll(n_timesteps: int,
     """
 
     def doublescroll(t, state):
-        V1, V2, I = state
+        V1, V2, i = state
 
         dV = V1 - V2
         factor = (dV / r2) + ir * np.sinh(beta * dV)
         dV1 = (V1 / r1) - factor
-        dV2 = factor - I
-        dI = V2 - r4 * I
+        dV2 = factor - i
+        dI = V2 - r4 * i
 
         return dV1, dV2, dI
 
     t_eval = np.arange(0.0, n_timesteps * h, h)
 
-    sol = solve_ivp(doublescroll,
-                    y0=x0,
-                    t_span=(0.0, n_timesteps * h),
-                    t_eval=t_eval,
-                    **kwargs)
+    sol = solve_ivp(
+        doublescroll, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+    )
 
     return sol.y.T
 
 
-def rabinovich_fabrikant(n_timesteps: int,
-                         gamma: float = 0.89,
-                         alpha: float = 1.1,
-                         x0: Union[list, np.ndarray] = [-1, 0, 0.5],
-                         h: float = 0.05,
-                         **kwargs) -> np.ndarray:
+def rabinovich_fabrikant(
+    n_timesteps: int,
+    gamma: float = 0.89,
+    alpha: float = 1.1,
+    x0: Union[list, np.ndarray] = [-1, 0, 0.5],
+    h: float = 0.05,
+    **kwargs,
+) -> np.ndarray:
     """Rabinovitch-Fabrikant system [12]_ [13]_ timeseries.
 
     .. math::
@@ -505,30 +508,34 @@ def rabinovich_fabrikant(n_timesteps: int,
 
     def rabinovich_fabrikant_diff(t, state):
         x, y, z = state
-        dx = y * (z - 1 + x ** 2) + gamma * x
-        dy = x * (3 * z + 1 - x ** 2) + gamma * y
+        dx = y * (z - 1 + x**2) + gamma * x
+        dy = x * (3 * z + 1 - x**2) + gamma * y
         dz = -2 * z * (alpha + x * y)
         return dx, dy, dz
 
     t_eval = np.arange(0.0, n_timesteps * h, h)
 
-    sol = solve_ivp(rabinovich_fabrikant_diff,
-                    y0=x0,
-                    t_span=(0.0, n_timesteps * h),
-                    t_eval=t_eval,
-                    **kwargs)
+    sol = solve_ivp(
+        rabinovich_fabrikant_diff,
+        y0=x0,
+        t_span=(0.0, n_timesteps * h),
+        t_eval=t_eval,
+        **kwargs,
+    )
 
     return sol.y.T
 
 
-def narma(n_timesteps: int,
-          order: int = 30,
-          a1: float = 0.2,
-          a2: float = 0.04,
-          b: float = 1.5,
-          c: float = 0.001,
-          x0: float = 0,
-          seed: Union[int, RandomState] = None):
+def narma(
+    n_timesteps: int,
+    order: int = 30,
+    a1: float = 0.2,
+    a2: float = 0.04,
+    b: float = 1.5,
+    c: float = 0.001,
+    x0: float = 0,
+    seed: Union[int, RandomState] = None,
+):
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
     as first defined in [14]_, and as used in [15]_.
 
@@ -591,12 +598,14 @@ def narma(n_timesteps: int,
     y = np.zeros((n_timesteps + order, 1))
 
     x0 = check_vector(np.atleast_2d(np.asarray(x0)))
-    y[:x0.shape[0], :] = x0
+    y[: x0.shape[0], :] = x0
 
     noise = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
     for t in range(order, n_timesteps + order - 1):
-        y[t + 1] = a1 * y[t] \
-                   + a2 * y[t] * np.sum(y[t - order:t]) \
-                   + b * noise[t - order] * noise[t] \
-                   + c
+        y[t + 1] = (
+            a1 * y[t]
+            + a2 * y[t] * np.sum(y[t - order : t])
+            + b * noise[t - order] * noise[t]
+            + c
+        )
     return y[order:, :]

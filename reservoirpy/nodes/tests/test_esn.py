@@ -5,13 +5,12 @@ import numpy as np
 import pytest
 
 from reservoirpy import set_seed
-from reservoirpy.nodes import ESN, Ridge, Reservoir
+from reservoirpy.nodes import ESN, Reservoir, Ridge
 
 
 def test_esn_init():
 
-    esn = ESN(units=100, output_dim=1,
-              lr=0.8, sr=0.4, ridge=1e-5, Win_bias=False)
+    esn = ESN(units=100, output_dim=1, lr=0.8, sr=0.4, ridge=1e-5, Win_bias=False)
 
     data = np.ones((1, 10))
     res = esn(data)
@@ -50,9 +49,7 @@ def test_esn_init_from_obj():
 
 def test_esn_feedback():
 
-    esn = ESN(units=100, output_dim=5,
-              lr=0.8, sr=0.4, ridge=1e-5,
-              feedback=True)
+    esn = ESN(units=100, output_dim=5, lr=0.8, sr=0.4, ridge=1e-5, feedback=True)
 
     data = np.ones((1, 10))
     res = esn(data)
@@ -70,9 +67,15 @@ def test_esn_parallel_fit_reproducibility():
     for i in range(100):
         set_seed(45)
 
-        esn = ESN(units=100,
-                  lr=0.8, sr=0.4, ridge=1e-5,
-                  feedback=True, workers=-1, backend="loky")
+        esn = ESN(
+            units=100,
+            lr=0.8,
+            sr=0.4,
+            ridge=1e-5,
+            feedback=True,
+            workers=-1,
+            backend="loky",
+        )
 
         X, Y = np.ones((10, 100, 10)), np.ones((10, 100, 5))
         esn.fit(X, Y)
@@ -89,15 +92,27 @@ def test_esn_parallel_fit_reproducibility():
 
 def test_hierarchical_esn_forbidden():
 
-    esn1 = ESN(units=100,
-               lr=0.8, sr=0.4, ridge=1e-5,
-               feedback=True, workers=-1, backend="loky",
-               name="E1")
+    esn1 = ESN(
+        units=100,
+        lr=0.8,
+        sr=0.4,
+        ridge=1e-5,
+        feedback=True,
+        workers=-1,
+        backend="loky",
+        name="E1",
+    )
 
-    esn2 = ESN(units=100,
-               lr=0.8, sr=0.4, ridge=1e-5,
-               feedback=True, workers=-1, backend="loky",
-               name="E2")
+    esn2 = ESN(
+        units=100,
+        lr=0.8,
+        sr=0.4,
+        ridge=1e-5,
+        feedback=True,
+        workers=-1,
+        backend="loky",
+        name="E2",
+    )
 
     # FrozenModel can't be linked (for now).
     with pytest.raises(TypeError):

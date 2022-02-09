@@ -108,17 +108,17 @@ from typing import Union
 
 import numpy as np
 
-from ._chaos import henon_map
-from ._chaos import logistic_map
-from ._chaos import lorenz
-from ._chaos import multiscroll
-from ._chaos import rabinovich_fabrikant
-from ._chaos import mackey_glass
-from ._chaos import narma
-from ._chaos import doublescroll
-
-from ._seed import set_seed, get_seed
-
+from ._chaos import (
+    doublescroll,
+    henon_map,
+    logistic_map,
+    lorenz,
+    mackey_glass,
+    multiscroll,
+    narma,
+    rabinovich_fabrikant,
+)
+from ._seed import get_seed, set_seed
 
 __all__ = [
     "henon_map",
@@ -127,16 +127,20 @@ __all__ = [
     "mackey_glass",
     "multiscroll",
     "rabinovich_fabrikant",
-    "narma", "doublescroll",
-    "set_seed", "get_seed",
-    "to_forecasting"
+    "narma",
+    "doublescroll",
+    "set_seed",
+    "get_seed",
+    "to_forecasting",
 ]
 
 
-def to_forecasting(timeseries: np.ndarray,
-                   forecast: int = 1,
-                   axis: Union[int, float] = 0,
-                   test_size: int = None):
+def to_forecasting(
+    timeseries: np.ndarray,
+    forecast: int = 1,
+    axis: Union[int, float] = 0,
+    test_size: int = None,
+):
     """Split a timeseries for forecasting tasks.
 
     Transform a timeseries :math:`X` into a series of
@@ -191,9 +195,11 @@ def to_forecasting(timeseries: np.ndarray,
         elif isinstance(test_size, int):
             test_len = test_size
         else:
-            raise ValueError("invalid test_size argument: "
-                             "test_size can be an integer or a float "
-                             f"in [0, 1[, but is {test_size}.")
+            raise ValueError(
+                "invalid test_size argument: "
+                "test_size can be an integer or a float "
+                f"in [0, 1[, but is {test_size}."
+            )
     else:
         test_len = 0
 

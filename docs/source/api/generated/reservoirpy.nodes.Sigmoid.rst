@@ -5,12 +5,12 @@ reservoirpy.nodes.Sigmoid
 
 .. autoclass:: Sigmoid
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~Sigmoid.__init__
       ~Sigmoid.call
       ~Sigmoid.clean_buffers
@@ -41,15 +41,16 @@ reservoirpy.nodes.Sigmoid
       ~Sigmoid.with_state
       ~Sigmoid.zero_feedback
       ~Sigmoid.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
+      ~Sigmoid.dtype
       ~Sigmoid.feedback_dim
       ~Sigmoid.fitted
       ~Sigmoid.has_feedback
@@ -63,5 +64,4 @@ reservoirpy.nodes.Sigmoid
       ~Sigmoid.name
       ~Sigmoid.output_dim
       ~Sigmoid.params
-   
-   
+

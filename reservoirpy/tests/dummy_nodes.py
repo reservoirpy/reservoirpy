@@ -18,10 +18,14 @@ def plus_initialize(node: Node, x=None, **kwargs):
 
 
 class PlusNode(Node):
-
-    def __init__(self):
-        super().__init__(params={"c": None}, hypers={"h": 1},
-                         forward=plus_forward, initializer=plus_initialize)
+    def __init__(self, **kwargs):
+        super().__init__(
+            params={"c": None},
+            hypers={"h": 1},
+            forward=plus_forward,
+            initializer=plus_initialize,
+            **kwargs,
+        )
 
 
 def minus_forward(node: Node, x):
@@ -35,10 +39,14 @@ def minus_initialize(node: Node, x=None, **kwargs):
 
 
 class MinusNode(Node):
-
-    def __init__(self):
-        super().__init__(params={"c": None}, hypers={"h": 1},
-                         forward=minus_forward, initializer=minus_initialize)
+    def __init__(self, **kwargs):
+        super().__init__(
+            params={"c": None},
+            hypers={"h": 1},
+            forward=minus_forward,
+            initializer=minus_initialize,
+            **kwargs,
+        )
 
 
 def fb_forward(node: Node, x):
@@ -55,28 +63,30 @@ def fb_initialize_fb(node: Node, fb=None):
 
 
 class FBNode(Node):
-
-    def __init__(self):
-        super().__init__(initializer=fb_initialize,
-                         fb_initializer=fb_initialize_fb,
-                         forward=fb_forward)
+    def __init__(self, **kwargs):
+        super().__init__(
+            initializer=fb_initialize,
+            fb_initializer=fb_initialize_fb,
+            forward=fb_forward,
+            **kwargs,
+        )
 
 
 def inv_forward(node: Node, x):
     return -x
 
 
-def inv_initialize(node: Node, x=None, **kwarg):
+def inv_initialize(node: Node, x=None, **kwargs):
     if x is not None:
         node.set_input_dim(x.shape[1])
         node.set_output_dim(x.shape[1])
 
 
 class Inverter(Node):
-
-    def __init__(self):
-        super(Inverter, self).__init__(initializer=inv_initialize,
-                                       forward=inv_forward)
+    def __init__(self, **kwargs):
+        super(Inverter, self).__init__(
+            initializer=inv_initialize, forward=inv_forward, **kwargs
+        )
 
 
 def off_forward(node: Node, x):
@@ -105,14 +115,31 @@ def off_initialize_buffers(node: Node):
 
 
 class Offline(Node):
+    def __init__(self, **kwargs):
+        super(Offline, self).__init__(
+            params={"b": 0},
+            forward=off_forward,
+            partial_backward=off_partial_backward,
+            backward=off_backward,
+            buffers_initializer=off_initialize_buffers,
+            initializer=off_initialize,
+            **kwargs,
+        )
 
-    def __init__(self):
-        super(Offline, self).__init__(params={"b": 0},
-                                      forward=off_forward,
-                                      partial_backward=off_partial_backward,
-                                      backward=off_backward,
-                                      buffers_initializer=off_initialize_buffers,
-                                      initializer=off_initialize)
+
+def off_backward_basic(node: Node, X=None, Y=None):
+    b = np.mean(node._X)
+    node.set_param("b", np.array(b).copy())
+
+
+class BasicOffline(Node):
+    def __init__(self, **kwargs):
+        super(BasicOffline, self).__init__(
+            params={"b": 0},
+            forward=off_forward,
+            backward=off_backward_basic,
+            initializer=off_initialize,
+        )
 
 
 def off2_forward(node: Node, x):
@@ -141,14 +168,16 @@ def off2_initialize_buffers(node: Node):
 
 
 class Offline2(Node):
-
-    def __init__(self):
-        super(Offline2, self).__init__(params={"b": 0},
-                                       forward=off2_forward,
-                                       partial_backward=off2_partial_backward,
-                                       backward=off2_backward,
-                                       initializer=off2_initialize,
-                                       buffers_initializer=off2_initialize_buffers)
+    def __init__(self, **kwargs):
+        super(Offline2, self).__init__(
+            params={"b": 0},
+            forward=off2_forward,
+            partial_backward=off2_partial_backward,
+            backward=off2_backward,
+            initializer=off2_initialize,
+            buffers_initializer=off2_initialize_buffers,
+            **kwargs,
+        )
 
 
 def sum_forward(node: Node, x):
@@ -166,10 +195,10 @@ def sum_initialize(node: Node, x=None, **kwargs):
 
 
 class Sum(Node):
-
-    def __init__(self):
-        super(Sum, self).__init__(forward=sum_forward,
-                                  initializer=sum_initialize)
+    def __init__(self, **kwargs):
+        super(Sum, self).__init__(
+            forward=sum_forward, initializer=sum_initialize, **kwargs
+        )
 
 
 def unsupervised_forward(node: Node, x):
@@ -197,14 +226,16 @@ def unsupervised_initialize_buffers(node: Node):
 
 
 class Unsupervised(Node):
-
-    def __init__(self):
-        super(Unsupervised, self).__init__(params={"b": 0},
-                                           forward=unsupervised_forward,
-                                           partial_backward=unsupervised_partial_backward,
-                                           backward=unsupervised_backward,
-                                           initializer=unsupervised_initialize,
-                                           buffers_initializer=unsupervised_initialize_buffers)
+    def __init__(self, **kwargs):
+        super(Unsupervised, self).__init__(
+            params={"b": 0},
+            forward=unsupervised_forward,
+            partial_backward=unsupervised_partial_backward,
+            backward=unsupervised_backward,
+            initializer=unsupervised_initialize,
+            buffers_initializer=unsupervised_initialize_buffers,
+            **kwargs,
+        )
 
 
 def on_forward(node: Node, x):
@@ -213,7 +244,7 @@ def on_forward(node: Node, x):
 
 def on_train(node: Node, x, y=None):
     if y is not None:
-        node.set_param("b", node.b + np.mean(x+y))
+        node.set_param("b", node.b + np.mean(x + y))
     else:
         node.set_param("b", node.b + np.mean(x))
 
@@ -225,11 +256,14 @@ def on_initialize(node: Node, x=None, y=None):
 
 
 class OnlineNode(Node):
-    def __init__(self):
-        super(OnlineNode, self).__init__(params={"b": np.array([0])},
-                                           forward=on_forward,
-                                           train=on_train,
-                                           initializer=on_initialize)
+    def __init__(self, **kwargs):
+        super(OnlineNode, self).__init__(
+            params={"b": np.array([0])},
+            forward=on_forward,
+            train=on_train,
+            initializer=on_initialize,
+            **kwargs,
+        )
 
 
 def clean_registry(node_class):
@@ -289,3 +323,9 @@ def unsupervised_node():
 def online_node():
     clean_registry(OnlineNode)
     return OnlineNode()
+
+
+@pytest.fixture(scope="function")
+def basic_offline_node():
+    clean_registry(BasicOffline)
+    return BasicOffline()

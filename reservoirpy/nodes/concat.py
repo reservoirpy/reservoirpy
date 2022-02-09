@@ -5,7 +5,7 @@ from typing import Sequence
 
 import numpy as np
 
-from reservoirpy.node import Node
+from ..node import Node
 from ..utils.validation import check_node_io
 
 
@@ -34,13 +34,15 @@ def concat_initialize(concat: Node, x=None, **kwargs):
             else:
                 concat.set_output_dim(result.shape[1])
 
-class Concat(Node):
 
+class Concat(Node):
     def __init__(self, axis=1, name=None):
-        super(Concat, self).__init__(hypers={"axis": axis},
-                                     forward=concat_forward,
-                                     initializer=concat_initialize,
-                                     name=name)
+        super(Concat, self).__init__(
+            hypers={"axis": axis},
+            forward=concat_forward,
+            initializer=concat_initialize,
+            name=name,
+        )
 
     def _check_io(self, X, *args, io_type="input", **kwargs):
         if io_type == "input":
@@ -52,9 +54,7 @@ class Concat(Node):
                     input_dim = None
                     if self.is_initialized:
                         input_dim = self.input_dim[i]
-                    checked_X.append(check_node_io(self, X[i],
-                                                   input_dim,
-                                                   **kwargs))
+                    checked_X.append(check_node_io(self, X[i], input_dim, **kwargs))
                 return checked_X
             else:
                 return check_node_io(self, X, *args, io_type=io_type, **kwargs)

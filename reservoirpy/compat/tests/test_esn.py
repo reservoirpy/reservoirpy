@@ -1,9 +1,8 @@
-from math import sin, cos
+from math import cos, sin
 from tempfile import TemporaryDirectory
 
-import pytest
 import numpy as np
-
+import pytest
 from scipy import sparse
 
 from .._esn import ESN
@@ -12,49 +11,52 @@ from ..utils.save import load
 
 @pytest.fixture(scope="session")
 def matrices():
-    Win = np.array([[1, -1],
-                    [-1, 1],
-                    [1, -1],
-                    [-1, -1]])
-    W = np.array([[0.0, 0.1, -0.1, 0.0],
-                  [0.2, 0.0, 0.0, -0.2],
-                  [0.0, 0.2, 0.3,  0.1],
-                  [-0.1, 0.0, 0.0, 0.0]])
+    Win = np.array([[1, -1], [-1, 1], [1, -1], [-1, -1]])
+    W = np.array(
+        [
+            [0.0, 0.1, -0.1, 0.0],
+            [0.2, 0.0, 0.0, -0.2],
+            [0.0, 0.2, 0.3, 0.1],
+            [-0.1, 0.0, 0.0, 0.0],
+        ]
+    )
 
     return W, Win
 
 
 @pytest.fixture(scope="session")
 def matrices_fb():
-    Win = np.array([[1, -1],
-                    [-1, 1],
-                    [1, -1],
-                    [-1, -1]])
-    W = np.array([[0.0, 0.1, -0.1, 0.0],
-                  [0.2, 0.0, 0.0, -0.2],
-                  [0.0, 0.2, 0.3,  0.1],
-                  [-0.1, 0.0, 0.0, 0.0]])
-    Wfb = np.array([[1, -1],
-                    [-1, -1],
-                    [1, 1],
-                    [-1, 1]])
+    Win = np.array([[1, -1], [-1, 1], [1, -1], [-1, -1]])
+    W = np.array(
+        [
+            [0.0, 0.1, -0.1, 0.0],
+            [0.2, 0.0, 0.0, -0.2],
+            [0.0, 0.2, 0.3, 0.1],
+            [-0.1, 0.0, 0.0, 0.0],
+        ]
+    )
+    Wfb = np.array([[1, -1], [-1, -1], [1, 1], [-1, 1]])
     return W, Win, Wfb
 
 
 @pytest.fixture(scope="session")
 def dummy_data():
-    Xn0 = np.array([[sin(x), cos(x)] for x in np.linspace(0, 4*np.pi, 500)])
-    Xn1 = np.array([[sin(x), cos(x)]
-                    for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 500)])
+    Xn0 = np.array([[sin(x), cos(x)] for x in np.linspace(0, 4 * np.pi, 500)])
+    Xn1 = np.array(
+        [[sin(x), cos(x)] for x in np.linspace(np.pi / 4, 4 * np.pi + np.pi / 4, 500)]
+    )
     return Xn0, Xn1
 
 
 @pytest.fixture(scope="session")
 def dummy_clf_data():
-    Xn0 = np.array([[sin(x), cos(x)]
-                    for x in np.linspace(0, 4*np.pi, 250)])
-    Xn1 = np.array([[sin(10*x), cos(10*x)]
-                   for x in np.linspace(np.pi/4, 4*np.pi+np.pi/4, 250)])
+    Xn0 = np.array([[sin(x), cos(x)] for x in np.linspace(0, 4 * np.pi, 250)])
+    Xn1 = np.array(
+        [
+            [sin(10 * x), cos(10 * x)]
+            for x in np.linspace(np.pi / 4, 4 * np.pi + np.pi / 4, 250)
+        ]
+    )
     X = np.vstack([Xn0, Xn1])
     y = np.r_[np.zeros(250), np.ones(250)].reshape(-1, 1)
 
@@ -105,8 +107,7 @@ def test_esn_generate(matrices, dummy_data):
 
     X, y = dummy_data
     states = esn.train([X], [y])
-    out, states, warm_out, warm_states = esn.generate(500,
-                                                      warming_inputs=X)
+    out, states, warm_out, warm_states = esn.generate(500, warming_inputs=X)
 
     assert states.shape[0] == 500
     assert out.shape[0] == 500
@@ -138,12 +139,10 @@ def test_esn_ridge(matrices, dummy_data):
     assert len(outputs) == 2
 
 
-
 def test_esn_fb(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
 
-    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb,
-              input_bias=False, fbfunc=np.tanh)
+    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False, fbfunc=np.tanh)
     X, y = dummy_data
     states = esn.train([X], [y])
 
@@ -166,8 +165,7 @@ def test_esn_fb(matrices_fb, dummy_data):
 
 def test_esn_compute_all_states_fb(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
-    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False,
-              fbfunc=lambda x: x)
+    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False, fbfunc=lambda x: x)
     X, y = dummy_data
     states = esn.compute_all_states([X], [y])
 
@@ -181,8 +179,7 @@ def test_esn_compute_all_states_fb(matrices_fb, dummy_data):
 
 def test_esn_compute_all_states_fb_with_readout(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
-    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False,
-              fbfunc=lambda x: x)
+    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False, fbfunc=lambda x: x)
     X, y = dummy_data
     esn.train([X], [y])
     states = esn.compute_all_states([X])
@@ -197,13 +194,13 @@ def test_esn_compute_all_states_fb_with_readout(matrices_fb, dummy_data):
 
 def test_esn_generate_fb(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
-    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False,
-              fbfunc=lambda x: x)
+    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False, fbfunc=lambda x: x)
 
     X, y = dummy_data
     states = esn.train([X], [y])
-    out, states, warm_out, warm_states = esn.generate(500, warming_inputs=X,
-                                                      init_fb=y[0])
+    out, states, warm_out, warm_states = esn.generate(
+        500, warming_inputs=X, init_fb=y[0]
+    )
 
     assert states.shape[0] == 500
     assert out.shape[0] == 500
@@ -213,9 +210,9 @@ def test_esn_generate_fb(matrices_fb, dummy_data):
 
 def test_save(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
-    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb,
-              input_bias=False, fbfunc=np.tanh,
-              noise_rc=0.01)
+    esn = ESN(
+        lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False, fbfunc=np.tanh, noise_rc=0.01
+    )
 
     with TemporaryDirectory() as tempdir:
 
@@ -244,9 +241,9 @@ def test_save(matrices_fb, dummy_data):
 def test_save_sparse(matrices_fb, dummy_data):
     W, Win, Wfb = matrices_fb
     W = sparse.csr_matrix(W)
-    esn = ESN(lr=0.1, W=W, Win=Win, Wfb=Wfb,
-              input_bias=False, fbfunc=np.tanh,
-              noise_rc=0.01)
+    esn = ESN(
+        lr=0.1, W=W, Win=Win, Wfb=Wfb, input_bias=False, fbfunc=np.tanh, noise_rc=0.01
+    )
 
     with TemporaryDirectory() as tempdir:
 

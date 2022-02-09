@@ -2,13 +2,10 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Iterable
 from inspect import signature
+from typing import Iterable
 
 from tqdm import tqdm
-
-from .validation import is_mapping, is_sequence_set
-
 
 VERBOSITY = 1
 

@@ -67,6 +67,7 @@ node. ReservoirPy will infer it from the shape of the target data.
 .. ipython:: python
 
     from reservoirpy.nodes import Ridge
+
     ridge = Ridge().fit(X, Y)
 
 We can access the learned parameters looking at the ``Wout`` and ``bias`` parameter of the node.
@@ -107,6 +108,7 @@ We can then train the model using :py:meth:`~.Model.fit`.
 .. ipython:: python
 
     from reservoirpy.nodes import Reservoir, Ridge
+
     reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), Ridge(ridge=1e-3)
     esn = reservoir >> readout
     esn.fit(X, Y)
@@ -174,6 +176,7 @@ node. ReservoirPy will infer it from the shape of the target data.
 .. ipython:: python
 
     from reservoirpy.nodes import FORCE
+
     force = FORCE()
 
 The :py:meth:`~.Node.train` method can be used as the call method of a Node. Every time the method is called, it updates
@@ -248,6 +251,7 @@ We can then train the model using :py:meth:`~.Model.train`.
 .. ipython:: python
 
     from reservoirpy.nodes import Reservoir, FORCE
+
     reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), FORCE()
     esn = reservoir >> readout
     predictions = esn.train(X, Y)

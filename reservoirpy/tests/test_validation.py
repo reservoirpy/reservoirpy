@@ -1,23 +1,33 @@
 # Author: Nathan Trouvain at 23/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 from scipy.sparse import csr_matrix
 
-from ..utils.validation import (add_bias,
-                                check_datatype,
-                                check_input_lists,
-                                check_reservoir_matrices)
+from ..utils.validation import (
+    add_bias,
+    check_datatype,
+    check_input_lists,
+    check_reservoir_matrices,
+)
 
 
-@pytest.mark.parametrize("X,Y", (
+@pytest.mark.parametrize(
+    "X,Y",
+    (
         ([np.ones((10, 5)) for _ in range(10)], [np.ones((10, 2)) for _ in range(9)]),
-        ([np.ones((10, 5)) for _ in range(9)] + [np.ones((9, 5))], [np.ones((10, 2)) for _ in range(10)]),
-        ([np.ones((10, 5)) for _ in range(10)],
-         [np.ones((10, 3))] + [np.ones((10, 2)) for _ in range(9)])
-))
+        (
+            [np.ones((10, 5)) for _ in range(9)] + [np.ones((9, 5))],
+            [np.ones((10, 2)) for _ in range(10)],
+        ),
+        (
+            [np.ones((10, 5)) for _ in range(10)],
+            [np.ones((10, 3))] + [np.ones((10, 2)) for _ in range(9)],
+        ),
+    ),
+)
 def test_bad_input_list(X, Y):
     with pytest.raises(ValueError):
         check_input_lists(X, dim_in=5, Y=Y, dim_out=2)

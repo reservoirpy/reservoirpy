@@ -1,20 +1,19 @@
 """*Hyperopt* wrapper tools for hyperparameters optimization.
 
 """
+import json
 import os
 import time
-import json
 import warnings
-
-from os import path
 from functools import partial
 from glob import glob
+from os import path
 
 import numpy as np
 
 
 def _get_conf_from_json(confpath):
-    if not(path.isfile(confpath)):
+    if not (path.isfile(confpath)):
         raise FileNotFoundError(f"Training conf '{confpath}' not found.")
     else:
         config = {}
@@ -33,8 +32,10 @@ def _parse_config(config):
             raise ValueError(f"No {arg} argument found in config file.")
 
     if config["hp_method"] not in ["tpe", "random"]:
-        raise ValueError(f"Unknow hyperopt algorithm: {config['hp_method']}. "
-                         "Available algorithms: 'random', 'tpe'.")
+        raise ValueError(
+            f"Unknow hyperopt algorithm: {config['hp_method']}. "
+            "Available algorithms: 'random', 'tpe'."
+        )
     else:
         if config["hp_method"] == "random":
             config["hp_method"] = partial(hopt.rand.suggest)
@@ -78,17 +79,17 @@ def _parse_hyperopt_searchspace(arg, specs):
 
 def _get_report_path(exp_name, base_path=None):
 
-    base_path = '.' if base_path is None else base_path
+    base_path = "." if base_path is None else base_path
 
-    report_path = path.join(base_path, exp_name, 'results')
+    report_path = path.join(base_path, exp_name, "results")
 
-    if not(path.isdir(base_path)):
+    if not (path.isdir(base_path)):
         os.mkdir(base_path)
 
-    if not(path.isdir(path.join(base_path, exp_name))):
+    if not (path.isdir(path.join(base_path, exp_name))):
         os.mkdir(path.join(base_path, exp_name))
 
-    if not(path.isdir(report_path)):
+    if not (path.isdir(report_path)):
         os.mkdir(report_path)
 
     return report_path
@@ -140,9 +141,9 @@ def research(objective, dataset, config_path, report_path=None):
             end = time.time()
             duration = end - start
 
-            returned_dict['status'] = hopt.STATUS_OK
-            returned_dict['start_time'] = start
-            returned_dict['duration'] = duration
+            returned_dict["status"] = hopt.STATUS_OK
+            returned_dict["start_time"] = start
+            returned_dict["duration"] = duration
 
             save_file = f"{returned_dict['loss']:.7f}_hyperopt_results"
 
@@ -151,23 +152,25 @@ def research(objective, dataset, config_path, report_path=None):
             start = time.time()
 
             returned_dict = {
-                'status': hopt.STATUS_FAIL,
-                'start_time': start,
-                'error': str(e),
+                "status": hopt.STATUS_FAIL,
+                "start_time": start,
+                "error": str(e),
             }
 
             save_file = f"ERR{start}_hyperopt_results"
 
         try:
-            json_dict = {'returned_dict': returned_dict, 'current_params': kwargs}
+            json_dict = {"returned_dict": returned_dict, "current_params": kwargs}
             save_file = path.join(report_path, save_file)
             nb_save_file_with_same_loss = len(glob(f"{save_file}*"))
             save_file = f"{save_file}_{nb_save_file_with_same_loss+1}call.json"
             with open(save_file, "w+") as f:
                 json.dump(json_dict, f)
         except Exception as e:
-            warnings.warn("Results of current simulation were NOT saved "
-                          "correctly to JSON file.")
+            warnings.warn(
+                "Results of current simulation were NOT saved "
+                "correctly to JSON file."
+            )
             warnings.warn(str(e))
 
         return returned_dict
@@ -181,11 +184,13 @@ def research(objective, dataset, config_path, report_path=None):
     else:
         rs = np.random.RandomState(config["seed"])
 
-    best = hopt.fmin(objective_wrapper,
-                     space=search_space,
-                     algo=config["hp_method"],
-                     max_evals=config['hp_max_evals'],
-                     trials=trials,
-                     rstate=rs)
+    best = hopt.fmin(
+        objective_wrapper,
+        space=search_space,
+        algo=config["hp_method"],
+        max_evals=config["hp_max_evals"],
+        trials=trials,
+        rstate=rs,
+    )
 
     return best, trials

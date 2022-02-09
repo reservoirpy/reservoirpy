@@ -1,0 +1,8 @@
+hyperopt
+jupyter
+matplotlib
+pandas
+requests
+reservoirpy==0.3.1
+scikit-learn
+seaborn

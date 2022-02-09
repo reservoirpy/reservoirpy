@@ -3,9 +3,20 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import sys
 from contextlib import contextmanager
-from typing import (Any, Callable, Dict, Iterable, Iterator, Optional, Tuple,
-                    TypeVar, Union, Sequence, List)
-from typing import overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 if sys.version_info < (3, 8):
     from typing_extensions import Protocol, runtime_checkable
@@ -22,10 +33,13 @@ Weights = TypeVar("Weights", np.ndarray, csr_matrix, csc_matrix, coo_matrix)
 Shape = Tuple[int, ...]
 
 Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
-MappedData = TypeVar("MappedData",
-                     Iterable[np.ndarray], np.ndarray,
-                     Dict[str, Iterable[np.ndarray]],
-                     Dict[str, np.ndarray])
+MappedData = TypeVar(
+    "MappedData",
+    Iterable[np.ndarray],
+    np.ndarray,
+    Dict[str, Iterable[np.ndarray]],
+    Dict[str, np.ndarray],
+)
 
 
 @runtime_checkable
@@ -74,18 +88,23 @@ class GenericNode(Protocol):
     def __call__(self, *args, **kwargs) -> np.ndarray:
         return self.call(*args, **kwargs)
 
-    def __rshift__(self, other: Union[
-        "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":
+    def __rshift__(
+        self, other: Union["GenericNode", Sequence["GenericNode"]]
+    ) -> "GenericNode":
         return self.link(other)
 
-    def __rrshift__(self, other: Union[
-        "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":
+    def __rrshift__(
+        self, other: Union["GenericNode", Sequence["GenericNode"]]
+    ) -> "GenericNode":
         from .ops import link
+
         return link(other, self)
 
-    def __and__(self, other: Union[
-        "GenericNode", Sequence["GenericNode"]]) -> "GenericNode":
+    def __and__(
+        self, other: Union["GenericNode", Sequence["GenericNode"]]
+    ) -> "GenericNode":
         from .ops import merge
+
         return merge(self, other)
 
     def _get_name(self, name=None):
@@ -95,62 +114,85 @@ class GenericNode(Protocol):
             name = f"{type(self).__name__}-{_id}"
 
         if name in type(self)._registry:
-            raise NameError(f"Name '{name}' is already taken "
-                            f"by another node. Node names should "
-                            f"be unique.")
+            raise NameError(
+                f"Name '{name}' is already taken "
+                f"by another node. Node names should "
+                f"be unique."
+            )
 
         type(self)._registry.append(name)
         return name
 
     @property
-    def name(self) -> str: return self._name
+    def name(self) -> str:
+        return self._name
+
     """Name of the Node or Model."""
 
     @property
-    def params(self) -> Dict[str, Any]: return self._params
+    def params(self) -> Dict[str, Any]:
+        return self._params
+
     """Parameters of the Node or Model."""
 
     @property
-    def hypers(self) -> Dict[str, Any]: return self._hypers
+    def hypers(self) -> Dict[str, Any]:
+        return self._hypers
+
     """Hyperparameters of the Node or Model."""
 
     @property
-    def is_initialized(self) -> bool: return self._is_initialized
+    def is_initialized(self) -> bool:
+        return self._is_initialized
 
     @property
-    def input_dim(self) -> Shape: ...
+    def input_dim(self) -> Shape:
+        ...
 
     @property
-    def output_dim(self) -> Shape: ...
+    def output_dim(self) -> Shape:
+        ...
 
     @property
-    def is_trained_offline(self) -> bool: ...
+    def is_trained_offline(self) -> bool:
+        ...
 
     @property
-    def is_trained_online(self) -> bool: ...
+    def is_trained_online(self) -> bool:
+        ...
 
     @property
-    def is_trainable(self) -> bool: ...
+    def is_trainable(self) -> bool:
+        ...
 
     @property
-    def fitted(self) -> bool: ...
+    def fitted(self) -> bool:
+        ...
 
     @is_trainable.setter
-    def is_trainable(self, value: bool): ...
+    def is_trainable(self, value: bool):
+        ...
 
-    def copy(self, name: str = None, copy_feedback: bool = False,
-             shallow: bool = False) -> "GenericNode": ...
+    def copy(
+        self, name: str = None, copy_feedback: bool = False, shallow: bool = False
+    ) -> "GenericNode":
+        ...
 
     @overload
-    def state(self) -> Optional[Dict[str, np.ndarray]]: ...
+    def state(self) -> Optional[Dict[str, np.ndarray]]:
+        ...
 
-    def state(self) -> Optional[np.ndarray]: ...
+    def state(self) -> Optional[np.ndarray]:
+        ...
 
-    def set_input_dim(self, value: Union[int, Shape]): ...
+    def set_input_dim(self, value: Union[int, Shape]):
+        ...
 
-    def set_output_dim(self, value: Union[int, Shape]): ...
+    def set_output_dim(self, value: Union[int, Shape]):
+        ...
 
-    def set_feedback_dim(self, value: Union[int, Shape]): ...
+    def set_feedback_dim(self, value: Union[int, Shape]):
+        ...
 
     def get_param(self, name: str) -> Any:
         if name in self._params:
@@ -158,22 +200,28 @@ class GenericNode(Protocol):
         elif name in self._hypers:
             return self._hypers.get(name)
         else:
-            raise NameError(f"No parameter named '{name}' "
-                            f"found in node {self}")
+            raise NameError(f"No parameter named '{name}' found in node {self}")
 
-    def set_param(self, name: str, value: Any): ...
+    def set_param(self, name: str, value: Any):
+        ...
 
-    def initialize(self, x: MappedData = None, y: MappedData = None): ...
+    def initialize(self, x: MappedData = None, y: MappedData = None):
+        ...
 
-    def reset(self, to_state: np.ndarray = None) -> "GenericNode": ...
-
-    @contextmanager
-    def with_state(self, state=None, stateful=False, reset=False) -> Iterator[
-        "GenericNode"]: ...
+    def reset(self, to_state: np.ndarray = None) -> "GenericNode":
+        ...
 
     @contextmanager
-    def with_feedback(self, feedback=None, stateful=False, reset=False) -> \
-            Iterator["GenericNode"]: ...
+    def with_state(
+        self, state=None, stateful=False, reset=False
+    ) -> Iterator["GenericNode"]:
+        ...
+
+    @contextmanager
+    def with_feedback(
+        self, feedback=None, stateful=False, reset=False
+    ) -> Iterator["GenericNode"]:
+        ...
 
     def link(self, other: "GenericNode", name: str = None) -> "GenericNode":
         """Link the Node to another Node or Model.
@@ -191,52 +239,98 @@ class GenericNode(Protocol):
             A new Model instance including the two Nodes.
         """
         from .ops import link
+
         return link(self, other, name=name)
 
     @overload
-    def call(self, x: Data, from_state: np.ndarray = None,
-             stateful: bool = True,
-             reset: bool = False) -> np.ndarray: ...
+    def call(
+        self,
+        x: Data,
+        from_state: np.ndarray = None,
+        stateful: bool = True,
+        reset: bool = False,
+    ) -> np.ndarray:
+        ...
 
-    def call(self, x: MappedData, forced_feedback: MappedData = None,
-             from_state: MappedData = None,
-             stateful: bool = True, reset: bool = False,
-             return_states: Iterable[str] = None) -> MappedData: ...
-
-    @overload
-    def run(self, X: Data = None, from_state: np.ndarray = None,
-            stateful: bool = True,
-            reset: bool = False) -> Data: ...
-
-    def run(self, X: MappedData = None, forced_feedbacks: MappedData = None,
-            from_state: MappedData = None,
-            stateful: bool = True, reset: bool = False, shift_fb: bool = True,
-            return_states: Iterable[str] = None) -> MappedData: ...
-
-    @overload
-    def train(self, X: Data, Y: Data = None, force_teachers: bool = True,
-              call: bool = True,
-              learn_every: int = 1, from_state: np.ndarray = None,
-              stateful: bool = True, reset: bool = False) -> Data: ...
-
-    def train(self, X: MappedData, Y: MappedData = None,
-              force_teachers: bool = True, call: bool = True,
-              learn_every: int = 1,
-              from_state: MappedData = None, stateful: bool = True,
-              reset: bool = False,
-              return_states: Iterable[str] = None) -> MappedData: ...
+    def call(
+        self,
+        x: MappedData,
+        forced_feedback: MappedData = None,
+        from_state: MappedData = None,
+        stateful: bool = True,
+        reset: bool = False,
+        return_states: Iterable[str] = None,
+    ) -> MappedData:
+        ...
 
     @overload
-    def fit(self, X: Data = None, Y: Data = None) -> "GenericNode": ...
+    def run(
+        self,
+        X: Data = None,
+        from_state: np.ndarray = None,
+        stateful: bool = True,
+        reset: bool = False,
+    ) -> Data:
+        ...
 
-    def fit(self, X: MappedData = None, Y: MappedData = None,
-            from_state: MappedData = None, stateful: bool = True,
-            reset: bool = False) -> "GenericNode": ...
+    def run(
+        self,
+        X: MappedData = None,
+        forced_feedbacks: MappedData = None,
+        from_state: MappedData = None,
+        stateful: bool = True,
+        reset: bool = False,
+        shift_fb: bool = True,
+        return_states: Iterable[str] = None,
+    ) -> MappedData:
+        ...
+
+    @overload
+    def train(
+        self,
+        X: Data,
+        Y: Data = None,
+        force_teachers: bool = True,
+        call: bool = True,
+        learn_every: int = 1,
+        from_state: np.ndarray = None,
+        stateful: bool = True,
+        reset: bool = False,
+    ) -> Data:
+        ...
+
+    def train(
+        self,
+        X: MappedData,
+        Y: MappedData = None,
+        force_teachers: bool = True,
+        call: bool = True,
+        learn_every: int = 1,
+        from_state: MappedData = None,
+        stateful: bool = True,
+        reset: bool = False,
+        return_states: Iterable[str] = None,
+    ) -> MappedData:
+        ...
+
+    @overload
+    def fit(self, X: Data = None, Y: Data = None) -> "GenericNode":
+        ...
+
+    def fit(
+        self,
+        X: MappedData = None,
+        Y: MappedData = None,
+        from_state: MappedData = None,
+        stateful: bool = True,
+        reset: bool = False,
+    ) -> "GenericNode":
+        ...
+
 
 Activation = Callable[[np.ndarray], np.ndarray]
 ForwardFn = Callable[[GenericNode, Data], np.ndarray]
 BackwardFn = Callable[[GenericNode, Optional[Data], Optional[Data]], None]
 PartialBackFn = Callable[[GenericNode, Data, Optional[Data]], None]
-ForwardInitFn = Callable[
-    [GenericNode, Optional[Data], Optional[Data]], None]
+ForwardInitFn = Callable[[GenericNode, Optional[Data], Optional[Data]], None]
 EmptyInitFn = Callable[[GenericNode], None]

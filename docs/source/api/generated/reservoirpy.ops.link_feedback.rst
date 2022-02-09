@@ -5,10 +5,9 @@ reservoirpy.ops.link\_feedback
 
 .. autoclass:: link_feedback
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+

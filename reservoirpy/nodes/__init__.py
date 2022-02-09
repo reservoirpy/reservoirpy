@@ -68,43 +68,32 @@ Optimized ESN
 
    ESN - Echo State Network model with distributed offline learning.
 
-Miscellaneous
-=============
-
-.. autosummary
-   :toctree: generated/
-   :template: autosummary/class.rst
-
-   RandomChoice - Randomly select features in a vector of data.
-   AsabukiNorm - Normalization as defined in Asabuki et al. (2018)
 """
 # Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
+from .concat import Concat
+from .esn import ESN
+from .force import FORCE
+from .io import Input, Output
+from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
-from .force import FORCE
-from .norm import AsabukiNorm
-from .nvar import NVAR
-from .esn import ESN
-from .activations import Tanh, Sigmoid, Softmax, Softplus, Identity, ReLU
-from .randomchoice import RandomChoice
-from .io import Input, Output
-from .concat import Concat
 
-__all__ = ["Reservoir",
-           "Input",
-           "Output",
-           "Ridge",
-           "FORCE",
-           "Tanh",
-           "Softmax",
-           "Softplus",
-           "Identity",
-           "Sigmoid",
-           "ReLU",
-           "RandomChoice",
-           "AsabukiNorm",
-           "NVAR",
-           "ESN",
-           "Concat"]
+__all__ = [
+    "Reservoir",
+    "Input",
+    "Output",
+    "Ridge",
+    "FORCE",
+    "Tanh",
+    "Softmax",
+    "Softplus",
+    "Identity",
+    "Sigmoid",
+    "ReLU",
+    "NVAR",
+    "ESN",
+    "Concat",
+]

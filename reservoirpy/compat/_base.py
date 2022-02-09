@@ -1,42 +1,42 @@
 import time
 import warnings
-
-from typing import Sequence, Tuple, Union
-from pathlib import Path
-from functools import partial
 from abc import ABCMeta
+from functools import partial
+from pathlib import Path
+from typing import Sequence, Tuple, Union
 
 import numpy as np
-
 from joblib import Parallel, delayed
+from numpy.random import Generator, SeedSequence, default_rng
 from tqdm import tqdm
-from numpy.random import default_rng, SeedSequence, Generator
 
+from ..types import Activation, Data, Weights
 from ..utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
 from ..utils.validation import add_bias, check_input_lists, check_reservoir_matrices
 from .utils.save import _save
-from ..types import Weights, Data, Activation
 
 
 class _ESNBase(metaclass=ABCMeta):
+    def __init__(
+        self,
+        W: Weights,
+        Win: Weights,
+        lr: float = 1.0,
+        input_bias: bool = True,
+        activation: Activation = np.tanh,
+        Wfb: Weights = None,
+        fbfunc: Activation = lambda x: x,
+        Wout: Weights = None,
+        noise_in: float = 0.0,
+        noise_rc: float = 0.0,
+        noise_out: float = 0.0,
+        seed: int = None,
+        typefloat: np.dtype = np.float64,
+    ):
 
-    def __init__(self,
-                 W: Weights,
-                 Win: Weights,
-                 lr: float = 1.0,
-                 input_bias: bool = True,
-                 activation: Activation = np.tanh,
-                 Wfb: Weights = None,
-                 fbfunc: Activation = lambda x: x,
-                 Wout: Weights = None,
-                 noise_in: float = 0.0,
-                 noise_rc: float = 0.0,
-                 noise_out: float = 0.0,
-                 seed: int = None,
-                 typefloat: np.dtype = np.float64):
-
-        W, Win, Wout, Wfb = check_reservoir_matrices(W, Win, Wout=Wout,
-                                                     Wfb=Wfb, caller=self)
+        W, Win, Wout, Wfb = check_reservoir_matrices(
+            W, Win, Wout=Wout, Wfb=Wfb, caller=self
+        )
 
         self._W = W
         self._Win = Win
@@ -71,8 +71,10 @@ class _ESNBase(metaclass=ABCMeta):
             trained = False
         fb = self.Wfb is not None
         name = self.__class__.__name__
-        out = f"{name}(trained={trained}, feedback={fb}, N={self.N}, " \
-              f"lr={self.lr}, input_bias={self.input_bias}, input_dim={self.dim_in})"
+        out = (
+            f"{name}(trained={trained}, feedback={fb}, N={self.N}, "
+            f"lr={self.lr}, input_bias={self.input_bias}, input_dim={self.dim_in})"
+        )
         return out
 
     @property
@@ -107,10 +109,9 @@ class _ESNBase(metaclass=ABCMeta):
 
     @Win.setter
     def Win(self, matrix):
-        _, Win, _, _ = check_reservoir_matrices(self._W, matrix,
-                                                self._Wout,
-                                                self._Wfb,
-                                                caller=self)
+        _, Win, _, _ = check_reservoir_matrices(
+            self._W, matrix, self._Wout, self._Wfb, caller=self
+        )
         self._Win = Win
         self._dim_in = self._Win.shape[1]
         if self._input_bias:
@@ -123,11 +124,9 @@ class _ESNBase(metaclass=ABCMeta):
 
     @W.setter
     def W(self, matrix):
-        W, _, _, _ = check_reservoir_matrices(matrix,
-                                              self._Win,
-                                              self._Wout,
-                                              self._Wfb,
-                                              caller=self)
+        W, _, _, _ = check_reservoir_matrices(
+            matrix, self._Win, self._Wout, self._Wfb, caller=self
+        )
         self._W = W
         self._N = self._W.shape[0]
 
@@ -138,11 +137,9 @@ class _ESNBase(metaclass=ABCMeta):
 
     @Wfb.setter
     def Wfb(self, matrix):
-        _, _, _, Wfb = check_reservoir_matrices(self._W,
-                                                self._Win,
-                                                self._Wout,
-                                                matrix,
-                                                caller=self)
+        _, _, _, Wfb = check_reservoir_matrices(
+            self._W, self._Win, self._Wout, matrix, caller=self
+        )
         self._Wfb = Wfb
         self._dim_out = self._Wfb.shape[1]
 
@@ -153,11 +150,9 @@ class _ESNBase(metaclass=ABCMeta):
 
     @Wout.setter
     def Wout(self, matrix):
-        _, _, Wout, _ = check_reservoir_matrices(self._W,
-                                                 self._Win,
-                                                 matrix,
-                                                 self._Wfb,
-                                                 caller=self)
+        _, _, Wout, _ = check_reservoir_matrices(
+            self._W, self._Win, matrix, self._Wfb, caller=self
+        )
         self._Wout = Wout
         self._dim_out = self._Wout.shape[0]
 
@@ -172,11 +167,13 @@ class _ESNBase(metaclass=ABCMeta):
         else:
             return None
 
-    def _get_next_state(self,
-                        single_input: np.ndarray,
-                        feedback: np.ndarray = None,
-                        last_state: np.ndarray = None,
-                        noise_generator: Generator = None) -> np.ndarray:
+    def _get_next_state(
+        self,
+        single_input: np.ndarray,
+        feedback: np.ndarray = None,
+        last_state: np.ndarray = None,
+        noise_generator: Generator = None,
+    ) -> np.ndarray:
         """Given a state vector x(t) and an input vector u(t),
         compute the state vector x(t+1).
 
@@ -225,26 +222,28 @@ class _ESNBase(metaclass=ABCMeta):
             if feedback is None:
                 feedback = self.zero_feedback()
 
-            noise_out = self.noise_out * noise_generator.uniform(-1, 1,
-                                                                 size=feedback.shape)
+            noise_out = self.noise_out * noise_generator.uniform(
+                -1, 1, size=feedback.shape
+            )
             fb = self.fbfunc(np.asarray(feedback)).reshape(1, -1)
             x1 += (fb + noise_out) @ self.Wfb.T
 
         # previous states memory leak and non-linear transformation
-        x1 = (1-self.lr) * x + self.lr * (self.activation(x1)+noise_rc)
+        x1 = (1 - self.lr) * x + self.lr * (self.activation(x1) + noise_rc)
 
         # return the next state computed
         return x1
 
-    def _compute_states(self,
-                        input: np.ndarray,
-                        forced_teacher: np.ndarray = None,
-                        init_state: np.ndarray = None,
-                        init_fb: np.ndarray = None,
-                        seed: int = None,
-                        verbose: bool = False,
-                        **kwargs
-                        ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+    def _compute_states(
+        self,
+        input: np.ndarray,
+        forced_teacher: np.ndarray = None,
+        init_state: np.ndarray = None,
+        init_fb: np.ndarray = None,
+        seed: int = None,
+        verbose: bool = False,
+        **kwargs,
+    ) -> Union[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """Compute all states generated from a single sequence of inputs.
 
         Parameters
@@ -273,8 +272,10 @@ class _ESNBase(metaclass=ABCMeta):
             and computed states, or just states if no index is provided.
         """
         if self.Wfb is not None and forced_teacher is None and self.Wout is None:
-            raise RuntimeError("Impossible to use feedback without readout "
-                               "matrix or teacher forcing.")
+            raise RuntimeError(
+                "Impossible to use feedback without readout "
+                "matrix or teacher forcing."
+            )
 
         check_input_lists(input, self.dim_in, forced_teacher, self.dim_out)
 
@@ -306,10 +307,12 @@ class _ESNBase(metaclass=ABCMeta):
         # for each time step in the input
         for t in range(input.shape[0]):
             # compute next state from current state
-            current_state = self._get_next_state(input[t, :],
-                                                 feedback=last_feedback,
-                                                 last_state=current_state,
-                                                 noise_generator=rng)
+            current_state = self._get_next_state(
+                input[t, :],
+                feedback=last_feedback,
+                last_state=current_state,
+                noise_generator=rng,
+            )
 
             # compute last feedback
             if self.Wfb is not None:
@@ -318,7 +321,7 @@ class _ESNBase(metaclass=ABCMeta):
                     last_feedback = forced_teacher[t, :]
                 # feedback of outputs, computed with Wout
                 else:
-                    last_feedback = (add_bias(current_state) @ self.Wout.T)
+                    last_feedback = add_bias(current_state) @ self.Wout.T
 
             states[t, :] = current_state
 
@@ -327,15 +330,16 @@ class _ESNBase(metaclass=ABCMeta):
 
         return states
 
-    def compute_all_states(self,
-                           inputs: Sequence[np.ndarray],
-                           forced_teachers: Sequence[np.ndarray] = None,
-                           init_state: np.ndarray = None,
-                           init_fb: np.ndarray = None,
-                           workers: int = -1,
-                           seed: int = None,
-                           verbose: bool = False,
-                           ) -> Sequence[np.ndarray]:
+    def compute_all_states(
+        self,
+        inputs: Sequence[np.ndarray],
+        forced_teachers: Sequence[np.ndarray] = None,
+        init_state: np.ndarray = None,
+        init_fb: np.ndarray = None,
+        workers: int = -1,
+        seed: int = None,
+        verbose: bool = False,
+    ) -> Sequence[np.ndarray]:
         """Compute all states generated from sequences of inputs.
 
         Parameters
@@ -373,8 +377,9 @@ class _ESNBase(metaclass=ABCMeta):
             list of np.ndarray
                 All computed states.
         """
-        inputs, forced_teachers = check_input_lists(inputs, self.dim_in,
-                                                    forced_teachers, self.dim_out)
+        inputs, forced_teachers = check_input_lists(
+            inputs, self.dim_in, forced_teachers, self.dim_out
+        )
 
         workers = min(workers, len(inputs))
 
@@ -385,27 +390,25 @@ class _ESNBase(metaclass=ABCMeta):
         if forced_teachers is None:
             forced_teachers = [None] * len(inputs)
 
-        compute_states = partial(self._compute_states,
-                                 init_state=init_state,
-                                 init_fb=init_fb)
+        compute_states = partial(
+            self._compute_states, init_state=init_state, init_fb=init_fb
+        )
 
         steps = np.sum([i.shape[0] for i in inputs])
 
-        progress = ParallelProgressQueue(total=steps,
-                                         text="States",
-                                         verbose=verbose)
+        progress = ParallelProgressQueue(total=steps, text="States", verbose=verbose)
         with progress as pbar:
             with Parallel(backend=backend, n_jobs=workers) as parallel:
-                states = parallel(delayed(
-                    partial(compute_states, pbar=pbar, seed=seed))(x, t)
-                                  for x, t in zip(inputs, forced_teachers))
+                states = parallel(
+                    delayed(partial(compute_states, pbar=pbar, seed=seed))(x, t)
+                    for x, t in zip(inputs, forced_teachers)
+                )
 
         return states
 
-    def compute_outputs(self,
-                        states: Data,
-                        verbose: bool = False
-                        ) -> Sequence[np.ndarray]:
+    def compute_outputs(
+        self, states: Data, verbose: bool = False
+    ) -> Sequence[np.ndarray]:
         """Compute all readouts of a given sequence of states,
         when a readout matrix is available (i.e. after training).
 
@@ -448,29 +451,35 @@ class _ESNBase(metaclass=ABCMeta):
             return outputs
 
         else:
-            raise RuntimeError("Impossible to compute outputs: "
-                               "no readout matrix available. "
-                               "Train the network first.")
+            raise RuntimeError(
+                "Impossible to compute outputs: "
+                "no readout matrix available. "
+                "Train the network first."
+            )
 
-    def train(self,
-              inputs: Data,
-              teachers: Data,
-              washout: int = 0,
-              workers: int = -1,
-              return_states: bool = False,
-              seed: int = None,
-              verbose: bool = False) -> Sequence[np.ndarray]:
+    def train(
+        self,
+        inputs: Data,
+        teachers: Data,
+        washout: int = 0,
+        workers: int = -1,
+        return_states: bool = False,
+        seed: int = None,
+        verbose: bool = False,
+    ) -> Sequence[np.ndarray]:
         raise NotImplementedError
 
-    def run(self,
-            inputs: Data,
-            init_state: np.ndarray = None,
-            init_fb: np.ndarray = None,
-            workers: int = -1,
-            return_states=False,
-            backend=None,
-            seed: int = None,
-            verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
+    def run(
+        self,
+        inputs: Data,
+        init_state: np.ndarray = None,
+        init_fb: np.ndarray = None,
+        workers: int = -1,
+        return_states=False,
+        backend=None,
+        seed: int = None,
+        verbose: bool = False,
+    ) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
            readouts vectors.
 
@@ -529,32 +538,38 @@ class _ESNBase(metaclass=ABCMeta):
             print(f"Running on {len(inputs)} inputs ({steps} steps)")
 
         def run_fn(*, x, pbar):
-            s = self._compute_states(x,
-                                     init_state=init_state,
-                                     init_fb=init_fb,
-                                     seed=seed,
-                                     pbar=pbar)
+            s = self._compute_states(
+                x, init_state=init_state, init_fb=init_fb, seed=seed, pbar=pbar
+            )
 
             out = self.compute_outputs([s])[0]
 
             return out, s
 
-        outputs, states = parallelize(self, run_fn, workers, lengths, return_states,
-                                      pbar_text="Run", verbose=verbose,
-                                      x=inputs)
+        outputs, states = parallelize(
+            self,
+            run_fn,
+            workers,
+            lengths,
+            return_states,
+            pbar_text="Run",
+            verbose=verbose,
+            x=inputs,
+        )
 
         return outputs, states
 
-    def generate(self,
-                 nb_timesteps: int,
-                 warming_inputs: np.ndarray = None,
-                 init_state: np.ndarray = None,
-                 init_fb: np.ndarray = None,
-                 verbose: bool = False,
-                 init_inputs: np.ndarray = None,
-                 seed: int = None,
-                 return_init: bool = None
-                 ) -> Tuple[np.ndarray, np.ndarray]:
+    def generate(
+        self,
+        nb_timesteps: int,
+        warming_inputs: np.ndarray = None,
+        init_state: np.ndarray = None,
+        init_fb: np.ndarray = None,
+        verbose: bool = False,
+        init_inputs: np.ndarray = None,
+        seed: int = None,
+        return_init: bool = None,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Run the ESN on generative mode.
 
         After the `̀warming_inputs` are consumed, new outputs are
@@ -612,13 +627,17 @@ class _ESNBase(metaclass=ABCMeta):
 
         """
         if warming_inputs is None and init_state is None and init_inputs is None:
-            raise ValueError("at least one of the parameter 'warming_input' "
-                             "or 'init_state' must not be None. Impossible "
-                             "to generate from scratch.")
+            raise ValueError(
+                "at least one of the parameter 'warming_input' "
+                "or 'init_state' must not be None. Impossible "
+                "to generate from scratch."
+            )
 
         if return_init is not None:
-            warnings.warn("Deprecation warning : return_init parameter "
-                          "is deprecated since 0.2.2 and will be removed.")
+            warnings.warn(
+                "Deprecation warning : return_init parameter "
+                "is deprecated since 0.2.2 and will be removed."
+            )
 
         # for additive noise in the reservoir
         # 2 separate seeds made from one: one for the warming
@@ -629,20 +648,26 @@ class _ESNBase(metaclass=ABCMeta):
 
         if warming_inputs is not None or init_inputs is not None:
             if init_inputs is not None:
-                warnings.warn("Deprecation warning : init_inputs parameter "
-                              "is deprecated since 0.2.2 and will be removed. "
-                              "Please use warming_inputs instead.")
+                warnings.warn(
+                    "Deprecation warning : init_inputs parameter "
+                    "is deprecated since 0.2.2 and will be removed. "
+                    "Please use warming_inputs instead."
+                )
                 warming_inputs = init_inputs
 
             if verbose:
-                print(f"Generating {nb_timesteps} timesteps from "
-                      f"{warming_inputs.shape[0]} inputs.")
+                print(
+                    f"Generating {nb_timesteps} timesteps from "
+                    f"{warming_inputs.shape[0]} inputs."
+                )
                 print("Computing initial states...")
 
-            warming_states = self._compute_states(warming_inputs,
-                                                  init_state=init_state,
-                                                  init_fb=init_fb,
-                                                  seed=child_seeds[0])
+            warming_states = self._compute_states(
+                warming_inputs,
+                init_state=init_state,
+                init_fb=init_fb,
+                seed=child_seeds[0],
+            )
 
             # initial state (at begining of generation)
             s0 = warming_states[-1, :].reshape(1, -1)
@@ -675,7 +700,9 @@ class _ESNBase(metaclass=ABCMeta):
         if verbose:
             track = tqdm
         else:
-            def track(x, text): return x
+
+            def track(x, text):
+                return x
 
         # for additive noise in the reservoir
         rg = default_rng(child_seeds[1])
@@ -683,10 +710,9 @@ class _ESNBase(metaclass=ABCMeta):
         for i in track(range(nb_timesteps), "Generate"):
             # from new input u1 and previous state s0
             # compute next state s1 -> s0
-            s1 = self._get_next_state(single_input=u1,
-                                      feedback=fb0,
-                                      last_state=s0,
-                                      noise_generator=rg)
+            s1 = self._get_next_state(
+                single_input=u1, feedback=fb0, last_state=s0, noise_generator=rg
+            )
 
             s0 = s1[-1, :].reshape(1, -1)
             states[i, :] = s0

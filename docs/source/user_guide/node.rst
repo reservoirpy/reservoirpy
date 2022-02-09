@@ -252,6 +252,7 @@ case a default value of 1, and :math:`W` and :math:`W_{in}` will be randomly ini
 .. ipython:: python
 
     from reservoirpy.nodes import Reservoir
+
     nb_units = 100  # 100 neurons in the reservoir
     reservoir = Reservoir(nb_units)
 

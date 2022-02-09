@@ -5,12 +5,12 @@ reservoirpy.nodes.Softplus
 
 .. autoclass:: Softplus
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~Softplus.__init__
       ~Softplus.call
       ~Softplus.clean_buffers
@@ -41,15 +41,16 @@ reservoirpy.nodes.Softplus
       ~Softplus.with_state
       ~Softplus.zero_feedback
       ~Softplus.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
+      ~Softplus.dtype
       ~Softplus.feedback_dim
       ~Softplus.fitted
       ~Softplus.has_feedback
@@ -63,5 +64,4 @@ reservoirpy.nodes.Softplus
       ~Softplus.name
       ~Softplus.output_dim
       ~Softplus.params
-   
-   
+

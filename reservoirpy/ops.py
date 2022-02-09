@@ -19,14 +19,14 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from itertools import product
-from typing import Union, Sequence
+from typing import Sequence, Union
 from uuid import uuid4
 
-from .model import Model, FrozenModel
+from .model import FrozenModel, Model
 from .node import Node
+from .nodes.concat import Concat
 from .types import GenericNode
-from reservoirpy.utils.validation import check_all_nodes
-from reservoirpy.nodes.concat import Concat
+from .utils.validation import check_all_nodes
 
 
 def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
@@ -64,14 +64,18 @@ def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
     # maybe nodes are already initialized ?
     # check if connected dimensions are ok
     for sender, receiver in new_edges:
-        if sender.is_initialized and \
-                receiver.is_initialized and \
-                sender.output_dim != receiver.input_dim:
-            raise ValueError(f"Dimension mismatch between connected nodes: "
-                             f"sender node {sender.name} has output dimension "
-                             f"{sender.output_dim} but receiver node "
-                             f"{receiver.name} has input dimension "
-                             f"{receiver.input_dim}.")
+        if (
+            sender.is_initialized
+            and receiver.is_initialized
+            and sender.output_dim != receiver.input_dim
+        ):
+            raise ValueError(
+                f"Dimension mismatch between connected nodes: "
+                f"sender node {sender.name} has output dimension "
+                f"{sender.output_dim} but receiver node "
+                f"{receiver.name} has input dimension "
+                f"{receiver.input_dim}."
+            )
 
     # all outputs from subgraph 1 are connected to
     # all inputs from subgraph 2.
@@ -81,9 +85,11 @@ def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
     return Model(nodes=all_nodes, edges=all_edges, name=name)
 
 
-def link(node1: Union[GenericNode, Sequence[GenericNode]],
-         node2: Union[GenericNode, Sequence[GenericNode]],
-         name: str = None) -> Model:
+def link(
+    node1: Union[GenericNode, Sequence[GenericNode]],
+    node2: Union[GenericNode, Sequence[GenericNode]],
+    name: str = None,
+) -> Model:
     """Link two :py:class:`~.Node` instances to form a :py:class:`~.Model`
     instance. `node1` output will be used as input for `node2` in the
     created model. This is similar to a function composition operation:
@@ -166,8 +172,10 @@ def link(node1: Union[GenericNode, Sequence[GenericNode]],
             frozens.append(2)
 
     if len(frozens) > 0:
-        raise TypeError("Impossible to link FrozenModel to other Nodes or "
-                        f"Model. FrozenModel found: {frozens}.")
+        raise TypeError(
+            "Impossible to link FrozenModel to other Nodes or "
+            f"Model. FrozenModel found: {frozens}."
+        )
 
     # get left side
     if isinstance(node1, Sequence):
@@ -195,9 +203,12 @@ def link(node1: Union[GenericNode, Sequence[GenericNode]],
     return model
 
 
-def link_feedback(node: Node,
-                  feedback: Union[GenericNode, Sequence[GenericNode]],
-                  inplace: bool = False, name: str = None) -> GenericNode:
+def link_feedback(
+    node: Node,
+    feedback: Union[GenericNode, Sequence[GenericNode]],
+    inplace: bool = False,
+    name: str = None,
+) -> GenericNode:
     """Create a feedback connection between the `feedback` node and `node`.
     Feedbacks nodes will be called at runtime using data from the previous
     call.
@@ -258,11 +269,12 @@ def link_feedback(node: Node,
     """
 
     if isinstance(node, Model):
-        raise TypeError(f"{node} is not a Node. "
-                        f"Models can't receive feedback.")
+        raise TypeError(f"{node} is not a Node. Models can't receive feedback.")
 
-    msg = "Impossible to receive feedback from {}: " \
-          "it is not a Node or a Model instance."
+    msg = (
+        "Impossible to receive feedback from {}: "
+        "it is not a Node or a Model instance."
+    )
 
     if isinstance(feedback, Sequence):
         for fb in feedback:
@@ -288,8 +300,9 @@ def link_feedback(node: Node,
         return new_node
 
 
-def merge(model: GenericNode, *models: GenericNode, inplace: bool = False,
-          name: str = None) -> GenericNode:
+def merge(
+    model: GenericNode, *models: GenericNode, inplace: bool = False, name: str = None
+) -> GenericNode:
     """Merge different :py:class:`~.Model` or :py:class:`~.Node`
     instances into a single :py:class:`~.Model` instance.
 
@@ -354,8 +367,10 @@ def merge(model: GenericNode, *models: GenericNode, inplace: bool = False,
 
         if inplace:
             if not isinstance(model, Model) or isinstance(model, FrozenModel):
-                raise ValueError(f"Impossible to merge models inplace: "
-                                 f"{model} is not a Model instance.")
+                raise ValueError(
+                    f"Impossible to merge models inplace: "
+                    f"{model} is not a Model instance."
+                )
             return model.update_graph(all_nodes, all_edges)
 
         else:
@@ -366,8 +381,7 @@ def merge(model: GenericNode, *models: GenericNode, inplace: bool = False,
             else:
                 all_nodes |= {model}
 
-            return Model(nodes=list(all_nodes), edges=list(all_edges),
-                         name=name)
+            return Model(nodes=list(all_nodes), edges=list(all_edges), name=name)
 
     else:
         raise TypeError(msg.format(type(model)))

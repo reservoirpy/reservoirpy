@@ -1,10 +1,9 @@
+import json
 import os
 import time
-import json
 
 import dill
 import numpy as np
-
 from scipy import sparse
 
 from ..._version import __version__
@@ -12,7 +11,7 @@ from .. import regression_models
 
 
 def _save(esn, directory: str):
-    """ Base utilitary for saving an ESN model, based on the ESN class.
+    """Base utilitary for saving an ESN model, based on the ESN class.
 
     Arguments:
         esn {ESN} -- ESN model to save.
@@ -52,10 +51,7 @@ def _save(esn, directory: str):
         Wfb_path = f"esn-Wfb-{current_time}.npy"
         np.save(os.path.join(savedir, Wfb_path), esn.Wfb)
         # fbfunc is serialized and stored
-        fbfunc_info = {
-            "cls": str(esn.fbfunc.__class__),
-            "name": esn.fbfunc.__name__
-        }
+        fbfunc_info = {"cls": str(esn.fbfunc.__class__), "name": esn.fbfunc.__name__}
         fbfunc = f"fbfunc_save-{current_time}"
         dim_out = esn.dim_out
         with open(os.path.join(savedir, fbfunc), "wb+") as f:
@@ -99,11 +95,9 @@ def _save(esn, directory: str):
             "noise_out": esn.noise_out,
             "noise_rc": esn.noise_rc,
             "seed": esn.seed,
-            "model": esn.model.__class__.__name__
+            "model": esn.model.__class__.__name__,
         },
-        "misc": {
-            "fbfunc_info": fbfunc_info
-        }
+        "misc": {"fbfunc_info": fbfunc_info},
     }
 
     # save a summary file
@@ -174,7 +168,7 @@ def load(directory: str):
 
     model_attr["typefloat"] = getattr(np, model_attr["typefloat"])
 
-    with open(os.path.join(directory, attr["cls_bin"]), 'rb') as f:
+    with open(os.path.join(directory, attr["cls_bin"]), "rb") as f:
         base_cls = dill.load(f)
 
     if model_attr.get("activation") is None:

@@ -1,28 +1,26 @@
 # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Sequence
 from multiprocessing import Manager
+from typing import Sequence
 
 import numpy as np
 from joblib import Parallel, delayed
 
+from ..model import FrozenModel
+from ..types import GenericNode
+from ..utils import _obj_from_kwargs, progress, verbosity
+from ..utils.model_utils import to_ragged_seq_set
+from ..utils.parallel import get_joblib_backend
+from ..utils.validation import is_mapping
 from .force import FORCE
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
-from ..model import FrozenModel
-from ..utils import progress, verbosity, _obj_from_kwargs
-from reservoirpy._utils import to_ragged_seq_set
-from ..types import GenericNode
-from ..utils.validation import is_mapping
-from ..utils.parallel import get_joblib_backend
 
-_LEARNING_METHODS = {"ridge": Ridge,
-                     "force": FORCE}
+_LEARNING_METHODS = {"ridge": Ridge, "force": FORCE}
 
-_RES_METHODS = {"reservoir": Reservoir,
-                "nvar": NVAR}
+_RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
 
 
 def _allocate_returned_states(model, inputs=None, return_states=None):
@@ -32,20 +30,20 @@ def _allocate_returned_states(model, inputs=None, return_states=None):
         else:
             seq_len = inputs.shape[0]
     else:
-        raise ValueError("'X' and 'n' parameters can't be None at the "
-                         "same time.")
+        raise ValueError("'X' and 'n' parameters can't be None at the same time.")
 
-    vulgar_names = {"reservoir": model.reservoir,
-                    "readout": model.readout}
+    vulgar_names = {"reservoir": model.reservoir, "readout": model.readout}
 
     # pre-allocate states
     if return_states == "all":
-        states = {name: np.zeros((seq_len, n.output_dim))
-                  for name, n in vulgar_names.items()}
+        states = {
+            name: np.zeros((seq_len, n.output_dim)) for name, n in vulgar_names.items()
+        }
     elif isinstance(return_states, Sequence):
-        states = {name: np.zeros((seq_len, n.output_dim))
-                  for name, n in {name: vulgar_names[name]
-                                  for name in return_states}}
+        states = {
+            name: np.zeros((seq_len, n.output_dim))
+            for name, n in {name: vulgar_names[name] for name in return_states}
+        }
     else:
         states = {"readout": np.zeros((seq_len, model.readout.output_dim))}
 
@@ -81,19 +79,28 @@ def intialize_buffers(model: "ESN"):
 
 
 class ESN(FrozenModel):
-
-    def __init__(self, reservoir_method="reservoir",
-                 learning_method="ridge", reservoir: GenericNode = None,
-                 readout: GenericNode = None, feedback=False, Win_bias=True,
-                 Wout_bias=True, workers=1,
-                 backend=None, name=None, **kwargs):
+    def __init__(
+        self,
+        reservoir_method="reservoir",
+        learning_method="ridge",
+        reservoir: GenericNode = None,
+        readout: GenericNode = None,
+        feedback=False,
+        Win_bias=True,
+        Wout_bias=True,
+        workers=1,
+        backend=None,
+        name=None,
+        **kwargs,
+    ):
 
         msg = "'{}' is not a valid method. Available methods for {} are {}."
 
         if reservoir is None:
             if reservoir_method not in _RES_METHODS:
-                raise ValueError(msg.format(reservoir_method, "reservoir",
-                                            list(_RES_METHODS.keys())))
+                raise ValueError(
+                    msg.format(reservoir_method, "reservoir", list(_RES_METHODS.keys()))
+                )
             else:
                 klas = _RES_METHODS[reservoir_method]
                 kwargs["input_bias"] = Win_bias
@@ -101,8 +108,11 @@ class ESN(FrozenModel):
 
         if readout is None:
             if learning_method not in _LEARNING_METHODS:
-                raise ValueError(msg.format(learning_method, "readout",
-                                            list(_LEARNING_METHODS.keys())))
+                raise ValueError(
+                    msg.format(
+                        learning_method, "readout", list(_LEARNING_METHODS.keys())
+                    )
+                )
             else:
                 klas = _LEARNING_METHODS[learning_method]
                 kwargs["input_bias"] = Wout_bias
@@ -111,18 +121,21 @@ class ESN(FrozenModel):
         if feedback:
             reservoir <<= readout
 
-        super(ESN, self).__init__(nodes=[reservoir, readout],
-                                  edges=[(reservoir, readout)],
-                                  name=name)
+        super(ESN, self).__init__(
+            nodes=[reservoir, readout], edges=[(reservoir, readout)], name=name
+        )
 
-        self._hypers.update({"workers": workers,
-                             "backend": backend,
-                             "reservoir_method": reservoir_method,
-                             "learning_method": learning_method,
-                             "feedback": feedback})
+        self._hypers.update(
+            {
+                "workers": workers,
+                "backend": backend,
+                "reservoir_method": reservoir_method,
+                "learning_method": learning_method,
+                "feedback": feedback,
+            }
+        )
 
-        self._params.update({"reservoir": reservoir,
-                             "readout": readout})
+        self._params.update({"reservoir": reservoir, "readout": readout})
 
         self._trainable = True
         self._is_fb_initialized = False
@@ -180,9 +193,11 @@ class ESN(FrozenModel):
         elif which == "internal":
             return self.reservoir.state()
         else:
-            raise ValueError(f"'which' parameter of {self.name} "
-                             f"'state' function must be "
-                             f"one of 'external' or 'internal'.")
+            raise ValueError(
+                f"'which' parameter of {self.name} "
+                f"'state' function must be "
+                f"one of 'external' or 'internal'."
+            )
 
     def initialize_feedback(self) -> "Node":
         """Call the Node feedback initializer. The feedback initializer will
@@ -201,13 +216,20 @@ class ESN(FrozenModel):
         if self.feedback:
             if not self.reservoir.is_fb_initialized:
                 empty_feedback = self.reservoir.zero_feedback()
-                self.reservoir._feedback_initializer(self.reservoir,
-                                                     empty_feedback)
+                self.reservoir._feedback_initializer(self.reservoir, empty_feedback)
                 self._is_fb_initialized = True
         return self
 
-    def run(self, X=None, forced_feedbacks=None, from_state=None,
-            stateful=True, reset=False, shift_fb=True, return_states=None):
+    def run(
+        self,
+        X=None,
+        forced_feedbacks=None,
+        from_state=None,
+        stateful=True,
+        reset=False,
+        shift_fb=True,
+        return_states=None,
+    ):
 
         X = to_ragged_seq_set(X)
         if forced_feedbacks is not None:
@@ -226,8 +248,8 @@ class ESN(FrozenModel):
 
             with self.with_state(from_state, stateful=stateful, reset=reset):
                 for i, (x, forced_feedback, _) in enumerate(
-                        self._dispatcher.dispatch(x, forced_fb,
-                                                  shift_fb=shift_fb)):
+                    self._dispatcher.dispatch(x, forced_fb, shift_fb=shift_fb)
+                ):
                     self._load_proxys()
                     with self.with_feedback(forced_feedback):
                         state = self._call(x, return_states=return_states)
@@ -242,33 +264,36 @@ class ESN(FrozenModel):
 
             return idx, states
 
-        backend = get_joblib_backend(workers=self.workers,
-                                     backend=self.backend)
+        backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
         seq = progress(X, f"Running {self.name}")
 
         with self.with_state(from_state, reset=reset, stateful=stateful):
-            with Parallel(n_jobs=self.workers,
-                          backend=backend) as parallel:
-                states = parallel(delayed(run_fn)(idx, x, y)
-                                  for idx, (x, y) in enumerate(
-                    zip(seq, fb_gen)))
+            with Parallel(n_jobs=self.workers, backend=backend) as parallel:
+                states = parallel(
+                    delayed(run_fn)(idx, x, y)
+                    for idx, (x, y) in enumerate(zip(seq, fb_gen))
+                )
 
         return _sort_and_unpack(states, return_states=return_states)
 
     def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
 
         if not self.readout.is_trained_offline:
-            raise TypeError(f"Impossible to fit {self} offline: "
-                            f"readout {self.readout} is not an offline node.")
+            raise TypeError(
+                f"Impossible to fit {self} offline: "
+                f"readout {self.readout} is not an offline node."
+            )
 
         X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         self._initialize_on_sequence(X[0], Y[0])
 
         self.initialize_buffers()
 
-        if (self.workers > 1 or self.workers == -1) and \
-                self.backend not in ("sequential", "threading"):
+        if (self.workers > 1 or self.workers == -1) and self.backend not in (
+            "sequential",
+            "threading",
+        ):
             lock = Manager().Lock()
         else:
             lock = None
@@ -277,11 +302,11 @@ class ESN(FrozenModel):
             states = np.zeros((x.shape[0], self.reservoir.output_dim))
 
             for i, (x, forced_feedback, _) in enumerate(
-                    self._dispatcher.dispatch(x, y, shift_fb=True)):
+                self._dispatcher.dispatch(x, y, shift_fb=True)
+            ):
                 self._load_proxys()
 
-                with self.readout.with_feedback(
-                        forced_feedback[self.readout.name]):
+                with self.readout.with_feedback(forced_feedback[self.readout.name]):
                     states[i, :] = self.reservoir._call(x[self.reservoir.name])
 
             self._clean_proxys()
@@ -294,15 +319,12 @@ class ESN(FrozenModel):
             else:
                 self.readout.partial_fit(states, y)
 
-        backend = get_joblib_backend(workers=self.workers,
-                                     backend=self.backend)
+        backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
         seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
-            with Parallel(n_jobs=self.workers,
-                          backend=backend) as parallel:
-                parallel(delayed(run_partial_fit_fn)(x, y)
-                         for x, y in zip(seq, Y))
+            with Parallel(n_jobs=self.workers, backend=backend) as parallel:
+                parallel(delayed(run_partial_fit_fn)(x, y) for x, y in zip(seq, Y))
 
             if verbosity():
                 print(f"Fitting node {self.name}...")

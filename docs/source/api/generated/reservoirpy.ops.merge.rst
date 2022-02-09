@@ -5,10 +5,9 @@ reservoirpy.ops.merge
 
 .. autoclass:: merge
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+

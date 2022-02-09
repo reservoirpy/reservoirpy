@@ -9,7 +9,7 @@ References
            doi: 10.1016/j.neuron.2009.07.018.
 
 """
-from typing import Sequence, Callable, Tuple, Union
+from typing import Callable, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -84,17 +84,19 @@ class ESNOnline:
         algorithm.
     """
 
-    def __init__(self,
-                 lr: float,
-                 W: np.ndarray,
-                 Win: np.ndarray,
-                 dim_out: int,
-                 alpha_coef: float = 1e-6,
-                 use_raw_input: bool = False,
-                 input_bias: bool = True,
-                 Wfb: np.ndarray = None,
-                 fbfunc: Callable = None,
-                 typefloat: np.dtype = np.float64):
+    def __init__(
+        self,
+        lr: float,
+        W: np.ndarray,
+        Win: np.ndarray,
+        dim_out: int,
+        alpha_coef: float = 1e-6,
+        use_raw_input: bool = False,
+        input_bias: bool = True,
+        Wfb: np.ndarray = None,
+        fbfunc: Callable = None,
+        typefloat: np.dtype = np.float64,
+    ):
         self.W = W
         self.Win = Win
         self.Wfb = Wfb
@@ -120,12 +122,14 @@ class ESNOnline:
         self.output_values = np.zeros((self.dim_out, 1)).astype(typefloat)
 
         self.typefloat = typefloat
-        self.lr = lr # leaking rate
+        self.lr = lr  # leaking rate
 
         self.fbfunc = fbfunc
         if self.Wfb is not None and self.fbfunc is None:
-            raise ValueError(f"If a feedback matrix is provided, \
-                fbfunc must be a callable object, not {self.fbfunc}.")
+            raise ValueError(
+                f"If a feedback matrix is provided, \
+                fbfunc must be a callable object, not {self.fbfunc}."
+            )
 
         # coef used to init state_corr_inv matrix
         self.alpha_coef = alpha_coef
@@ -142,42 +146,54 @@ class ESNOnline:
             trained = False
         fb = True
         if self.Wfb is None:
-            fb=False
+            fb = False
         out = f"ESN(trained={trained}, feedback={fb}, N={self.N}, "
         out += f"lr={self.lr}, input_bias={self.in_bias}, input_dim={self.N})"
         return out
 
     def _autocheck_nan(self):
-        """ Auto-check to see if some important variables do not have a problem (e.g. NAN values). """
+        """Auto-check to see if some important variables do not have a problem (e.g. NAN values)."""
         # assert np.isnan(self.W).any() == False, "W matrix should not contain NaN values."
-        assert np.isnan(self.Win).any() == False, "Win matrix should not contain NaN values."
+        assert (
+            np.isnan(self.Win).any() == False
+        ), "Win matrix should not contain NaN values."
         if self.Wfb is not None:
-            assert np.isnan(self.Wfb).any() == False, "Wfb matrix should not contain NaN values."
+            assert (
+                np.isnan(self.Wfb).any() == False
+            ), "Wfb matrix should not contain NaN values."
 
     def _autocheck_dimensions(self):
-        """ Auto-check to see if ESN matrices have correct dimensions."""
+        """Auto-check to see if ESN matrices have correct dimensions."""
         # W dimensions check list
-        assert len(self.W.shape) == 2, f"W shape should be (N, N) but is {self.W.shape}."
-        assert self.W.shape[0] == self.W.shape[1], f"W shape should be (N, N) but is {self.W.shape}."
+        assert (
+            len(self.W.shape) == 2
+        ), f"W shape should be (N, N) but is {self.W.shape}."
+        assert (
+            self.W.shape[0] == self.W.shape[1]
+        ), f"W shape should be (N, N) but is {self.W.shape}."
 
         # Win dimensions check list
-        assert len(self.Win.shape) == 2, f"Win shape should be (N, input) but is {self.Win.shape}."
+        assert (
+            len(self.Win.shape) == 2
+        ), f"Win shape should be (N, input) but is {self.Win.shape}."
         err = f"Win shape should be ({self.W.shape[1]}, input) but is {self.Win.shape}."
         assert self.Win.shape[0] == self.W.shape[0], err
 
         # Wout dimensions check list
-        assert len(self.Wout.shape) == 2, f"Wout shape should be (output, nb_states) but is {self.Wout.shape}."
+        assert (
+            len(self.Wout.shape) == 2
+        ), f"Wout shape should be (output, nb_states) but is {self.Wout.shape}."
         err = f"Wout shape should be (output, {self.state_size}) but is {self.Wout.shape}."
         assert self.Wout.shape[1] == self.state_size, err
         # Wfb dimensions check list
         if self.Wfb is not None:
-            assert len(self.Wfb.shape) == 2, f"Wfb shape should be (input, output) but is {self.Wfb.shape}."
+            assert (
+                len(self.Wfb.shape) == 2
+            ), f"Wfb shape should be (input, output) but is {self.Wfb.shape}."
             err = f"Wfb shape should be ({self.Win.shape[0]}, {self.Wout.shape[0]}) but is {self.Wfb.shape}."
-            assert (self.Win.shape[0],self.Wout.shape[0]) == self.Wfb.shape, err
+            assert (self.Win.shape[0], self.Wout.shape[0]) == self.Wfb.shape, err
 
-    def _autocheck_io(self,
-                      inputs,
-                      outputs=None):
+    def _autocheck_io(self, inputs, outputs=None):
 
         # Check if inputs and outputs are lists
         assert type(inputs) is list, "Inputs should be a list of numpy arrays"
@@ -209,8 +225,7 @@ class ESNOnline:
                 err += f"{self.state_size}) but is {self.Wout.shape}."
                 assert (outputs_0.shape[1], self.state_size) == self.Wout.shape, err
 
-    def _get_next_state(self,
-                        single_input: np.ndarray) -> np.ndarray:
+    def _get_next_state(self, single_input: np.ndarray) -> np.ndarray:
         """Given a state vector x(t) and an input vector u(t), compute the state vector x(t+1).
 
         Parameters:
@@ -227,7 +242,7 @@ class ESNOnline:
         if self.Wfb is not None and self.output_values is None:
             raise RuntimeError("Missing a feedback vector.")
 
-        x = self.state[1:self.N+1]
+        x = self.state[1 : self.N + 1]
 
         # add bias
         if self.in_bias:
@@ -243,7 +258,7 @@ class ESNOnline:
             x1 += self.Wfb @ self.fbfunc(self.output_values)
 
         # previous states memory leak and non-linear transformation
-        x1 = (1-self.lr)*x + self.lr*np.tanh(x1)
+        x1 = (1 - self.lr) * x + self.lr * np.tanh(x1)
 
         # return the next state computed
         if self.use_raw_inp:
@@ -254,7 +269,7 @@ class ESNOnline:
         return self.state.copy()
 
     def compute_output_from_current_state(self):
-        """ Compute output from current state s(t) of the reservoir.
+        """Compute output from current state s(t) of the reservoir.
 
         Returns
         -------
@@ -267,10 +282,8 @@ class ESNOnline:
         self.output_values = (self.Wout @ self.state).astype(self.typefloat)
         return self.output_values.copy().ravel()
 
-    def compute_output(self,
-                       single_input: np.ndarray,
-                       wash_nr_time_step: int = 0):
-        """ Compute output from input to the reservoir.
+    def compute_output(self, single_input: np.ndarray, wash_nr_time_step: int = 0):
+        """Compute output from input to the reservoir.
 
         Parameters
         ---------
@@ -293,15 +306,11 @@ class ESNOnline:
         return output, state
 
     def reset_state(self):
-        """Reset reservoir by setting internal values to zero.
-
-        """
+        """Reset reservoir by setting internal values to zero."""
         self.state = np.zeros((self.state_size, 1), dtype=self.typefloat)
 
     def reset_reservoir(self):
-        """Reset reservoir by setting internal values to zero.
-
-        """
+        """Reset reservoir by setting internal values to zero."""
         self.reset_state()
         self.Wout = np.zeros((self.dim_out, self.state_size), dtype=self.typefloat)
         self.reset_correlation_matrix()
@@ -316,12 +325,12 @@ class ESNOnline:
         where :math:`\\alpha` is the ``alpha_coef`` and :math:`N` is the
         number of units in the reservoir.
         """
-        self.state_corr_inv = np.asmatrix(np.eye(self.state_size)) / self.alpha_coef
+        self.state_corr_inv = np.eye(self.state_size) / self.alpha_coef
 
-    def train_from_current_state(self,
-                                 targeted_output: np.ndarray,
-                                 indexes: Union[int, list] = None):
-        """ Train Wout from current internal state.
+    def train_from_current_state(
+        self, targeted_output: np.ndarray, indexes: Union[int, list] = None
+    ):
+        """Train Wout from current internal state.
 
         Parameters
         ---------
@@ -334,19 +343,22 @@ class ESNOnline:
 
         error = self.output_values - targeted_output.reshape(-1, 1)
 
-        self.state_corr_inv = _new_correlation_matrix_inverse(self.state,
-                                                              self.state_corr_inv)
+        self.state_corr_inv = _new_correlation_matrix_inverse(
+            self.state, self.state_corr_inv
+        )
 
         if indexes is None:
             self.Wout -= error @ (self.state_corr_inv @ self.state).T
         else:
             self.Wout[indexes] -= error[indexes] * (self.state_corr_inv @ self.state).T
 
-    def train(self,
-              inputs: Sequence[np.ndarray],
-              teachers: Sequence[np.ndarray],
-              wash_nr_time_step: int = 0,
-              verbose: bool = False) -> Sequence[np.ndarray]:
+    def train(
+        self,
+        inputs: Sequence[np.ndarray],
+        teachers: Sequence[np.ndarray],
+        wash_nr_time_step: int = 0,
+        verbose: bool = False,
+    ) -> Sequence[np.ndarray]:
         """Train the ESN model on a sequence of inputs.
 
         Parameters
@@ -373,18 +385,26 @@ class ESNOnline:
             list of np.ndarray
                 All states computed, for all inputs.
         """
-        inputs_concat = [inp[t, :].reshape(-1, self.dim_inp)
-                         for inp in inputs for t in range(inp.shape[0])]
-        teachers_concat = [tea[t, :].reshape(-1, self.dim_out)
-                           for tea in teachers for t in range(tea.shape[0])]
+        inputs_concat = [
+            inp[t, :].reshape(-1, self.dim_inp)
+            for inp in inputs
+            for t in range(inp.shape[0])
+        ]
+        teachers_concat = [
+            tea[t, :].reshape(-1, self.dim_out)
+            for tea in teachers
+            for t in range(tea.shape[0])
+        ]
 
         ## Autochecks of inputs and outputs
         self._autocheck_io(inputs=inputs_concat, outputs=teachers_concat)
 
         if verbose:
             steps = np.sum([i.shape[0] for i in inputs])
-            print(f"Training on {len(inputs)} inputs ({steps} steps) "
-                  f"-- wash: {wash_nr_time_step} steps")
+            print(
+                f"Training on {len(inputs)} inputs ({steps} steps) "
+                f"-- wash: {wash_nr_time_step} steps"
+            )
 
         # List of all internal states when training
         all_states = []
@@ -398,13 +418,13 @@ class ESNOnline:
 
             # First 'warm up' the network
             while t < wash_nr_time_step:
-                self.compute_output(inputs_concat[i+t])
+                self.compute_output(inputs_concat[i + t])
                 t += 1
 
             # Train Wout on each input
             while t < inputs[i].shape[0]:
-                _, state = self.compute_output(inputs_concat[i+t])
-                self.train_from_current_state(teachers_concat[i+t])
+                _, state = self.compute_output(inputs_concat[i + t])
+                self.train_from_current_state(teachers_concat[i + t])
                 all_states_inp_i.append(state[start:end])
                 t += 1
 
@@ -414,9 +434,9 @@ class ESNOnline:
         # return all internal states
         return [st.T for st in all_states]
 
-    def run(self,
-            inputs: Sequence[np.ndarray],
-            verbose: bool = False) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
+    def run(
+        self, inputs: Sequence[np.ndarray], verbose: bool = False
+    ) -> Tuple[Sequence[np.ndarray], Sequence[np.ndarray]]:
         """Run the model on a sequence of inputs, and returned the states and
            readouts vectors.
 
@@ -436,7 +456,11 @@ class ESNOnline:
                 for all inputs.
         """
 
-        inputs_concat = [inp[t,:].reshape(-1, self.dim_inp) for inp in inputs for t in range(inp.shape[0])]
+        inputs_concat = [
+            inp[t, :].reshape(-1, self.dim_inp)
+            for inp in inputs
+            for t in range(inp.shape[0])
+        ]
 
         steps = np.sum([i.shape[0] for i in inputs])
         if verbose:
@@ -448,9 +472,10 @@ class ESNOnline:
         all_outputs = []
         all_states = []
         for i in range(len(inputs)):
-            internal_pred = []; output_pred = []
+            internal_pred = []
+            output_pred = []
             for t in range(inputs[i].shape[0]):
-                output, state = self.compute_output(inputs_concat[i+t])
+                output, state = self.compute_output(inputs_concat[i + t])
                 internal_pred.append(state)
                 output_pred.append(output)
             all_states.append(np.asarray(internal_pred))
@@ -472,12 +497,12 @@ class ESNOnline:
 
 def _new_correlation_matrix_inverse(new_data, old_corr_mat_inv):
     """
-        If old_corr_mat_inv is an approximation for the correlation
-        matrix inverse of a dataset (p1, ..., pn), then the function
-        returns an approximatrion for the correlation matrix inverse
-        of dataset (p1, ..., pn, new_data)
+    If old_corr_mat_inv is an approximation for the correlation
+    matrix inverse of a dataset (p1, ..., pn), then the function
+    returns an approximatrion for the correlation matrix inverse
+    of dataset (p1, ..., pn, new_data)
 
-        TODO : add forgetting parameter lbda
+    TODO : add forgetting parameter lbda
     """
 
     P = old_corr_mat_inv
@@ -486,6 +511,6 @@ def _new_correlation_matrix_inverse(new_data, old_corr_mat_inv):
     # TODO : numerical instabilities if xTP is not computed first
     # (order of multiplications)
     xTP = x.T @ P
-    P = P - (P @ x @ xTP)/(1. + np.dot(xTP, x))
+    P = P - (P @ x @ xTP) / (1.0 + np.dot(xTP, x))
 
     return P

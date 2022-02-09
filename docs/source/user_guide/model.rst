@@ -64,6 +64,7 @@ or the ``>>`` operator to define models:
 .. code-block:: python
 
     from reservoirpy import link
+
     model = link(nodeA, nodeB)
 
 As Models are essentially a subclass of :py:class:`~.Node`, it is also possible to link models together, or nodes to
@@ -148,6 +149,7 @@ one neuron.
 .. ipython:: python
 
     from reservoirpy.nodes import Reservoir, Ridge
+
     reservoir = Reservoir(100)
     readout = Ridge(1)
 

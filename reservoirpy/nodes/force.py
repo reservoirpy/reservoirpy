@@ -4,17 +4,20 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from functools import partial
 from numbers import Number
 from typing import Iterable
-from functools import partial
 
 import numpy as np
 
-from .utils import (readout_forward, _initialize_readout,
-                    _prepare_inputs_for_learning, _assemble_wout,
-                    _split_and_save_wout)
-
-from reservoirpy.node import Node
+from ..node import Node
+from .utils import (
+    _assemble_wout,
+    _initialize_readout,
+    _prepare_inputs_for_learning,
+    _split_and_save_wout,
+    readout_forward,
+)
 
 
 def _rls_like_rule(P, r, e):
@@ -36,18 +39,12 @@ def _lms_like_rule(alpha, r, e):
 
 def _compute_error(node, x, y=None):
     prediction = node.state()
-
-    if y is None and node.has_feedback:
-        y = node.feedback()
-
     error = prediction - y
-
     return error, x.T
 
 
 def rls_like_train(node: "FORCE", x, y=None):
-    x, y = _prepare_inputs_for_learning(x, y, bias=node.input_bias,
-                                        allow_reshape=True)
+    x, y = _prepare_inputs_for_learning(x, y, bias=node.input_bias, allow_reshape=True)
 
     error, r = _compute_error(node, x, y)
 
@@ -62,8 +59,7 @@ def rls_like_train(node: "FORCE", x, y=None):
 
 
 def lms_like_train(node: "FORCE", x, y=None):
-    x, y = _prepare_inputs_for_learning(x, y, bias=node.input_bias,
-                                        allow_reshape=True)
+    x, y = _prepare_inputs_for_learning(x, y, bias=node.input_bias, allow_reshape=True)
 
     error, r = _compute_error(node, x, y)
 
@@ -75,11 +71,7 @@ def lms_like_train(node: "FORCE", x, y=None):
     _split_and_save_wout(node, wo)
 
 
-def initialize_rls(readout: "FORCE",
-                   x=None,
-                   y=None,
-                   init_func=None,
-                   bias=None):
+def initialize_rls(readout: "FORCE", x=None, y=None, init_func=None, bias=None):
 
     _initialize_readout(readout, x, y, init_func, bias)
 
@@ -89,16 +81,12 @@ def initialize_rls(readout: "FORCE",
         if readout.input_bias:
             input_dim += 1
 
-        P = np.asmatrix(np.eye(input_dim)) / alpha
+        P = np.eye(input_dim) / alpha
 
         readout.set_param("P", P)
 
 
-def initialize_lms(readout: "FORCE",
-                   x=None,
-                   y=None,
-                   init_func=None,
-                   bias=None):
+def initialize_lms(readout: "FORCE", x=None, y=None, init_func=None, bias=None):
 
     _initialize_readout(readout, x, y, init_func, bias)
 
@@ -107,15 +95,23 @@ class FORCE(Node):
 
     _rules = ("lms", "rls")
 
-    def __init__(self, output_dim=None, alpha=1e-6, rule="rls",
-                 Wout_init=np.zeros, input_bias=True, name=None):
+    def __init__(
+        self,
+        output_dim=None,
+        alpha=1e-6,
+        rule="rls",
+        Wout_init=np.zeros,
+        input_bias=True,
+        name=None,
+    ):
 
-        params = {"Wout": None,
-                  "bias": None}
+        params = {"Wout": None, "bias": None}
 
         if rule not in self._rules:
-            raise ValueError(f"Unknown rule for FORCE learning. "
-                             f"Available rules are {self._rules}.")
+            raise ValueError(
+                f"Unknown rule for FORCE learning. "
+                f"Available rules are {self._rules}."
+            )
         else:
             if rule == "lms":
                 train = lms_like_train
@@ -126,25 +122,30 @@ class FORCE(Node):
                 params["P"] = None
 
         if isinstance(alpha, Number):
+
             def _alpha_gen():
                 while True:
                     yield alpha
+
             alpha_gen = _alpha_gen()
         elif isinstance(alpha, Iterable):
             alpha_gen = alpha
         else:
-            raise TypeError("'alpha' parameter should be a float or an "
-                            "iterable yielding floats.")
+            raise TypeError(
+                "'alpha' parameter should be a float or an iterable yielding floats."
+            )
 
-        super(FORCE, self).__init__(params=params,
-                                    hypers={"alpha": alpha,
-                                            "_alpha_gen": alpha_gen,
-                                            "input_bias": input_bias,
-                                            "rule": rule},
-                                    forward=readout_forward,
-                                    train=train,
-                                    initializer=partial(initialize,
-                                                        init_func=Wout_init,
-                                                        bias=input_bias),
-                                    output_dim=output_dim,
-                                    name=name)
+        super(FORCE, self).__init__(
+            params=params,
+            hypers={
+                "alpha": alpha,
+                "_alpha_gen": alpha_gen,
+                "input_bias": input_bias,
+                "rule": rule,
+            },
+            forward=readout_forward,
+            train=train,
+            initializer=partial(initialize, init_func=Wout_init, bias=input_bias),
+            output_dim=output_dim,
+            name=name,
+        )

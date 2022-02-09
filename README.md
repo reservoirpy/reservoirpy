@@ -2,19 +2,20 @@
   <img src="https://github.com/reservoirpy/reservoirpy/raw/master/static/rpy_banner_bw.png"><br>
 </div>
 
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/reservoirpy)
 [![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
 [![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.org/reservoirpy/reservoirpy.svg?branch=master)](https://travis-ci.org/reservoirpy/reservoirpy)
+[![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
 
-
-# ReservoirPy (v0.3.0) 🌀🧠
+# ReservoirPy (v0.3.1) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
 ```python
 from reservoirpy.nodes import Reservoir, Ridge, Input
 
-data      = Input(input_dim=1)
+data = Input(input_dim=1)
 reservoir = Reservoir(100, lr=0.3, sr=1.1)
 readout   = Ridge(ridge=1e-6)
 
@@ -41,6 +42,7 @@ Finally, it includes several tutorials exploring exotic architectures
 and examples of scientific papers reproduction.
 
 This library works for **Python 3.8** and higher.
+
 
 ## Offcial documentation 📖
 
@@ -104,13 +106,13 @@ the activations of the reservoir.
 from reservoirpy.nodes import Reservoir, Ridge
 
 reservoir = Reservoir(units=100, lr=0.3, sr=1.25)
-readout   = Ridge(output_dim=1, ridge=1e-5)
+readout = Ridge(output_dim=1, ridge=1e-5)
 ```
 
 We here obtain a reservoir with 100 neurons, a *spectral radius* of 1.25 and
 a *leak rate* of 0.3 (you can learn more about these hyperparameters going through
 the tutorial
-[Introduction to Reservoir Computing](./tutorials/Introduction%20%20to%20Reservoir%20Computing)).
+[Understand and optimize hyperparameters](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)).
 Here, our readout layer is just a single unit, that we will receive connections from (all units of) the reservoir.
 Note that only the readout layer connections are trained.
 This is one of the cornerstone of all Reservoir Computing techniques. In our
@@ -163,7 +165,6 @@ Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-
     python simple_example_MackeyGlass.py
     ```
 
-
 If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
 
 ## More examples and tutorials 🎓
@@ -180,7 +181,7 @@ A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt
 
 Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
 
-[Turorial and Jupyter Notebook for hyper-parameter exploration](./examples/Optimization%20of%20hyperparameters)
+[Turorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 

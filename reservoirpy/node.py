@@ -119,20 +119,28 @@ References
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import contextmanager
 from copy import copy, deepcopy
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Dict, Generator, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
+from scipy.sparse import issparse
 
 from .model import Model
-from .types import (BackwardFn, Data, EmptyInitFn, ForwardFn,
-                    ForwardInitFn, GenericNode, PartialBackFn,
-                    Shape, )
-from reservoirpy.utils import progress
-from ._utils import to_ragged_seq_set
-from reservoirpy.utils.parallel import clean_tempfile, memmap_buffer
-from reservoirpy.utils.validation import (check_node_io, check_node_state,
-                                          check_vector, )
+from .types import (
+    BackwardFn,
+    Data,
+    EmptyInitFn,
+    ForwardFn,
+    ForwardInitFn,
+    GenericNode,
+    PartialBackFn,
+    Shape,
+    global_dtype,
+)
+from .utils import progress
+from .utils.model_utils import to_ragged_seq_set
+from .utils.parallel import clean_tempfile, memmap_buffer
+from .utils.validation import check_node_io, check_node_state, check_vector
 
 
 def _initialize_with_seq_set(node, X, Y=None):
@@ -150,15 +158,43 @@ def _initialize_with_seq_set(node, X, Y=None):
     return X, Y
 
 
-def _node_fb_init_general(node, fb):
-    """Void feedback initializer. Works in any case."""
-    fb_dim = None
-    if isinstance(fb, list):
-        fb_dim = tuple([fb.shape[1] for fb in fb])
-    elif isinstance(fb, np.ndarray):
-        fb_dim = fb.shape[1]
+def _init_vectors_placeholders(node, x, y):
+    msg = f"Impossible to initialize node {node.name}: "
+    in_msg = (
+        msg + "input_dim is unknown and no input data x was given "
+        "to call/run the node."
+    )
+    out_msg = (
+        msg + "output_dim is unknown and no target data y was "
+        "given to train/fit the node."
+    )
 
-    node.set_feedback_dim(fb_dim)
+    x_init = y_init = None
+    if isinstance(x, np.ndarray):
+        x_init = np.atleast_2d(check_vector(x, caller=node))
+    elif isinstance(x, list):
+        x_init = list()
+        for i in range(len(x)):
+            x_init.append(np.atleast_2d(check_vector(x[i], caller=node)))
+    elif x is None:
+        if node.input_dim is not None:
+            if hasattr(node.input_dim, "__iter__"):
+                x_init = [np.empty((1, d)) for d in node.input_dim]
+            else:
+                x_init = np.empty((1, node.input_dim))
+        else:
+            raise RuntimeError(in_msg)
+
+    if y is not None:
+        y_init = np.atleast_2d(check_vector(y, caller=node))
+    elif node.output_dim is not None:
+        y_init = np.empty((1, node.output_dim))
+    else:
+        # check if output dimension can be inferred from a teacher node
+        if node._teacher is not None and node._teacher.output_dim is not None:
+            y_init = np.empty((1, node._teacher.output_dim))
+
+    return x_init, y_init
 
 
 def _remove_input_for_feedback(model: Model) -> Union["Node", Model]:
@@ -168,14 +204,96 @@ def _remove_input_for_feedback(model: Model) -> Union["Node", Model]:
     all_nodes = set(model.nodes)
     input_nodes = set(model.input_nodes)
     filtered_nodes = all_nodes - input_nodes
-    filtered_edges = [edge for edge in model.edges
-                      if edge[0] not in input_nodes]
+    filtered_edges = [edge for edge in model.edges if edge[0] not in input_nodes]
 
     # return a Node if Model - Inputs = 1 Node
     # else return a Model - Inputs
     if len(filtered_nodes) == 1:
         return list(filtered_nodes)[0]
     return Model(filtered_nodes, filtered_edges, name=str(uuid4()))
+
+
+def _distant_model_inputs(model):
+    """Get inputs for distant Nodes in a Model used as feedabck or teacher.
+    These inputs should be already computed by other Nodes."""
+    input_data = {}
+    for p, c in model.edges:
+        if p in model.input_nodes:
+            input_data[c.name] = p.state_proxy()
+    return input_data
+
+
+def _call_distant_model(model, reduced_model):
+    """Call a distant Model for feedback or teaching
+    (no need to run the input nodes again)"""
+    input_data = _distant_model_inputs(model)
+
+    if isinstance(reduced_model, Model):
+        return reduced_model.call(input_data)
+    else:
+        reduced_name = reduced_model.name
+        return reduced_model.call(input_data[reduced_name])
+
+
+def _init_distant_model(caller, node, callback_type):
+    """Initialize a distant Model or Node
+    (used as feedback sender or teacher)."""
+    msg = f"Impossible to get {callback_type} "
+    msg += "from {} for {}: {} is not initialized or has no input/output_dim"
+
+    reduced_model = None
+    if isinstance(node, Model):
+        for n in node.input_nodes:
+            if not n.is_initialized:
+                try:
+                    n.initialize()
+                except RuntimeError:
+                    raise RuntimeError(msg.format(node.name, caller.name, node.name))
+
+        input_data = _distant_model_inputs(node)
+        reduced_model = _remove_input_for_feedback(node)
+
+        if not reduced_model.is_initialized:
+            if isinstance(reduced_model, Model):
+                reduced_model.initialize(x=input_data)
+            else:
+                reduced_name = reduced_model.name
+                reduced_model.initialize(x=input_data[reduced_name])
+            node._is_initialized = True
+    else:
+        try:
+            node.initialize()
+        except RuntimeError:  # raise more specific error
+            raise RuntimeError(msg.format(node.name, caller.name, node.name))
+    return reduced_model
+
+
+def _callback_distant_state(node, reduced_model=None):
+    """Call distant Node or Model."""
+    if reduced_model is not None:
+        return _call_distant_model(node, reduced_model)
+    else:
+        return node.state_proxy()
+
+
+def _partial_backward_default(node, X_batch, Y_batch=None):
+    """By default, for offline learners, partial_fit simply stores inputs and
+    targets, waiting for fit to be called."""
+
+    node._X.append(X_batch)
+    if Y_batch is not None:
+        node._Y.append(Y_batch)
+
+
+def _initialize_feedback_default(node, fb):
+    """Void feedback initializer. Works in any case."""
+    fb_dim = None
+    if isinstance(fb, list):
+        fb_dim = tuple([fb.shape[1] for fb in fb])
+    elif isinstance(fb, np.ndarray):
+        fb_dim = fb.shape[1]
+
+    node.set_feedback_dim(fb_dim)
 
 
 class Node(GenericNode):
@@ -229,11 +347,14 @@ class Node(GenericNode):
             Object used to compose node operations and create computational
             graphs.
     """
+
     _name: str
 
     _state: Optional[np.ndarray]
     _state_proxy: Optional[np.ndarray]
     _feedback: Optional[GenericNode]
+    _teacher: Optional[GenericNode]
+    _teacher_handle: Optional[Generator]
 
     _params: Dict[str, Any]
     _hypers: Dict[str, Any]
@@ -255,21 +376,28 @@ class Node(GenericNode):
     _trainable: bool
     _fitted: bool
 
-    def __init__(self,
-                 params: Dict[str, Any] = None,
-                 hypers: Dict[str, Any] = None,
-                 forward: ForwardFn = None,
-                 backward: BackwardFn = None,
-                 partial_backward: PartialBackFn = None,
-                 train: PartialBackFn = None,
-                 initializer: ForwardInitFn = None,
-                 fb_initializer: ForwardInitFn = _node_fb_init_general,
-                 buffers_initializer: EmptyInitFn = None,
-                 input_dim: int = None,
-                 output_dim: int = None,
-                 feedback_dim: int = None,
-                 name: str = None,
-                 *args, **kwargs):
+    _X: List  # For partial_fit default behavior (store first fit then)
+    _Y: List
+
+    def __init__(
+        self,
+        params: Dict[str, Any] = None,
+        hypers: Dict[str, Any] = None,
+        forward: ForwardFn = None,
+        backward: BackwardFn = None,
+        partial_backward: PartialBackFn = _partial_backward_default,
+        train: PartialBackFn = None,
+        initializer: ForwardInitFn = None,
+        fb_initializer: ForwardInitFn = _initialize_feedback_default,
+        buffers_initializer: EmptyInitFn = None,
+        input_dim: int = None,
+        output_dim: int = None,
+        feedback_dim: int = None,
+        name: str = None,
+        dtype: np.dtype = global_dtype,
+        *args,
+        **kwargs,
+    ):
 
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
@@ -293,11 +421,14 @@ class Node(GenericNode):
         self._feedback_dim = feedback_dim
 
         self._name = self._get_name(name)
+        self._dtype = dtype
 
         self._is_initialized = False
         self._is_fb_initialized = False
         self._state_proxy = None
         self._feedback = None
+        self._teacher = None
+        self._teacher_handle = None
 
         # used to store a reduced version of the feedback if needed
         # when feedback is a Model (inputs of the feedback Model are suppressed
@@ -305,12 +436,11 @@ class Node(GenericNode):
         # because we assume they have already run during the forward call)
         self._reduced_fb = None
 
-        self._trainable = self._backward is not None or \
-                          self._partial_backward is not None or \
-                          self._train is not None
+        self._trainable = self._backward is not None or self._train is not None
 
-        self._fitted = False if self.is_trainable and self.is_trained_offline \
-            else True
+        self._fitted = False if self.is_trainable and self.is_trained_offline else True
+
+        self._X = self._Y = []
 
     def __lshift__(self, other):
         return self.link_feedback(other)
@@ -319,19 +449,48 @@ class Node(GenericNode):
         return self.link_feedback(other, inplace=True)
 
     def __iand__(self, other):
-        raise TypeError(f"Impossible to merge nodes inplace: {self} is not "
-                        f"a Model instance.")
+        raise TypeError(
+            f"Impossible to merge nodes inplace: {self} is not a Model instance."
+        )
 
     def _call(self, x=None, from_state=None, stateful=True, reset=False):
         """One step call, without input check."""
         with self.with_state(from_state, stateful=stateful, reset=reset):
             state = self._forward(self, x)
-            self._state = state
+            self._state = state.astype(self.dtype)
 
         return state
 
     def _check_io(self, *args, **kwargs):
         return check_node_io(self, *args, **kwargs)
+
+    def _register_teacher(self, node):
+        if isinstance(node, GenericNode):
+            _reduced_teacher = _init_distant_model(self, node, callback_type="teacher")
+
+            self._teacher = node
+
+            def teacher_handle():
+                while True:
+                    yield _callback_distant_state(self._teacher, _reduced_teacher)
+
+            self._teacher_handle = teacher_handle()
+        else:
+            raise TypeError(
+                f"Impossible to get teachers from {type(node)}for node {self.name}."
+            )
+
+    def _unregister_teacher(self):
+        self._teacher = None
+        self._teacher_handle = None
+
+    def _call_teacher(self):
+        if self._teacher_handle is not None:
+            return next(self._teacher_handle)
+        else:
+            raise RuntimeError(
+                f"Node {self} is not connected to any feedback Node or Model."
+            )
 
     @property
     def input_dim(self):
@@ -361,8 +520,7 @@ class Node(GenericNode):
     @property
     def is_trained_offline(self):
         """Returns if the Node can be fitted offline or not."""
-        return self.is_trainable and (self._backward is not None or
-                                      self._partial_backward is not None)
+        return self.is_trainable and self._backward is not None
 
     @property
     def is_trained_online(self):
@@ -394,6 +552,11 @@ class Node(GenericNode):
     def is_fb_initialized(self):
         """Returns if the Node feedback intializer has been called already."""
         return self._is_fb_initialized
+
+    @property
+    def dtype(self):
+        """Numpy numerical type of node parameters."""
+        return self._dtype
 
     def state(self) -> Optional[np.ndarray]:
         """Node current internal state.
@@ -433,32 +596,18 @@ class Node(GenericNode):
         """
         if self.has_feedback:
             if not self._feedback.is_initialized:
-                raise RuntimeError(f"Impossible to get feedback "
-                                   f"from node or model {self._feedback} "
-                                   f"to node {self.name}: "
-                                   f"{self._feedback.name} "
-                                   f"is not initialized.")
-
-            if isinstance(self._feedback, Model):
-                # retrieve all state_proxy
-                input_data = {c.name: p.state_proxy()
-                              for p, c in self._feedback.edges
-                              if p in self._feedback.input_nodes}
-
-                # call the feedback Model on it (no need to run the input
-                # nodes again)
-                if isinstance(self._reduced_fb, Model):
-                    return self._reduced_fb.call(input_data)
-                else:
-                    reduced_name = self._reduced_fb.name
-                    return self._reduced_fb.call(input_data[reduced_name])
-
-            # if it is not a Model, then just get the state of the Node
-            elif isinstance(self._feedback, Node):
-                return self._feedback.state_proxy()
+                raise RuntimeError(
+                    f"Impossible to get feedback "
+                    f"from node or model {self._feedback} "
+                    f"to node {self.name}: "
+                    f"{self._feedback.name} "
+                    f"is not initialized."
+                )
+            return _callback_distant_state(self._feedback, self._reduced_fb)
         else:
-            raise RuntimeError(f"Node {self} is not connected to any feedback "
-                               f"Node or Model.")
+            raise RuntimeError(
+                f"Node {self} is not connected to any feedback Node or Model."
+            )
 
     def set_state_proxy(self, value: np.ndarray = None):
         """Change the freezed state of the Node. Used internaly to send
@@ -470,7 +619,7 @@ class Node(GenericNode):
             State to freeze, waiting to be send to feedback receivers.
         """
         if value is not None:
-            value = check_node_state(self, value)
+            value = check_node_state(self, value).astype(self.dtype)
         self._state_proxy = value
 
     def set_input_dim(self, value: int):
@@ -478,26 +627,32 @@ class Node(GenericNode):
         during Node initialization."""
         if not self._is_initialized:
             if self._input_dim is not None and value != self._input_dim:
-                raise ValueError(f"Imposible to use {self.name} with input "
-                                 f"data of dimension {value}. Node has input "
-                                 f"dimension {self._input_dim}.")
+                raise ValueError(
+                    f"Imposible to use {self.name} with input "
+                    f"data of dimension {value}. Node has input "
+                    f"dimension {self._input_dim}."
+                )
             self._input_dim = value
         else:
-            raise TypeError(f"Input dimension of {self.name} is "
-                            "immutable after initialization.")
+            raise TypeError(
+                f"Input dimension of {self.name} is immutable after initialization."
+            )
 
     def set_output_dim(self, value: int):
         """Set the output dimension of the Node. Can only be called once,
         during Node initialization."""
         if not self._is_initialized:
             if self._output_dim is not None and value != self._output_dim:
-                raise ValueError(f"Imposible to use {self.name} with target "
-                                 f"data of dimension {value}. Node has output "
-                                 f"dimension {self._output_dim}.")
+                raise ValueError(
+                    f"Imposible to use {self.name} with target "
+                    f"data of dimension {value}. Node has output "
+                    f"dimension {self._output_dim}."
+                )
             self._output_dim = value
         else:
-            raise TypeError(f"Output dimension of {self.name} is "
-                            "immutable after initialization.")
+            raise TypeError(
+                f"Output dimension of {self.name} is immutable after initialization."
+            )
 
     def set_feedback_dim(self, value: int):
         """Set the feedback dimension of the Node. Can only be called once,
@@ -505,8 +660,9 @@ class Node(GenericNode):
         if not self.is_fb_initialized:
             self._feedback_dim = value
         else:
-            raise TypeError(f"Output dimension of {self.name} is "
-                            "immutable after initialization.")
+            raise TypeError(
+                f"Output dimension of {self.name} is immutable after initialization."
+            )
 
     def get_param(self, name: str):
         """Get one of the parameters or hyperparmeters given its name."""
@@ -515,8 +671,7 @@ class Node(GenericNode):
         elif name in self._hypers:
             return self._hypers.get(name)
         else:
-            raise AttributeError(f"No attribute named '{name}' "
-                                 f"found in node {self}")
+            raise AttributeError(f"No attribute named '{name}' found in node {self}")
 
     def set_param(self, name: str, value: Any):
         """Set the value of a parameter.
@@ -529,16 +684,24 @@ class Node(GenericNode):
             Parameter new value.
         """
         if name in self._params:
+            if hasattr(value, "dtype"):
+                if issparse(value):
+                    value.data = value.data.astype(self.dtype)
+                else:
+                    value = value.astype(self.dtype)
             self._params[name] = value
         elif name in self._hypers:
             self._hypers[name] = value
         else:
-            raise KeyError(f"No param named '{name}' "
-                           f"in {self.name}. Available params are: "
-                           f"{list(self._params.keys())}.")
+            raise KeyError(
+                f"No param named '{name}' "
+                f"in {self.name}. Available params are: "
+                f"{list(self._params.keys())}."
+            )
 
-    def create_buffer(self, name: str, shape: Shape = None,
-                      data: np.ndarray = None):
+    def create_buffer(
+        self, name: str, shape: Shape = None, data: np.ndarray = None, as_memmap=True
+    ):
         """Create a buffer array on disk, using numpy.memmap. This can be
         used to store transient variables on disk. Typically called inside
         a `buffers_initializer` function.
@@ -552,8 +715,13 @@ class Node(GenericNode):
         data : numpy.ndarray
             Data to store in the buffer array.
         """
-        self._buffers[name] = memmap_buffer(self, data=data,
-                                            shape=shape, name=name)
+        if as_memmap:
+            self._buffers[name] = memmap_buffer(self, data=data, shape=shape, name=name)
+        else:
+            if data is not None:
+                self._buffers[name] = data
+            else:
+                self._buffers[name] = np.empty(shape)
 
     def set_buffer(self, name: str, value: np.ndarray):
         """Dump data in the buffer array.
@@ -565,7 +733,7 @@ class Node(GenericNode):
         value : numpy.ndarray
             Data to store in the buffer array.
         """
-        self._buffers[name][:] = value
+        self._buffers[name][:] = value.astype(self.dtype)
 
     def get_buffer(self, name) -> np.memmap:
         """Get data from a buffer array.
@@ -606,24 +774,11 @@ class Node(GenericNode):
             Node
                 Initialized Node.
         """
-        if not self._is_initialized:
-            if isinstance(x, np.ndarray):
-                x = np.atleast_2d(check_vector(x, caller=self))
-
-            elif isinstance(x, list):
-                for i in range(len(x)):
-                    x[i] = np.atleast_2d(check_vector(x[i], caller=self))
-
-            if y is not None:
-                y = np.atleast_2d(check_vector(y, caller=self))
-                self._initializer(self, x=x, y=y)
-
-            else:
-                self._initializer(self, x=x)
-
+        if not self.is_initialized:
+            x_init, y_init = _init_vectors_placeholders(self, x, y)
+            self._initializer(self, x=x_init, y=y_init)
             self.reset()
             self._is_initialized = True
-
         return self
 
     def initialize_feedback(self) -> "Node":
@@ -642,28 +797,11 @@ class Node(GenericNode):
         """
         if self.has_feedback:
             if not self.is_fb_initialized:
-                if isinstance(self._feedback, Model):
-                    input_data = {c.name: p.state_proxy()
-                                  for p, c in self._feedback.edges
-                                  if p in self._feedback.input_nodes}
-                    # remove input nodes of the feedback Model, as they
-                    # will probably be called by a more global Model or
-                    # by the user itself.
-                    self._reduced_fb = _remove_input_for_feedback(
-                        self._feedback)
-
-                    # initialize all the nodes that haven't been reached before
-                    if isinstance(self._reduced_fb, Model):
-                        self._reduced_fb.initialize(x=input_data)
-                    else:
-                        reduced_name = self._reduced_fb.name
-                        self._reduced_fb.initialize(x=input_data[reduced_name])
-
-                    self._feedback._is_initialized = True
-
+                self._reduced_fb = _init_distant_model(
+                    self, self._feedback, callback_type="feedback"
+                )
                 self._feedback_initializer(self, self.zero_feedback())
                 self._is_fb_initialized = True
-
         return self
 
     def initialize_buffers(self) -> "Node":
@@ -688,6 +826,9 @@ class Node(GenericNode):
             self._buffers = dict()
             clean_tempfile(self)
 
+        # Empty possibly stored inputs and targets in default buffer.
+        self._X = self._Y = []
+
     def reset(self, to_state: np.ndarray = None) -> "Node":
         """Reset the last state saved to zero or to
         another state value `to_state`.
@@ -705,12 +846,13 @@ class Node(GenericNode):
         if to_state is None:
             self._state = self.zero_state()
         else:
-            self._state = check_node_state(self, to_state)
+            self._state = check_node_state(self, to_state).astype(self.dtype)
         return self
 
     @contextmanager
-    def with_state(self, state: np.ndarray = None,
-                   stateful: bool = False, reset: bool = False) -> "Node":
+    def with_state(
+        self, state: np.ndarray = None, stateful: bool = False, reset: bool = False
+    ) -> "Node":
         """Modify the state of the Node using a context manager.
         The modification will have effect only within the context defined,
         before the state returns back to its previous value.
@@ -734,7 +876,8 @@ class Node(GenericNode):
         if not self._is_initialized:
             raise RuntimeError(
                 f"Impossible to set state of node {self.name}: node"
-                f"is not initialized yet.")
+                f"is not initialized yet."
+            )
 
         current_state = self._state
 
@@ -751,8 +894,9 @@ class Node(GenericNode):
             self._state = current_state
 
     @contextmanager
-    def with_feedback(self, feedback: np.ndarray = None,
-                      stateful=False, reset=False) -> "Node":
+    def with_feedback(
+        self, feedback: np.ndarray = None, stateful=False, reset=False
+    ) -> "Node":
         """Modify the feedback received or sent by the Node using
         a context manager.
         The modification will have effect only within the context defined,
@@ -815,11 +959,11 @@ class Node(GenericNode):
     def zero_state(self) -> np.ndarray:
         """A null state vector."""
         if self.output_dim is not None:
-            return np.zeros((1, self.output_dim))
+            return np.zeros((1, self.output_dim), dtype=self.dtype)
 
     def zero_feedback(self) -> Optional[Union[List[np.ndarray], np.ndarray]]:
         """A null feedback vector. Returns None if the Node receives
-         no feedback."""
+        no feedback."""
         if self._feedback is not None:
             if isinstance(self._feedback, Node):
                 return self._feedback.zero_state()
@@ -833,10 +977,9 @@ class Node(GenericNode):
                     return zeros
         return None
 
-    def link_feedback(self,
-                      node: GenericNode,
-                      inplace: bool = False,
-                      name: str = None) -> "GenericNode":
+    def link_feedback(
+        self, node: GenericNode, inplace: bool = False, name: str = None
+    ) -> "GenericNode":
         """Create a feedback connection between the Node and another Node or
         Model.
 
@@ -857,10 +1000,16 @@ class Node(GenericNode):
                 A Node with a feedback connection.
         """
         from .ops import link_feedback
+
         return link_feedback(self, node, inplace=inplace, name=name)
 
-    def call(self, x: Data, from_state: np.ndarray = None,
-             stateful: bool = True, reset: bool = False) -> np.ndarray:
+    def call(
+        self,
+        x: Data,
+        from_state: np.ndarray = None,
+        stateful: bool = True,
+        reset: bool = False,
+    ) -> np.ndarray:
         """Call the Node forward function on a single step of data.
         Can update the state of the
         Node.
@@ -882,8 +1031,7 @@ class Node(GenericNode):
                 An output vector.
         """
 
-        x = self._check_io(x, self.input_dim, allow_timespans=False,
-                           allow_list=False)
+        x = self._check_io(x, self.input_dim, allow_timespans=False, allow_list=False)
 
         if not self._is_initialized:
             self.initialize(x)
@@ -930,10 +1078,17 @@ class Node(GenericNode):
 
         return states
 
-    def train(self, X: np.ndarray, Y: np.ndarray = None,
-              force_teachers: bool = True, call: bool = True,
-              learn_every: int = 1, from_state: np.ndarray = None,
-              stateful: bool = True, reset: bool = False) -> np.ndarray:
+    def train(
+        self,
+        X: np.ndarray,
+        Y: Union[GenericNode, np.ndarray] = None,
+        force_teachers: bool = True,
+        call: bool = True,
+        learn_every: int = 1,
+        from_state: np.ndarray = None,
+        stateful: bool = True,
+        reset: bool = False,
+    ) -> np.ndarray:
         """Train the Node parameters using an online learning rule, if
         available.
 
@@ -971,33 +1126,45 @@ class Node(GenericNode):
 
         """
 
-        if self._train is None:
-            raise TypeError(f"Node {self} has no online learning rule "
-                            f"implemented.")
+        if not self.is_trained_online:
+            raise TypeError(f"Node {self} has no online learning rule implemented.")
 
-        X = self._check_io(X, self.input_dim, allow_timespans=True,
-                           allow_list=False)
-        Y = self._check_io(Y, self.output_dim, allow_timespans=True,
-                           io_type="output", allow_list=False)
+        X = self._check_io(X, self.input_dim, allow_timespans=True, allow_list=False)
+        Y = self._check_io(
+            Y, self.output_dim, allow_timespans=True, io_type="output", allow_list=False
+        )
+
+        if isinstance(Y, GenericNode) and self._teacher is None:
+            self._register_teacher(Y)
 
         if not self._is_initialized:
             x_init = np.atleast_2d(X[0])
-            y_init = np.atleast_2d(Y[0]) if Y is not None else None
+            y_init = None
+            if self._teacher_handle is not None:
+                y_init = next(self._teacher_handle)
+            elif Y is not None:
+                y_init = np.atleast_2d(Y[0])
+
             self.initialize(x=x_init, y=y_init)
             self.initialize_buffers()
 
         seq_len = X.shape[0]
-        seq = progress(range(seq_len), f"Training {self.name}") \
-            if seq_len > 1 else range(seq_len)
+        seq = (
+            progress(range(seq_len), f"Training {self.name}")
+            if seq_len > 1
+            else range(seq_len)
+        )
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             states = np.zeros((seq_len, self.output_dim))
             for i in seq:
                 x = X[i, :]
 
-                y = Y[i, :] if Y is not None else None
-                if y is None and self.has_feedback:
-                    y = self.feedback()
+                y = None
+                if self._teacher_handle is not None:
+                    y = self._call_teacher()
+                elif Y is not None:
+                    y = Y[i, :]
 
                 if call:
                     s = self.call(x)
@@ -1012,54 +1179,75 @@ class Node(GenericNode):
 
                 states[i, :] = s
 
+            if isinstance(Y, GenericNode) and self._teacher is None:
+                self._unregister_teacher()
+
             return states
 
-    def partial_fit(self, X_batch: Data,
-                    Y_batch: Data = None,
-                    **kwargs) -> "Node":
+    def partial_fit(
+        self,
+        X_batch: Data,
+        Y_batch: Data = None,
+        warmup=0,
+        **kwargs,
+    ) -> "Node":
         """Partial offline fitting method of a Node.
         Can be used to perform batched fitting or to precompute some variables
         used by the fitting method.
 
         Parameters
         ----------
-        X_batch : numpy.ndarray
-            A sequence of input data.
-        Y_batch : numpy.ndarray, optional
-            A sequence of teacher signals.
+        X_batch : array-like of shape ([series], timesteps, features)
+            A sequence or a batch of sequence of input data.
+        Y_batch : array-like of shape ([series], timesteps, features), optional
+            A sequence or a batch of sequence of teacher signals.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the begining of each timeseries before training.
 
         Returns
         -------
             Node
                 Partially fitted Node.
         """
-        if self._partial_backward is None:
-            raise TypeError(f"Node {self} has no offline learning rule "
-                            f"implemented.")
+        if not self.is_trained_offline:
+            raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
-        X_batch, Y_batch = _initialize_with_seq_set(self, X_batch, Y_batch)
+        X_ragged, Y_ragged = _initialize_with_seq_set(self, X_batch, Y_batch)
 
         self.initialize_buffers()
 
-        for X, Y in zip(X_batch, Y_batch):
-            self._partial_backward(self, X, Y)
+        for X, Y in zip(X_ragged, Y_ragged):
+            if X.shape[0] <= warmup:
+                raise ValueError(
+                    f"Warmup set to {warmup} timesteps, but one timeseries is only "
+                    f"{X.shape[0]} long."
+                )
+
+            if Y is not None:
+                self._partial_backward(self, X[warmup:], Y[warmup:])
+            else:
+                self._partial_backward(self, X[warmup:])
 
         return self
 
-    def fit(self, X: Data = None, Y: Data = None) -> "Node":
+    def fit(self, X: Data = None, Y: Data = None, warmup=0) -> "Node":
         """Offline fitting method of a Node.
 
         Parameters
         ----------
-        X : numpy.ndarray or list of numpy.ndarray, optional
+        X : array-like of shape ([series], timesteps, features), optional
             Input sequences dataset. If None, the method will try to fit
             the parameters of the Node using the precomputed values returned
             by previous call of :py:meth:`partial_fit`.
-        Y : numpy.ndarray or list of numpy.ndarray, optional
+        Y : array-like of shape ([series], timesteps, features), optional
             Teacher signals dataset. If None, the method will try to fit
             the parameters of the Node using the precomputed values returned
             by previous call of :py:meth:`partial_fit`, or to fit the Node in
             an unsupervised way, if possible.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the begining of each timeseries before training.
 
         Returns
         -------
@@ -1067,27 +1255,28 @@ class Node(GenericNode):
                 Node trained offline.
         """
 
-        if self._backward is None:
-            raise TypeError(f"Node {self} has no offline learning rule "
-                            f"implemented.")
+        if not self.is_trained_offline:
+            raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
         self._fitted = False
 
         # Call the partial backward function on the dataset if it is
         # provided all at once.
         if X is not None:
-            X, Y = _initialize_with_seq_set(self, X, Y)
+            X_ragged, Y_ragged = _initialize_with_seq_set(self, X, Y)
 
             if self._partial_backward is not None:
-                for X_batch, Y_batch in zip(X, Y):
-                    self.partial_fit(X_batch, Y_batch)
+                # for X_batch, Y_batch in zip(X_ragged, Y_ragged):
+                self.partial_fit(X_ragged, Y_ragged, warmup=warmup)
 
         elif not self._is_initialized:
-            raise RuntimeError(f"Impossible to fit node {self.name}: node"
-                               f"is not initialized, and fit was called "
-                               f"without input and teacher data.")
+            raise RuntimeError(
+                f"Impossible to fit node {self.name}: node"
+                f"is not initialized, and fit was called "
+                f"without input and teacher data."
+            )
 
-        self._backward(self, X, Y)
+        self._backward(self)
 
         self._fitted = True
 
@@ -1095,8 +1284,9 @@ class Node(GenericNode):
 
         return self
 
-    def copy(self, name: str = None, copy_feedback: bool = False,
-             shallow: bool = False):
+    def copy(
+        self, name: str = None, copy_feedback: bool = False, shallow: bool = False
+    ):
         """Returns a copy of the Node.
 
         Parameters

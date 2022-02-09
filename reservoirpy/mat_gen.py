@@ -24,9 +24,16 @@ seed.
 .. autosummary::
    :toctree: generated/
 
+    random_sparse
+    uniform
+    normal
+    bernoulli
+    zeros
+    ones
     generate_internal_weights
     generate_input_weights
     fast_spectral_initialization
+    Initializer
 
 Example
 =======
@@ -38,6 +45,7 @@ connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
 
     from reservoirpy.mat_gen import fast_spectral_initialization
     from reservoirpy.mat_gen import generate_input_weights
+
     W = fast_spectral_initialization(1000, sr=0.5)
     Win = generate_input_weights(1000, 5, input_scaling=0.9)
     print(W.shape, Win.shape)
@@ -52,92 +60,596 @@ References
            doi: 10.1007/978-3-030-16841-4_39.
 
 """
+import copy
 import warnings
-
 from functools import partial
-from typing import Union, Callable
+from typing import Callable, Union
 
-from scipy import stats
 import numpy as np
-
-from numpy.random import Generator, default_rng
-from scipy import sparse
+from numpy.random import Generator
+from scipy import sparse, stats
 from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
 
 from .observables import spectral_radius
+from .types import global_dtype
 from .utils.random import rand_generator
-
 
 __all__ = [
     "fast_spectral_initialization",
     "generate_internal_weights",
-    "generate_input_weights"
+    "generate_input_weights",
+    "random_sparse",
+    "uniform",
+    "normal",
+    "bernoulli",
+    "zeros",
+    "ones",
 ]
 
-
-def _is_probability(proba: float) -> bool:
-    return 1. - proba >= 0. and proba >= 0.
+_epsilon = 1e-8  # used to avoid division by zero when rescaling spectral radius
 
 
-def _get_rvs(dist: str,
-             random_state: Generator,
-             **kwargs) -> Callable:
-    # override scipy.stats uniform rvs
-    # to allow user to set the distribution with
-    # common low/high values and not loc/scale
-    if dist == "uniform":
-        return _uniform_rvs(**kwargs,
-                            random_state=random_state)
-    elif dist == "bimodal":
-        return _bimodal_discrete_rvs(**kwargs,
-                                     random_state=random_state)
+def _filter_deprecated_kwargs(kwargs):
+
+    deprecated = {
+        "proba": "connectivity",
+        "typefloat": "dtype",
+        "N": None,
+        "dim_input": None,
+    }
+
+    new_kwargs = {}
+    args = [None, None]
+    args_order = ["N", "dim_input"]
+    for depr, repl in deprecated.items():
+        if depr in kwargs:
+            depr_argument = kwargs.pop(depr)
+
+            msg = f"'{depr}' parameter is deprecated since v0.3.1."
+            if repl is not None:
+                msg += f" Consider using '{repl}' instead."
+                new_kwargs[repl] = depr_argument
+            else:
+                args[args_order.index(depr)] = depr_argument
+
+            warnings.warn(msg, DeprecationWarning)
+
+    args = [a for a in args if a is not None]
+    kwargs.update(new_kwargs)
+
+    return args, kwargs
+
+
+class Initializer:
+    """Base class for initializer functions. Allow updating initializer function
+    parameters several times before calling. May perform spectral radius rescaling
+    or input scaling as a post-processing to initializer function results.
+
+    Parameters
+    ----------
+    func : callable
+        Initializer function. Should have a `shape` argument and return a Numpy array
+        or Scipy sparse matrix.
+    autorize_sr : bool, default to True
+        Autorize spectral radius rescaling for this initializer.
+    autorize_input_scaling : bool, default to True
+        Autorize input_scaling for this initializer.
+    autorize_rescaling : bool, default to True
+        Autorize any kind of rescaling (spectral radius or input scaling) for this
+        initializer.
+
+    Example
+    -------
+    >>> from reservoirpy.mat_gen import random_sparse
+    >>> init_func = random_sparse(dist="uniform")
+    >>> init_func = init_func(connectivity=0.1)
+    >>> init_func(5, 5)  # actually creates the matrix
+    >>> random_sparse(5, 5, dist="uniform", connectivity=0.1)  # also creates the matrix
+    """
+
+    def __init__(
+        self,
+        func,
+        autorize_sr=True,
+        autorize_input_scaling=True,
+        autorize_rescaling=True,
+    ):
+        self._func = func
+        self._kwargs = dict()
+        self._autorize_sr = autorize_sr
+        self._autorize_input_scaling = autorize_input_scaling
+        self._autorize_rescaling = autorize_rescaling
+
+        self.__doc__ = func.__doc__
+
+    def __repr__(self):
+        split = super().__repr__().split(" ")
+        return split[0] + f" ({self._func.__name__}) " + " ".join(split[1:])
+
+    def __call__(self, *shape, **kwargs):
+        if "sr" in kwargs and not self._autorize_sr:
+            raise ValueError(
+                "Spectral radius rescaling is not supported by this initializer."
+            )
+
+        if "input_scaling" in kwargs and not self._autorize_input_scaling:
+            raise ValueError("Input scaling is not supported by this initializer.")
+
+        new_shape, kwargs = _filter_deprecated_kwargs(kwargs)
+
+        if len(new_shape) > 1:
+            shape = new_shape
+        elif len(new_shape) > 0:
+            shape = (new_shape[0], new_shape[0])
+
+        init = copy.deepcopy(self)
+        init._kwargs.update(kwargs)
+
+        if len(shape) > 0:
+            if init._autorize_rescaling:
+                return init._func_post_process(*shape, **init._kwargs)
+            else:
+                return init._func(*shape, **init._kwargs)
+        else:
+            if len(kwargs) > 0:
+                return init
+            else:
+                return init._func(**init._kwargs)  # should raise, shape is None
+
+    def _func_post_process(self, *shape, sr=None, input_scaling=None, **kwargs):
+        """Post process initializer with spectral radius or input scaling factors."""
+        if sr is not None and input_scaling is not None:
+            raise ValueError(
+                "'sr' and 'input_scaling' parameters are mutually exclusive for a "
+                "given matrix."
+            )
+
+        if sr is not None:
+            return _scale_spectral_radius(self._func, shape, sr, **kwargs)
+        elif input_scaling:
+            return _scale_inputs(self._func, shape, input_scaling, **kwargs)
+        else:
+            return self._func(*shape, **kwargs)
+
+
+def _get_rvs(dist: str, random_state: Generator, **kwargs) -> Callable:
+    """Get a scipy.stats random variable generator.
+
+    Parameters
+    ----------
+    dist : str
+        A scipy.stats distribution.
+    random_state : Generator
+        A Numpy random generator.
+
+    Returns
+    -------
+    scipy.stats.rv_continuous or scipy.stats.rv_discrete
+        A scipy.stats random variable generator.
+    """
+    if dist == "custom_bernoulli":
+        return _bernoulli_discrete_rvs(**kwargs, random_state=random_state)
     elif dist in dir(stats):
         distribution = getattr(stats, dist)
-        return partial(distribution(**kwargs).rvs,
-                       random_state=random_state)
+        return partial(distribution(**kwargs).rvs, random_state=random_state)
     else:
-        raise ValueError(f"'{dist}' is not a valid distribution name. "
-                         "See 'scipy.stats' for all available distributions.")
+        raise ValueError(
+            f"'{dist}' is not a valid distribution name. "
+            "See 'scipy.stats' for all available distributions."
+        )
 
 
-def _bimodal_discrete_rvs(value: float = 1.,
-                          random_state: Union[Generator, int] = None) -> Callable:
+def _bernoulli_discrete_rvs(
+    p=0.5, value: float = 1.0, random_state: Union[Generator, int] = None
+) -> Callable:
+    """Generator of Bernoulli random variables, equal to +value or -value.
 
-    if isinstance(random_state, Generator):
-        rg = random_state
-    else:
-        rg = default_rng(random_state)
+    Parameters
+    ----------
+    p : float, default to 0.5
+        Probability of single success (+value). Single failure (-value) probability
+        is (1-p).
+    value : float, default to 1.0
+        Success value. Failure value is equal to -value.
+
+    Returns
+    -------
+    callable
+        A random variable generator.
+    """
+    rg = rand_generator(random_state)
 
     def rvs(size: int = 1):
-        return rg.choice([value, -value], replace=True, size=size)
+        return rg.choice([value, -value], p=[p, 1 - p], replace=True, size=size)
 
     return rvs
 
 
-def _uniform_rvs(low: float = -1.0,
-                 high: float = 1.0,
-                 random_state: Union[Generator, int] = None) -> Callable:
+def _scale_spectral_radius(w_init, shape, sr, **kwargs):
+    """Change the spectral radius of a matrix created with an
+    initializer.
 
-    if isinstance(random_state, Generator):
-        rg = random_state
+    Parameters
+    ----------
+    w_init : Initializer
+        An initializer.
+    shape : tuple of int
+        Shape of the matrix.
+    sr : float
+        New spectral radius.
+    seed: int or Generator
+        A random generator or an integer seed.
+
+    Returns
+    -------
+    Numpy array or Scipy sparse matrix
+        Rescaled matrix.
+    """
+    convergence = False
+
+    if "seed" in kwargs:
+        seed = kwargs.pop("seed")
     else:
-        rg = default_rng(random_state)
+        seed = None
+    rg = rand_generator(seed)
 
-    distribution = getattr(stats, "uniform")
-    return partial(distribution(loc=low, scale=high-low).rvs,
-                   random_state=rg)
+    w = w_init(*shape, seed=seed, **kwargs)
+
+    while not convergence:
+        # make sure the eigenvalues are reachable.
+        # (maybe find a better way to do this on day)
+        try:
+            current_sr = spectral_radius(w)
+            if -_epsilon < current_sr < _epsilon:
+                current_sr = _epsilon  # avoid div by zero exceptions.
+            w *= sr / current_sr
+            convergence = True
+        except ArpackNoConvergence:  # pragma: no cover
+            if seed is None:
+                seed = rg.integers(1, 9999)
+            else:
+                seed = rg.integers(1, seed + 1)  # never stuck at 1
+            w = w_init(*shape, seed=seed, **kwargs)
+
+    return w
 
 
-def fast_spectral_initialization(N: int,
-                                 sr: float = None,
-                                 proba: float = 0.1,
-                                 seed: Union[int, Generator] = None,
-                                 verbose: bool = False,
-                                 sparsity_type: str = 'csr',
-                                 typefloat=np.float64,
-                                 **kwargs,):
+def _scale_inputs(w_init, shape, input_scaling, **kwargs):
+    """Rescale a matrix created with an initializer.
+
+    Parameters
+    ----------
+    w_init : Initializer
+        An initializer.
+    shape : tuple of int
+        Shape of the matrix.
+    input_scaling : float
+        Scaling parameter.
+
+    Returns
+    -------
+    Numpy array or Scipy sparse matrix
+        Rescaled matrix.
+    """
+    return np.multiply(w_init(*shape, **kwargs), input_scaling)
+
+
+def _random_sparse(
+    *shape,
+    dist,
+    connectivity=1.0,
+    dtype=global_dtype,
+    sparsity_type="csr",
+    seed=None,
+    **kwargs,
+):
+    """Create a random matrix.
+
+    Parameters
+    ----------
+    *shape : int, int, ..., optional
+        Shape (row, columns, ...) the matrix.
+    dist: str
+        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
+        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
+        functions as keyword arguments to this function. Usual distributions for
+        internal weights are :py:class:`scipy.stats.norm` with parameters `loc` and
+        `scale` to obtain weights following the standard normal distribution,
+        or :py:class:`scipy.stats.uniform` with parameters `loc=-1` and `scale=2`
+        to obtain weights uniformly distributed between -1 and 1.
+        Can also have the value "custom_bernoulli". In that case, weights will be drawn
+        from a Bernoulli discrete random variable alternating between -1 and 1 and
+        drawing 1 with a probability `p` (default `p` parameter to 0.5).
+    connectivity: float, default to 1.0
+        Also called density of the sparse matrix. By default, creates dense arrays.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+    **kwargs : optional
+        Arguments for the scipy.stats distribution.
+
+    Returns
+    -------
+    scipy.sparse array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+    """
+    if 0 < connectivity > 1.0:
+        raise ValueError("'connectivity' must be >0 and <1.")
+
+    rg = rand_generator(seed)
+    rvs = _get_rvs(dist, **kwargs, random_state=rg)
+
+    if connectivity >= 1.0 or len(shape) != 2:
+        matrix = rvs(size=shape).astype(dtype)
+        if connectivity < 1.0:
+            matrix[rg.random(shape) > connectivity] = 0.0
+    else:
+        matrix = sparse.random(
+            shape[0],
+            shape[1],
+            density=connectivity,
+            format=sparsity_type,
+            random_state=rg,
+            data_rvs=rvs,
+            dtype=dtype,
+        )
+
+    return matrix
+
+
+random_sparse = Initializer(_random_sparse)
+
+
+def _uniform(
+    *shape,
+    low=-1,
+    high=1,
+    connectivity=1.0,
+    dtype=global_dtype,
+    sparsity_type="csr",
+    seed=None,
+):
+    """Create an array with uniformly distributed values.
+
+    Parameters
+    ----------
+    *shape : int, int, ..., optional
+        Shape (row, columns, ...) of the array.
+    low, high : float, float, default to -1, 1
+        Boundaries of the uniform distribution.
+    connectivity: float, default to 1.0
+        Also called density of the sparse matrix. By default, creates dense arrays.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+    """
+    if high < low:
+        raise ValueError("'high' boundary must be > to 'low' boundary.")
+    return _random_sparse(
+        *shape,
+        dist="uniform",
+        loc=low,
+        scale=high - low,
+        connectivity=connectivity,
+        dtype=dtype,
+        sparsity_type=sparsity_type,
+        seed=seed,
+    )
+
+
+uniform = Initializer(_uniform)
+
+
+def _normal(
+    *shape,
+    loc=0.0,
+    scale=1.0,
+    connectivity=1.0,
+    dtype=global_dtype,
+    sparsity_type="csr",
+    seed=None,
+):
+    """Create an array with values distributed following a Gaussian distribution.
+
+    Parameters
+    ----------
+    *shape : int, int, ..., optional
+        Shape (row, columns, ...) of the array.
+    loc, scale : float, float, default to 0, 1
+        Mean and scale of the Gaussian distribution.
+    connectivity: float, default to 1.0
+        Also called density of the sparse matrix. By default, creates dense arrays.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+    """
+    return _random_sparse(
+        *shape,
+        dist="norm",
+        loc=loc,
+        scale=scale,
+        connectivity=connectivity,
+        dtype=dtype,
+        sparsity_type=sparsity_type,
+        seed=seed,
+    )
+
+
+normal = Initializer(_normal)
+
+
+def _bernoulli(
+    *shape, p=0.5, connectivity=1.0, dtype=global_dtype, sparsity_type="csr", seed=None
+):
+    """Create an array with values equal to either 1 or -1. Probability of success
+    (to obtain 1) is equal to p.
+
+    Parameters
+    ----------
+    *shape : int, int, ..., optional
+        Shape (row, columns, ...) of the array.
+    p : float, default to 0.5
+        Probability of success (to obtain 1).
+    connectivity: float, default to 1.0
+        Also called density of the sparse matrix. By default, creates dense arrays.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+    """
+    if 1 < p < 0:
+        raise ValueError("'p' must be <= 1 and >= 0.")
+    return _random_sparse(
+        *shape,
+        p=p,
+        dist="custom_bernoulli",
+        connectivity=connectivity,
+        dtype=dtype,
+        sparsity_type=sparsity_type,
+        seed=seed,
+    )
+
+
+bernoulli = Initializer(_bernoulli)
+
+
+def _ones(*shape, dtype=global_dtype):
+    """Create an array filled with 1.
+
+    Parameters
+    ----------
+    *shape : int, int, ..., optional
+        Shape (row, columns, ...) of the array.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+    """
+    return np.ones(shape, dtype=dtype)
+
+
+ones = Initializer(_ones)
+
+
+def _zeros(*shape, dtype=global_dtype):
+    """Create an array filled with 0.
+
+    Parameters
+    ----------
+    *shape : int, int, ..., optional
+        Shape (row, columns, ...) of the array.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+
+    Note
+    ----
+
+    `sr` parameter is not available for this initializer. The spectral radius of a null
+    matrix can not be rescaled.
+    """
+    return np.zeros(shape, dtype=dtype)
+
+
+zeros = Initializer(_zeros, autorize_sr=False)
+
+
+def _fast_spectral_initialization(
+    N,
+    *args,
+    connectivity=1.0,
+    sr=None,
+    dtype=global_dtype,
+    sparsity_type="csr",
+    seed=None,
+):
     """Fast spectral radius (FSI) approach for weights
-    initialization [1]_.
+    initialization [1]_ of square matrices.
 
     This method is well suited for computation and rescaling of
     very large weights matrices, with a number of neurons typically
@@ -145,300 +657,254 @@ def fast_spectral_initialization(N: int,
 
     Parameters
     ----------
-    N : int
-        Number of reservoir units, i.e. dimension of
-        the square weights matrix.
+    N : int, optional
+        Shape :math:`N \\times N` of the array.
+        This function only builds square matrices.
+    connectivity: float, default to 1.0
+        Also called density of the sparse matrix. By default, creates dense arrays.
     sr : float, optional
-        Spectral radius, i.e. maximum desired eigenvalue of the
-        reservoir weights matrix, by default None.
-    proba : float, optional
-        Probability of non-zero connection,
-        density of the weight matrix, by default 0.1
-    seed : int or RandomState, optional
-        Random state generator seed, for reproducibility,
-        by default None
-    verbose : bool, optional
-    sparsity_type : {"csr", "csc", "coo", "dense"} optional
-        Scipy sparse matrix format. "csr" by default. If "dense"
-        is chosen, the matrix will be a Numpy array and not a
-        Scipy sparse matrix.
-    typefloat : np.dtype, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
 
     Returns
     -------
-    np.ndarray or scipy.sparse matrix
-        A reservoir weights matrix.
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
 
-    Raises
-    ------
-    ValueError
-        Invalid non-zero connection probability.
+    Note
+    ----
+
+    This function was designed for initialization of a reservoir's internal weights.
+    In consequence, it can only produce square matrices. If more than one positional
+    argument of shape are provided, only the first will be used.
 
     References
     -----------
 
-        .. [1] C. Gallicchio, A. Micheli, and L. Pedrelli,
-               ‘Fast Spectral Radius Initialization for Recurrent
-               Neural Networks’, in Recent Advances in Big Data and
-               Deep Learning, Cham, 2020, pp. 380–390,
-               doi: 10.1007/978-3-030-16841-4_39.
-
-    Example
-    -------
-
-        >>> from reservoirpy.mat_gen import fast_spectral_initialization
-        >>> W = fast_spectral_initialization(5, proba=0.5, seed=42)
-        >>> W.toarray()
-        array([[ 0.13610996, -0.57035192,  0.        ,  0.        ,  0.        ],
-               [ 0.26727631,  0.        , -0.22370579, -0.04951286,  0.        ],
-               [ 0.60065244,  0.        , -0.02846888,  0.        ,  0.08786003],
-               [ 0.        ,  0.39151551,  0.4157107 ,  0.        ,  0.41754172],
-               [ 0.        ,  0.72101228,  0.        ,  0.        ,  0.        ]])
+    .. [1] C. Gallicchio, A. Micheli, and L. Pedrelli,
+           ‘Fast Spectral Radius Initialization for Recurrent
+           Neural Networks’, in Recent Advances in Big Data and
+           Deep Learning, Cham, 2020, pp. 380–390,
+           doi: 10.1007/978-3-030-16841-4_39.
     """
-    if kwargs.get("spectral_radius") is not None:
-        warnings.warn("Deprecation warning: spectral_radius parameter "
-                      "is deprecated since 0.2.2 and will be removed. "
-                      "Please use sr instead.")
-        sr = kwargs.get("spectral_radius")
+    if 0 > connectivity < 1.0:
+        raise ValueError("'connectivity' must be >0 and <1.")
 
-    if not _is_probability(proba):
-        raise ValueError(f"proba = {proba} not in [0; 1].")
-
-    rg = rand_generator(seed)
-
-    if sr is None or proba <= 0.:
+    if sr is None or connectivity <= 0.0:
         a = 1
     else:
-        a = -(6 * sr) / (np.sqrt(12) * np.sqrt((proba * N)))
+        a = -(6 * sr) / (np.sqrt(12) * np.sqrt((connectivity * N)))
 
-    rvs = _get_rvs("uniform",
-                   low=min(a, -a),
-                   high=max(a, -a),
-                   random_state=rg)
+    return _uniform(
+        N,
+        N,
+        low=np.min((a, -a)),
+        high=np.max((a, -a)),
+        connectivity=connectivity,
+        dtype=dtype,
+        sparsity_type=sparsity_type,
+        seed=seed,
+    )
 
-    if proba < 1 and sparsity_type != "dense":
-        return sparse.random(N, N, density=proba,
-                             random_state=rg, format=sparsity_type,
-                             data_rvs=rvs)
-    else:
-        return rvs(size=(N, N))
+
+fast_spectral_initialization = Initializer(
+    _fast_spectral_initialization,
+    autorize_input_scaling=False,
+    autorize_rescaling=False,
+)
 
 
-def generate_internal_weights(N: int,
-                              sr: float = None,
-                              proba: float = 0.1,
-                              dist: str = "norm",
-                              sparsity_type: str = 'csr',
-                              seed: Union[int, Generator] = None,
-                              typefloat=np.float64,
-                              Wstd: float = None,
-                              **kwargs):
-    """Generate the weights matrix that will be used
-    for the internal connections of the reservoir.
+def _generate_internal_weights(
+    N: int,
+    *args,
+    dist="norm",
+    connectivity=0.1,
+    dtype=global_dtype,
+    sparsity_type="csr",
+    seed=None,
+    **kwargs,
+):
+    """Generate the weight matrix that will be used for the internal connections of a
+     reservoir.
 
-    Weights will follow a normal distribution  by default,
-    of mean 0 and scale `Wstd` (by default 1), and can then be rescaled to
-    reach a specific spectral radius.
+    Warning
+    -------
+
+    This function is deprecated since version v0.3.1 and will be removed in future
+    versions. Please consider using :py:func:`normal`, :py:func:`uniform` or
+    :py:func:`random_sparse` instead.
 
     Parameters
     ----------
-    N : int
-        Number of reservoir units, i.e. dimension of
-        the square weights matrix.
+    N : int, optional
+        Shape :math:`N \times N` of the array.
+        This function only builds square matrices.
+    dist: str, default to "norm"
+        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
+        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
+        functions as keyword arguments to this function. Usual distributions for
+        internal weights are :py:class:`scipy.stats.norm` with parameters `loc` and
+        `scale` to obtain weights following the standard normal distribution,
+        or :py:class:`scipy.stats.uniform` with parameters `loc=-1` and `scale=2`
+        to obtain weights uniformly distributed between -1 and 1.
+        Can also have the value "custom_bernoulli". In that case, weights will be drawn
+        from a Bernoulli discrete random variable alternating between -1 and 1 and
+        drawing 1 with a probability `p` (default `p` parameter to 0.5).
+    connectivity: float, default to 0.1
+        Also called density of the sparse matrix.
     sr : float, optional
-        Spectral_radius, i.e. maximum desired eigenvalue of the
-        reservoir weights matrix, by default None
-    proba : float, optional
-        Probability of non-zero connection,
-        density of the weight matrix, by default 0.1
-    Wstd : float, optional
-        Standard deviation of internal weights, by default 1.0
-    dist: str, optional
-        A distribution name from :py:mod:`scipy.stats`
-        module. Parameters like ``loc`` and ``scale``
-        can be passed to the distribution functions
-        as keyword arguments to this function.
-
-        Usual distributions for internal weights
-        are ``'norm'`` with parameters ``loc=0`` and
-        ``scale=Wstd`` to obtain weights following
-        the standard normal distribution, or ``'uniform'``
-        with parameters ``low=-1.`` and ``high=1.`` to
-        obtain weights uniformly distributed between -1 and 1.
-        Default set to ``'norm'``.
-    sparsity_type : {"csr", "csc", "coo", "dense"} optional
-        Scipy sparse matrix format. "csr" by default. If "dense"
-        is chosen, the matrix will be a Numpy array and not a
-        Scipy sparse matrix.
-    seed : int or RandomState, optional
-        Random state generator seed, for reproducibility,
-        by default None
-    typefloat : numpy.dtype, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+    **kwargs : optional
+        Arguments for the scipy.stats distribution.
 
     Returns
     -------
-    np.ndarray or scipy.sparse matrix
-        A reservoir weights matrix.
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
+    """
 
-    Raises
-    ------
-    ValueError
-        Invalid non-zero connection probability.
+    warnings.warn(
+        "'generate_internal_weights' is deprecated since v0.3.1 and will be removed in "
+        "future versions. Consider using 'bernoulli' or 'random_sparse'.",
+        DeprecationWarning,
+    )
 
-    Example
+    return _random_sparse(
+        N,
+        N,
+        connectivity=connectivity,
+        dtype=dtype,
+        dist=dist,
+        sparsity_type=sparsity_type,
+        seed=seed,
+        **kwargs,
+    )
+
+
+generate_internal_weights = Initializer(
+    _generate_internal_weights, autorize_input_scaling=False
+)
+
+
+def _generate_input_weights(
+    N,
+    dim_input,
+    dist="custom_bernoulli",
+    connectivity=1.0,
+    dtype=global_dtype,
+    sparsity_type="csr",
+    seed=None,
+    input_bias=False,
+    **kwargs,
+):
+    """Generate input or feedback weights for a reservoir.
+
+    Weights are drawn by default from a discrete Bernoulli random variable,
+    i.e. are always equal to 1 or -1. Then, they can be rescaled to a specific constant
+    using the `input_scaling` parameter.
+
+    Warning
     -------
 
-        >>> from reservoirpy.mat_gen import fast_spectral_initialization
-        >>> W = generate_internal_weights(5, proba=0.5, seed=42)
-        >>> W.toarray()
-        array([[-1.72491783, -0.2257763 ,  0.        ,  0.        ,  0.        ],
-               [-1.4123037 ,  0.        , -1.01283112, -1.91328024,  0.        ],
-               [ 0.0675282 ,  0.        , -1.42474819,  0.        ,  1.46564877],
-               [ 0.        ,  0.24196227, -0.90802408,  0.        , -0.56228753],
-               [ 0.        ,  0.31424733,  0.        ,  0.        ,  0.        ]])
-    """
-    if 'spectral_radius' in kwargs:
-        warnings.warn("Deprecation warning: 'spectral_radius' parameter "
-                      "is deprecated since 0.2.2 and will be removed. "
-                      "Please use 'sr' instead.")
-        sr = kwargs['spectral_radius']
-        kwargs.pop('spectral_radius')
-
-    if Wstd is not None:
-        warnings.warn("Deprecation warning: 'Wstd' parameter "
-                      "is deprecated since 0.2.2 and will be removed. "
-                      "Please use 'scale' instead.")
-        kwargs["scale"] = Wstd
-
-    if not _is_probability(proba):
-        raise ValueError(f"proba = {proba} not in [0; 1].")
-
-    w = None
-    done = False
-    while not done:
-        rg = rand_generator(seed)
-
-        rvs = _get_rvs(dist,
-                       random_state=rg,
-                       **kwargs)
-
-        # sparse format (default)
-        if sparsity_type != "dense":
-            w = sparse.random(N, N, density=proba,
-                              format=sparsity_type,
-                              random_state=rg,
-                              data_rvs=rvs)
-        # dense format
-        else:
-            w = rvs(size=(N, N)).astype(typefloat)
-            w[rg.uniform(0.0, 1.0, (N, N)) > proba] = 0.0
-
-        if sr is not None:
-            # make sure the eigenvalues are reachable.
-            # TODO: maybe find a better way to do this
-            try:
-                current_sr = spectral_radius(w)
-                w *= sr / current_sr
-                done = True
-            except ArpackNoConvergence:
-                seed = rg.integers(1, 999)
-        else:
-            done = True
-
-    return w
-
-
-def generate_input_weights(N: int,
-                           dim_input: int,
-                           input_scaling: float = 1.,
-                           proba: float = 0.1,
-                           input_bias: bool = False,
-                           dist: str = "bimodal",
-                           seed: Union[int, Generator] = None,
-                           typefloat=np.float64,
-                           **kwargs):
-    """
-    Generate input or feedback weights for the reservoir.
-
-    Weights are drawn by default from a discrete ``'bimodal'``
-    distribution, i.e. are always equal to 1 or -1.
-    Then, they can be rescaled to a specific constant using
-    the `input_scaling` parameter.
+    This function is deprecated since version v0.3.1 and will be removed in future
+    versions. Please consider using :py:func:`bernoulli` or :py:func:`random_sparse`
+    instead.
 
     Parameters
     ----------
-        N: int
-            Number of units in the connected reservoir.
-        dim_input: int
-            Dimension of the inputs connected to the reservoir.
-        input_scaling: float, optional
-            Constant value used to rescale the weights.
-        input_bias: bool, optional
-            If True, will add a row to the matrix to take into
-            account a constant bias added to the input.
-            Mandatory when using a :py:class:`reservoirpy.ESN` with
-            `input_bias` set.
-        proba: float, optional
-            Probability of non-zero connections, density of
-            the matrix, by default 0.1.
-        dist: str, optional
-            A distribution name from :py:mod:`scipy.stats`
-            module. Parameters like ``loc`` and ``scale``
-            can be passed to the distribution functions
-            as keyword arguments to this function.
+    N: int
+        Number of units in the connected reservoir.
+    dim_input: int
+        Dimension of the inputs connected to the reservoir.
+    dist: str, default to "norm"
+        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
+        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
+        functions as keyword arguments to this function. Usual distributions for
+        internal weights are :py:class:`scipy.stats.norm` with parameters `loc` and
+        `scale` to obtain weights following the standard normal distribution,
+        or :py:class:`scipy.stats.uniform` with parameters `loc=-1` and `scale=2`
+        to obtain weights uniformly distributed between -1 and 1.
+        Can also have the value "custom_bernoulli". In that case, weights will be drawn
+        from a Bernoulli discrete random variable alternating between -1 and 1 and
+        drawing 1 with a probability `p` (default `p` parameter to 0.5).
+    connectivity: float, default to 0.1
+        Also called density of the sparse matrix.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    input_bias: bool, optional
+        'input_bias' parameter is deprecated. Bias should be initialized
+        separately from the input matrix.
+        If True, will add a row to the matrix to take into
+        account a constant bias added to the input.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
+        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        Else, a Numpy array ("dense") will be used.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+    **kwargs : optional
+        Arguments for the scipy.stats distribution.
 
-            Usual distributions for input and feedback weights
-            are ``'uniform'`` with parameters ``loc=-1`` and
-            ``scale=2`` to obtain weights uniformly distributed
-            between -1 and 1, or ``'bimodal'`` to obtain weights
-            with value randomly set to 1 or -1 only. Default set
-            to ``'bimodal'``.
-        seed : int or Generator, optional
-            Random state generator seed, for reproducibility,
-            by default None
-        typefloat : numpy.dtype, optional
     Returns
     -------
-    np.ndarray or scipy.sparse matrix
-        A reservoir input or feedback weights matrix.
-
-    Raises
-    ------
-    ValueError
-        Invalid non zero connection probability.
-
-    Example
-    -------
-
-        >>> from reservoirpy.mat_gen import generate_input_weights
-        >>> Win = generate_input_weights(10, 2, input_scaling=2., proba=0.5, seed=42)
-        >>> Win
-        array([[-2., -0.],
-               [ 0.,  0.],
-               [ 2.,  2.],
-               [ 2., -0.],
-               [ 0.,  0.],
-               [-2.,  0.],
-               [-0.,  2.],
-               [-2.,  2.],
-               [ 2., -0.],
-               [-2., -2.]])
-
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partialy initialized with the given keyword parameters,
+        which can be called with a shape and returns a matrix.
     """
-    if not _is_probability(proba):
-        raise ValueError(f"proba = {proba} not in [0; 1].")
+    warnings.warn(
+        "'generate_input_weights' is deprecated since v0.3.1 and will be removed in "
+        "future versions. Consider using 'normal', 'uniform' or 'random_sparse'.",
+        DeprecationWarning,
+    )
 
     if input_bias:
+        warnings.warn(
+            "'input_bias' parameter is deprecated. Bias should be initialized "
+            "separately from the input matrix.",
+            DeprecationWarning,
+        )
+
         dim_input += 1
 
-    rg = rand_generator(seed)
+    return _random_sparse(
+        N,
+        dim_input,
+        connectivity=connectivity,
+        dtype=dtype,
+        dist=dist,
+        sparsity_type=sparsity_type,
+        seed=seed,
+        **kwargs,
+    )
 
-    rvs = _get_rvs(dist,
-                   **kwargs,
-                   random_state=rg)
 
-    w = rvs(size=(N, dim_input))
-    w[rg.random((N, dim_input)) > proba] = 0.0
-    w *= input_scaling
-
-    return w
+generate_input_weights = Initializer(_generate_input_weights, autorize_sr=False)

@@ -5,12 +5,12 @@ reservoirpy.nodes.Concat
 
 .. autoclass:: Concat
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
-   
+
       ~Concat.__init__
       ~Concat.call
       ~Concat.clean_buffers
@@ -41,15 +41,16 @@ reservoirpy.nodes.Concat
       ~Concat.with_state
       ~Concat.zero_feedback
       ~Concat.zero_state
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Attributes
 
    .. autosummary::
-   
+
+      ~Concat.dtype
       ~Concat.feedback_dim
       ~Concat.fitted
       ~Concat.has_feedback
@@ -63,5 +64,4 @@ reservoirpy.nodes.Concat
       ~Concat.name
       ~Concat.output_dim
       ~Concat.params
-   
-   
+

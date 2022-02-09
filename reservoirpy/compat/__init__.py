@@ -41,24 +41,20 @@ Regression models
 """
 import json
 import pathlib
-import dill
 import re
-
 from typing import Union
 
+import dill
 import numpy as np
-
 from scipy import sparse
 
-from . import regression_models
-
-from ._esn import ESN
-from ._esn_online import ESNOnline
-
-from .utils.save import load
+from ..activationsfunc import identity
 from ..nodes import ESN as ESN_v3
 from ..nodes import Reservoir, Ridge
-from ..activationsfunc import identity
+from . import regression_models
+from ._esn import ESN
+from ._esn_online import ESNOnline
+from .utils.save import load
 
 
 def _load_files_from_v2(dirpath):
@@ -71,8 +67,7 @@ def _load_files_from_v2(dirpath):
         is_esn_obj = "esn" in filename.name[:3]
         if is_esn_obj:
             if ext in (".npy", ".npz"):
-                matrix_name = ("Win", "W", "Wfb", "Wout", "_W", "_Win",
-                               "_Wfb", "_Wout")
+                matrix_name = ("Win", "W", "Wfb", "Wout", "_W", "_Win", "_Wfb", "_Wout")
                 match = re.findall("_?W.*?(?=-)", filename.name)
                 for name in matrix_name:
                     if name in match:
@@ -105,15 +100,13 @@ def _load_matrix_v2(filename):
         except Exception as e:
             mat = np.load(str(filename))
             keys = list(mat.keys())
-            sparse_keys = ('indices', 'indptr',
-                           'format', 'shape', 'data')
+            sparse_keys = ("indices", "indptr", "format", "shape", "data")
             if any([k in sparse_keys for k in keys]):
                 raise e
             elif len(keys) == 1:  # Only one array per file
                 mat = mat[keys[0]]
             else:
-                raise TypeError("Unknown array format "
-                                f"in file {filename}.")
+                raise TypeError("Unknown array format in file {filename}.")
     return mat
 
 
@@ -145,8 +138,7 @@ def load_compat(directory: Union[str, pathlib.Path]) -> ESN_v3:
 
     version = config.get("version")
 
-    msg = "Impossible to load ESN from version {} of " \
-          "reservoirpy: unknown model {}"
+    msg = "Impossible to load ESN from version {} of reservoirpy: unknown model {}"
     ridge = 0.0
     if attr.get("sklearn_model") is not None:
         raise TypeError(msg.format(version, attr["sklearn_model"]))
@@ -166,28 +158,26 @@ def load_compat(directory: Union[str, pathlib.Path]) -> ESN_v3:
 
     output_dim = attr.get("dim_out", attr.get("_dim_out"))
 
-    reservoir = Reservoir(units=attr.get("N", attr.get("_N")),
-                          lr=attr["lr"],
-                          input_bias=attr.get("in_bias",
-                                              attr.get("_input_bias")),
-                          W=matrices["W"],
-                          Win=matrices["Win"],
-                          Wfb=matrices.get("Wfb"),
-                          fb_activation=fns.get("fbfunc", identity),
-                          noise_in=attr.get("noise_in", 0.0),
-                          noise_rc=attr.get("noise_rc", 0.0),
-                          noise_fb=attr.get("noise_out", 0.0),
-                          noise_type="uniform",
-                          seed=attr.get("seed"))
+    reservoir = Reservoir(
+        units=attr.get("N", attr.get("_N")),
+        lr=attr["lr"],
+        input_bias=attr.get("in_bias", attr.get("_input_bias")),
+        W=matrices["W"],
+        Win=matrices["Win"],
+        Wfb=matrices.get("Wfb"),
+        fb_activation=fns.get("fbfunc", identity),
+        noise_in=attr.get("noise_in", 0.0),
+        noise_rc=attr.get("noise_rc", 0.0),
+        noise_fb=attr.get("noise_out", 0.0),
+        noise_type="uniform",
+        seed=attr.get("seed"),
+    )
 
-    readout = Ridge(output_dim=output_dim,
-                    ridge=ridge, Wout=matrices.get("Wout"))
+    readout = Ridge(output_dim=output_dim, ridge=ridge, Wout=matrices.get("Wout"))
 
     model = ESN_v3(reservoir=reservoir, readout=readout, feedback=feedback)
 
     return model
 
 
-__all__ = [
-    "ESN", "ESNOnline", "load_compat", "regression_models", "load"
-    ]
+__all__ = ["ESN", "ESNOnline", "load_compat", "regression_models", "load"]

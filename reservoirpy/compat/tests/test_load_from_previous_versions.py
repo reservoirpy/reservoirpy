@@ -1,22 +1,22 @@
 # Author: Nathan Trouvain at 23/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import pytest
 import os
 import shutil
 from contextlib import contextmanager
 
 import numpy as np
+import pytest
 from scipy import sparse
 
-from .. import load_compat
-from .. import ESN
 from ... import activationsfunc as F
+from .. import ESN, load_compat
 
 
 @contextmanager
-def create_old_model(sparse_W=True, input_bias=True, feedback=False,
-                     train=False, fbfunc=F.identity):
+def create_old_model(
+    sparse_W=True, input_bias=True, feedback=False, train=False, fbfunc=F.identity
+):
 
     parent_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -37,8 +37,9 @@ def create_old_model(sparse_W=True, input_bias=True, feedback=False,
     if feedback:
         wfb = np.random.normal(0, 0.1, size=(100, 10))
 
-    esn = ESN(lr=0.3, W=w, Win=win, input_bias=input_bias, Wfb=wfb,
-              ridge=1e-8, fbfunc=fbfunc)
+    esn = ESN(
+        lr=0.3, W=w, Win=win, input_bias=input_bias, Wfb=wfb, ridge=1e-8, fbfunc=fbfunc
+    )
 
     if train:
         X, Y = [np.ones((100, 10))], [np.ones((100, 10))]
@@ -52,17 +53,22 @@ def create_old_model(sparse_W=True, input_bias=True, feedback=False,
         shutil.rmtree(d)
 
 
-@pytest.mark.parametrize("sparse,bias,feedback,train,fbfunc",
-                         ((True, False, False, False, F.identity),
-                          (True, False, False, True, F.identity),
-                          (True, True, False, False, F.identity),
-                          (True, False, True, True, F.sigmoid),
-                          (True, True, True, False, F.tanh),
-                          (False, True, False, False, F.identity),
-                          (False, False, True, True, F.softmax)))
+@pytest.mark.parametrize(
+    "sparse,bias,feedback,train,fbfunc",
+    (
+        (True, False, False, False, F.identity),
+        (True, False, False, True, F.identity),
+        (True, True, False, False, F.identity),
+        (True, False, True, True, F.sigmoid),
+        (True, True, True, False, F.tanh),
+        (False, True, False, False, F.identity),
+        (False, False, True, True, F.softmax),
+    ),
+)
 def test_load_files_from_v2(sparse, bias, feedback, fbfunc, train):
-    with create_old_model(sparse_W=sparse, input_bias=bias,
-                          feedback=feedback, train=train, fbfunc=fbfunc) as m:
+    with create_old_model(
+        sparse_W=sparse, input_bias=bias, feedback=feedback, train=train, fbfunc=fbfunc
+    ) as m:
 
         dirname, esn = m[0], m[1]
 

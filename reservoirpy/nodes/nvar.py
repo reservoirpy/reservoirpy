@@ -1,9 +1,8 @@
 # Author: Nathan Trouvain at 14/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
-
 import itertools as it
+import sys
 
 if sys.version_info < (3, 8):
     from scipy.special import comb
@@ -12,7 +11,7 @@ else:
 
 import numpy as np
 
-from reservoirpy.node import Node
+from ..node import Node
 
 
 def forward(node, x):
@@ -34,7 +33,7 @@ def forward(node, x):
     output[:linear_len, :] = linear_feats
 
     # select monomial terms and compute them
-    output[linear_len:, :] = np.prod(linear_feats[idxs], axis=1)
+    output[linear_len:, :] = np.prod(linear_feats[idxs.astype(int)], axis=1)
 
     return output.reshape(1, -1)
 
@@ -53,7 +52,7 @@ def initialize(node, x=None, *args, **kwargs):
         # linear components.
         nonlinear_dim = comb(linear_dim + order - 1, order)
 
-        output_dim = output_dim = int(linear_dim + nonlinear_dim)
+        output_dim = int(linear_dim + nonlinear_dim)
 
         node.set_output_dim(output_dim)
         node.set_input_dim(input_dim)
@@ -62,8 +61,8 @@ def initialize(node, x=None, *args, **kwargs):
         # of the n components involved, n being the order of the
         # monomials. Precompute them to improve efficiency.
         idx = np.array(
-            list(it.combinations_with_replacement(np.arange(linear_dim),
-                                                  order)))
+            list(it.combinations_with_replacement(np.arange(linear_dim), order))
+        )
 
         node.set_param("_monomial_idx", idx)
 
@@ -72,13 +71,11 @@ def initialize(node, x=None, *args, **kwargs):
 
 
 class NVAR(Node):
-
-    def __init__(self, delay, order, strides=1, name=None):
-        super(NVAR, self).__init__(params={"store": None,
-                                           "_monomial_idx": None},
-                                   hypers={"delay": delay,
-                                           "order": order,
-                                           "strides": strides},
-                                   forward=forward,
-                                   initializer=initialize,
-                                   name=name)
+    def __init__(self, delay, order, strides=1, **kwargs):
+        super(NVAR, self).__init__(
+            params={"store": None, "_monomial_idx": None},
+            hypers={"delay": delay, "order": order, "strides": strides},
+            forward=forward,
+            initializer=initialize,
+            **kwargs,
+        )
