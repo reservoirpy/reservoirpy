@@ -134,6 +134,7 @@ from .types import (
     GenericNode,
     PartialBackFn,
     Shape,
+    global_dtype,
 )
 from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
@@ -392,6 +393,7 @@ class Node(GenericNode):
         output_dim: int = None,
         feedback_dim: int = None,
         name: str = None,
+        dtype: np.dtype = global_dtype,
         *args,
         **kwargs,
     ):
@@ -418,6 +420,7 @@ class Node(GenericNode):
         self._feedback_dim = feedback_dim
 
         self._name = self._get_name(name)
+        self._dtype = dtype
 
         self._is_initialized = False
         self._is_fb_initialized = False
@@ -453,7 +456,7 @@ class Node(GenericNode):
         """One step call, without input check."""
         with self.with_state(from_state, stateful=stateful, reset=reset):
             state = self._forward(self, x)
-            self._state = state
+            self._state = state.astype(self.dtype)
 
         return state
 
@@ -549,6 +552,11 @@ class Node(GenericNode):
         """Returns if the Node feedback intializer has been called already."""
         return self._is_fb_initialized
 
+    @property
+    def dtype(self):
+        """Numpy numerical type of node parameters."""
+        return self._dtype
+
     def state(self) -> Optional[np.ndarray]:
         """Node current internal state.
 
@@ -610,7 +618,7 @@ class Node(GenericNode):
             State to freeze, waiting to be send to feedback receivers.
         """
         if value is not None:
-            value = check_node_state(self, value)
+            value = check_node_state(self, value).astype(self.dtype)
         self._state_proxy = value
 
     def set_input_dim(self, value: int):
@@ -675,6 +683,8 @@ class Node(GenericNode):
             Parameter new value.
         """
         if name in self._params:
+            if hasattr(value, "dtype"):
+                value = value.astype(self.dtype)
             self._params[name] = value
         elif name in self._hypers:
             self._hypers[name] = value
@@ -719,7 +729,7 @@ class Node(GenericNode):
         value : numpy.ndarray
             Data to store in the buffer array.
         """
-        self._buffers[name][:] = value
+        self._buffers[name][:] = value.astype(self.dtype)
 
     def get_buffer(self, name) -> np.memmap:
         """Get data from a buffer array.
@@ -832,7 +842,7 @@ class Node(GenericNode):
         if to_state is None:
             self._state = self.zero_state()
         else:
-            self._state = check_node_state(self, to_state)
+            self._state = check_node_state(self, to_state).astype(self.dtype)
         return self
 
     @contextmanager
@@ -945,7 +955,7 @@ class Node(GenericNode):
     def zero_state(self) -> np.ndarray:
         """A null state vector."""
         if self.output_dim is not None:
-            return np.zeros((1, self.output_dim))
+            return np.zeros((1, self.output_dim), dtype=self.dtype)
 
     def zero_feedback(self) -> Optional[Union[List[np.ndarray], np.ndarray]]:
         """A null feedback vector. Returns None if the Node receives
