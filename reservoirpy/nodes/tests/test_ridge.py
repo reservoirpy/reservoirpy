@@ -12,7 +12,7 @@ from reservoirpy.nodes import Reservoir, Ridge
 
 def test_ridge_init():
 
-    node = Ridge(10, ridge=1e-8, transient=100)
+    node = Ridge(10, ridge=1e-8)
 
     data = np.ones((1, 100))
     res = node(data)
@@ -20,7 +20,6 @@ def test_ridge_init():
     assert node.Wout.shape == (100, 10)
     assert node.bias.shape == (1, 10)
     assert node.ridge == 1e-8
-    assert node.transient == 100
 
     data = np.ones((10000, 100))
     res = node.run(data)
@@ -30,7 +29,7 @@ def test_ridge_init():
 
 def test_ridge_partial_fit():
 
-    node = Ridge(10, ridge=1e-8, transient=10)
+    node = Ridge(10, ridge=1e-8)
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
     res = node.fit(X, Y)
@@ -40,7 +39,7 @@ def test_ridge_partial_fit():
     assert node.bias.shape == (1, 10)
     assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
 
-    node = Ridge(10, ridge=1e-8, transient=10)
+    node = Ridge(10, ridge=1e-8)
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
 
@@ -62,7 +61,7 @@ def test_ridge_partial_fit():
 
 def test_esn():
 
-    readout = Ridge(10, ridge=1e-8, transient=10)
+    readout = Ridge(10, ridge=1e-8)
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -81,7 +80,7 @@ def test_esn():
 
 def test_ridge_feedback():
 
-    readout = Ridge(10, ridge=1e-8, transient=10)
+    readout = Ridge(10, ridge=1e-8)
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -103,9 +102,9 @@ def test_ridge_feedback():
 
 def test_hierarchical_esn():
 
-    readout1 = Ridge(ridge=1e-8, transient=10, name="r1")
+    readout1 = Ridge(ridge=1e-8, name="r1")
     reservoir1 = Reservoir(100)
-    readout2 = Ridge(ridge=1e-8, transient=10, name="r2")
+    readout2 = Ridge(ridge=1e-8, name="r2")
     reservoir2 = Reservoir(100)
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
