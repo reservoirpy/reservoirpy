@@ -1,47 +1,72 @@
-
 # ReservoirPy examples and tutorials
 
-Here, you can find everything you need to dive into Reservoir Computing with simple examples written with ReservoirPy API.
+Here, you can find everything you need to dive into Reservoir Computing with simple tutorials written
+with ReservoirPy API.
 
 ## Summary
 
-0. **Installation**
+**Installation**
 
 See below the "Getting started" section.
 
-1. **[Introduction to Reservoir Computing](./Introduction%20%20to%20Reservoir%20Computing)**
+1. **[Getting Started](./0-Getting_Started.ipynb)**
 
-An easy way to discover Reservoir Computing, with nice visualizations on a Jupyter notebook. Gives an extensive presentation of ReservoirPy main functionnalities.
+A short notebook to discover the basics of ReservoirPy, for beginners.
 
-2. **[Optimization of hyperparameters](Optimization%20of%20hyperparameters)**
+2. **[Getting Started](./1-Advanced_Features.ipynb)**
 
-How to combine *hyperopt* with ReservoirPy to find the bests parameters for a model.
+A notebook presenting more advanced manipulations with ESNs like parallelization,
+feedback connections, deep ESNs, custom weigth matrices... for RC enthusiasts.
 
-3. **[Online learning](Online%20learning)**
+3. **[General Introduction to Reservoir Computing](./3-General_Introduction_to_Reservoir_Computing.ipynb)**
 
-A presentation of some other learning rules that can be appliyed to ESN, allowing to perform things like online learning.
+An easy way to discover Reservoir Computing in general, with nice visualizations in a Jupyter notebook.
+
+- First part gives a good overview of ReservoirPy main functionnalities, with online and offline learning rules applied to ESNs
+with choatic timeseries.
+
+- Second part is composed of two short demos of ESNs applied to "real life" tasks, one concerning robotics and the other
+concerning audio annotation for birdsongs.
+
+2. **[Understand and optimize hyperparameters](4-Understand_and_optimize_hyperparameters.ipynb)**
+
+A gentle introduction to some important hyperparameters defining Reservoir Computing architectures,
+followed by a tutorial on how to combine *hyperopt* with ReservoirPy to find the bests parameters for a model.
 
 4. **[Simple example on chaotic timeseries prediction](Simple%20Examples%20with%20Mackey-Glass)**
 
-Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation. The directory includes both the minimal ESN of Mantas (not using ReservoiPy) and the equivalent simple example using ReservoirPy.
+Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation.
+The directory includes both the minimal ESN of Mantas (not using ReservoiPy) and the equivalent simple example
+using ReservoirPy. Kept for teaching purpose.
 
 ## Getting started
 
 Each tutorial may have its own dependencies, and therefore require some installation.
 In general, you will need :
+- ReservoirPy,
 - Matplotlib and Seaborn, for visualization
 - Pandas, to work with timeseries and high dimensional data
 - Jupyter, to benefits from the power of Jupyter notebooks
-- Sklearn, to have metrics from scikit-learn
-- Hyperopt, to optimise hyperparameters
+- scikit-learn, to have metrics from scikit-learn
+- Hyperopt, to optimise hyperparameters.
+-
+Everything is in the requirements file.
 
 ```bash
-pip install matplotlib seaborn pandas jupyter sklearn hyperopt
+pip install -r tutorials/requirements.txt
 ```
 
-And of course, you will need to install ReservoirPy. As there is no stable realease of the library on PyPi yet, we advise to clone this repostiory and perform an editable installation with `pip` to install ReservoirPy:
+### Opening the notebook
+
+Using Jupyter is recommended to follow this tutorial. You can install it using:
 
 ```bash
-git clone https://github.com/neuronalx/reservoirpy.git
-pip install -e ./reservoirpy
+pip install jupyter
 ```
+
+Then, from within your virtual environment where Jupyter is installed, use:
+
+```bash
+jupyter notebook
+```
+at the root of the directory containing the Jupyter notebook (.ipynb file extension).
