@@ -50,6 +50,7 @@ reservoirpy.nodes.Ridge
 
    .. autosummary::
 
+      ~Ridge.dtype
       ~Ridge.feedback_dim
       ~Ridge.fitted
       ~Ridge.has_feedback

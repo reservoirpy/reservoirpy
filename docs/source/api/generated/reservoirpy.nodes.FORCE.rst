@@ -50,6 +50,7 @@ reservoirpy.nodes.FORCE
 
    .. autosummary::
 
+      ~FORCE.dtype
       ~FORCE.feedback_dim
       ~FORCE.fitted
       ~FORCE.has_feedback

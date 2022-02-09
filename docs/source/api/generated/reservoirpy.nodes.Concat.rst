@@ -50,6 +50,7 @@ reservoirpy.nodes.Concat
 
    .. autosummary::
 
+      ~Concat.dtype
       ~Concat.feedback_dim
       ~Concat.fitted
       ~Concat.has_feedback

@@ -50,6 +50,7 @@ reservoirpy.nodes.Softmax
 
    .. autosummary::
 
+      ~Softmax.dtype
       ~Softmax.feedback_dim
       ~Softmax.fitted
       ~Softmax.has_feedback

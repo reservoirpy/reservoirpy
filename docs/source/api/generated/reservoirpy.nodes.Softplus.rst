@@ -50,6 +50,7 @@ reservoirpy.nodes.Softplus
 
    .. autosummary::
 
+      ~Softplus.dtype
       ~Softplus.feedback_dim
       ~Softplus.fitted
       ~Softplus.has_feedback

@@ -50,6 +50,7 @@ reservoirpy.nodes.Tanh
 
    .. autosummary::
 
+      ~Tanh.dtype
       ~Tanh.feedback_dim
       ~Tanh.fitted
       ~Tanh.has_feedback

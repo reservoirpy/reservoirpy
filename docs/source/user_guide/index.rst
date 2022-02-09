@@ -17,10 +17,12 @@ see :ref:`quick`.
 .. toctree::
     :maxdepth: 1
 
-    quick
+    getting_started
+    advanced_demo
     node
     model
     learning_rules
     feedback
+    hyper
     create_new_node
     compat

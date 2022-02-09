@@ -50,6 +50,7 @@ reservoirpy.nodes.ReLU
 
    .. autosummary::
 
+      ~ReLU.dtype
       ~ReLU.feedback_dim
       ~ReLU.fitted
       ~ReLU.has_feedback

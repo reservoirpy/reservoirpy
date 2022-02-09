@@ -50,6 +50,7 @@ reservoirpy.nodes.NVAR
 
    .. autosummary::
 
+      ~NVAR.dtype
       ~NVAR.feedback_dim
       ~NVAR.fitted
       ~NVAR.has_feedback

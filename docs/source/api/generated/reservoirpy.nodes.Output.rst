@@ -50,6 +50,7 @@ reservoirpy.nodes.Output
 
    .. autosummary::
 
+      ~Output.dtype
       ~Output.feedback_dim
       ~Output.fitted
       ~Output.has_feedback

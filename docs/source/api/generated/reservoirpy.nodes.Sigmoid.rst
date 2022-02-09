@@ -50,6 +50,7 @@ reservoirpy.nodes.Sigmoid
 
    .. autosummary::
 
+      ~Sigmoid.dtype
       ~Sigmoid.feedback_dim
       ~Sigmoid.fitted
       ~Sigmoid.has_feedback

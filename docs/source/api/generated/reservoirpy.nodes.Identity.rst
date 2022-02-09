@@ -50,6 +50,7 @@ reservoirpy.nodes.Identity
 
    .. autosummary::
 
+      ~Identity.dtype
       ~Identity.feedback_dim
       ~Identity.fitted
       ~Identity.has_feedback
