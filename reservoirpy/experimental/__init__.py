@@ -30,8 +30,8 @@ Nodes
 # Author: Nathan Trouvain at 03/02/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from add import Add
-from batchforce import BatchFORCE
-from ip import IPReservoir
-from norm import AsabukiNorm
-from randomchoice import RandomChoice
+from .add import Add
+from .batchforce import BatchFORCE
+from .ip import IPReservoir
+from .norm import AsabukiNorm
+from .randomchoice import RandomChoice

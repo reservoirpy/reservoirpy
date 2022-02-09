@@ -9,13 +9,13 @@ import numpy as np
 from ..activationsfunc import identity
 from ..mat_gen import generate_input_weights, generate_internal_weights
 from ..node import Node
+from ..nodes.reservoir import _reservoir_kernel
+from ..nodes.reservoir import initialize as initialize_reservoir
+from ..nodes.reservoir import initialize_feedback
 from ..types import Weights
 from ..utils.model_utils import to_ragged_seq_set
 from ..utils.random import noise
 from ..utils.validation import is_array
-from .reservoir import _reservoir_kernel
-from .reservoir import initialize as initialize_reservoir
-from .reservoir import initialize_feedback
 
 
 def _gaussian_gradients(x, y, a, sigma, mu):
