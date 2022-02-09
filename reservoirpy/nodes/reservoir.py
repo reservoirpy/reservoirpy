@@ -7,7 +7,7 @@ from typing import Callable, Optional, Union
 import numpy as np
 
 from ..activationsfunc import identity, tanh
-from ..mat_gen import generate_input_weights, generate_internal_weights
+from ..mat_gen import bernoulli, normal, zeros
 from ..node import Node
 from ..types import Weights
 from ..utils.random import noise
@@ -109,6 +109,7 @@ def initialize(
     x=None,
     sr=None,
     input_scaling=None,
+    bias_scaling=None,
     input_connectivity=None,
     rc_connectivity=None,
     W_init=None,
@@ -120,6 +121,9 @@ def initialize(
 ):
     if x is not None:
         reservoir.set_input_dim(x.shape[1])
+
+        dtype = reservoir.dtype
+        dtype_msg = "Data type {} not understood in {}. {} should be an array or a callable returning an array."
 
         if is_array(W_init):
             W = W_init
@@ -134,80 +138,88 @@ def initialize(
                 reservoir._output_dim = W.shape[0]
 
         elif callable(W_init):
-            W = W_init(N=reservoir.output_dim, sr=sr, proba=rc_connectivity, seed=seed)
-        else:
-            raise ValueError(
-                f"Data type {type(W_init)} not "
-                f"understood for matrix initializer "
-                f"'W_init' in {reservoir.name}. W "
-                f"should be an array or a callable "
-                f"returning an array."
+            W = W_init(
+                reservoir.output_dim,
+                reservoir.output_dim,
+                sr=sr,
+                proba=rc_connectivity,
+                dtype=dtype,
+                seed=seed,
             )
+        else:
+            raise ValueError(dtype_msg.format(str(type(W_init)), reservoir.name, "W"))
 
         reservoir.set_param("units", W.shape[0])
-        reservoir.set_param("W", W)
+        reservoir.set_param("W", W.astype(dtype))
 
         out_dim = reservoir.output_dim
 
+        Win_has_bias = False
         if is_array(Win_init):
             Win = Win_init
-            bias_dim = 1 if input_bias else 0
-            bias_msg = "+ 1 (bias)" if input_bias else ""
-            if Win.shape[1] != x.shape[1] + bias_dim:
-                raise ValueError(
-                    "Dimension mismatch between Win and input "
-                    f"vector in {reservoir.name}: Win is "
-                    f"{Win.shape} "
-                    f"and input is {x.shape} ({x.shape[1]} "
-                    f"{bias_msg} "
-                    f"!= {Win.shape[0] - bias_dim} {bias_msg})"
-                )
+
+            msg = f"Dimension mismatch in {reservoir.name}: Win input dimension is {Win.shape[1]} but input dimension is {x.shape[1]}."
+
+            # is bias vector inside Win ?
+            if Win.shape[1] == x.shape[1] + 1:
+                if input_bias:
+                    Win_has_bias = True
+                else:
+                    bias_msg = (
+                        " It seems Win has a bias column, but 'input_bias' is False."
+                    )
+                    raise ValueError(msg + bias_msg)
+            elif Win.shape[1] != x.shape[1]:
+                raise ValueError(msg)
 
             if Win.shape[0] != out_dim:
                 raise ValueError(
-                    f"Dimension mismatch between Win and W in "
-                    f"{reservoir.name}: "
-                    f"Win is {Win.shape} and W is "
-                    f"{(out_dim, out_dim)}"
-                    f" ({Win.shape[1]} != {out_dim})"
+                    f"Dimension mismatch in {reservoir.name}: Win internal dimension is {Win.shape[0]} but reservoir dimension is {out_dim}"
                 )
 
         elif callable(Win_init):
             Win = Win_init(
-                N=reservoir.output_dim,
-                dim_input=x.shape[1],
-                input_bias=False,
+                reservoir.output_dim,
+                x.shape[1],
                 input_scaling=input_scaling,
                 proba=input_connectivity,
+                dtype=dtype,
                 seed=seed,
             )
         else:
             raise ValueError(
-                f"Data type {type(Win_init)} not "
-                f"understood for matrix initializer "
-                f"'Win_init' in {reservoir.name}. Win "
-                f"should be an array or a callable returning "
-                f"an array."
+                dtype_msg.format(str(type(Win_init)), reservoir.name, "Win")
             )
 
         if input_bias:
-            if callable(Win_init):  # TODO: allow bias initializers
-                bias = Win_init(
-                    N=reservoir.output_dim,
-                    dim_input=1,
-                    input_bias=False,
-                    input_scaling=input_scaling,
-                    proba=input_connectivity,
-                    seed=seed,
-                )
-            elif is_array(Win_init):
+            if not Win_has_bias:
+                if callable(bias_init):
+                    bias = bias_init(
+                        reservoir.output_dim,
+                        1,
+                        input_scaling=bias_scaling,
+                        proba=input_connectivity,
+                        dtype=dtype,
+                        seed=seed,
+                    )
+                elif is_array(bias_init):
+                    bias = bias_init
+                    if bias.shape[0] != reservoir.output_dim or bias.shape[1] != 1:
+                        raise ValueError(
+                            f"Dimension mismatch in {reservoir.name}: bias shape is {bias.shape} but should be {(reservoir.output_dim, 1)}"
+                        )
+                else:
+                    raise ValueError(
+                        dtype_msg.format(str(type(bias_init)), reservoir.name, "bias")
+                    )
+            else:
                 bias = Win[:, :1]
                 Win = Win[:, 1:]
         else:
-            bias = np.zeros((reservoir.output_dim, 1))
+            bias = zeros(reservoir.output_dim, 1, dtype=dtype)
 
-        reservoir.set_param("Win", Win)
-        reservoir.set_param("bias", bias)
+        reservoir.set_param("Win", Win.astype(dtype))
+        reservoir.set_param("bias", bias.astype(dtype))
         reservoir.set_param("internal_state", reservoir.zero_state().T)
 
 
@@ -251,12 +263,12 @@ def initialize_feedback(
 
         elif callable(Wfb_init):
             Wfb = Wfb_init(
-                N=reservoir.output_dim,
-                dim_input=fb_dim,
-                input_bias=False,
+                reservoir.output_dim,
+                fb_dim,
                 input_scaling=fb_scaling,
                 proba=fb_connectivity,
                 seed=seed,
+                dtype=reservoir.dtype,
             )
         else:
             raise ValueError(
@@ -323,10 +335,14 @@ class Reservoir(Node):
         Distribution of noise. Must be a Numpy random variable generator
         distribution (see :py:class:`numpy.random.Generator`),
         by default "normal"
-    input_scaling : float, optional
-        Input gain, by default 1.0
-    fb_scaling : float, optional
-        Feedback gain, by default 1.0
+    input_scaling : float or array, default to 1.0
+        Input gain. An array of the same dimension as the inputs can be used to
+        set up different input scaling for each variable.
+    bias_scaling: float, default to 1.0
+        Bias gain.
+    fb_scaling : float or array, default to 1.0
+        Feedback gain. An array of the same dimension as the feedback can be used to
+        set up different feedback scaling for each variable.
     input_connectivity : float, optional
         Connectivity of input neurons, i.e. ratio of input neurons connected
         to reservoir neurons. Must be in ]0, 1], by default 0.1
@@ -351,6 +367,12 @@ class Reservoir(Node):
         - If a callable, should accept keywords parameters such as ``N`` to
         specify number of reservoir units.
         By default :py:func:`mat_gen.generate_internal_weights`
+    bias : array of shape (units, n_inputs) or callable, default to :py:func:`mat_gen.bernoulli`
+        Bias vector initializer.
+        - If a :py:class:`numpy.ndarray` or :py:mod:`scipy.sparse` matrix,
+        should be of shape (units, 1).
+        - If a callable, should accept at least 2 positional arguments to define the
+        shape of the matrix.
     Wfb : Union[Weights, Callable], optional
         Feedback weights matrix initializer.
         - If a :py:class:`numpy.ndarray` or :py:mod:`scipy.sparse` matrix,
@@ -396,6 +418,8 @@ class Reservoir(Node):
         By default, "internal".
     name : str, optional
         Node name.
+    dtype : Numpy dtype, default to np.float64
+        Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
     """
@@ -410,14 +434,16 @@ class Reservoir(Node):
         noise_in: float = 0.0,
         noise_fb: float = 0.0,
         noise_type: str = "normal",
-        input_scaling: Optional[float] = 1.0,
-        fb_scaling: Optional[float] = 1.0,
-        input_connectivity: Optional[float] = 0.1,
-        rc_connectivity: Optional[float] = 0.1,
-        fb_connectivity: Optional[float] = 0.1,
-        Win: Union[Weights, Callable] = generate_input_weights,
-        W: Union[Weights, Callable] = generate_internal_weights,
-        Wfb: Union[Weights, Callable] = generate_input_weights,
+        input_scaling: float = 1.0,
+        bias_scaling: float = 1.0,
+        fb_scaling: float = 1.0,
+        input_connectivity: float = 0.1,
+        rc_connectivity: float = 0.1,
+        fb_connectivity: float = 0.1,
+        Win: Union[Weights, Callable] = bernoulli,
+        W: Union[Weights, Callable] = normal,
+        Wfb: Union[Weights, Callable] = bernoulli,
+        bias: Union[Weights, Callable] = bernoulli,
         fb_dim: int = None,
         fb_activation: Union[str, Callable] = identity,
         activation: Union[str, Callable] = tanh,
@@ -460,6 +486,7 @@ class Reservoir(Node):
                 "lr": lr,
                 "sr": sr,
                 "input_scaling": input_scaling,
+                "bias_scaling": bias_scaling,
                 "fb_scaling": fb_scaling,
                 "rc_connectivity": rc_connectivity,
                 "input_connectivity": input_connectivity,
@@ -478,10 +505,12 @@ class Reservoir(Node):
                 initialize,
                 sr=sr,
                 input_scaling=input_scaling,
+                bias_scaling=bias_scaling,
                 input_connectivity=input_connectivity,
                 rc_connectivity=rc_connectivity,
                 W_init=W,
                 Win_init=Win,
+                bias_init=bias,
                 input_bias=input_bias,
                 seed=seed,
             ),
