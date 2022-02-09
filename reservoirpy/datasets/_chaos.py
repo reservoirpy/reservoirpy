@@ -382,7 +382,7 @@ def doublescroll(
     ir: float = 2 * 2.25e-5,
     beta: float = 11.6,
     x0: Union[list, np.ndarray] = [0.37926545, 0.058339, -0.08167691],
-    h: float = 0.01,
+    h: float = 0.25,
     **kwargs,
 ) -> np.ndarray:
     """Double scroll attractor timeseries [10]_ [11]_,
