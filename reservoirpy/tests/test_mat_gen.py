@@ -322,7 +322,7 @@ def test_generate_internal_features(sr, proba):
 @pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (2.0, 1.0)])
 def test_generate_internal_sparse(sr, proba):
 
-    W = generate_internal_weights(100, sr=sr, proba=proba, sparsity_type="csr")
+    W = generate_internal_weights(100, sr=sr, proba=proba, sparsity_type="csr", seed=42)
 
     rho = max(
         abs(
