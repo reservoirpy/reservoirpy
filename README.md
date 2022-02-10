@@ -43,6 +43,7 @@ and examples of scientific papers reproduction.
 
 This library works for **Python 3.8** and higher.
 
+[Follow @reservoirpy](https://twitter.com/reservoirpy) updates and new releases on Twitter.
 
 ## Offcial documentation 📖
 
