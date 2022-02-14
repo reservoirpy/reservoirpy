@@ -11,9 +11,9 @@ import numpy as np
 
 from ..types import Activation, Data
 from ..utils.parallel import parallelize
-from ..utils.validation import _check_values, check_input_lists
 from ._base import _ESNBase
 from .regression_models import RidgeRegression
+from .utils.validation import _check_values, check_input_lists
 
 
 def _get_offline_model(ridge: float = 0.0, dtype: np.dtype = np.float64):

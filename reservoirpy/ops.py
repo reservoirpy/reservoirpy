@@ -19,14 +19,25 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from itertools import product
-from typing import Sequence, Union
+from typing import Iterable, Sequence, Union
 from uuid import uuid4
 
 from .model import FrozenModel, Model
 from .node import Node
 from .nodes.concat import Concat
 from .types import GenericNode
-from .utils.validation import check_all_nodes
+
+
+def _check_all_nodes(*nodes):
+    msg = "Impossible to link nodes: object {} is neither a Node nor a Model."
+    for nn in nodes:
+        if isinstance(nn, Iterable):
+            for n in nn:
+                if not isinstance(n, GenericNode):
+                    raise TypeError(msg.format(n))
+        else:
+            if not isinstance(nn, GenericNode):
+                raise TypeError(msg.format(nn))
 
 
 def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
@@ -157,7 +168,7 @@ def link(
                                              # circles forever...
     """
 
-    check_all_nodes(node1, node2)
+    _check_all_nodes(node1, node2)
 
     frozens = []
     if isinstance(node1, Sequence):

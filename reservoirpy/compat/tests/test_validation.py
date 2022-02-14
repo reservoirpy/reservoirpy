@@ -6,12 +6,7 @@ import pytest
 from numpy.testing import assert_array_equal
 from scipy.sparse import csr_matrix
 
-from ..utils.validation import (
-    add_bias,
-    check_datatype,
-    check_input_lists,
-    check_reservoir_matrices,
-)
+from ..utils.validation import check_input_lists, check_reservoir_matrices
 
 
 @pytest.mark.parametrize(
