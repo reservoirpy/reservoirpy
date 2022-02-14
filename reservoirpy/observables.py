@@ -53,7 +53,7 @@ def spectral_radius(W, maxiter: int = None) -> float:
 
 
 def mse(y_true, y_pred):
-    return np.mean((y_true - y_pred) ** 2)
+    return np.mean((np.asanyarray(y_true) - np.asanyarray(y_pred)) ** 2)
 
 
 def rmse(y_true, y_pred):
@@ -79,10 +79,10 @@ def nrmse(y_true, y_pred, norm="minmax", norm_value=None):
                 f"Available methods are {list(norms.keys())}."
             )
         else:
-            return error / norms[norm](y_true)
+            return error / norms[norm](np.asarray(y_true))
 
 
 def rsquare(y_true, y_pred):
-    d = (y_true - y_pred) ** 2
-    D = (y_true - y_true.mean()) ** 2
+    d = (np.asarray(y_true) - np.asarray(y_pred)) ** 2
+    D = (np.asarray(y_true) - np.asarray(y_true).mean()) ** 2
     return 1 - np.sum(d) / np.sum(D)
