@@ -15,7 +15,7 @@ from .utils.random import set_seed
 logger = logging.getLogger(__name__)
 
 _TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp")
-if not os.path.exists(_TEMPDIR):
+if not os.path.exists(_TEMPDIR):  # pragma: no cover
     try:
         os.mkdir(_TEMPDIR)
     except OSError:
