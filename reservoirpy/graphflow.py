@@ -8,7 +8,7 @@ import numpy as np
 
 from .types import GenericNode
 from .utils import safe_defaultdict_copy
-from .utils.validation import is_mapping, is_node
+from .utils.validation import is_mapping
 
 DataPoint = namedtuple("DataPoint", "x, y")
 
@@ -252,7 +252,7 @@ class DataDispatcher:
 
         x = []
         for parent in parents:
-            if is_node(parent):
+            if isinstance(parent, GenericNode):
                 x.append(parent.state())
             else:
                 x.append(parent)

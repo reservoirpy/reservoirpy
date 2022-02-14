@@ -12,8 +12,9 @@ from tqdm import tqdm
 
 from ..types import Activation, Data, Weights
 from ..utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
-from ..utils.validation import add_bias, check_input_lists, check_reservoir_matrices
+from ..utils.validation import add_bias
 from .utils.save import _save
+from .utils.validation import check_input_lists, check_reservoir_matrices
 
 
 class _ESNBase(metaclass=ABCMeta):
