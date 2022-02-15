@@ -175,7 +175,7 @@ If you have some issues testing some examples, have a look at the [extended pack
 [Go to the examples folder](./examples/) for examples and papers with codes, also in Jupyter Notebooks.
 
 ## Paper with tutorials
-Tutorial on ReservoirPy can be found in this [Paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+Tutorial for ReservoirPy (v0.2) can be found in this [Paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
 ## Explore Hyper-Parameters with Hyperopt
 A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
