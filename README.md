@@ -194,5 +194,22 @@ More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
 
 
-## Cite
+## Citing ReservoirPy
+
 Trouvain, N., Pedrelli, L., Dinh, T. T., Hinaut, X. (2020) Reservoirpy: an efficient and user-friendly library to design echo state networks. In International Conference on Artificial Neural Networks (pp. 494-505). Springer, Cham. [HTML](https://link.springer.com/chapter/10.1007/978-3-030-61616-8_40) [HAL](https://hal.inria.fr/hal-02595026) [PDF](https://hal.inria.fr/hal-02595026/document)
+
+If you're using ReservoirPy in your work, please cite our package using the following bibtex entry:
+
+```
+
+@incollection{Trouvain2020,
+  doi = {10.1007/978-3-030-61616-8_40},
+  url = {https://doi.org/10.1007/978-3-030-61616-8_40},
+  year = {2020},
+  publisher = {Springer International Publishing},
+  pages = {494--505},
+  author = {Nathan Trouvain and Luca Pedrelli and Thanh Trung Dinh and Xavier Hinaut},
+  title = {{ReservoirPy}: An Efficient and User-Friendly Library to Design Echo State Networks},
+  booktitle = {Artificial Neural Networks and Machine Learning {\textendash} {ICANN} 2020}
+}
+```
