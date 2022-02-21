@@ -187,12 +187,16 @@ Take a look at our **advices and our method to explore hyperparameters** for res
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
 ## Papers and projects using ReservoirPy
+
+If you want your paper to appear here, please contact us (see contact link below).
+
 - Trouvain & Hinaut (2021) Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) [HAL](https://hal.inria.fr/hal-03203374) [PDF](https://hal.inria.fr/hal-03203374/document)
 - Pagliarini et al. (2021) Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator. ICDL 2021. [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF)
 - Pagliarini et al. (2021) What does the Canary Say? Low-Dimensional GAN Applied to Birdsong. HAL preprint. [HAL](https://hal.inria.fr/hal-03244723/) [PDF](https://hal.inria.fr/hal-03244723/document)
 - Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318) [PDF](https://hal.inria.fr/hal-03203318)
 
-
+## Contact
+If you have a question regarding the library, please open an Issue. If you have more general question or feedback you can [contact us on twitter](https://twitter.com/reservoirpy) or by email to nathan dot trouvain at inria dot fr and to xavier dot hinaut at inria dot fr.
 
 ## Citing ReservoirPy
 
