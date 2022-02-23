@@ -50,6 +50,9 @@ This library works for **Python 3.8** and higher.
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
 
+## Quick example of how to code a deep reservoir
+![Image](deep-reservoir.gif)
+
 ## Installation
 
 To install it, use one of the following command:
