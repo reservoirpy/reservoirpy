@@ -78,6 +78,8 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
         ((50, 50), None, -2.0, {"connectivity": 1.0}, "dense"),
         ((50, 50), 2.0, None, {"connectivity": 1.0}, "dense"),
         ((50, 50), None, -2.0, {"connectivity": 1.0}, "dense"),
+        ((50, 50), None, np.ones((50,)) * 0.1, {"connectivity": 1.0}, "dense"),
+        ((50, 50), None, np.ones((50,)) * 0.1, {"connectivity": 0.1}, "sparse"),
         ((50, 50), 2.0, None, {"connectivity": 0.0}, "sparse"),
         ((50, 50), 2.0, -2.0, {"connectivity": 0.1}, "raise"),
     ],

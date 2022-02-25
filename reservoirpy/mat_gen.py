@@ -331,7 +331,11 @@ def _scale_inputs(w_init, shape, input_scaling, **kwargs):
     Numpy array or Scipy sparse matrix
         Rescaled matrix.
     """
-    return np.multiply(w_init(*shape, **kwargs), input_scaling)
+    w = w_init(*shape, **kwargs)
+    if sparse.issparse(w):
+        return w.multiply(input_scaling)
+    else:
+        return np.multiply(w, input_scaling)
 
 
 def _random_sparse(
