@@ -206,7 +206,7 @@ class Initializer:
 
         if sr is not None:
             return _scale_spectral_radius(self._func, shape, sr, **kwargs)
-        elif input_scaling:
+        elif input_scaling is not None:
             return _scale_inputs(self._func, shape, input_scaling, **kwargs)
         else:
             return self._func(*shape, **kwargs)
