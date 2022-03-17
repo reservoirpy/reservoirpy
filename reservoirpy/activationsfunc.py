@@ -1,5 +1,25 @@
-"""Activations functions for reservoir, feedback and output.
 """
+=============================================================
+Activations functions (:py:mod:`reservoirpy.activationsfunc`)
+=============================================================
+
+Activation functions for reservoir, feedback and output.
+
+.. autosummary::
+   :toctree: generated/
+
+    get_function
+    identity
+    sigmoid
+    tanh
+    relu
+    softmax
+    softplus
+
+"""
+# Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import wraps
 from typing import Callable
 
@@ -21,7 +41,7 @@ def _elementwise(func):
     return vect_wrapper
 
 
-def get_function(name: str) -> Callable:  # pragma: no cover
+def get_function(name: str) -> Callable:
     """Return an activation function from name.
 
     Parameters
@@ -35,7 +55,7 @@ def get_function(name: str) -> Callable:  # pragma: no cover
 
     Returns
     -------
-    Callable
+    callable
         An activation function.
     """
     index = {
@@ -58,27 +78,31 @@ def get_function(name: str) -> Callable:  # pragma: no cover
         return index[name]
 
 
-def softmax(x: np.ndarray, beta=1) -> np.ndarray:
-    """Softmax activation function:
+def softmax(x: np.ndarray, beta: float = 1.0) -> np.ndarray:
+    """Softmax activation function.
 
     .. math::
 
-        y_k = \\frac{e^{x_k}}{\\sum_{i=1}^{n} e^{x_i}}
+        y_k = \\frac{e^{\\beta x_k}}{\\sum_{i=1}^{n} e^{\\beta x_i}}
 
     Parameters
     ----------
-    x : numpy.ndarray
-
+    x : array
+        Input array.
+    beta: float, default to 1.0
+        Beta parameter of softmax.
     Returns
     -------
-    numpy.ndarray
+    array
+        Activated vector.
     """
-    return np.exp(beta * x) / np.exp(beta * x).sum()
+    _x = np.asarray(x)
+    return np.exp(beta * _x) / np.exp(beta * _x).sum()
 
 
 @_elementwise
 def softplus(x: np.ndarray) -> np.ndarray:
-    """Softplus acctivation function:
+    """Softplus activation function.
 
     .. math::
 
@@ -88,18 +112,19 @@ def softplus(x: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    x : numpy.ndarray
-
+    x : array
+        Input array.
     Returns
     -------
-    numpy.ndarray
+    array
+        Activated vector.
     """
     return np.log(1 + np.exp(x))
 
 
 @_elementwise
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    """Sigmoid activation function:
+    """Sigmoid activation function.
 
     .. math::
 
@@ -108,11 +133,12 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    x : numpy.ndarray
-
+    x : array
+        Input array.
     Returns
     -------
-    numpy.ndarray
+    array
+        Activated vector.
     """
     if x < 0:
         u = np.exp(x)
@@ -121,7 +147,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
 
 def tanh(x: np.ndarray) -> np.ndarray:
-    """Hyperbolic tangent activation function:
+    """Hyperbolic tangent activation function.
 
     .. math::
 
@@ -129,18 +155,19 @@ def tanh(x: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    x : numpy.ndarray
-
+    x : array
+        Input array.
     Returns
     -------
-    numpy.ndarray
+    array
+        Activated vector.
     """
     return np.tanh(x)
 
 
 @_elementwise
 def identity(x: np.ndarray) -> np.ndarray:
-    """Identity function :
+    """Identity function.
 
     .. math::
 
@@ -150,30 +177,33 @@ def identity(x: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    x : numpy.ndarray
-
+    x : array
+        Input array.
     Returns
     -------
-    numpy.ndarray
+    array
+        Activated vector.
     """
     return x
 
 
 @_elementwise
 def relu(x: np.ndarray) -> np.ndarray:
-    """ReLU activation function:
+    """ReLU activation function.
 
     .. math::
-        f(x) = x ~~ \\mathrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
+
+        f(x) = x ~~ \\mathrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
 
     Parameters
     ----------
-    x : numpy.ndarray
-
+    x : array
+        Input array.
     Returns
     -------
-    numpy.ndarray
+    array
+        Activated vector.
     """
     if x < 0:
-        return 0
+        return 0.0
     return x
