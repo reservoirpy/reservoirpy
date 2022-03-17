@@ -5,7 +5,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from ..concat import Concat
-from ..reservoir import Reservoir
+from ..reservoirs import Reservoir
 
 
 def test_concat():

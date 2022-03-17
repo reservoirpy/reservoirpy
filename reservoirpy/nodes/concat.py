@@ -6,7 +6,8 @@ from typing import Sequence
 import numpy as np
 
 from ..node import Node
-from ..utils.validation import check_node_io
+
+# from ..utils.validation import check_node_io
 
 
 def concat_forward(concat: Node, data):
@@ -44,17 +45,17 @@ class Concat(Node):
             name=name,
         )
 
-    def _check_io(self, X, *args, io_type="input", **kwargs):
-        if io_type == "input":
-            if isinstance(X, np.ndarray):
-                return check_node_io(self, X, *args, io_type=io_type, **kwargs)
-            elif isinstance(X, Sequence):
-                checked_X = []
-                for i in range(len(X)):
-                    input_dim = None
-                    if self.is_initialized:
-                        input_dim = self.input_dim[i]
-                    checked_X.append(check_node_io(self, X[i], input_dim, **kwargs))
-                return checked_X
-            else:
-                return check_node_io(self, X, *args, io_type=io_type, **kwargs)
+    # def _check_io(self, X, *args, io_type="input", **kwargs):
+    #     if io_type == "input":
+    #         if isinstance(X, np.ndarray):
+    #             return check_node_io(self, X, *args, io_type=io_type, **kwargs)
+    #         elif isinstance(X, Sequence):
+    #             checked_X = []
+    #             for i in range(len(X)):
+    #                 input_dim = None
+    #                 if self.is_initialized:
+    #                     input_dim = self.input_dim[i]
+    #                 checked_X.append(check_node_io(self, X[i], input_dim, **kwargs))
+    #             return checked_X
+    #         else:
+    #             return check_node_io(self, X, *args, io_type=io_type, **kwargs)

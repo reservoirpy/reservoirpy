@@ -2,36 +2,27 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from multiprocessing import Manager
-from typing import Sequence
 
 import numpy as np
 from joblib import Parallel, delayed
 
+from .._base import _Node, call
 from ..model import FrozenModel
-from ..types import GenericNode
 from ..utils import _obj_from_kwargs, progress, verbosity
 from ..utils.model_utils import to_ragged_seq_set
 from ..utils.parallel import get_joblib_backend
 from ..utils.validation import is_mapping
-from .force import FORCE
-from .nvar import NVAR
-from .reservoir import Reservoir
+from .reservoirs import NVAR, Reservoir
 from .ridge import Ridge
 
-_LEARNING_METHODS = {"ridge": Ridge, "force": FORCE}
+_LEARNING_METHODS = {"ridge": Ridge}
 
 _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
 
 
-def _allocate_returned_states(model, inputs=None, return_states=None):
-    if inputs is not None:
-        if is_mapping(inputs):
-            seq_len = inputs[list(inputs.keys())[0]].shape[0]
-        else:
-            seq_len = inputs.shape[0]
-    else:
-        raise ValueError("'X' and 'n' parameters can't be None at the same time.")
-
+def _allocate_returned_states(model, inputs, return_states=None):
+    """Create empty placeholders for model outputs."""
+    seq_len = inputs.shape[0]
     vulgar_names = {"reservoir": model.reservoir, "readout": model.readout}
 
     # pre-allocate states
@@ -39,10 +30,10 @@ def _allocate_returned_states(model, inputs=None, return_states=None):
         states = {
             name: np.zeros((seq_len, n.output_dim)) for name, n in vulgar_names.items()
         }
-    elif isinstance(return_states, Sequence):
+    elif isinstance(return_states, (list, tuple)):
         states = {
             name: np.zeros((seq_len, n.output_dim))
-            for name, n in {name: vulgar_names[name] for name in return_states}
+            for name, n in {name: vulgar_names[name] for name in return_states}.items()
         }
     else:
         states = {"readout": np.zeros((seq_len, model.readout.output_dim))}
@@ -51,7 +42,7 @@ def _allocate_returned_states(model, inputs=None, return_states=None):
 
 
 def _sort_and_unpack(states, return_states=None):
-    # maintain input order (even with parallelization on)
+    """Maintain input order (even with parallelization on)"""
     states = sorted(states, key=lambda s: s[0])
     states = {n: [s[1][n] for s in states] for n in states[0][1].keys()}
 
@@ -65,26 +56,89 @@ def _sort_and_unpack(states, return_states=None):
     return states
 
 
-def forward(model: "ESN", x):
-    data = model.data_dispatcher.load(x)
-
-    for node in model.nodes:
-        node(data[node].x)
-
-    return [out_node.state() for out_node in model.output_nodes]
-
-
-def intialize_buffers(model: "ESN"):
-    model.readout._buffers_initializer(model.readout)
-
-
 class ESN(FrozenModel):
+    """Echo State Networks as a Node, with parallelization of state update.
+
+    This Node is provided as a wrapper for reservoir and readout nodes. Execution
+    is distributed over several workers when:
+
+    - the ``workers`` parameters is equal to `n>1` (using `n` workers) or
+      `n<=-1` (using `max_available_workers - n` workers)
+    - Several independent sequences of inputs are fed to the model at runtime.
+
+    When parallelization is enabled, internal states of the reservoir will be reset
+    to 0 at the beginning of every independent sequence of inputs.
+
+    Note
+    ----
+        This node can not be connected to other nodes. It is only provided as a
+        convenience Node to speed up processing of large datasets with "vanilla"
+        Echo State Networks.
+
+    :py:attr:`ESN.params` **list**:
+
+    ================== =================================================================
+    ``reservoir``      A :py:class:`~reservoirpy.nodes.Reservoir` or a :py:class:`~reservoirpy.nodes.NVAR` instance.
+    ``readout``        A :py:class:`~reservoirpy.nodes.Ridge` instance.
+    ================== =================================================================
+
+    :py:attr:`ESN.hypers` **list**:
+
+    ==================== ===============================================================
+    ``workers``          Number of workers for parallelization (1 by default).
+    ``backend``          :py:mod:`joblib` backend to use for parallelization  (``loky`` by default,).
+    ``reservoir_method`` Type of reservoir, may be "reservoir" or "nvar" ("reservoir" by default).
+    ``learning_method``  Type of readout, by default "ridge".
+    ``feedback``         Is readout connected to reservoir through feedback (False by default).
+    ==================== ===============================================================
+
+    Parameters
+    ----------
+    reservoir_method : {"reservoir", "nvar"}, default to "reservoir"
+        Type of reservoir, either a :py:class:`~reservoirpy.nodes.Reservoir` or
+        a :py:class:`~reservoirpy.nodes.NVAR`.
+    learning_method : {"ridge"}, default to "ridge"
+        Type of readout. The only method supporting parallelization for now is the
+        :py:class:`~reservoirpy.nodes.Ridge` readout.
+    reservoir : Node, optional
+        A Node instance to use as a reservoir,
+        such as a :py:class:`~reservoirpy.nodes.Reservoir` node.
+    readout : Node, optional
+        A Node instance to use as a readout,
+        such as a :py:class:`~reservoirpy.nodes.Ridge` node
+        (only this one is supported).
+    feedback : bool, default to False
+        If True, the reservoir is connected to the readout through
+        a feedback connection.
+    Win_bias : bool, default to True
+        If True, add an input bias to the reservoir.
+    Wout_bias : bool, default to True
+        If True, add a bias term to the reservoir states entering the readout.
+    workers : int, default to 1
+        Number of workers used for parallelization. If set to -1, all available workers
+        (threads or processes) are used.
+    backend : a :py:mod:`joblib` backend, default to "loky"
+        A parallelization backend.
+    name : str, optional
+        Node name.
+
+    See Also
+    --------
+    Reservoir
+    Ridge
+    NVAR
+
+    Example
+    -------
+
+    """
+
     def __init__(
         self,
         reservoir_method="reservoir",
         learning_method="ridge",
-        reservoir: GenericNode = None,
-        readout: GenericNode = None,
+        reservoir: _Node = None,
+        readout: _Node = None,
         feedback=False,
         Win_bias=True,
         Wout_bias=True,
@@ -140,9 +194,6 @@ class ESN(FrozenModel):
         self._trainable = True
         self._is_fb_initialized = False
 
-        # in case an external Model wants to initialize all buffers at once
-        self._buffers_initializer = intialize_buffers
-
     @property
     def is_trained_offline(self) -> bool:
         return True
@@ -164,61 +215,34 @@ class ESN(FrozenModel):
 
     def _call(self, x=None, return_states=None, *args, **kwargs):
 
-        if is_mapping(x):
-            data = x[self.reservoir.name]
-        else:
-            data = x
+        data = x[self.reservoir.name]
 
-        state = self.reservoir._call(data)
-        self.readout._call(state)
+        state = call(self.reservoir, data)
+        call(self.readout, state)
 
         state = {}
         if return_states == "all":
             for node in ["reservoir", "readout"]:
                 state[node] = getattr(self, node).state()
-        elif isinstance(return_states, Sequence):
+        elif isinstance(return_states, (list, tuple)):
             for name in return_states:
-                if name in self.node_names:
-                    state[name] = self[name].state()
-                elif name in ["reservoir", "readout"]:
-                    state[name] = getattr(self, name).state()
+                state[name] = getattr(self, name).state()
         else:
             state = self.readout.state()
 
         return state
 
-    def state(self, which="external"):
-        if which == "external":
-            return self.readout.state()
-        elif which == "internal":
+    def state(self, which="reservoir"):
+        if which == "reservoir":
             return self.reservoir.state()
+        elif which == "readout":
+            return self.readout.state()
         else:
             raise ValueError(
                 f"'which' parameter of {self.name} "
                 f"'state' function must be "
-                f"one of 'external' or 'internal'."
+                f"one of 'reservoir' or 'readout'."
             )
-
-    def initialize_feedback(self) -> "Node":
-        """Call the Node feedback initializer. The feedback initializer will
-        determine feedback dimension given some feedback signal, and intialize
-        all parameters related to the feedback connection.
-
-        Feedback sender Node must be initialized, as the feedback intializer
-        will probably call the :py:meth:`Node.feedback` method to get
-        a sample of feedback signal.
-
-        Returns
-        -------
-            Node
-                Initialized Node.
-        """
-        if self.feedback:
-            if not self.reservoir.is_fb_initialized:
-                empty_feedback = self.reservoir.zero_feedback()
-                self.reservoir._feedback_initializer(self.reservoir, empty_feedback)
-                self._is_fb_initialized = True
-        return self
 
     def run(
         self,
@@ -230,7 +254,6 @@ class ESN(FrozenModel):
         shift_fb=True,
         return_states=None,
     ):
-
         X = to_ragged_seq_set(X)
         if forced_feedbacks is not None:
             forced_feedbacks = to_ragged_seq_set(forced_feedbacks)
@@ -279,12 +302,6 @@ class ESN(FrozenModel):
 
     def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
 
-        if not self.readout.is_trained_offline:
-            raise TypeError(
-                f"Impossible to fit {self} offline: "
-                f"readout {self.readout} is not an offline node."
-            )
-
         X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
         self._initialize_on_sequence(X[0], Y[0])
 
@@ -307,14 +324,14 @@ class ESN(FrozenModel):
                 self._load_proxys()
 
                 with self.readout.with_feedback(forced_feedback[self.readout.name]):
-                    states[i, :] = self.reservoir._call(x[self.reservoir.name])
+                    states[i, :] = call(self.reservoir, x[self.reservoir.name])
 
             self._clean_proxys()
 
             # Avoid any problem related to multiple
             # writes from multiple processes
             if lock is not None:
-                with lock:
+                with lock:  # pragma: no cover
                     self.readout.partial_fit(states, y)
             else:
                 self.readout.partial_fit(states, y)
@@ -326,8 +343,9 @@ class ESN(FrozenModel):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 parallel(delayed(run_partial_fit_fn)(x, y) for x, y in zip(seq, Y))
 
-            if verbosity():
+            if verbosity():  # pragma: no cover
                 print(f"Fitting node {self.name}...")
+
             self.readout.fit()
 
         return self
