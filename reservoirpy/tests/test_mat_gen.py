@@ -139,7 +139,7 @@ def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
         ((50, 50), np.float64, "csr", {"dist": "norm", "connectivity": 0.1}, "sparse"),
         ((50, 50), np.float32, "csc", {"dist": "norm", "connectivity": 0.1}, "sparse"),
         ((50, 50), np.int64, "coo", {"dist": "norm", "connectivity": 0.1}, "sparse"),
-        ((50, 50), np.float, "dense", {"dist": "norm", "connectivity": 0.1}, "dense"),
+        ((50, 50), float, "dense", {"dist": "norm", "connectivity": 0.1}, "dense"),
     ],
 )
 def test_random_sparse_types(shape, dtype, sparsity_type, kwargs, expects):
@@ -248,7 +248,8 @@ def test_zeros():
 )
 def test_generate_inputs_shape(N, dim_input, input_bias, expected):
 
-    Win = generate_input_weights(N, dim_input, input_bias=input_bias)
+    with pytest.warns(DeprecationWarning):
+        Win = generate_input_weights(N, dim_input, input_bias=input_bias)
 
     assert Win.shape == expected
 
@@ -261,35 +262,40 @@ def test_generate_inputs_shape(N, dim_input, input_bias, expected):
     ],
 )
 def test_generate_inputs_shape_exception(N, dim_input, input_bias):
-    with pytest.raises(ValueError):
-        generate_input_weights(N, dim_input, input_bias=input_bias)
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(ValueError):
+            generate_input_weights(N, dim_input, input_bias=input_bias)
 
 
 @pytest.mark.parametrize("proba,iss", [(0.1, 0.1), (1.0, 0.5), (0.5, 2.0)])
 def test_generate_inputs_features(proba, iss):
 
-    Win = generate_input_weights(100, 20, input_scaling=iss, proba=proba, seed=1234)
-    Win_noiss = generate_input_weights(
-        100, 20, input_scaling=1.0, proba=proba, seed=1234
-    )
+    with pytest.warns(DeprecationWarning):
+        Win = generate_input_weights(100, 20, input_scaling=iss, proba=proba, seed=1234)
 
-    if sparse.issparse(Win):
-        result_proba = np.count_nonzero(Win.toarray()) / Win.toarray().size
-    else:
-        result_proba = np.count_nonzero(Win) / Win.size
+        with pytest.warns(DeprecationWarning):
+            Win_noiss = generate_input_weights(
+                100, 20, input_scaling=1.0, proba=proba, seed=1234
+            )
 
-    assert_allclose(result_proba, proba, rtol=1e-2)
+            if sparse.issparse(Win):
+                result_proba = np.count_nonzero(Win.toarray()) / Win.toarray().size
+            else:
+                result_proba = np.count_nonzero(Win) / Win.size
 
-    if sparse.issparse(Win):
-        assert_allclose(Win.toarray() / iss, Win_noiss.toarray(), rtol=1e-4)
-    else:
-        assert_allclose(Win / iss, Win_noiss, rtol=1e-4)
+            assert_allclose(result_proba, proba, rtol=1e-2)
+
+            if sparse.issparse(Win):
+                assert_allclose(Win.toarray() / iss, Win_noiss.toarray(), rtol=1e-4)
+            else:
+                assert_allclose(Win / iss, Win_noiss, rtol=1e-4)
 
 
 @pytest.mark.parametrize("proba,iss", [(-1, "foo"), (5, 1.0)])
 def test_generate_inputs_features_exception(proba, iss):
-    with pytest.raises(Exception):
-        generate_input_weights(100, 20, input_scaling=iss, proba=proba)
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(Exception):
+            generate_input_weights(100, 20, input_scaling=iss, proba=proba)
 
 
 @pytest.mark.parametrize(
@@ -298,9 +304,11 @@ def test_generate_inputs_features_exception(proba, iss):
 def test_generate_internal_shape(N, expected):
     if expected is Exception:
         with pytest.raises(expected):
-            generate_internal_weights(N)
+            with pytest.warns(DeprecationWarning):
+                generate_internal_weights(N)
     else:
-        W = generate_internal_weights(N)
+        with pytest.warns(DeprecationWarning):
+            W = generate_internal_weights(N)
         assert W.shape == expected
 
 
@@ -313,38 +321,47 @@ def test_generate_internal_shape(N, expected):
 )
 def test_generate_internal_features(sr, proba):
 
-    W = generate_internal_weights(
-        100, sr=sr, proba=proba, seed=1234, sparsity_type="dense"
-    )
+    with pytest.warns(DeprecationWarning):
+        W = generate_internal_weights(
+            100, sr=sr, proba=proba, seed=1234, sparsity_type="dense"
+        )
 
-    assert_allclose(max(abs(linalg.eig(W)[0])), sr)
-    assert_allclose(np.sum(W != 0.0) / W.size, proba)
+        assert_allclose(max(abs(linalg.eig(W)[0])), sr)
+        assert_allclose(np.sum(W != 0.0) / W.size, proba)
 
 
 @pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (2.0, 1.0)])
 def test_generate_internal_sparse(sr, proba):
 
-    W = generate_internal_weights(100, sr=sr, proba=proba, sparsity_type="csr", seed=42)
+    with pytest.warns(DeprecationWarning):
+        W = generate_internal_weights(
+            100, sr=sr, proba=proba, sparsity_type="csr", seed=42
+        )
 
-    rho = max(
-        abs(
-            sparse.linalg.eigs(
-                W, k=1, which="LM", maxiter=20 * W.shape[0], return_eigenvectors=False
+        rho = max(
+            abs(
+                sparse.linalg.eigs(
+                    W,
+                    k=1,
+                    which="LM",
+                    maxiter=20 * W.shape[0],
+                    return_eigenvectors=False,
+                )
             )
         )
-    )
-    assert_allclose(rho, sr)
+        assert_allclose(rho, sr)
 
-    if sparse.issparse(W):
-        assert_allclose(np.sum(W.toarray() != 0.0) / W.toarray().size, proba)
-    else:
-        assert_allclose(np.sum(W != 0.0) / W.size, proba)
+        if sparse.issparse(W):
+            assert_allclose(np.sum(W.toarray() != 0.0) / W.toarray().size, proba)
+        else:
+            assert_allclose(np.sum(W != 0.0) / W.size, proba)
 
 
 @pytest.mark.parametrize("sr,proba", [(1, -0.5), (1, 12), ("foo", 0.1)])
 def test_generate_internal_features_exception(sr, proba):
-    with pytest.raises(Exception):
-        generate_internal_weights(100, sr=sr, proba=proba)
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(Exception):
+            generate_internal_weights(100, sr=sr, proba=proba)
 
 
 @pytest.mark.parametrize(
@@ -361,7 +378,7 @@ def test_fast_spectral_shape(N, expected):
 
 @pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (10.0, 0.5), (1.0, 1.0), (1.0, 0.0)])
 def test_fast_spectral_features(sr, proba):
-    W = fast_spectral_initialization(1000, sr=sr, proba=proba, seed=1234)
+    W = fast_spectral_initialization(1000, sr=sr, connectivity=proba, seed=1234)
 
     if sparse.issparse(W):
         rho = max(
@@ -396,28 +413,31 @@ def test_fast_spectral_features(sr, proba):
 @pytest.mark.parametrize("sr,proba", [(1, -0.5), (1, 12), ("foo", 0.1)])
 def test_fast_spectral_features_exception(sr, proba):
     with pytest.raises(Exception):
-        fast_spectral_initialization(100, sr=sr, proba=proba)
+        fast_spectral_initialization(100, sr=sr, connectivity=proba)
 
     with pytest.raises(ValueError):
-        fast_spectral_initialization(100, input_scaling=10.0, proba=proba)
+        fast_spectral_initialization(100, input_scaling=10.0, connectivity=proba)
 
 
 def test_reproducibility_W():
 
     seed0 = default_rng(78946312)
-    W0 = generate_internal_weights(
-        N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed0
-    ).toarray()
+    with pytest.warns(DeprecationWarning):
+        W0 = generate_internal_weights(
+            N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed0
+        ).toarray()
 
     seed1 = default_rng(78946312)
-    W1 = generate_internal_weights(
-        N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed1
-    ).toarray()
+    with pytest.warns(DeprecationWarning):
+        W1 = generate_internal_weights(
+            N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed1
+        ).toarray()
 
     seed2 = default_rng(6135435)
-    W2 = generate_internal_weights(
-        N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed2
-    ).toarray()
+    with pytest.warns(DeprecationWarning):
+        W2 = generate_internal_weights(
+            N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed2
+        ).toarray()
 
     assert_array_almost_equal(W0, W1)
     assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
@@ -426,13 +446,16 @@ def test_reproducibility_W():
 def test_reproducibility_Win():
 
     seed0 = default_rng(78946312)
-    W0 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed0)
+    with pytest.warns(DeprecationWarning):
+        W0 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed0)
 
     seed1 = default_rng(78946312)
-    W1 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed1)
+    with pytest.warns(DeprecationWarning):
+        W1 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed1)
 
     seed2 = default_rng(6135435)
-    W2 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed2)
+    with pytest.warns(DeprecationWarning):
+        W2 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed2)
 
     assert_allclose(W0.toarray(), W1.toarray())
 
@@ -443,13 +466,19 @@ def test_reproducibility_Win():
 def test_reproducibility_fsi():
 
     seed0 = default_rng(78946312)
-    W0 = fast_spectral_initialization(N=100, sr=1.2, proba=0.4, seed=seed0).toarray()
+    W0 = fast_spectral_initialization(
+        100, sr=1.2, connectivity=0.4, seed=seed0
+    ).toarray()
 
     seed1 = default_rng(78946312)
-    W1 = fast_spectral_initialization(N=100, sr=1.2, proba=0.4, seed=seed1).toarray()
+    W1 = fast_spectral_initialization(
+        100, sr=1.2, connectivity=0.4, seed=seed1
+    ).toarray()
 
     seed2 = default_rng(6135435)
-    W2 = fast_spectral_initialization(N=100, sr=1.2, proba=0.4, seed=seed2).toarray()
+    W2 = fast_spectral_initialization(
+        100, sr=1.2, connectivity=0.4, seed=seed2
+    ).toarray()
 
     assert_array_almost_equal(W0, W1)
     assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
