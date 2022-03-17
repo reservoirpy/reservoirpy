@@ -38,17 +38,58 @@ seed.
 Example
 =======
 
-Here, we generate a 1000 units reservoir `W` with a spectral radius of 0.5,
-connected to 5 inputs by the `W_in` matrix, with an input scaling of 0.9.
+Random sparse matrix initializer from uniform distribution,
+with spectral radius to 0.9 and connectivity of 0.1.
+
+Matrix creation can be delayed...
 
 .. ipython:: python
 
-    from reservoirpy.mat_gen import fast_spectral_initialization
-    from reservoirpy.mat_gen import generate_input_weights
+    from reservoirpy.mat_gen import random_sparse
 
-    W = fast_spectral_initialization(1000, sr=0.5)
-    Win = generate_input_weights(1000, 5, input_scaling=0.9)
-    print(W.shape, Win.shape)
+    initializer = random_sparse(dist="uniform", sr=0.9, connectivity=0.1)
+    matrix = initializer(100, 100)
+    print(type(matrix), "\\n", matrix[:5, :5])
+
+...or can be performed right away.
+
+.. ipython:: python
+
+    matrix = random_sparse(100, 100, dist="uniform", sr=0.9, connectivity=0.1)
+    print(type(matrix), "\\n", matrix[:5, :5])
+
+Dense matrix from Gaussian distribution,
+with mean of 0 and variance of 0.5:
+
+.. ipython:: python
+
+    from reservoirpy.mat_gen import normal
+
+    matrix = normal(50, 100, loc=0, scale=0.5)
+    print(type(matrix), "\\n", matrix[:5, :5])
+
+Sparse matrix from uniform distribution in [-0.5, 0.5],
+with connectivity of 0.9 and input_scaling of 0.3:
+
+.. ipython:: python
+
+    from reservoirpy.mat_gen import uniform
+
+    matrix = uniform(200, 60, low=0.5, high=0.5, connectivity=0.9, input_scaling=0.3)
+    print(type(matrix), "\\n", matrix[:5, :5])
+
+Sparse matrix from a Bernoulli random variable
+giving 1 with probability p and -1 with probability 1-p,
+with p=0.5 (by default) with connectivity of 0.2
+and fixed seed, in Numpy format:
+
+.. ipython:: python
+
+    from reservoirpy.mat_gen import bernoulli
+
+    matrix = bernoulli(10, 60, connectivity=0.2, sparsity_type="dense")
+    print(type(matrix), "\\n", matrix[:5, :5])
+
 
 References
 ==========
@@ -58,12 +99,11 @@ References
            Neural Networks’, in Recent Advances in Big Data and
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
-
 """
 import copy
 import warnings
 from functools import partial
-from typing import Callable, Union
+from typing import Callable, Iterable, Union
 
 import numpy as np
 from numpy.random import Generator
@@ -71,7 +111,7 @@ from scipy import sparse, stats
 from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
 
 from .observables import spectral_radius
-from .types import global_dtype
+from .type import global_dtype
 from .utils.random import rand_generator
 
 __all__ = [
@@ -161,6 +201,13 @@ class Initializer:
         self._autorize_rescaling = autorize_rescaling
 
         self.__doc__ = func.__doc__
+        self.__annotations__ = func.__annotations__
+        if self._autorize_sr:
+            self.__annotations__.update({"sr": float})
+        if self._autorize_input_scaling:
+            self.__annotations__.update(
+                {"input_scaling": Union[float, Iterable[float]]}
+            )
 
     def __repr__(self):
         split = super().__repr__().split(" ")
@@ -335,12 +382,12 @@ def _scale_inputs(w_init, shape, input_scaling, **kwargs):
 
 
 def _random_sparse(
-    *shape,
-    dist,
-    connectivity=1.0,
-    dtype=global_dtype,
-    sparsity_type="csr",
-    seed=None,
+    *shape: int,
+    dist: str,
+    connectivity: float = 1.0,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    seed: Union[int, np.random.Generator] = None,
     **kwargs,
 ):
     """Create a random matrix.
@@ -407,6 +454,11 @@ def _random_sparse(
             dtype=dtype,
         )
 
+    # sparse.random may return np.matrix if format="dense".
+    # Only ndarray are supported though, hence the explicit cast.
+    if type(matrix) is np.matrix:
+        matrix = np.asarray(matrix)
+
     return matrix
 
 
@@ -414,13 +466,13 @@ random_sparse = Initializer(_random_sparse)
 
 
 def _uniform(
-    *shape,
-    low=-1,
-    high=1,
-    connectivity=1.0,
-    dtype=global_dtype,
-    sparsity_type="csr",
-    seed=None,
+    *shape: int,
+    low: float = -1.0,
+    high: float = 1.0,
+    connectivity: float = 1.0,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    seed: Union[int, np.random.Generator] = None,
 ):
     """Create an array with uniformly distributed values.
 
@@ -472,13 +524,13 @@ uniform = Initializer(_uniform)
 
 
 def _normal(
-    *shape,
-    loc=0.0,
-    scale=1.0,
-    connectivity=1.0,
-    dtype=global_dtype,
-    sparsity_type="csr",
-    seed=None,
+    *shape: int,
+    loc: float = 0.0,
+    scale: float = 1.0,
+    connectivity: float = 1.0,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    seed: Union[int, np.random.Generator] = None,
 ):
     """Create an array with values distributed following a Gaussian distribution.
 
@@ -528,7 +580,12 @@ normal = Initializer(_normal)
 
 
 def _bernoulli(
-    *shape, p=0.5, connectivity=1.0, dtype=global_dtype, sparsity_type="csr", seed=None
+    *shape: int,
+    p: float = 0.5,
+    connectivity: float = 1.0,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    seed: Union[int, np.random.Generator] = None,
 ):
     """Create an array with values equal to either 1 or -1. Probability of success
     (to obtain 1) is equal to p.
@@ -579,7 +636,7 @@ def _bernoulli(
 bernoulli = Initializer(_bernoulli)
 
 
-def _ones(*shape, dtype=global_dtype):
+def _ones(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     """Create an array filled with 1.
 
     Parameters
@@ -607,7 +664,7 @@ def _ones(*shape, dtype=global_dtype):
 ones = Initializer(_ones)
 
 
-def _zeros(*shape, dtype=global_dtype):
+def _zeros(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     """Create an array filled with 0.
 
     Parameters
@@ -640,13 +697,13 @@ zeros = Initializer(_zeros, autorize_sr=False)
 
 
 def _fast_spectral_initialization(
-    N,
+    N: int,
     *args,
-    connectivity=1.0,
-    sr=None,
-    dtype=global_dtype,
-    sparsity_type="csr",
-    seed=None,
+    sr: float = None,
+    connectivity: float = 1.0,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    seed: Union[int, np.random.Generator] = None,
 ):
     """Fast spectral radius (FSI) approach for weights
     initialization [1]_ of square matrices.
@@ -750,7 +807,7 @@ def _generate_internal_weights(
     Parameters
     ----------
     N : int, optional
-        Shape :math:`N \times N` of the array.
+        Shape :math:`N \\times N` of the array.
         This function only builds square matrices.
     dist: str, default to "norm"
         A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
