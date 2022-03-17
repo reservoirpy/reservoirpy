@@ -23,7 +23,6 @@ Nodes
 
   Add - Add two vectors.
   BatchFORCE - Fast implementation of FORCE algorithm.
-  IPReservoir - Reservoir with Intrinsic Plasticity learning.
   RandomChoice - Randomly select features in a vector of data.
   AsabukiNorm - Normalization as defined in Asabuki et al. (2018)
 """
@@ -32,6 +31,5 @@ Nodes
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from .add import Add
 from .batchforce import BatchFORCE
-from .ip import IPReservoir
 from .norm import AsabukiNorm
 from .randomchoice import RandomChoice
