@@ -20,6 +20,7 @@ sphinx-panels = "*"
 Sphinx = "*"
 sphinx-autobuild = "*"
 hyperopt = "*"
+scikit-learn = "*"
 
 [dev-packages]
 
