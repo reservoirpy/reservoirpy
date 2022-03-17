@@ -23,7 +23,6 @@ reservoirpy.nodes.Concat
       ~Concat.initialize
       ~Concat.initialize_buffers
       ~Concat.initialize_feedback
-      ~Concat.link
       ~Concat.link_feedback
       ~Concat.partial_fit
       ~Concat.reset

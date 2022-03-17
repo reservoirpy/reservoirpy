@@ -23,7 +23,6 @@ reservoirpy.nodes.Ridge
       ~Ridge.initialize
       ~Ridge.initialize_buffers
       ~Ridge.initialize_feedback
-      ~Ridge.link
       ~Ridge.link_feedback
       ~Ridge.partial_fit
       ~Ridge.reset

@@ -23,7 +23,6 @@ reservoirpy.nodes.Softmax
       ~Softmax.initialize
       ~Softmax.initialize_buffers
       ~Softmax.initialize_feedback
-      ~Softmax.link
       ~Softmax.link_feedback
       ~Softmax.partial_fit
       ~Softmax.reset

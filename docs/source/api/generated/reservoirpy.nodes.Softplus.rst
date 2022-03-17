@@ -23,7 +23,6 @@ reservoirpy.nodes.Softplus
       ~Softplus.initialize
       ~Softplus.initialize_buffers
       ~Softplus.initialize_feedback
-      ~Softplus.link
       ~Softplus.link_feedback
       ~Softplus.partial_fit
       ~Softplus.reset

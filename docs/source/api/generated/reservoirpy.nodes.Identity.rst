@@ -23,7 +23,6 @@ reservoirpy.nodes.Identity
       ~Identity.initialize
       ~Identity.initialize_buffers
       ~Identity.initialize_feedback
-      ~Identity.link
       ~Identity.link_feedback
       ~Identity.partial_fit
       ~Identity.reset

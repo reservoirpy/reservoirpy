@@ -12,6 +12,8 @@ ReservoirPy API reference
    reservoirpy.model
    reservoirpy.nodes
    reservoirpy.mat_gen
+   reservoirpy.activationsfunc
+   reservoirpy.observables
    reservoirpy.datasets
    reservoirpy.hyper
    reservoirpy.compat

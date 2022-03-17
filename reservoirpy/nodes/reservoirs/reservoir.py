@@ -6,12 +6,12 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
-from ..activationsfunc import identity, tanh
-from ..mat_gen import bernoulli, normal, zeros
-from ..node import Node
-from ..types import Weights
-from ..utils.random import noise
-from ..utils.validation import is_array
+from ...activationsfunc import identity, tanh
+from ...mat_gen import bernoulli, normal, zeros
+from ...node import Node
+from ...type import Weights
+from ...utils.random import noise
+from ...utils.validation import is_array
 
 
 def _reservoir_kernel(reservoir, u, r):
@@ -39,7 +39,7 @@ def _reservoir_kernel(reservoir, u, r):
 
         pre_s += Wfb @ y
 
-    return pre_s
+    return np.array(pre_s)
 
 
 def forward_internal(reservoir: "Reservoir", x: np.ndarray) -> np.ndarray:

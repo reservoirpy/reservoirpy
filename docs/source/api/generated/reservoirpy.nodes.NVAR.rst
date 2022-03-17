@@ -23,7 +23,6 @@ reservoirpy.nodes.NVAR
       ~NVAR.initialize
       ~NVAR.initialize_buffers
       ~NVAR.initialize_feedback
-      ~NVAR.link
       ~NVAR.link_feedback
       ~NVAR.partial_fit
       ~NVAR.reset

@@ -23,7 +23,6 @@ reservoirpy.nodes.Tanh
       ~Tanh.initialize
       ~Tanh.initialize_buffers
       ~Tanh.initialize_feedback
-      ~Tanh.link
       ~Tanh.link_feedback
       ~Tanh.partial_fit
       ~Tanh.reset
