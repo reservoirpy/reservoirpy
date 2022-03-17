@@ -10,9 +10,10 @@ from joblib import Parallel, delayed
 from numpy.random import Generator, SeedSequence, default_rng
 from tqdm import tqdm
 
-from ..types import Activation, Data, Weights
-from ..utils.parallel import ParallelProgressQueue, get_joblib_backend, parallelize
+from ..type import Activation, Data, Weights
+from ..utils.parallel import get_joblib_backend
 from ..utils.validation import add_bias
+from .utils.parallel import ParallelProgressQueue, parallelize
 from .utils.save import _save
 from .utils.validation import check_input_lists, check_reservoir_matrices
 

@@ -9,10 +9,10 @@ from typing import Callable, Sequence
 
 import numpy as np
 
-from ..types import Activation, Data
-from ..utils.parallel import parallelize
+from ..type import Activation, Data
 from ._base import _ESNBase
 from .regression_models import RidgeRegression
+from .utils.parallel import parallelize
 from .utils.validation import _check_values, check_input_lists
 
 
