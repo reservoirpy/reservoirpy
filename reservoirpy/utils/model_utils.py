@@ -40,15 +40,12 @@ def _dist_states_to_next_subgraph(states, relations):
     return dist_states
 
 
-def _allocate_returned_states(model, inputs=None, return_states=None):
+def _allocate_returned_states(model, inputs, return_states=None):
 
-    if inputs is not None:
-        if is_mapping(inputs):
-            seq_len = inputs[list(inputs.keys())[0]].shape[0]
-        else:
-            seq_len = inputs.shape[0]
+    if is_mapping(inputs):
+        seq_len = inputs[list(inputs.keys())[0]].shape[0]
     else:
-        raise ValueError("'X' and 'n' parameters can't be None at the same time.")
+        seq_len = inputs.shape[0]
 
     # pre-allocate states
     if return_states == "all":

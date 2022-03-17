@@ -6,9 +6,9 @@ from typing import Dict, List
 
 import numpy as np
 
-from ._base import _Node
-from .utils import safe_defaultdict_copy
-from .utils.validation import is_mapping
+from .._base import _Node
+from . import safe_defaultdict_copy
+from .validation import is_mapping
 
 DataPoint = namedtuple("DataPoint", "x, y")
 
