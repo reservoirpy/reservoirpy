@@ -71,8 +71,8 @@ def test_node_link_feedback(plus_node, minus_node):
 
     fb_plus_node = plus_node << minus_node
 
-    assert id(fb_plus_node._feedback) == id(minus_node)
+    assert id(fb_plus_node._feedback._sender) == id(minus_node)
     assert plus_node._feedback is None
 
     plus_node <<= minus_node
-    assert id(plus_node._feedback) == id(minus_node)
+    assert id(plus_node._feedback._sender) == id(minus_node)

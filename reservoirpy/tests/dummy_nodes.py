@@ -266,6 +266,31 @@ class OnlineNode(Node):
         )
 
 
+def multi_forward(node, data):
+    return np.concatenate(data, axis=1)
+
+
+def multi_init(node, x=None, **kwargs):
+    if x is not None:
+        if isinstance(x, np.ndarray):
+            node.set_input_dim(x.shape[1])
+            node.set_output_dim(x.shape[1])
+        elif hasattr(x, "__iter__"):
+            result = multi_forward(node, x)
+            node.set_input_dim(tuple([u.shape[1] for u in x]))
+            if result.shape[0] > 1:
+                node.set_output_dim(result.shape)
+            else:
+                node.set_output_dim(result.shape[1])
+
+
+class MultiInput(Node):
+    def __init__(self, **kwargs):
+        super(MultiInput, self).__init__(
+            forward=multi_forward, initializer=multi_init, **kwargs
+        )
+
+
 def clean_registry(node_class):
     node_class._registry = []
     node_class._factory_id = -1
@@ -329,3 +354,9 @@ def online_node():
 def basic_offline_node():
     clean_registry(BasicOffline)
     return BasicOffline()
+
+
+@pytest.fixture(scope="function")
+def multiinput():
+    clean_registry(MultiInput)
+    return MultiInput()
