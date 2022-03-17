@@ -49,6 +49,7 @@ import numpy as np
 from scipy import sparse
 
 from ..activationsfunc import identity
+from ..mat_gen import zeros
 from ..nodes import ESN as ESN_v3
 from ..nodes import Reservoir, Ridge
 from . import regression_models
@@ -125,8 +126,8 @@ def load_compat(directory: Union[str, pathlib.Path]) -> ESN_v3:
 
     Returns
     -------
-        reservoirpy.nodes.ESN
-            A ReservoirPy v0.3 ESN instance.
+    reservoirpy.nodes.ESN
+        A ReservoirPy v0.3 ESN instance.
     """
     dirpath = pathlib.Path(directory)
     if not dirpath.exists():
@@ -173,7 +174,17 @@ def load_compat(directory: Union[str, pathlib.Path]) -> ESN_v3:
         seed=attr.get("seed"),
     )
 
-    readout = Ridge(output_dim=output_dim, ridge=ridge, Wout=matrices.get("Wout"))
+    W = matrices.get("Wout")
+    if W is None:
+        Wout = zeros
+        bias = zeros
+    else:
+        Wout = W[:, 1:]
+        bias = W[:, :1]
+
+    readout = Ridge(
+        output_dim=output_dim, ridge=ridge, Wout=Wout, bias=bias, input_bias=True
+    )
 
     model = ESN_v3(reservoir=reservoir, readout=readout, feedback=feedback)
 
