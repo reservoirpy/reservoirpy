@@ -1,10 +1,33 @@
+"""
+===========================================================
+Metrics and observables (:py:mod:`reservoirpy.observables`)
+===========================================================
+
+Metrics and observables for Reservoir Computing:
+
+.. autosummary::
+   :toctree: generated/
+
+    spectral_radius
+    mse
+    rmse
+    nrmse
+    rsquare
+"""
+# Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from typing import Literal
+
 import numpy as np
 from scipy import linalg
 from scipy.sparse import issparse
 from scipy.sparse.linalg import eigs
 
+from .type import Weights
 
-def spectral_radius(W, maxiter: int = None) -> float:
+
+def spectral_radius(W: Weights, maxiter: int = None) -> float:
     """Compute the spectral radius of a matrix `W`.
 
     Spectral radius is defined as the maximum absolute
@@ -12,13 +35,13 @@ def spectral_radius(W, maxiter: int = None) -> float:
 
     Parameters
     ----------
-    W : numpy.ndarray or scipy.sparse matrix
+    W : array-like (sparse or dense) of shape (N, N)
         Matrix from which the spectral radius will
         be computed.
 
     maxiter : int, optional
         Maximum number of Arnoldi update iterations allowed.
-        By default, equal to `W.shape[0] * 20`.
+        By default, is equal to `W.shape[0] * 20`.
         See `Scipy documentation <https://docs.scipy.org/
         doc/scipy/reference/generated/scipy.sparse.linalg.eigs.html>`_
         for more informations.
@@ -39,7 +62,6 @@ def spectral_radius(W, maxiter: int = None) -> float:
         parameter to an higher value. Be warned that
         this may drastically increase the computation
         time.
-
     """
     if issparse(W):
         if maxiter is None:
@@ -52,15 +74,85 @@ def spectral_radius(W, maxiter: int = None) -> float:
     return max(abs(linalg.eig(W)[0]))
 
 
-def mse(y_true, y_pred):
-    return np.mean((np.asanyarray(y_true) - np.asanyarray(y_pred)) ** 2)
+def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Mean squared error metric:
+
+    .. math::
+
+        \\frac{\\sum_{i=0}^{N-1} (y_i - \\hat{y}_i)^2}{N}
+
+    Parameters
+    ----------
+    y_true : array-like of shape (N, features)
+        Ground truth values.
+    y_pred : array-like of shape (N, features)
+        Predicted values.
+
+    Returns
+    -------
+    float
+        Mean squared error.
+    """
+    return float(np.mean((np.asanyarray(y_true) - np.asanyarray(y_pred)) ** 2))
 
 
-def rmse(y_true, y_pred):
+def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Root mean squared error metric:
+
+    .. math::
+
+        \\sqrt{\\frac{\\sum_{i=0}^{N-1} (y_i - \\hat{y}_i)^2}{N}}
+
+    Parameters
+    ----------
+    y_true : array-like of shape (N, features)
+        Ground truth values.
+    y_pred : array-like of shape (N, features)
+        Predicted values.
+
+    Returns
+    -------
+    float
+        Root mean squared error.
+    """
     return np.sqrt(mse(y_true, y_pred))
 
 
-def nrmse(y_true, y_pred, norm="minmax", norm_value=None):
+def nrmse(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    norm: Literal["minmax", "var", "mean", "q1q3"] = "minmax",
+    norm_value: float = None,
+) -> float:
+    """Normalized mean squared error metric:
+
+    .. math::
+
+       \\frac{1}{\\lambda} * \\sqrt{\\frac{\\sum_{i=0}^{N-1} (y_i - \\hat{y}_i)^2}{N}}
+
+    where :math:`\\lambda` may be:
+        - :math:`\\max y - \\min y` (Peak-to-peak amplitude) if ``norm="minmax"``;
+        - :math:`\\mathrm{Var}(y)` (variance over time) if ``norm="var"``;
+        - :math:`\\mathbb{E}[y]` (mean over time) if ``norm="mean"``;
+        - :math:`Q_{3}(y) - Q_{1}(y)` (quartiles) if ``norm="q1q3"``;
+        - or any value passed to ``norm_value``.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (N, features)
+        Ground truth values.
+    y_pred : array-like of shape (N, features)
+        Predicted values.
+    norm : {"minmax", "var", "mean", "q1q3"}, default to "minmax"
+        Normalization method.
+    norm_value : float, optional
+        A normalization factor. If set, will override the ``norm`` parameter.
+
+    Returns
+    -------
+    float
+        Normalized mean squared error.
+    """
     error = rmse(y_true, y_pred)
     if norm_value is not None:
         return error / norm_value
@@ -82,7 +174,28 @@ def nrmse(y_true, y_pred, norm="minmax", norm_value=None):
             return error / norms[norm](np.asarray(y_true))
 
 
-def rsquare(y_true, y_pred):
+def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Coefficient of determination :math:`R^2`:
+
+    .. math::
+
+        1 - \\frac{\\sum^{N-1}_{i=0} (y - \\hat{y})^2}
+        {\\sum^{N-1}_{i=0} (y - \\bar{y})^2}
+
+    where :math:`\\bar{y}` is the mean value of ground truth.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (N, features)
+        Ground truth values.
+    y_pred : array-like of shape (N, features)
+        Predicted values.
+
+    Returns
+    -------
+    float
+        Coefficient of determination.
+    """
     d = (np.asarray(y_true) - np.asarray(y_pred)) ** 2
     D = (np.asarray(y_true) - np.asarray(y_true).mean()) ** 2
     return 1 - np.sum(d) / np.sum(D)
