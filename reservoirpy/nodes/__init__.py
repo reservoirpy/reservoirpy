@@ -14,6 +14,7 @@ Reservoirs
 
    Reservoir - Recurrent pool of leaky integrator neurons
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
+   IPReservoir - Reservoir with intrinsic plasticy learning rule
 
 Readouts
 ========
@@ -24,6 +25,15 @@ Readouts
 
    Ridge - Layer of neurons connected through offline linear regression.
    FORCE - Layer of neurons connected through online FORCE learning.
+
+Optimized ESN
+=============
+
+.. autosummary::
+   :toctree: generated/
+   :template: autosummary/class.rst
+
+   ESN - Echo State Network model with distributed offline learning.
 
 Activation functions
 ====================
@@ -57,17 +67,6 @@ Operators
    :template: autosummary/class.rst
 
    Concat - Concatenate vector of data along feature axis.
-
-
-Optimized ESN
-=============
-
-.. autosummary
-   :toctree: generated/
-   :template: autosummary/class.rst
-
-   ESN - Echo State Network model with distributed offline learning.
-
 """
 # Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
@@ -77,8 +76,7 @@ from .concat import Concat
 from .esn import ESN
 from .force import FORCE
 from .io import Input, Output
-from .nvar import NVAR
-from .reservoir import Reservoir
+from .reservoirs import NVAR, IPReservoir, Reservoir
 from .ridge import Ridge
 
 __all__ = [
@@ -96,4 +94,5 @@ __all__ = [
     "NVAR",
     "ESN",
     "Concat",
+    "IPReservoir",
 ]

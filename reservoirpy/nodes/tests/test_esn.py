@@ -3,6 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 import pytest
+from numpy.testing import assert_equal
 
 from reservoirpy import set_seed
 from reservoirpy.nodes import ESN, Reservoir, Ridge
@@ -24,6 +25,12 @@ def test_esn_init():
     res = esn.run(data)
 
     assert res.shape == (10000, 1)
+
+    with pytest.raises(ValueError):
+        esn = ESN(units=100, output_dim=1, learning_method="foo")
+
+    with pytest.raises(ValueError):
+        esn = ESN(units=100, output_dim=1, reservoir_method="foo")
 
 
 def test_esn_init_from_obj():
@@ -47,6 +54,32 @@ def test_esn_init_from_obj():
     assert res.shape == (10000, 1)
 
 
+def test_esn_states():
+    res = Reservoir(100, lr=0.8, sr=0.4, input_bias=False)
+    read = Ridge(1, ridge=1e-5)
+
+    esn = ESN(reservoir=res, readout=read)
+
+    data = np.ones((2, 10, 10))
+    out = esn.run(data, return_states="all")
+
+    assert out["reservoir"][0].shape == (10, 100)
+    assert out["readout"][0].shape == (10, 1)
+
+    out = esn.run(data, return_states=["reservoir"])
+
+    assert out["reservoir"][0].shape == (10, 100)
+
+    s_reservoir = esn.state()
+    assert_equal(s_reservoir, res.state())
+
+    s_readout = esn.state(which="readout")
+    assert_equal(s_readout, read.state())
+
+    with pytest.raises(ValueError):
+        esn.state(which="foo")
+
+
 def test_esn_feedback():
 
     esn = ESN(units=100, output_dim=5, lr=0.8, sr=0.4, ridge=1e-5, feedback=True)
@@ -64,7 +97,7 @@ def test_esn_feedback():
 
 def test_esn_parallel_fit_reproducibility():
 
-    for i in range(100):
+    for i in range(10):
         set_seed(45)
 
         esn = ESN(

@@ -4,11 +4,12 @@
 import numpy as np
 
 from ..node import Node
-from ..types import global_dtype
 from ..utils.validation import add_bias, check_vector
 
 
-def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
+def _initialize_readout(
+    readout, x=None, y=None, init_func=None, bias_init=None, bias=True
+):
 
     if x is not None:
 
@@ -28,34 +29,42 @@ def _initialize_readout(readout, x=None, y=None, init_func=None, bias=True):
         readout.set_input_dim(in_dim)
         readout.set_output_dim(out_dim)
 
-        if init_func is None:
-            init_func = np.zeros
-
         if callable(init_func):
-            if bias:
-                in_dim += 1
-
-            W = init_func((in_dim, out_dim), dtype=global_dtype)
-
+            W = init_func(in_dim, out_dim, dtype=readout.dtype)
         elif isinstance(init_func, np.ndarray):
-            W = init_func
-            W = W.reshape(readout.input_dim + int(bias), readout.output_dim)
+            W = (
+                check_vector(init_func, caller=readout)
+                .reshape(readout.input_dim, readout.output_dim)
+                .astype(readout.dtype)
+            )
         else:
             raise ValueError(
                 f"Data type {type(init_func)} not "
                 f"understood for matrix initializer "
-                f"'Wout_init'. It should be an array or "
+                f"'Wout'. It should be an array or "
                 f"a callable returning an array."
             )
 
         if bias:
-            Wout = W[1:, :]
-            bias = W[:1, :].reshape((1, out_dim))
+            if callable(bias_init):
+                bias = bias_init(1, out_dim, dtype=readout.dtype)
+            elif isinstance(bias_init, np.ndarray):
+                bias = (
+                    check_vector(bias_init)
+                    .reshape(1, readout.output_dim)
+                    .astype(readout.dtype)
+                )
+            else:
+                raise ValueError(
+                    f"Data type {type(bias_init)} not "
+                    f"understood for matrix initializer "
+                    f"'bias'. It should be an array or "
+                    f"a callable returning an array."
+                )
         else:
-            Wout = W
-            bias = np.zeros((1, out_dim))  # TODO: bias from callable
+            bias = np.zeros((1, out_dim), dtype=readout.dtype)
 
-        readout.set_param("Wout", Wout)
+        readout.set_param("Wout", W)
         readout.set_param("bias", bias)
 
 
@@ -80,7 +89,7 @@ def _prepare_inputs_for_learning(X=None, Y=None, bias=True, allow_reshape=False)
 
 
 def readout_forward(node: Node, x):
-    return (node.Wout.T @ x.T + node.bias.T).T
+    return (node.Wout.T @ x.reshape(-1, 1) + node.bias.T).T
 
 
 def _assemble_wout(Wout, bias, has_bias=True):

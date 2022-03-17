@@ -53,10 +53,10 @@ def test_ridge_partial_fit():
     assert node.bias.shape == (1, 10)
     assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
 
-    data = np.ones((10000, 100))
+    data = np.ones((100, 100))
     res = node.run(data)
 
-    assert res.shape == (10000, 10)
+    assert res.shape == (100, 10)
 
 
 def test_esn():
@@ -72,10 +72,10 @@ def test_esn():
     assert readout.Wout.shape == (100, 10)
     assert readout.bias.shape == (1, 10)
 
-    data = np.ones((10000, 100))
+    data = np.ones((100, 100))
     res = esn.run(data)
 
-    assert res.shape == (10000, 10)
+    assert res.shape == (100, 10)
 
 
 def test_ridge_feedback():
@@ -94,25 +94,27 @@ def test_ridge_feedback():
     assert readout.bias.shape == (1, 10)
     assert reservoir.Wfb.shape == (100, 10)
 
-    data = np.ones((10000, 100))
+    data = np.ones((100, 100))
     res = esn.run(data)
 
-    assert res.shape == (10000, 10)
+    assert res.shape == (100, 10)
 
 
 def test_hierarchical_esn():
 
+    reservoir1 = Reservoir(100, input_dim=5, name="h1")
     readout1 = Ridge(ridge=1e-8, name="r1")
-    reservoir1 = Reservoir(100)
+
+    reservoir2 = Reservoir(100, name="h2")
     readout2 = Ridge(ridge=1e-8, name="r2")
-    reservoir2 = Reservoir(100)
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
 
-    X, Y = np.ones((5, 200, 5)), {
-        "r1": np.ones((5, 200, 10)),
-        "r2": np.ones((5, 200, 3)),
+    X, Y = np.ones((1, 200, 5)), {
+        "r1": np.ones((1, 200, 10)),
+        "r2": np.ones((1, 200, 3)),
     }
+
     res = esn.fit(X, Y)
 
     assert readout1.Wout.shape == (100, 10)
@@ -124,7 +126,7 @@ def test_hierarchical_esn():
     assert reservoir1.Win.shape == (100, 5)
     assert reservoir2.Win.shape == (100, 10)
 
-    data = np.ones((10000, 5))
+    data = np.ones((100, 5))
     res = esn.run(data)
 
-    assert res.shape == (10000, 3)
+    assert res.shape == (100, 3)
