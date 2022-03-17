@@ -44,30 +44,27 @@ def henon_map(
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        a : float, optional
-            :math:`a` parameter of the system.
-            By default, equals to 1.4.
-        b : float, optional
-            :math:`b` parameter of the system.
-            By default, equals to 0.3.
-        x0 : list or numpy.ndarray, optional
-            Initial conditions of the system.
-            By default, equals to [0.0, 0.0].
+    n_timesteps : int
+        Number of timesteps to generate.
+    a : float, default to 1.4
+        :math:`a` parameter of the system.
+    b : float, default to 0.3
+        :math:`b` parameter of the system.
+    x0 : array-like of shape (2,), default to [0.0, 0.0]
+        Initial conditions of the system.
 
     Returns
     -------
-        numpy.ndarray :
-            Hénon map discrete timeseries.
+    array of shape (n_timesteps, 2)
+        Hénon map discrete timeseries.
 
     References
     ----------
-        .. [2] M. Hénon, ‘A two-dimensional mapping with a strange
-               attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
+    .. [2] M. Hénon, ‘A two-dimensional mapping with a strange
+           attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
 
-        .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
-               on Wikipédia
+    .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
+           on Wikipédia
 
     """
     states = np.zeros((n_timesteps, 2))
@@ -89,28 +86,26 @@ def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5) -> np.ndarra
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        r : float, optional
-            :math:`r` parameter of the system.
-            By default, equals to 3.9.
-        x0 : float, optional
-            Initial condition of the system.
-            By default, equals to 0.5.
+    n_timesteps : int
+        Number of timesteps to generate.
+    r : float, default to 3.9
+        :math:`r` parameter of the system.
+    x0 : float, default to 0.5
+        Initial condition of the system.
 
     Returns
     -------
-        numpy.ndarray :
-            Logistic map discrete timeseries.
+    array of shape (n_timesteps, 1)
+        Logistic map discrete timeseries.
 
     References
     ----------
-        .. [4] R. M. May, ‘Simple mathematical models with very
-               complicated dynamics’, Nature, vol. 261, no. 5560,
-               Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
+    .. [4] R. M. May, ‘Simple mathematical models with very
+           complicated dynamics’, Nature, vol. 261, no. 5560,
+           Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
 
-        .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
-               on Wikipédia
+    .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
+           on Wikipédia
     """
     if r > 0 and 0 < x0 < 1:
         X = np.zeros(n_timesteps)
@@ -145,42 +140,36 @@ def lorenz(
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        rho : float, optional
-            :math:`\\rho` parameter of the system.
-            By default, equals to 28.0.
-        sigma : float, optional
-            :math:`\\sigma` parameter of the system.
-            By default, equals to 10.0.
-        beta : float, optional
-            :math:`\\beta` parameter of the system.
-            By default, equals to :math:`\\frac{8}{3}`.
-        x0 : list or numpy.ndarray, optional
-            Initial conditions of the system.
-            By default, equals to [1.0, 1.0, 1.0].
-        h : float, optional
-            Controls the continuous time delta between two
-            discrete timesteps.
-            By default, equals to 0.03.
-        **kwargs:
-            Other parameters to pass to the `scipy.integrate.solve_ivp`
-            solver.
+    n_timesteps : int
+        Number of timesteps to generate.
+    rho : float, default to 28.0
+        :math:`\\rho` parameter of the system.
+    sigma : float, default to 10.0
+        :math:`\\sigma` parameter of the system.
+    beta : float, default to 8/3
+        :math:`\\beta` parameter of the system.
+    x0 : array-like of shape (3,), default to [1.0, 1.0, 1.0]
+        Initial conditions of the system.
+    h : float, default to 0.03
+        Time delta between two discrete timesteps.
+    **kwargs:
+        Other parameters to pass to the `scipy.integrate.solve_ivp`
+        solver.
 
     Returns
     -------
-    np.ndarray
+    array of shape (n_timesteps, 3)
         Lorenz attractor timeseries.
 
     References
     ----------
+    .. [6] E. N. Lorenz, ‘Deterministic Nonperiodic Flow’,
+           Journal of the Atmospheric Sciences, vol. 20, no. 2,
+           pp. 130–141, Mar. 1963,
+           doi: 10.1175/1520-0469(1963)020<0130:DNF>2.0.CO;2.
 
-        .. [6] E. N. Lorenz, ‘Deterministic Nonperiodic Flow’,
-               Journal of the Atmospheric Sciences, vol. 20, no. 2,
-               pp. 130–141, Mar. 1963,
-               doi: 10.1175/1520-0469(1963)020<0130:DNF>2.0.CO;2.
-        .. [7] `Lorenz system <https://en.wikipedia.org/wiki/Lorenz_system>`_
-               on Wikipedia.
+    .. [7] `Lorenz system <https://en.wikipedia.org/wiki/Lorenz_system>`_
+           on Wikipedia.
     """
 
     def lorenz_diff(t, state):
@@ -215,35 +204,29 @@ def mackey_glass(
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to compute.
-        tau : int, optional
-            Time delay :math:`\\tau` of Mackey-Glass equation.
-            By defaults, equals to 17. Other values can
-            change the choatic behaviour of the timeseries.
-        a : float, optional
-            :math:`a` parameter of the equation.
-            By default, equals to 0.2.
-        b : float, optional
-            :math:`b` parameter of the equation.
-            By default, equals to 0.1.
-        n : int, optional
-            :math:`n` parameter of the equation.
-            By default, equals to 10.
-        x0 : float, optional
-            Initial condition of the timeseries.
-            By default, equals to 1.2.
-        h : float, optional
-            Time delta for the Runge-Kuta method. Can be assimilated
-            to the number of discrete point computed per timestep.
-            By default, equals to 1.0.
-        seed : int or RandomState
-            Random state seed for reproducibility.
+    n_timesteps : int
+        Number of timesteps to compute.
+    tau : int, default to 17
+        Time delay :math:`\\tau` of Mackey-Glass equation.
+        By defaults, equals to 17. Other values can
+        change the choatic behaviour of the timeseries.
+    a : float, default to 0.2
+        :math:`a` parameter of the equation.
+    b : float, default to 0.1
+        :math:`b` parameter of the equation.
+    n : int, default to 10
+        :math:`n` parameter of the equation.
+    x0 : float, optional, default to 1.2
+        Initial condition of the timeseries.
+    h : float, default to 1.0
+        Time delta between two discrete timesteps.
+    seed : int or :py:class:`numpy.random.Generator`, optional
+        Random state seed for reproducibility.
 
     Returns
     -------
-        np.ndarray
-            Mackey-Glass timeseries.
+    array of shape (n_timesteps, 1)
+        Mackey-Glass timeseries.
 
     Note
     ----
@@ -259,14 +242,15 @@ def mackey_glass(
 
     References
     ----------
-        .. [8] M. C. Mackey and L. Glass, ‘Oscillation and chaos in
-               physiological
-               control systems’, Science, vol. 197, no. 4300, pp. 287–289,
-               Jul. 1977,
-               doi: 10.1126/science.267326.
-        .. [9] `Mackey-Glass equations
-                <https://en.wikipedia.org/wiki/Mackey-Glass_equations>`_
-                on Wikipedia.
+    .. [8] M. C. Mackey and L. Glass, ‘Oscillation and chaos in
+           physiological
+           control systems’, Science, vol. 197, no. 4300, pp. 287–289,
+           Jul. 1977,
+           doi: 10.1126/science.267326.
+
+    .. [9] `Mackey-Glass equations
+            <https://en.wikipedia.org/wiki/Mackey-Glass_equations>`_
+            on Wikipedia.
 
     """
     # a random state is needed as the method used to discretize
@@ -322,39 +306,34 @@ def multiscroll(
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        a : float, optional
-            :math:`a` parameter of the system.
-            By default, equals to 40.
-        b : float, optional
-            :math:`b` parameter of the system.
-            By default, equals to 3.
-        c : float, optional
-            :math:`c` parameter of the system.
-            By default, equals to 28`.
-        x0 : list or numpy.ndarray, optional
-            Initial conditions of the system.
-            By default, equals to [-0.1, 0.5, -0.6].
-        h : float, optional
-            Controls the continuous time delta between two
-            discrete timesteps.
-            By default, equals to 0.01.
+    n_timesteps : int
+        Number of timesteps to generate.
+    a : float, default to 40.0
+        :math:`a` parameter of the system.
+    b : float, default to 3.0
+        :math:`b` parameter of the system.
+    c : float, default to 28.0
+        :math:`c` parameter of the system.
+    x0 : array-like of shape (3,), default to [-0.1, 0.5, -0.6]
+        Initial conditions of the system.
+    h : float, default to 0.01
+        Time delta between two discrete timesteps.
 
     Returns
     -------
-        numpy.ndarray :
-            Multiscroll attractor timeseries.
+    array of shape (n_timesteps, 3)
+        Multiscroll attractor timeseries.
 
     References
     ----------
-        .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
-               Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
-               Jul. 1999, doi: 10.1142/S0218127499001024.
-        .. [11] `Chen double scroll attractor
-               <https://en.wikipedia.org/wiki/Multiscroll_attractor
-               #Chen_attractor>`_
-               on Wikipedia.
+    .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
+           Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
+           Jul. 1999, doi: 10.1142/S0218127499001024.
+
+    .. [11] `Chen double scroll attractor
+           <https://en.wikipedia.org/wiki/Multiscroll_attractor
+           #Chen_attractor>`_
+           on Wikipedia.
 
     """
 
@@ -390,46 +369,47 @@ def doublescroll(
 
     .. math::
 
-        \\frac{dx}{dt} &= a(y - x) \\\\
-        \\frac{dy}{dt} &= (c - a)x - xz + cy \\\\
-        \\frac{dz}{dt} &= xy - bz
+        \\frac{dV_1}{dt} &= \\frac{V_1}{R_1} - \\frac{\\Delta V}{R_2} -
+        2I_r \\sinh(\\beta\\Delta V) \\\\
+        \\frac{dV_2}{dt} &= \\frac{\\Delta V}{R_2} +2I_r \\sinh(\\beta\\Delta V) - I\\\\
+        \\frac{dI}{dt} &= V_2 - R_4 I
+
+    where :math:`\\Delta V = V_1 - V_2`.
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        a : float, optional
-            :math:`a` parameter of the system.
-            By default, equals to 40.
-        b : float, optional
-            :math:`b` parameter of the system.
-            By default, equals to 3.
-        c : float, optional
-            :math:`c` parameter of the system.
-            By default, equals to 28`.
-        x0 : list or numpy.ndarray, optional
-            Initial conditions of the system.
-            By default, equals to [-0.1, 0.5, -0.6].
-        h : float, optional
-            Controls the continuous time delta between two
-            discrete timesteps.
-            By default, equals to 0.01.
+    n_timesteps : int
+        Number of timesteps to generate.
+    r1 : float, default to 1.2
+        :math:`R_1` parameter of the system.
+    r2 : float, default to 3.44
+        :math:`R_2` parameter of the system.
+    r4 : float, default to 0.193
+        :math:`R_4` parameter of the system.
+    ir : float, default to 2*2e.25e-5
+        :math:`I_r` parameter of the system.
+    beta : float, default to 11.6
+        :math:`\\beta` parameter of the system.
+    x0 : array-like of shape (3,), default to [0.37926545, 0.058339, -0.08167691]
+        Initial conditions of the system.
+    h : float, default to 0.01
+        Time delta between two discrete timesteps.
 
     Returns
     -------
-        numpy.ndarray :
-            Multiscroll attractor timeseries.
+    array of shape (n_timesteps, 3)
+        Multiscroll attractor timeseries.
 
     References
     ----------
-        .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
-               Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
-               Jul. 1999, doi: 10.1142/S0218127499001024.
-        .. [11] `Chen double scroll attractor
-               <https://en.wikipedia.org/wiki/Multiscroll_attractor
-               #Chen_attractor>`_
-               on Wikipedia.
+    .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
+           Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
+           Jul. 1999, doi: 10.1142/S0218127499001024.
 
+    .. [11] `Chen double scroll attractor
+           <https://en.wikipedia.org/wiki/Multiscroll_attractor
+           #Chen_attractor>`_
+           on Wikipedia.
     """
 
     def doublescroll(t, state):
@@ -454,8 +434,8 @@ def doublescroll(
 
 def rabinovich_fabrikant(
     n_timesteps: int,
-    gamma: float = 0.89,
     alpha: float = 1.1,
+    gamma: float = 0.89,
     x0: Union[list, np.ndarray] = [-1, 0, 0.5],
     h: float = 0.05,
     **kwargs,
@@ -470,39 +450,35 @@ def rabinovich_fabrikant(
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        alpha : float, optional
-            :math:`\\alpha` parameter of the system.
-            By default, equals to 1.1.
-        gamma : float, optional
-            :math:`\\gamma` parameter of the system.
-            By default, equals to 0.89.
-        x0 : list or numpy.ndarray, optional
-            Initial conditions of the system.
-            By default, equals to [-1, 0, 0.5].
-        h : float, optional
-            Controls the continuous time delta between two
-            discrete timesteps.
-            By default, equals to 0.05.
-        **kwargs:
-            Other parameters to pass to the `scipy.integrate.solve_ivp`
-            solver.
+    n_timesteps : int
+        Number of timesteps to generate.
+    alpha : float, default to 1.1
+        :math:`\\alpha` parameter of the system.
+    gamma : float, default to 0.89
+        :math:`\\gamma` parameter of the system.
+    x0 : array-like of shape (3,), default to [-1, 0, 0.5]
+        Initial conditions of the system.
+    h : float, default to 0.05
+        Time delta between two discrete timesteps.
+    **kwargs:
+        Other parameters to pass to the `scipy.integrate.solve_ivp`
+        solver.
 
     Returns
     -------
-        numpy.ndarray
-            Rabinovitch-Fabrikant system timeseries.
+    array of shape (n_timesteps, 3)
+        Rabinovitch-Fabrikant system timeseries.
 
     References
     ----------
-        .. [12] M. I. Rabinovich and A. L. Fabrikant,
-               ‘Stochastic self-modulation of waves in
-               nonequilibrium media’, p. 8, 1979.
-        .. [13] `Rabinovich-Fabrikant equations
-               <https://en.wikipedia.org/wiki/Rabinovich%E2%80
-               %93Fabrikant_equations>`_
-               on Wikipedia.
+    .. [12] M. I. Rabinovich and A. L. Fabrikant,
+           ‘Stochastic self-modulation of waves in
+           nonequilibrium media’, p. 8, 1979.
+
+    .. [13] `Rabinovich-Fabrikant equations
+           <https://en.wikipedia.org/wiki/Rabinovich%E2%80
+           %93Fabrikant_equations>`_
+           on Wikipedia.
 
     """
 
@@ -533,7 +509,7 @@ def narma(
     a2: float = 0.04,
     b: float = 1.5,
     c: float = 0.001,
-    x0: float = 0,
+    x0: Union[list, np.ndarray] = [0.0],
     seed: Union[int, RandomState] = None,
 ):
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
@@ -551,46 +527,42 @@ def narma(
 
     Parameters
     ----------
-        n_timesteps : int
-            Number of timesteps to generate.
-        order: int, optional
-            Order of the system, by default 30.
-        a1 : float, optional
-            :math:`a_1` parameter of the system.
-            By default, equals to 0.2.
-        a2 : float, optional
-            :math:`a_2` parameter of the system.
-            By default, equals to 0.04.
-        b : float, optional
-            :math:`b` parameter of the system.
-            By default, equals to 1.5.
-        c : float, optional
-            :math:`c` parameter of the system.
-            By default, equals to 0.001.
-        x0 : list or numpy.ndarray, optional
-            Initial conditions of the system.
-            By default, initial steps are 0.
+    n_timesteps : int
+        Number of timesteps to generate.
+    order: int, default to 30
+        Order of the system.
+    a1 : float, default to 0.2
+        :math:`a_1` parameter of the system.
+    a2 : float, default ot 0.04
+        :math:`a_2` parameter of the system.
+    b : float, default to 1.5
+        :math:`b` parameter of the system.
+    c : float, default to 0.001
+        :math:`c` parameter of the system.
+    x0 : array-like of shape (init_steps,), default to [0.0]
+        Initial conditions of the system.
+    seed : int or :py:class:`numpy.random.Generator`, optional
+        Random state seed for reproducibility.
 
     Returns
     -------
-        numpy.ndarray
-            NARMA timeseries.
+    array of shape (n_timesteps, 1)
+        NARMA timeseries.
 
     References
     ----------
-        .. [14] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
-               network training: unifying the algorithms and accelerating
-               convergence,‘ in IEEE Transactions on Neural Networks,
-               vol. 11, no. 3, pp. 697-709, May 2000,
-               doi: 10.1109/72.846741.
+    .. [14] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
+           network training: unifying the algorithms and accelerating
+           convergence,‘ in IEEE Transactions on Neural Networks,
+           vol. 11, no. 3, pp. 697-709, May 2000,
+           doi: 10.1109/72.846741.
 
-        .. [15] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
-               D. Stroobandt, ‘Improving reservoirs using intrinsic
-               plasticity‘,
-               Neurocomputing, 71. 1159-1171, 2008,
-               doi: 10.1016/j.neucom.2007.12.020.
+    .. [15] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
+           D. Stroobandt, ‘Improving reservoirs using intrinsic
+           plasticity‘,
+           Neurocomputing, 71. 1159-1171, 2008,
+           doi: 10.1016/j.neucom.2007.12.020.
     """
-
     if seed is None:
         seed = get_seed()
     rs = rand_generator(seed)
