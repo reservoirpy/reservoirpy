@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 
-from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, types
+from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, type
 from ._version import __version__
 from .compat import load_compat
 from .compat.utils.save import load
