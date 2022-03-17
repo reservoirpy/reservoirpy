@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import numpy as np
 
-from .types import GenericNode
+from ._base import _Node
 from .utils import safe_defaultdict_copy
 from .utils.validation import is_mapping
 
@@ -14,6 +14,7 @@ DataPoint = namedtuple("DataPoint", "x, y")
 
 
 def find_parents_and_children(edges):
+    """Returns two dicts linking nodes to their parents and children in the graph."""
     parents = defaultdict(list)
     children = defaultdict(list)
 
@@ -26,6 +27,7 @@ def find_parents_and_children(edges):
 
 
 def topological_sort(nodes, edges, inputs=None):
+    """Topological sort of nodes in a Model, to determine execution order."""
     if inputs is None:
         inputs, _ = find_entries_and_exits(nodes, edges)
 
@@ -54,7 +56,8 @@ def topological_sort(nodes, edges, inputs=None):
 
 
 def get_offline_subgraphs(nodes, edges):
-
+    """Cut a graph into several subgraphs where output nodes are untrained offline
+    learner nodes."""
     inputs, outputs = find_entries_and_exits(nodes, edges)
     parents, children = find_parents_and_children(edges)
 
@@ -89,7 +92,7 @@ def get_offline_subgraphs(nodes, edges):
 
 
 def _get_required_nodes(subgraphs, children):
-
+    """Get nodes whose outputs are required to run/fit children nodes."""
     req = []
     fitted = set()
     for i in range(1, len(subgraphs)):
@@ -113,7 +116,7 @@ def _get_required_nodes(subgraphs, children):
 
 
 def _get_links(previous, nexts, children):
-
+    """Returns graphs edges between two subgraphs."""
     links = {}
     for n in previous:
         next_children = []
@@ -126,22 +129,8 @@ def _get_links(previous, nexts, children):
     return links
 
 
-def find_predecessors_of(node, edges):
-    precedent_nodes = []
-    precedent_egdes = []
-    for edge in edges:
-        if edge[1] is node:
-            precedent_nodes.append(edge[0])
-            precedent_egdes.append(edge)
-
-            prec_nodes, prec_edges = find_predecessors_of(edge[0], edges)
-            precedent_nodes.extend(prec_nodes)
-            precedent_egdes.extend(prec_edges)
-
-    return precedent_nodes, precedent_egdes
-
-
 def find_entries_and_exits(nodes, edges):
+    """Find outputs and inputs nodes of a directed acyclic graph."""
     nodes = set(nodes)
     senders = set([n for n, _ in edges])
     receivers = set([n for _, n in edges])
@@ -155,6 +144,8 @@ def find_entries_and_exits(nodes, edges):
 
 
 class DataDispatcher:
+    """A utility used to feed data to nodes in a Model."""
+
     _inputs: List
     _parents: Dict
 
@@ -229,7 +220,7 @@ class DataDispatcher:
         if Y_map is not None:
             # Pad teacher nodes in a sequence
             for node, value in Y_map.items():
-                if isinstance(value, GenericNode):
+                if isinstance(value, _Node):
                     Y_map[node] = [value for _ in range(sequence_length)]
 
             for node, sequence in Y_map.items():
@@ -252,7 +243,7 @@ class DataDispatcher:
 
         x = []
         for parent in parents:
-            if isinstance(parent, GenericNode):
+            if isinstance(parent, _Node):
                 x.append(parent.state())
             else:
                 x.append(parent)
@@ -265,6 +256,7 @@ class DataDispatcher:
         return DataPoint(x=x, y=teacher)
 
     def load(self, X=None, Y=None):
+        """Load input and target data for dispatch."""
         self._parents = safe_defaultdict_copy(self.__parents)
         self._teachers = dict()
 
@@ -299,6 +291,9 @@ class DataDispatcher:
         force_teachers=True,
         format_xy=True,
     ):
+        """Transform data from a dict of arrays
+        ([node], timesteps, dimension) to an iterator yielding
+        a node: data mapping for each timestep."""
         if format_xy:
             X_map, Y_map, sequence_length = self._format_xy(X, Y)
         else:
@@ -311,7 +306,7 @@ class DataDispatcher:
             if Y_map is not None:
                 y = None
                 if return_targets:
-                    y = {node: Y_map[node][i] for node in Y_map.keys()}
+                    y = {node: np.atleast_2d(Y_map[node][i]) for node in Y_map.keys()}
                 # if feedbacks vectors are meant to be fed
                 # with a delay in time of one timestep w.r.t. 'X_map'
                 if shift_fb:

@@ -23,7 +23,6 @@ reservoirpy.nodes.FORCE
       ~FORCE.initialize
       ~FORCE.initialize_buffers
       ~FORCE.initialize_feedback
-      ~FORCE.link
       ~FORCE.link_feedback
       ~FORCE.partial_fit
       ~FORCE.reset

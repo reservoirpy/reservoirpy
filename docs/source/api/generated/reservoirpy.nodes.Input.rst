@@ -23,7 +23,6 @@ reservoirpy.nodes.Input
       ~Input.initialize
       ~Input.initialize_buffers
       ~Input.initialize_feedback
-      ~Input.link
       ~Input.link_feedback
       ~Input.partial_fit
       ~Input.reset

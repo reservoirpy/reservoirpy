@@ -23,7 +23,6 @@ reservoirpy.nodes.Sigmoid
       ~Sigmoid.initialize
       ~Sigmoid.initialize_buffers
       ~Sigmoid.initialize_feedback
-      ~Sigmoid.link
       ~Sigmoid.link_feedback
       ~Sigmoid.partial_fit
       ~Sigmoid.reset

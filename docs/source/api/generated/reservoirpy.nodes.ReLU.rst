@@ -23,7 +23,6 @@ reservoirpy.nodes.ReLU
       ~ReLU.initialize
       ~ReLU.initialize_buffers
       ~ReLU.initialize_feedback
-      ~ReLU.link
       ~ReLU.link_feedback
       ~ReLU.partial_fit
       ~ReLU.reset

@@ -17,7 +17,7 @@ Build internal weights
 ----------------------
 
 The core component of any flavor of reservoir computing is the *reservoir*, a type of recurrent artificial
-neural network. To learn in details how reservoirs work, you can visit the page :ref:`whats rc`
+neural network.
 
 Long story short, reservoirs are recurrent neural networks typically sparsely connected, i.e. only a few (generally around
 10% or 20%) of all the possible connections between the neuronal units are used. These networks are usually quite
@@ -170,7 +170,7 @@ built matrices::
 Notice that we have to define a last parameter to make things works: the `lr` parameter, standing
 for *leaking rate*. The leaking rate controls the *memory flow* of the reservoir during the computation
 of its internal states. A low leaking rate allows previous states to be *remembered more*, while
-a maximum leaking rate of 0 deactivates the leaky integration (see :ref:`whats rc` for more details).
+a maximum leaking rate of 0 deactivates the leaky integration.
 
 What about feedback ? It can also be enabled by specifying some more parameters, like an output
 activation function::

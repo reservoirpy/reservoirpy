@@ -23,7 +23,6 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.initialize
       ~Reservoir.initialize_buffers
       ~Reservoir.initialize_feedback
-      ~Reservoir.link
       ~Reservoir.link_feedback
       ~Reservoir.partial_fit
       ~Reservoir.reset
