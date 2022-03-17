@@ -119,20 +119,19 @@ References
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import contextmanager
 from copy import copy, deepcopy
-from typing import Any, Dict, Generator, List, Optional, Union
-from uuid import uuid4
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from scipy.sparse import issparse
 
+from ._base import DistantFeedback, _Node, call, check_one_sequence, check_xy, train
 from .model import Model
-from .types import (
+from .type import (
     BackwardFn,
     Data,
     EmptyInitFn,
     ForwardFn,
     ForwardInitFn,
-    GenericNode,
     PartialBackFn,
     Shape,
     global_dtype,
@@ -140,10 +139,10 @@ from .types import (
 from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
 from .utils.parallel import clean_tempfile, memmap_buffer
-from .utils.validation import check_node_io, check_node_state, check_vector
+from .utils.validation import check_vector
 
 
-def _initialize_with_seq_set(node, X, Y=None):
+def _init_with_sequences(node, X, Y=None):
     """Initialize a Node with a sequence of inputs/targets."""
     X = to_ragged_seq_set(X)
 
@@ -163,10 +162,6 @@ def _init_vectors_placeholders(node, x, y):
     in_msg = (
         msg + "input_dim is unknown and no input data x was given "
         "to call/run the node."
-    )
-    out_msg = (
-        msg + "output_dim is unknown and no target data y was "
-        "given to train/fit the node."
     )
 
     x_init = y_init = None
@@ -197,92 +192,33 @@ def _init_vectors_placeholders(node, x, y):
     return x_init, y_init
 
 
-def _remove_input_for_feedback(model: Model) -> Union["Node", Model]:
-    """Remove inputs nodes from feedback Model and gather remaining nodes
-    into a new Model. Allow to get inputs for feedback model from its input
-    nodes states."""
-    all_nodes = set(model.nodes)
-    input_nodes = set(model.input_nodes)
-    filtered_nodes = all_nodes - input_nodes
-    filtered_edges = [edge for edge in model.edges if edge[0] not in input_nodes]
-
-    # return a Node if Model - Inputs = 1 Node
-    # else return a Model - Inputs
-    if len(filtered_nodes) == 1:
-        return list(filtered_nodes)[0]
-    return Model(filtered_nodes, filtered_edges, name=str(uuid4()))
-
-
-def _distant_model_inputs(model):
-    """Get inputs for distant Nodes in a Model used as feedabck or teacher.
-    These inputs should be already computed by other Nodes."""
-    input_data = {}
-    for p, c in model.edges:
-        if p in model.input_nodes:
-            input_data[c.name] = p.state_proxy()
-    return input_data
-
-
-def _call_distant_model(model, reduced_model):
-    """Call a distant Model for feedback or teaching
-    (no need to run the input nodes again)"""
-    input_data = _distant_model_inputs(model)
-
-    if isinstance(reduced_model, Model):
-        return reduced_model.call(input_data)
-    else:
-        reduced_name = reduced_model.name
-        return reduced_model.call(input_data[reduced_name])
-
-
-def _init_distant_model(caller, node, callback_type):
-    """Initialize a distant Model or Node
-    (used as feedback sender or teacher)."""
-    msg = f"Impossible to get {callback_type} "
-    msg += "from {} for {}: {} is not initialized or has no input/output_dim"
-
-    reduced_model = None
-    if isinstance(node, Model):
-        for n in node.input_nodes:
-            if not n.is_initialized:
-                try:
-                    n.initialize()
-                except RuntimeError:
-                    raise RuntimeError(msg.format(node.name, caller.name, node.name))
-
-        input_data = _distant_model_inputs(node)
-        reduced_model = _remove_input_for_feedback(node)
-
-        if not reduced_model.is_initialized:
-            if isinstance(reduced_model, Model):
-                reduced_model.initialize(x=input_data)
-            else:
-                reduced_name = reduced_model.name
-                reduced_model.initialize(x=input_data[reduced_name])
-            node._is_initialized = True
-    else:
-        try:
-            node.initialize()
-        except RuntimeError:  # raise more specific error
-            raise RuntimeError(msg.format(node.name, caller.name, node.name))
-    return reduced_model
-
-
-def _callback_distant_state(node, reduced_model=None):
-    """Call distant Node or Model."""
-    if reduced_model is not None:
-        return _call_distant_model(node, reduced_model)
-    else:
-        return node.state_proxy()
-
-
 def _partial_backward_default(node, X_batch, Y_batch=None):
     """By default, for offline learners, partial_fit simply stores inputs and
     targets, waiting for fit to be called."""
+    input_dim = node.input_dim
+    if not hasattr(node.input_dim, "__iter__"):
+        input_dim = (input_dim,)
 
-    node._X.append(X_batch)
+    output_dim = node.output_dim
+    if not hasattr(node.output_dim, "__iter__"):
+        output_dim = (output_dim,)
+
+    if isinstance(X_batch, np.ndarray):
+        if X_batch.shape[1:] == input_dim:
+            node._X.append(X_batch)
+        elif X_batch.shape[2:] == input_dim:
+            node._X.append([X_batch[i] for i in range(len(X_batch))])
+    else:
+        node._X.extend(X_batch)
+
     if Y_batch is not None:
-        node._Y.append(Y_batch)
+        if isinstance(Y_batch, np.ndarray):
+            if Y_batch.shape[:1] == output_dim:
+                node._Y.append(Y_batch)
+            elif Y_batch.shape[:2] == input_dim:
+                node._Y.append([Y_batch[i] for i in range(len(Y_batch))])
+        else:
+            node._Y.extend(Y_batch)
 
 
 def _initialize_feedback_default(node, fb):
@@ -296,7 +232,7 @@ def _initialize_feedback_default(node, fb):
     node.set_feedback_dim(fb_dim)
 
 
-class Node(GenericNode):
+class Node(_Node):
     """Node base class.
 
     Parameters
@@ -339,7 +275,7 @@ class Node(GenericNode):
     feedback_dim :
         Dimension of the feedback signal received by the Node.
     name : str
-        Name of the Node. It must be an unique identifier.
+        Name of the Node. It must be a unique identifier.
 
     See also
     --------
@@ -352,9 +288,8 @@ class Node(GenericNode):
 
     _state: Optional[np.ndarray]
     _state_proxy: Optional[np.ndarray]
-    _feedback: Optional[GenericNode]
-    _teacher: Optional[GenericNode]
-    _teacher_handle: Optional[Generator]
+    _feedback: Optional[DistantFeedback]
+    _teacher: Optional[DistantFeedback]
 
     _params: Dict[str, Any]
     _hypers: Dict[str, Any]
@@ -376,7 +311,7 @@ class Node(GenericNode):
     _trainable: bool
     _fitted: bool
 
-    _X: List  # For partial_fit default behavior (store first fit then)
+    _X: List  # For partial_fit default behavior (store first, then fit)
     _Y: List
 
     def __init__(
@@ -428,13 +363,7 @@ class Node(GenericNode):
         self._state_proxy = None
         self._feedback = None
         self._teacher = None
-        self._teacher_handle = None
-
-        # used to store a reduced version of the feedback if needed
-        # when feedback is a Model (inputs of the feedback Model are suppressed
-        # in the reduced version, as we do not need then to re-run them
-        # because we assume they have already run during the forward call)
-        self._reduced_fb = None
+        self._fb_flag = True  # flag is used to trigger distant feedback model update
 
         self._trainable = self._backward is not None or self._train is not None
 
@@ -453,44 +382,11 @@ class Node(GenericNode):
             f"Impossible to merge nodes inplace: {self} is not a Model instance."
         )
 
-    def _call(self, x=None, from_state=None, stateful=True, reset=False):
-        """One step call, without input check."""
-        with self.with_state(from_state, stateful=stateful, reset=reset):
-            state = self._forward(self, x)
-            self._state = state.astype(self.dtype)
-
-        return state
-
-    def _check_io(self, *args, **kwargs):
-        return check_node_io(self, *args, **kwargs)
-
-    def _register_teacher(self, node):
-        if isinstance(node, GenericNode):
-            _reduced_teacher = _init_distant_model(self, node, callback_type="teacher")
-
-            self._teacher = node
-
-            def teacher_handle():
-                while True:
-                    yield _callback_distant_state(self._teacher, _reduced_teacher)
-
-            self._teacher_handle = teacher_handle()
-        else:
-            raise TypeError(
-                f"Impossible to get teachers from {type(node)}for node {self.name}."
-            )
+    def _flag_feedback(self):
+        self._fb_flag = not self._fb_flag
 
     def _unregister_teacher(self):
         self._teacher = None
-        self._teacher_handle = None
-
-    def _call_teacher(self):
-        if self._teacher_handle is not None:
-            return next(self._teacher_handle)
-        else:
-            raise RuntimeError(
-                f"Node {self} is not connected to any feedback Node or Model."
-            )
 
     @property
     def input_dim(self):
@@ -563,8 +459,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            numpy.ndarray, optional
-                Internal state of the Node.
+        array of shape (1, output_dim), optional
+            Internal state of the Node.
         """
         if not self.is_initialized:
             return None
@@ -578,8 +474,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            numpy.ndarray, optional
-                Internal state of the Node.
+        array of shape (1, output_dim), optional
+            Internal state of the Node.
         """
         if self._state_proxy is None:
             return self._state
@@ -591,19 +487,11 @@ class Node(GenericNode):
 
         Returns
         -------
-            numpy.ndarray or list or numpy.ndarray, optional
-                State of the feedback Nodes, i.e. the feedback signal.
+        array-like of shape ([n_feedbacks], 1, feedback_dim), optional
+            State of the feedback Nodes, i.e. the feedback signal.
         """
         if self.has_feedback:
-            if not self._feedback.is_initialized:
-                raise RuntimeError(
-                    f"Impossible to get feedback "
-                    f"from node or model {self._feedback} "
-                    f"to node {self.name}: "
-                    f"{self._feedback.name} "
-                    f"is not initialized."
-                )
-            return _callback_distant_state(self._feedback, self._reduced_fb)
+            return self._feedback()
         else:
             raise RuntimeError(
                 f"Node {self} is not connected to any feedback Node or Model."
@@ -615,12 +503,17 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        value : np.ndarray
-            State to freeze, waiting to be send to feedback receivers.
+        value : array of shape (1, output_dim)
+            State to freeze, waiting to be sent to feedback receivers.
         """
         if value is not None:
-            value = check_node_state(self, value).astype(self.dtype)
-        self._state_proxy = value
+            if self.is_initialized:
+                value = check_one_sequence(
+                    value, self.output_dim, allow_timespans=False, caller=self
+                ).astype(self.dtype)
+                self._state_proxy = value
+            else:
+                raise RuntimeError(f"{self.name} is not intialized yet.")
 
     def set_input_dim(self, value: int):
         """Set the input dimension of the Node. Can only be called once,
@@ -680,7 +573,7 @@ class Node(GenericNode):
         ----------
         name : str
             Parameter name.
-        value : np.ndarray
+        value : array-like
             Parameter new value.
         """
         if name in self._params:
@@ -703,7 +596,7 @@ class Node(GenericNode):
         self, name: str, shape: Shape = None, data: np.ndarray = None, as_memmap=True
     ):
         """Create a buffer array on disk, using numpy.memmap. This can be
-        used to store transient variables on disk. Typically called inside
+        used to store transient variables on disk. Typically, called inside
         a `buffers_initializer` function.
 
         Parameters
@@ -712,7 +605,7 @@ class Node(GenericNode):
             Name of the buffer array.
         shape : tuple of int, optional
             Shape of the buffer array.
-        data : numpy.ndarray
+        data : array-like
             Data to store in the buffer array.
         """
         if as_memmap:
@@ -730,7 +623,7 @@ class Node(GenericNode):
         ----------
         name : str
             Name of the buffer array.
-        value : numpy.ndarray
+        value : array-like
             Data to store in the buffer array.
         """
         self._buffers[name][:] = value.astype(self.dtype)
@@ -763,16 +656,16 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        x : numpy.ndarray or list of numpy.ndarray
+        x : array-like of shape ([n_inputs], 1, input_dim)
             Input data.
-        y : numpy.ndarray
-            Groudn truth data. Used to infer output dimension
+        y : array-like of shape (1, output_dim)
+            Ground truth data. Used to infer output dimension
             of trainable nodes.
 
         Returns
         -------
-            Node
-                Initialized Node.
+        Node
+            Initialized Node.
         """
         if not self.is_initialized:
             x_init, y_init = _init_vectors_placeholders(self, x, y)
@@ -792,14 +685,12 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                Initialized Node.
+        Node
+            Initialized Node.
         """
         if self.has_feedback:
             if not self.is_fb_initialized:
-                self._reduced_fb = _init_distant_model(
-                    self, self._feedback, callback_type="feedback"
-                )
+                self._feedback.initialize()
                 self._feedback_initializer(self, self.zero_feedback())
                 self._is_fb_initialized = True
         return self
@@ -811,8 +702,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                Initialized Node.
+        Node
+            Initialized Node.
         """
         if self._buffers_initializer is not None:
             if len(self._buffers) == 0:
@@ -835,18 +726,20 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        to_state : np.ndarray, optional
+        to_state : array of shape (1, output_dim), optional
             New state value.
 
         Returns
         -------
-            Node
-                Reset Node.
+        Node
+            Reset Node.
         """
         if to_state is None:
             self._state = self.zero_state()
         else:
-            self._state = check_node_state(self, to_state).astype(self.dtype)
+            self._state = check_one_sequence(
+                to_state, self.output_dim, allow_timespans=False, caller=self
+            ).astype(self.dtype)
         return self
 
     @contextmanager
@@ -859,7 +752,7 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        state : numpy.ndarray, optional
+        state : array of shape (1, output_dim), optional
             New state value.
         stateful : bool, default to False
             If set to True, then all modifications made in the context manager
@@ -870,8 +763,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                Modifyed Node.
+        Node
+            Modified Node.
         """
         if not self._is_initialized:
             raise RuntimeError(
@@ -910,7 +803,7 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        feedback : numpy.ndarray, optional
+        feedback : array of shape (1, feedback_dim), optional
             New feedback signal.
         stateful : bool, default to False
             If set to True, then all modifications made in the context manager
@@ -920,25 +813,16 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                Modifyed Node.
+        Node
+            Modified Node.
         """
         if self.has_feedback:
-            current_fb = self.feedback()
-
-            if feedback is None:
-                if reset:
-                    feedback = self.zero_feedback()
-                else:
-                    feedback = current_fb
-
-            current_proxy = self._feedback._state_proxy
-            self._feedback.set_state_proxy(feedback)
+            if reset:
+                feedback = self.zero_feedback()
+            if feedback is not None:
+                self._feedback.clamp(feedback)
 
             yield self
-
-            if not stateful:
-                self._feedback._state_proxy = current_proxy
 
         else:  # maybe a feedback sender then ?
             current_state_proxy = self._state_proxy
@@ -965,21 +849,12 @@ class Node(GenericNode):
         """A null feedback vector. Returns None if the Node receives
         no feedback."""
         if self._feedback is not None:
-            if isinstance(self._feedback, Node):
-                return self._feedback.zero_state()
-            elif isinstance(self._feedback, Model):
-                zeros = []
-                for output in self._feedback.output_nodes:
-                    zeros.append(output.zero_state())
-                if len(zeros) == 1:
-                    return zeros[0]
-                else:
-                    return zeros
+            return self._feedback.zero_feedback()
         return None
 
     def link_feedback(
-        self, node: GenericNode, inplace: bool = False, name: str = None
-    ) -> "GenericNode":
+        self, node: _Node, inplace: bool = False, name: str = None
+    ) -> "_Node":
         """Create a feedback connection between the Node and another Node or
         Model.
 
@@ -996,8 +871,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                A Node with a feedback connection.
+        Node
+            A Node with a feedback connection.
         """
         from .ops import link_feedback
 
@@ -1016,9 +891,9 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        x : numpy.ndarray
+        x : array of shape ([n_inputs], 1, input_dim)
             One single step of input data.
-        from_state : numpy.ndarray
+        from_state : array of shape (1, output_dim), optional
             Node state value to use at begining of computation.
         stateful : bool, default to True
             If True, Node state will be updated by this operation.
@@ -1027,18 +902,20 @@ class Node(GenericNode):
 
         Returns
         -------
-            numpy.ndarray
-                An output vector.
+        array of shape (1, output_dim)
+            An output vector.
         """
-
-        x = self._check_io(x, self.input_dim, allow_timespans=False, allow_list=False)
+        x, _ = check_xy(
+            self,
+            x,
+            allow_timespans=False,
+            allow_n_sequences=False,
+        )
 
         if not self._is_initialized:
             self.initialize(x)
 
-        state = self._call(x, from_state, stateful, reset)
-
-        return state
+        return call(self, x, from_state=from_state, stateful=stateful, reset=reset)
 
     def run(self, X: np.array, from_state=None, stateful=True, reset=False):
         """Run the Node forward function on a sequence of data.
@@ -1047,9 +924,9 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        X : numpy.array
+        X : array-like of shape ([n_inputs], timesteps, input_dim)
             A sequence of data of shape (timesteps, features).
-        from_state : numpy.ndarray
+        from_state : array of shape (1, output_dim), optional
             Node state value to use at begining of computation.
         stateful : bool, default to True
             If True, Node state will be updated by this operation.
@@ -1058,22 +935,33 @@ class Node(GenericNode):
 
         Returns
         -------
-            numpy.ndarray
-                A sequence of output vectors.
+        array of shape (timesteps, output_dim)
+            A sequence of output vectors.
         """
+        X_, _ = check_xy(
+            self,
+            X,
+            allow_n_sequences=False,
+        )
 
-        X = self._check_io(X, self.input_dim, allow_timespans=True)
-
-        if not self._is_initialized:
-            self.initialize(np.atleast_2d(X[0]))
-
-        seq_len = X.shape[0]
+        if isinstance(X_, np.ndarray):
+            if not self._is_initialized:
+                self.initialize(np.atleast_2d(X_[0]))
+            seq_len = X_.shape[0]
+        else:  # multiple inputs ?
+            if not self._is_initialized:
+                self.initialize([np.atleast_2d(x[0]) for x in X_])
+            seq_len = X_[0].shape[0]
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             states = np.zeros((seq_len, self.output_dim))
             for i in progress(range(seq_len), f"Running {self.name}: "):
-                x = np.atleast_2d(X[i])
-                s = self._call(x)
+                if isinstance(X_, (list, tuple)):
+                    x = [np.atleast_2d(Xi[i]) for Xi in X_]
+                else:
+                    x = np.atleast_2d(X_[i])
+
+                s = call(self, x)
                 states[i, :] = s
 
         return states
@@ -1081,7 +969,7 @@ class Node(GenericNode):
     def train(
         self,
         X: np.ndarray,
-        Y: Union[GenericNode, np.ndarray] = None,
+        Y: Union[_Node, np.ndarray] = None,
         force_teachers: bool = True,
         call: bool = True,
         learn_every: int = 1,
@@ -1094,9 +982,9 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        X : numpy.ndarray
+        X : array-like of shape ([n_inputs], timesteps, input_dim)
             Input sequence of data.
-        Y : numpy.ndarray, optional.
+        Y : array-like of shape (timesteps, output_dim), optional.
             Target sequence of data. If None, the Node will search a feedback
             signal, or train in an unsupervised way, if possible.
         force_teachers : bool, default to True
@@ -1111,7 +999,7 @@ class Node(GenericNode):
             Time interval at which training must occur, when dealing with a
             sequence of input data. By default, the training method is called
             every time the Node receive an input.
-        from_state : numpy.ndarray
+        from_state : array of shape (1, output_dim), optional
             Node state value to use at begining of computation.
         stateful : bool, default to True
             If True, Node state will be updated by this operation.
@@ -1120,69 +1008,45 @@ class Node(GenericNode):
 
         Returns
         -------
-            numpy.ndarray
-                All outputs computed during the training. If `call` is False,
-                outputs will be the result of :py:meth:`Node.zero_state`.
-
+        array of shape (timesteps, output_dim)
+            All outputs computed during the training. If `call` is False,
+            outputs will be the result of :py:meth:`Node.zero_state`.
         """
-
         if not self.is_trained_online:
             raise TypeError(f"Node {self} has no online learning rule implemented.")
 
-        X = self._check_io(X, self.input_dim, allow_timespans=True, allow_list=False)
-        Y = self._check_io(
-            Y, self.output_dim, allow_timespans=True, io_type="output", allow_list=False
+        X_, Y_ = check_xy(
+            self,
+            X,
+            Y,
+            allow_n_sequences=False,
+            allow_n_inputs=False,
         )
 
-        if isinstance(Y, GenericNode) and self._teacher is None:
-            self._register_teacher(Y)
-
         if not self._is_initialized:
-            x_init = np.atleast_2d(X[0])
+            x_init = np.atleast_2d(X_[0])
             y_init = None
-            if self._teacher_handle is not None:
-                y_init = next(self._teacher_handle)
-            elif Y is not None:
-                y_init = np.atleast_2d(Y[0])
+            if hasattr(Y, "__iter__"):
+                y_init = np.atleast_2d(Y_[0])
 
             self.initialize(x=x_init, y=y_init)
             self.initialize_buffers()
 
-        seq_len = X.shape[0]
-        seq = (
-            progress(range(seq_len), f"Training {self.name}")
-            if seq_len > 1
-            else range(seq_len)
+        states = train(
+            self,
+            X_,
+            Y_,
+            call_node=call,
+            force_teachers=force_teachers,
+            learn_every=learn_every,
+            from_state=from_state,
+            stateful=stateful,
+            reset=reset,
         )
 
-        with self.with_state(from_state, stateful=stateful, reset=reset):
-            states = np.zeros((seq_len, self.output_dim))
-            for i in seq:
-                x = X[i, :]
+        self._unregister_teacher()
 
-                y = None
-                if self._teacher_handle is not None:
-                    y = self._call_teacher()
-                elif Y is not None:
-                    y = Y[i, :]
-
-                if call:
-                    s = self.call(x)
-                else:
-                    s = self.state()
-
-                if force_teachers:
-                    self.set_state_proxy(y)
-
-                if i % learn_every == 0 or seq_len == 1:
-                    self._train(self, x=x, y=y)
-
-                states[i, :] = s
-
-            if isinstance(Y, GenericNode) and self._teacher is None:
-                self._unregister_teacher()
-
-            return states
+        return states
 
     def partial_fit(
         self,
@@ -1197,9 +1061,9 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        X_batch : array-like of shape ([series], timesteps, features)
+        X_batch : array-like of shape ([n_inputs], [series], timesteps, input_dim)
             A sequence or a batch of sequence of input data.
-        Y_batch : array-like of shape ([series], timesteps, features), optional
+        Y_batch : array-like of shape ([series], timesteps, output_dim), optional
             A sequence or a batch of sequence of teacher signals.
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
@@ -1207,27 +1071,34 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                Partially fitted Node.
+        Node
+            Partially fitted Node.
         """
         if not self.is_trained_offline:
             raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
-        X_ragged, Y_ragged = _initialize_with_seq_set(self, X_batch, Y_batch)
+        X, Y = check_xy(self, X_batch, Y_batch, allow_n_inputs=False)
+
+        X, Y = _init_with_sequences(self, X, Y)
 
         self.initialize_buffers()
 
-        for X, Y in zip(X_ragged, Y_ragged):
-            if X.shape[0] <= warmup:
+        for i in range(len(X)):
+            X_seq = X[i]
+            Y_seq = None
+            if Y is not None:
+                Y_seq = Y[i]
+
+            if X_seq.shape[0] <= warmup:
                 raise ValueError(
                     f"Warmup set to {warmup} timesteps, but one timeseries is only "
-                    f"{X.shape[0]} long."
+                    f"{X_seq.shape[0]} long."
                 )
 
-            if Y is not None:
-                self._partial_backward(self, X[warmup:], Y[warmup:])
+            if Y_seq is not None:
+                self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:])
             else:
-                self._partial_backward(self, X[warmup:])
+                self._partial_backward(self, X_seq[warmup:])
 
         return self
 
@@ -1236,11 +1107,11 @@ class Node(GenericNode):
 
         Parameters
         ----------
-        X : array-like of shape ([series], timesteps, features), optional
+        X : array-like of shape ([n_inputs], [series], timesteps, input_dim), optional
             Input sequences dataset. If None, the method will try to fit
             the parameters of the Node using the precomputed values returned
             by previous call of :py:meth:`partial_fit`.
-        Y : array-like of shape ([series], timesteps, features), optional
+        Y : array-like of shape ([series], timesteps, output_dim), optional
             Teacher signals dataset. If None, the method will try to fit
             the parameters of the Node using the precomputed values returned
             by previous call of :py:meth:`partial_fit`, or to fit the Node in
@@ -1251,8 +1122,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                Node trained offline.
+        Node
+            Node trained offline.
         """
 
         if not self.is_trained_offline:
@@ -1263,11 +1134,8 @@ class Node(GenericNode):
         # Call the partial backward function on the dataset if it is
         # provided all at once.
         if X is not None:
-            X_ragged, Y_ragged = _initialize_with_seq_set(self, X, Y)
-
             if self._partial_backward is not None:
-                # for X_batch, Y_batch in zip(X_ragged, Y_ragged):
-                self.partial_fit(X_ragged, Y_ragged, warmup=warmup)
+                self.partial_fit(X, Y, warmup=warmup)
 
         elif not self._is_initialized:
             raise RuntimeError(
@@ -1276,10 +1144,9 @@ class Node(GenericNode):
                 f"without input and teacher data."
             )
 
-        self._backward(self)
+        self._backward(self, self._X, self._Y)
 
         self._fitted = True
-
         self.clean_buffers()
 
         return self
@@ -1300,8 +1167,8 @@ class Node(GenericNode):
 
         Returns
         -------
-            Node
-                A copy of the Node.
+        Node
+            A copy of the Node.
         """
         if shallow:
             new_obj = copy(self)

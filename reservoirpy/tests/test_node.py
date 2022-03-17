@@ -1,6 +1,7 @@
 # Author: Nathan Trouvain at 08/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
@@ -47,6 +48,7 @@ def test_node_attr(plus_node):
 
 
 def test_node_init(plus_node):
+
     data = np.zeros((1, 5))
 
     res = plus_node(data)
@@ -69,6 +71,18 @@ def test_node_init(plus_node):
 
 
 def test_node_init_empty(plus_node):
+
+    plus_noinit = PlusNode(input_dim=5)
+    plus_noinit.initialize()
+
+    assert plus_noinit.input_dim == 5
+    assert plus_noinit.c == 1
+    assert_array_equal(plus_noinit.state(), np.zeros((1, 5)))
+
+    with pytest.raises(RuntimeError):
+        plus_noinit = PlusNode()
+        plus_noinit.initialize()
+
     data = np.zeros((1, 5))
 
     plus_node.set_input_dim(5)
@@ -362,3 +376,99 @@ def test_offline_node_default_partial(basic_offline_node):
 
     basic_offline_node.partial_fit(X, Y, warmup=2)
     assert_array_equal(basic_offline_node._X[0], X[2:])
+
+
+def test_multi_input(multiinput):
+
+    multi_noinit = MultiInput(input_dim=(5, 2))
+    multi_noinit.initialize()
+
+    with pytest.raises(RuntimeError):
+        multi_noinit = MultiInput()
+        multi_noinit.initialize()
+
+    x = [np.ones((1, 5)), np.ones((1, 2))]
+
+    r = multiinput(x)
+
+    assert r.shape == (1, 7)
+    assert multiinput.input_dim == (5, 2)
+
+    multi_noinit = MultiInput()
+    x = [np.ones((2, 5)), np.ones((2, 2))]
+    r = multi_noinit.run(x)
+
+    assert multi_noinit.input_dim == (5, 2)
+
+
+def test_feedback_noinit(feedback_node):
+
+    with pytest.raises(RuntimeError):
+        feedback_node.feedback()
+
+    inv_notinit = Inverter(input_dim=5, output_dim=5)
+
+    feedback_node <<= inv_notinit
+
+    data = np.ones((1, 5))
+
+    feedback_node(data)
+
+    assert_array_equal(feedback_node.feedback(), inv_notinit.state())
+
+
+def test_feedback_initialize_feedback(feedback_node):
+    inv_notinit = Inverter(input_dim=5, output_dim=5)
+    feedback_node <<= inv_notinit
+
+    data = np.ones((1, 5))
+
+    feedback_node.initialize_feedback()
+    res = feedback_node(data)
+
+    fb = feedback_node.feedback()
+    inv_state = inv_notinit.state()
+
+    assert_array_equal(inv_state, fb)
+
+
+def test_feedback_init_distant_model(feedback_node, plus_node, inverter_node):
+    feedback_node <<= plus_node >> inverter_node
+
+    with pytest.raises(RuntimeError):
+        feedback_node.initialize_feedback()
+
+    with pytest.raises(RuntimeError):
+        data = np.ones((1, 5))
+        feedback_node(data)
+
+    plus_node.initialize(data)
+
+    feedback_node.initialize_feedback()
+
+    fb = feedback_node.feedback()
+    inv_state = inverter_node.state()
+
+    assert_array_equal(inv_state, fb)
+
+
+def test_feedback_init_deep_distant_model(
+    feedback_node, plus_node, minus_node, inverter_node
+):
+
+    feedback_node <<= plus_node >> minus_node >> inverter_node
+
+    with pytest.raises(RuntimeError):
+        feedback_node.initialize_feedback()
+
+    with pytest.raises(RuntimeError):
+        data = np.ones((1, 5))
+        feedback_node(data)
+
+    plus_node.initialize(data)
+    feedback_node.initialize_feedback()
+
+    fb = feedback_node.feedback()
+    inv_state = inverter_node.state()
+
+    assert_array_equal(inv_state, fb)

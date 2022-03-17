@@ -68,8 +68,6 @@ a :py:class:`Model`.
 .. autoclass:: FrozenModel
 
 """
-from collections.abc import Iterable
-
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -79,21 +77,23 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from .graphflow import (
+from . import _base
+from ._base import _Node, check_xy
+from .type import MappedData
+from .utils import progress, verbosity
+from .utils.graphflow import (
     DataDispatcher,
     find_entries_and_exits,
     get_offline_subgraphs,
     topological_sort,
 )
-from .types import GenericNode, MappedData
-from .utils import progress, verbosity
 from .utils.model_utils import (
     _allocate_returned_states,
     _build_forward_sumodels,
     _dist_states_to_next_subgraph,
     to_ragged_seq_set,
 )
-from .utils.validation import check_vector, is_mapping
+from .utils.validation import is_mapping
 
 
 def _run_and_partial_fit(
@@ -135,10 +135,10 @@ def _run_and_partial_fit(
 
 def _filter_teacher_nodes(Y):
     if is_mapping(Y):
-        sequences = {n: v for n, v in Y.items() if not isinstance(v, GenericNode)}
-        teachers = {n: v for n, v in Y.items() if isinstance(v, GenericNode)}
+        sequences = {n: v for n, v in Y.items() if not isinstance(v, _Node)}
+        teachers = {n: v for n, v in Y.items() if isinstance(v, _Node)}
         return sequences, teachers
-    elif isinstance(Y, GenericNode):
+    elif isinstance(Y, _Node):
         return None, Y
     else:
         return Y, None
@@ -162,20 +162,19 @@ def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
     ----------
     model : Model
         A :py:class:`Model` instance.
-    x : numpy.ndarray or dict of numpy.ndarray
-        A vector of shape `(1, ndim)` corresponding to a timestep of data, or
-        a dictionnary mapping node names to vector of shapes
-        `(1, ndim of corresponding node)`.
+    x : dict or array-like of shape ([n_inputs], 1, input_dim)
+        A vector corresponding to a timestep of data, or
+        a dictionnary mapping node names to input vectors.
 
     Returns
     -------
-        list of numpy.ndarray
-            New states of all terminal nodes of the model, i.e. its output.
+    array-like of shape (n_outputs, 1, output_dim)
+        New states of all terminal nodes of the model, i.e. its output.
     """
     data = model.data_dispatcher.load(x)
 
     for node in model.nodes:
-        node(data[node].x)
+        _base.call(node, data[node].x)
 
     return [out_node.state() for out_node in model.output_nodes]
 
@@ -189,8 +188,12 @@ def train(model: "Model", x=None, y: MappedData = None, force_teachers=True):
 
     for node in model.nodes:
         if node.is_trained_online:
-            node.train(
-                data[node].x, data[node].y, force_teachers=force_teachers, call=False
+            _base.train(
+                node,
+                data[node].x,
+                data[node].y,
+                force_teachers=force_teachers,
+                call_node=False,
             )
 
 
@@ -224,13 +227,13 @@ def initializer(model: "Model", x: MappedData, y: Optional[MappedData] = None):
         fb_node.initialize_feedback()
 
 
-class Model(GenericNode):
+class Model(_Node):
     """Model base class.
 
     Parameters
     ----------
     nodes : list of Node, optional
-        Nodes to include in the Model., by default ()
+        Nodes to include in the Model.
     edges : list of (Node, Node), optional
         Edges between Nodes in the graph. An edge between a
         Node A and a Node B is created as a tuple (A, B).
@@ -238,17 +241,17 @@ class Model(GenericNode):
         Name of the Model.
     """
 
-    _node_registry: Dict[str, GenericNode]
-    _nodes: List[GenericNode]
-    _edges: List[Tuple[GenericNode, GenericNode]]
-    _inputs: List[GenericNode]
-    _outputs: List[GenericNode]
+    _node_registry: Dict[str, _Node]
+    _nodes: List[_Node]
+    _edges: List[Tuple[_Node, _Node]]
+    _inputs: List[_Node]
+    _outputs: List[_Node]
     _dispatcher: "DataDispatcher"
 
     def __init__(
         self,
-        nodes: Sequence[GenericNode] = None,
-        edges: Sequence[Tuple[GenericNode, GenericNode]] = None,
+        nodes: Sequence[_Node] = None,
+        edges: Sequence[Tuple[_Node, _Node]] = None,
         name: str = None,
     ):
 
@@ -297,58 +300,6 @@ class Model(GenericNode):
 
         return merge(self, other, inplace=True)
 
-    def _check_input(self, x):
-        if is_mapping(x):
-            input_names = [n.name for n in self.input_nodes]
-
-            for input_name in input_names:
-                if input_name not in x:
-                    raise NameError(
-                        f"Missing input data for node '{input_name}' "
-                        f"of model {self.name}."
-                    )
-
-            for name, value in x.items():
-                value = check_vector(value)
-                x[name] = value
-
-                if self._is_initialized:
-                    if value.shape[1] != self[name].input_dim:
-                        raise ValueError(
-                            f"Impossible to call node {name} in model "
-                            f"{self}: node input "
-                            f"dimension is (1, {self[name].input_dim}) "
-                            f"and input dimension is {value.shape}."
-                        )
-        return x
-
-    def _check_targets(self, y):
-        msg = (
-            "Impossible to fit/train node {} in model, {}: node output "
-            "dimension is (1, {}) and target dimension is {}."
-        )
-
-        if is_mapping(y):
-            for name, value in y.items():
-                value = check_vector(value)
-                y[name] = value
-
-                if self._is_initialized:
-                    if value.shape[1] != self[name].output_dim:
-                        raise ValueError(
-                            msg.format(name, self, self[name].output_dim, value.shape)
-                        )
-        elif y is not None:
-            y = check_vector(y)
-            if self._is_initialized:
-                for node in self.trainable_nodes:
-                    if node.is_trained_online:
-                        if y.shape[1] != node.output_dim:
-                            raise ValueError(
-                                msg.format(node.name, self, node.output_dim, y.shape)
-                            )
-        return y
-
     def _check_if_only_online(self):
         if any([n.is_trained_offline and not n.fitted for n in self.nodes]):
             raise RuntimeError(
@@ -396,7 +347,7 @@ class Model(GenericNode):
             for node in self.nodes:
                 state[node.name] = node.state()
 
-        elif isinstance(return_states, Iterable):
+        elif hasattr(return_states, "__iter__"):
             for name in return_states:
                 state[name] = self[name].state()
 
@@ -409,28 +360,15 @@ class Model(GenericNode):
 
         return state
 
-    def _register_teachers(self, Y=None):
-        """Register all teachers provided in all targetted nodes,
-        and remove them from Y."""
-        if Y is not None:
-            if is_mapping(Y):
-                for node, value in Y.items():
-                    if isinstance(value, GenericNode):
-                        self.get_node(node)._register_teacher(value)
-
-            elif isinstance(Y, GenericNode):
-                for node in self.trainable_nodes:
-                    if node.is_trained_online:
-                        node._register_teacher(Y)
-
     def _unregister_teachers(self):
+        """Remove teacher nodes refs from student nodes."""
         for node in self.trainable_nodes:
             node._teacher = None
 
     def update_graph(
         self,
-        new_nodes: Sequence[GenericNode],
-        new_edges: Sequence[Tuple[GenericNode, GenericNode]],
+        new_nodes: Sequence[_Node],
+        new_edges: Sequence[Tuple[_Node, _Node]],
     ) -> "Model":
         """Update current Model's with new nodes and edges, inplace (a copy
         is not performed).
@@ -464,7 +402,7 @@ class Model(GenericNode):
 
         return self
 
-    def get_node(self, name: str) -> GenericNode:
+    def get_node(self, name: str) -> _Node:
         """Get Node in Model, by name.
 
         Parameters
@@ -488,7 +426,7 @@ class Model(GenericNode):
             raise KeyError(f"No node named '{name}' found in model {self.name}.")
 
     @property
-    def nodes(self) -> List[GenericNode]:
+    def nodes(self) -> List[_Node]:
         """Nodes in the Model, in topological order."""
         return self._nodes
 
@@ -506,23 +444,29 @@ class Model(GenericNode):
     def input_dim(self):
         """Input dimension of the Model;
         input dimensions of all input Nodes."""
-        dims = [n.input_dim for n in self.input_nodes]
-        if len(dims) == 0:
-            return 0
-        elif len(dims) < 2:
-            return dims[0]
-        return dims
+        if self.is_initialized:
+            dims = [n.input_dim for n in self.input_nodes]
+            if len(dims) == 0:
+                return 0
+            elif len(dims) < 2:
+                return dims[0]
+            return dims
+        else:
+            return None
 
     @property
     def output_dim(self):
         """Ouptut dimension of the Model;
         output dimensions of all output Nodes."""
-        dims = [n.output_dim for n in self.output_nodes]
-        if len(dims) == 0:
-            return 0
-        elif len(dims) < 2:
-            return dims[0]
-        return dims
+        if self.is_initialized:
+            dims = [n.output_dim for n in self.output_nodes]
+            if len(dims) == 0:
+                return 0
+            elif len(dims) < 2:
+                return dims[0]
+            return dims
+        else:
+            return None
 
     @property
     def input_nodes(self):
@@ -572,6 +516,21 @@ class Model(GenericNode):
         for node in trainables:
             node.is_trainable = value
 
+    @property
+    def is_trained_online(self) -> bool:
+        """Returns True if all nodes are online learners."""
+        return all([n.is_trained_online or n.fitted for n in self.nodes])
+
+    @property
+    def is_trained_offline(self) -> bool:
+        """Returns True if all nodes are offline learners."""
+        return all([n.is_trained_offline or n.fitted for n in self.nodes])
+
+    @property
+    def fitted(self) -> bool:
+        """Returns True if all nodes are fitted."""
+        return all([n.fitted for n in self.nodes])
+
     @contextmanager
     def with_state(
         self, state: Dict[str, np.ndarray] = None, stateful=False, reset=False
@@ -579,11 +538,11 @@ class Model(GenericNode):
         """Modify the state of one or several Nodes in the Model
         using a context manager.
         The modification will have effect only within the context defined,
-        before all states return back to their previous value.
+        before all states return to their previous value.
 
         Parameters
         ----------
-        state : dict, optional
+        state : dict of arrays of shape (1, output_dim), optional
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         stateful : bool, default to False
@@ -595,8 +554,8 @@ class Model(GenericNode):
 
         Returns
         -------
-            Model
-                Modifyed Model.
+        Model
+            Modified Model.
         """
         if state is None and not reset:
             current_state = None
@@ -641,7 +600,7 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        feedback : dict, optional
+        feedback : dict of arrays of shape (1, output_dim), optional
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray feedback vectors.
         stateful : bool, default to False
@@ -652,8 +611,8 @@ class Model(GenericNode):
 
         Returns
         -------
-            Model
-                Modifyed Model.
+        Model
+            Modified Model.
         """
 
         if feedback is None and not reset:
@@ -675,7 +634,7 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        to_state : dict, optional
+        to_state : dict of arrays of shape (1, output_dim), optional
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         """
@@ -694,16 +653,16 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        x : numpy.ndarray or list of numpy.ndarray
+        x : dict or array-like of shape ([n_inputs], 1, input_dim)
             Input data.
-        y : numpy.ndarray
-            Groudn truth data. Used to infer output dimension
+        y : dict or array-like of shape ([n_outputs], 1, output_dim)
+            Ground truth data. Used to infer output dimension
             of trainable nodes.
 
         Returns
         -------
-            Model
-                Initialized Model.
+        Model
+            Initialized Model.
         """
         self._is_initialized = False
         self._initializer(self, x=x, y=y)
@@ -718,8 +677,8 @@ class Model(GenericNode):
 
         Returns
         -------
-            Model
-                Initialized Model.
+        Model
+            Initialized Model.
         """
         for node in self.nodes:
             if node._buffers_initializer is not None:
@@ -742,14 +701,14 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        x : numpy.ndarray or dict
+        x : dict or array-like of shape ([n_inputs], 1, input_dim)
             One single step of input data. If dict, then
             pairs of keys and values, where keys are Model input
             nodes names and values are single steps of input data.
-        forced_feedback: dict, optional
+        forced_feedback: dict of arrays of shape ([n_feedbacks], 1, feedback_dim), optional
             Pairs of keys and values, where keys are Model nodes names and
             value are feedback vectors to force into the nodes.
-        from_state : dict, optional
+        from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim), optional
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         stateful : bool, default to True
@@ -761,13 +720,18 @@ class Model(GenericNode):
 
         Returns
         -------
-            numpy.ndarray or dict
-                An output vector or pairs of keys and values
-                where keys are output nodes names and values
-                are corresponding output vectors.
+        dict or array-like of shape ([n_outputs], 1, output_dim)
+            An output vector or pairs of keys and values
+            where keys are output nodes names and values
+            are corresponding output vectors.
         """
 
-        x = self._check_input(x)
+        x, _ = check_xy(
+            self,
+            x,
+            allow_timespans=False,
+            allow_n_sequences=False,
+        )
 
         if not self._is_initialized:
             self.initialize(x)
@@ -789,7 +753,7 @@ class Model(GenericNode):
 
     def run(
         self,
-        X: MappedData = None,
+        X: MappedData,
         forced_feedbacks: Dict[str, np.ndarray] = None,
         from_state: Dict[str, np.ndarray] = None,
         stateful=True,
@@ -805,14 +769,14 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        X : numpy.array or dict
-            A sequence of data of shape (timesteps, features).
+        X : dict or array-like of shape ([n_inputs], timesteps, input_dim)
+            A sequence of input data.
             If dict, then pairs of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        forced_feedback: dict
+        forced_feedback: dict of array-like of shape ([n_feedbacks], timesteps, feedabck_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are sequences of feedback vectors to force into the nodes.
-        from_state : dict
+        from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         stateful : bool, default to True
@@ -829,29 +793,32 @@ class Model(GenericNode):
 
         Returns
         -------
-            numpy.ndarray or dict
-                A sequence of output vectors or pairs of keys and values
-                where keys are output nodes names and values
-                are corresponding sequences of output vectors.
+        dict or array-like of shape ([n_outputs], timesteps, output_dim)
+            A sequence of output vectors or pairs of keys and values
+            where keys are output nodes names and values
+            are corresponding sequences of output vectors.
         """
+        X_, forced_feedbacks_ = check_xy(
+            self, X, forced_feedbacks, allow_n_sequences=False
+        )
 
-        self._initialize_on_sequence(X, forced_feedbacks)
+        self._initialize_on_sequence(X_, forced_feedbacks_)
 
-        states = _allocate_returned_states(self, X, return_states)
+        states = _allocate_returned_states(self, X_, return_states)
 
         seq = progress(
-            self._dispatcher.dispatch(X, forced_feedbacks, shift_fb=shift_fb),
+            self._dispatcher.dispatch(X_, forced_feedbacks_, shift_fb=shift_fb),
             f"Running {self.name}",
-            total=len(X),
+            total=len(X_),
         )
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             # load proxys after state update to make it have an
             # impact on feedback
             self._load_proxys(keep=True)
-            for i, (x, forced_feedback, _) in enumerate(seq):
+            for i, (x, forced_fb, _) in enumerate(seq):
 
-                with self.with_feedback(forced_feedback):
+                with self.with_feedback(forced_fb):
                     state = self._call(x, return_states=return_states)
 
                 if is_mapping(state):
@@ -887,11 +854,11 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        X : numpy.ndarray or dict.
+        X : dict or array-like of shape ([n_inputs], timesteps, input_dim)
             Input sequence of data. If dict, then pairs
             of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        Y : numpy.ndarray or dict, optional.
+        Y : dict or array-like of shape ([onlines], timesteps, onlines.output_dim), optional.
             Target sequence of data.
             If dict, then pairs of keys and values, where keys are Model
             online trainable nodes names values are sequences
@@ -913,7 +880,7 @@ class Model(GenericNode):
             Time interval at which training must occur, when dealing with a
             sequence of input data. By default, the training method is called
             every time the Model receive an input.
-        from_state : dict
+        from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         stateful : bool, default to True
@@ -923,41 +890,32 @@ class Model(GenericNode):
 
         Returns
         -------
-            numpy.ndarray or dict
-                All outputs computed during the training
-                or pairs of keys and values
-                where keys are output nodes names and values
-                are corresponding outputs computed.
-                If `call` is False,
-                outputs will be null vectors.
+        dict or array-like of shape ([n_outputs], timesteps, output_dim)
+            All outputs computed during the training
+            or pairs of keys and values
+            where keys are output nodes names and values
+            are corresponding outputs computed.
+            If `call` is False,
+            outputs will be null vectors.
         """
 
         self._check_if_only_online()
 
-        filt_Y, teacher_nodes = _filter_teacher_nodes(Y)
+        X_, Y_ = check_xy(self, X, Y, allow_n_sequences=False)
 
-        self._initialize_on_sequence(X, filt_Y)
+        self._initialize_on_sequence(X_, Y_)
 
-        self._register_teachers(teacher_nodes)
+        states = _allocate_returned_states(self, X_, return_states)
 
-        states = _allocate_returned_states(self, X, return_states)
-
-        seq_len = X.shape[0]
         dispatch = self._dispatcher.dispatch(
-            X, filt_Y, return_targets=True, force_teachers=force_teachers
-        )
-
-        seq = (
-            progress(dispatch, f"Training {self.name}", total=seq_len)
-            if seq_len > 1
-            else dispatch
+            X_, Y_, return_targets=True, force_teachers=force_teachers
         )
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             # load proxys after state update to make it have an
             # impact on feedback
             self._load_proxys(keep=True)
-            for i, (x, forced_feedback, y) in enumerate(seq):
+            for i, (x, forced_feedback, y) in enumerate(dispatch):
 
                 if not force_teachers:
                     forced_feedback = None
@@ -968,8 +926,6 @@ class Model(GenericNode):
                 # reload feedbacks from training. Some nodes may need
                 # updated feedback signals to train.
                 self._load_proxys()
-
-                y = self._check_targets(y)
 
                 if i % learn_every == 0 or len(X) == 1:
                     self._train(self, x=x, y=y, force_teachers=force_teachers)
@@ -1005,11 +961,11 @@ class Model(GenericNode):
 
         Parameters
         ----------
-        X : array-like or dict of array-like of shape ([series], timesteps, features)
+        X : dict or array-like of shape ([n_inputs], [series], timesteps, input_dim)
             Input sequence of data. If dict, then pairs
             of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        Y : array-like or dict of array-like of shape ([series], timesteps, features)
+        Y : dict or array-like of shape ([offlines], [series], timesteps, offlines.output_dim)
             Target sequence of data. If dict, then pairs
             of keys and values, where keys are Model input
             nodes names and values are sequence of target data.
@@ -1023,7 +979,7 @@ class Model(GenericNode):
             the real state of these nodes will be sent to the feedback
             receivers
             during training.
-        from_state : dict, optional
+        from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
         stateful : bool, default to True
@@ -1033,8 +989,8 @@ class Model(GenericNode):
 
         Returns
         -------
-            Model
-                Model trained offline.
+        Model
+            Model trained offline.
         """
 
         if not any([n for n in self.trainable_nodes if n.is_trained_offline]):
@@ -1096,6 +1052,9 @@ class Model(GenericNode):
                 trained |= set(offlines)
 
         return self
+
+    def copy(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class FrozenModel(Model):

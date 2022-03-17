@@ -22,10 +22,10 @@ from itertools import product
 from typing import Iterable, Sequence, Union
 from uuid import uuid4
 
+from ._base import DistantFeedback, _Node
 from .model import FrozenModel, Model
 from .node import Node
 from .nodes.concat import Concat
-from .types import GenericNode
 
 
 def _check_all_nodes(*nodes):
@@ -33,14 +33,14 @@ def _check_all_nodes(*nodes):
     for nn in nodes:
         if isinstance(nn, Iterable):
             for n in nn:
-                if not isinstance(n, GenericNode):
+                if not isinstance(n, _Node):
                     raise TypeError(msg.format(n))
         else:
-            if not isinstance(nn, GenericNode):
+            if not isinstance(nn, _Node):
                 raise TypeError(msg.format(nn))
 
 
-def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
+def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
     """Connects two nodes or models. See `link` doc for more info."""
     # fetch all nodes in the two subgraphs, if they are models.
     all_nodes = []
@@ -97,8 +97,8 @@ def _link_1to1(node1: GenericNode, node2: GenericNode, name=None) -> Model:
 
 
 def link(
-    node1: Union[GenericNode, Sequence[GenericNode]],
-    node2: Union[GenericNode, Sequence[GenericNode]],
+    node1: Union[_Node, Sequence[_Node]],
+    node2: Union[_Node, Sequence[_Node]],
     name: str = None,
 ) -> Model:
     """Link two :py:class:`~.Node` instances to form a :py:class:`~.Model`
@@ -140,7 +140,7 @@ def link(
 
     Parameters
     ----------
-        node1, node2 : GenericNode or list of GenericNode
+        node1, node2 : _Node or list of _Node
             Nodes or lists of nodes to link.
         name: str, optional
             Name for the chaining Model.
@@ -216,10 +216,10 @@ def link(
 
 def link_feedback(
     node: Node,
-    feedback: Union[GenericNode, Sequence[GenericNode]],
+    feedback: Union[_Node, Sequence[_Node]],
     inplace: bool = False,
     name: str = None,
-) -> GenericNode:
+) -> _Node:
     """Create a feedback connection between the `feedback` node and `node`.
     Feedbacks nodes will be called at runtime using data from the previous
     call.
@@ -257,7 +257,7 @@ def link_feedback(
     ----------
     node : Node
         Node reciving feedback.
-    feedback : GenericNode
+    feedback : _Node
         Node or Model sending feedback
     inplace : bool, defaults to False
         If `True`, then the function returns a copy of `node`.
@@ -275,7 +275,7 @@ def link_feedback(
             - If `node` is a :py:class:`~.Model`.
             Models can not receive feedback.
 
-            - If any of the feedback nodes are not :py:class:`~.GenericNode`
+            - If any of the feedback nodes are not :py:class:`~._Node`
             instances.
     """
 
@@ -289,31 +289,31 @@ def link_feedback(
 
     if isinstance(feedback, Sequence):
         for fb in feedback:
-            if not isinstance(fb, GenericNode):
+            if not isinstance(fb, _Node):
                 raise TypeError(msg.format(fb))
 
         all_fb = link(feedback, Concat())
 
-    elif isinstance(feedback, GenericNode):
+    elif isinstance(feedback, _Node):
         all_fb = feedback
 
     else:
         raise TypeError(msg.format(feedback))
 
     if inplace:
-        node._feedback = all_fb
+        node._feedback = DistantFeedback(all_fb, node)
         return node
     else:
         # first copy the node, then give it feedback
         # original node is not conencted to any feedback then
         new_node = node.copy(name=name)
-        new_node._feedback = all_fb
+        new_node._feedback = DistantFeedback(all_fb, new_node)
         return new_node
 
 
 def merge(
-    model: GenericNode, *models: GenericNode, inplace: bool = False, name: str = None
-) -> GenericNode:
+    model: _Node, *models: _Node, inplace: bool = False, name: str = None
+) -> _Node:
     """Merge different :py:class:`~.Model` or :py:class:`~.Node`
     instances into a single :py:class:`~.Model` instance.
 
@@ -365,7 +365,7 @@ def merge(
     """
     msg = "Impossible to merge models: object {} is not a Model instance."
 
-    if isinstance(model, GenericNode):
+    if isinstance(model, _Node):
         all_nodes = set()
         all_edges = set()
         for m in models:
@@ -373,7 +373,7 @@ def merge(
             if isinstance(m, Model) and not isinstance(m, FrozenModel):
                 all_nodes |= set(m.nodes)
                 all_edges |= set(m.edges)
-            elif isinstance(m, GenericNode):
+            elif isinstance(m, _Node):
                 all_nodes |= {m}
 
         if inplace:
