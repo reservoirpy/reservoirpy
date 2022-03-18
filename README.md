@@ -8,7 +8,7 @@
 [![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
 
-# ReservoirPy (v0.3.1) 🌀🧠
+# ReservoirPy (v0.3.2) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
@@ -17,7 +17,7 @@ from reservoirpy.nodes import Reservoir, Ridge, Input
 
 data = Input(input_dim=1)
 reservoir = Reservoir(100, lr=0.3, sr=1.1)
-readout   = Ridge(ridge=1e-6)
+readout = Ridge(ridge=1e-6)
 
 esn = data >> reservoir >> readout
 
@@ -29,12 +29,12 @@ It provides a **flexible interface to implement efficient Reservoir Computing** 
 architectures with a particular focus on *Echo State Networks* (ESN).
 Advanced features of ReservoirPy allow to improve computation time efficiency
 on a simple laptop compared to basic Python implementation, with datasets of
-any size. 
+any size.
 
 Some of its features are: **offline and online training**, **parallel implementation**,
 **sparse matrix computation**, fast spectral initialization, **advanced learning rules**
 (e.g. *Intrinsic Plasticity*) etc. It also makes possible
-to **easily create complex architectures with multiple reservoirs** (e.g. *deep reservoirs*), 
+to **easily create complex architectures with multiple reservoirs** (e.g. *deep reservoirs*),
 readouts, and **complex feedback loops**.
 Moreover, graphical tools are included to **easily explore hyperparameters**
 with the help of the *hyperopt* library.
@@ -64,7 +64,7 @@ pip install reservoirpy
 or
 
 ```bash
-pip install reservoirpy==0.3.0
+pip install reservoirpy==0.3.2
 ```
 
 If you want to use the previous version 0.2.4, you can install ReservoirPy using:
@@ -134,10 +134,10 @@ We will train the ESN to make one-step-ahead forecasts of our timeseries.
 
 **Step 3: Fit and run the ESN**
 
-We train our ESN on the first 500 timesteps of the timeseries.
+We train our ESN on the first 500 timesteps of the timeseries, with 100 steps used to warm up the reservoir states.
 
 ```python
-esn.fit(X[:500], X[1:501])
+esn.fit(X[:500], X[1:501], warmup=100)
 ```
 
 Our ESN is now trained and ready to use. Let's run it on the remainder of the timeseries:
@@ -158,8 +158,8 @@ Let's now evaluate its performances.
 
 ```python
 from reservoirpy.observables import rmse, rsquare
-print("RMSE:", rmse(X[502:], predictions),
-      "R^2 score:", rsquare(X[502:], predictions))
+
+print("RMSE:", rmse(X[502:], predictions), "R^2 score:", rsquare(X[502:], predictions))
 ```
 
 Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-Glass" folder) to see a complete example of timeseries prediction with ESNs:
