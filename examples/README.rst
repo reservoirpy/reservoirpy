@@ -7,20 +7,17 @@ This folder contains reproduction of some results from the literature, using Res
 Content
 =======
 
-- `Improving reservoir using Intrinsic Plasticity <https://github.com/reservoirpy/reservoirpy/tree/master/examples/
-Improving%20reservoirs%20using%20Intrinsic%20Plasticity>`_:
+- `Improving reservoir using Intrinsic Plasticity <https://github.com/reservoirpy/reservoirpy/tree/master/examples/Improving%20reservoirs%20using%20Intrinsic%20Plasticity>`_:
 
 A notebook presenting Intrinsic Plasticity mechanism applied to Reservoirs, as presented by Schrauwen
 *et al.* in 2008 [1]_ and Triesch in 2005 [2]_.
 
-- `Next Generation Reservoir Computing <https://github.com/reservoirpy/reservoirpy/tree/master/examples
-/Next%20Generation%20Reservoir%20Computing>`_:
+- `Next Generation Reservoir Computing <https://github.com/reservoirpy/reservoirpy/tree/master/examples/Next%20Generation%20Reservoir%20Computing>`_:
 
 A notebook presenting Non-linear Vector AutoRegressive machines, a particular flavor of Reservoir, as introduced
 by Gauthier, Bollt and Griffith in 2021 [3]_.
 
-- `Interactive reservoir computing for chunking information streams <https://github.com/reservoirpy/reservoirpy/tree/
-master/examples/Interactive%20reservoir%20computing%20for%20chunking%20information%20streams>`_:
+- `Interactive reservoir computing for chunking information streams <https://github.com/reservoirpy/reservoirpy/tree/master/examples/Interactive%20reservoir%20computing%20for%20chunking%20information%20streams>`_:
 
 This notebook is work-in-progress about the work from Asabuki, Hiratani and Fukai about unsupervised chunking of
 timeseries, presented in 2018 [4]_.
