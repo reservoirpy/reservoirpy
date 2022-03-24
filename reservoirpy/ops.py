@@ -180,7 +180,7 @@ def link(
         frozens += [n.name for n in node2 if isinstance(n, FrozenModel)]
     else:
         if isinstance(node2, FrozenModel):
-            frozens.append(2)
+            frozens.append(node2)
 
     if len(frozens) > 0:
         raise TypeError(
