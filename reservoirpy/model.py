@@ -773,7 +773,7 @@ class Model(_Node):
             A sequence of input data.
             If dict, then pairs of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        forced_feedback: dict of array-like of shape ([n_feedbacks], timesteps, feedabck_dim)
+        forced_feedbacks: dict of array-like of shape ([n_feedbacks], timesteps, feedabck_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are sequences of feedback vectors to force into the nodes.
         from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
