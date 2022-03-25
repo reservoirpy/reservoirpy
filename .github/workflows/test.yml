@@ -14,7 +14,7 @@ on:
     - '.gitignore'
 
   pull_request:
-    branches: [master]
+    types: [opened, edited]
     paths-ignore:
       - 'docs/**'
       - 'static/**'
