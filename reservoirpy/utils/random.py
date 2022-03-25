@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 06/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from functools import partial
 from typing import Union
 
 import numpy as np
@@ -41,7 +40,7 @@ def rand_generator(seed: Union[int, Generator, RandomState] = None) -> Generator
 
 
 def noise(dist="normal", shape=1, gain=1.0, seed=None, **kwargs):
-    if gain > 0.0 or gain < 0.0:
+    if abs(gain) > 0.0:
         rng = rand_generator(seed)
         return gain * getattr(rng, dist)(**kwargs, size=shape)
     else:
