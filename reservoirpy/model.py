@@ -295,7 +295,7 @@ class Model(_Node):
     def __getitem__(self, item):
         return self.get_node(item)
 
-    def __iand__(self, other):
+    def __iand__(self, other) -> "Model":
         from .ops import merge
 
         return merge(self, other, inplace=True)
@@ -619,14 +619,21 @@ class Model(_Node):
             yield self
             return
 
-        with ExitStack() as stack:
-            if feedback is not None:
+        elif feedback is not None:
+            with ExitStack() as stack:
                 for node in self.nodes:
                     value = feedback.get(node.name)
+                    # maybe node does not send feedback but receives it?
+                    if value is None and node.has_feedback:
+                        value = feedback.get(node._feedback.name)
                     stack.enter_context(
                         node.with_feedback(value, stateful=stateful, reset=reset)
                     )
+
+                yield self
+        else:
             yield self
+            return
 
     def reset(self, to_state: Dict[str, np.ndarray] = None):
         """Reset the last state saved to zero for all Nodes in
