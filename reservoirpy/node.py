@@ -220,6 +220,8 @@ def _partial_backward_default(node, X_batch, Y_batch=None):
         else:
             node._Y.extend(Y_batch)
 
+    return
+
 
 def _initialize_feedback_default(node, fb):
     """Void feedback initializer. Works in any case."""
@@ -369,12 +371,12 @@ class Node(_Node):
 
         self._fitted = False if self.is_trainable and self.is_trained_offline else True
 
-        self._X = self._Y = []
+        self._X, self._Y = [], []
 
-    def __lshift__(self, other):
+    def __lshift__(self, other) -> "_Node":
         return self.link_feedback(other)
 
-    def __ilshift__(self, other):
+    def __ilshift__(self, other) -> "_Node":
         return self.link_feedback(other, inplace=True)
 
     def __iand__(self, other):
