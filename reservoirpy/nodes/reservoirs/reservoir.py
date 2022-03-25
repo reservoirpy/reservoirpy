@@ -3,7 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import sys
 
-if sys.version_info <= (3, 7):
+if sys.version_info < (3, 8):
     from typing_extensions import Literal
 else:
     from typing import Literal
