@@ -42,10 +42,7 @@ def _dist_states_to_next_subgraph(states, relations):
 
 def _allocate_returned_states(model, inputs, return_states=None):
 
-    if is_mapping(inputs):
-        seq_len = inputs[list(inputs.keys())[0]].shape[0]
-    else:
-        seq_len = inputs.shape[0]
+    seq_len = inputs[list(inputs.keys())[0]].shape[0]
 
     # pre-allocate states
     if return_states == "all":

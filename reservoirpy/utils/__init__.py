@@ -30,7 +30,7 @@ def safe_defaultdict_copy(d):
         if isinstance(item, Iterable):
             new_d[key] = list(item)
         else:
-            new_d[key] += item
+            new_d[key] += [item]
     return new_d
 
 
