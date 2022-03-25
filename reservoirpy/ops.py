@@ -24,7 +24,6 @@ from uuid import uuid4
 
 from ._base import DistantFeedback, _Node
 from .model import FrozenModel, Model
-from .node import Node
 from .nodes.concat import Concat
 
 
@@ -215,7 +214,7 @@ def link(
 
 
 def link_feedback(
-    node: Node,
+    node: _Node,
     feedback: Union[_Node, Sequence[_Node]],
     inplace: bool = False,
     name: str = None,
@@ -313,7 +312,7 @@ def link_feedback(
 
 def merge(
     model: _Node, *models: _Node, inplace: bool = False, name: str = None
-) -> _Node:
+) -> Model:
     """Merge different :py:class:`~.Model` or :py:class:`~.Node`
     instances into a single :py:class:`~.Model` instance.
 
