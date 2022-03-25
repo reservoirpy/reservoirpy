@@ -11,6 +11,7 @@ omit =
     */experimental/*
     */compat/*
     */hyper/*
+    */type.py
 
 [report]
 exclude_lines =
