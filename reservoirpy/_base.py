@@ -618,17 +618,17 @@ class _Node(ABC):
     def __call__(self, *args, **kwargs) -> np.ndarray:
         return self.call(*args, **kwargs)
 
-    def __rshift__(self, other: Union["_Node", Sequence["_Node"]]) -> "_Node":
+    def __rshift__(self, other: Union["_Node", Sequence["_Node"]]) -> "Model":
         from .ops import link
 
         return link(self, other)
 
-    def __rrshift__(self, other: Union["_Node", Sequence["_Node"]]) -> "_Node":
+    def __rrshift__(self, other: Union["_Node", Sequence["_Node"]]) -> "Model":
         from .ops import link
 
         return link(other, self)
 
-    def __and__(self, other: Union["_Node", Sequence["_Node"]]) -> "_Node":
+    def __and__(self, other: Union["_Node", Sequence["_Node"]]) -> "Model":
         from .ops import merge
 
         return merge(self, other)
