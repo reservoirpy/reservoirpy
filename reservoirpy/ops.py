@@ -29,14 +29,24 @@ from .nodes.concat import Concat
 
 def _check_all_nodes(*nodes):
     msg = "Impossible to link nodes: object {} is neither a Node nor a Model."
+    frozen_msg = (
+        "Impossible to link FrozenModel to other Nodes or Model. "
+        "FrozenModel found: {}."
+    )
+
     for nn in nodes:
         if isinstance(nn, Iterable):
             for n in nn:
                 if not isinstance(n, _Node):
                     raise TypeError(msg.format(n))
+                elif isinstance(n, FrozenModel):
+                    raise TypeError(frozen_msg.format(n.name))
         else:
             if not isinstance(nn, _Node):
                 raise TypeError(msg.format(nn))
+            elif isinstance(nn, FrozenModel):
+                raise TypeError(frozen_msg.format(nn.name))
+    return
 
 
 def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
@@ -169,35 +179,27 @@ def link(
 
     _check_all_nodes(node1, node2)
 
-    frozens = []
-    if isinstance(node1, Sequence):
-        frozens += [n.name for n in node1 if isinstance(n, FrozenModel)]
-    else:
-        if isinstance(node1, FrozenModel):
-            frozens.append(node1)
-    if isinstance(node2, Sequence):
-        frozens += [n.name for n in node2 if isinstance(n, FrozenModel)]
-    else:
-        if isinstance(node2, FrozenModel):
-            frozens.append(node2)
-
-    if len(frozens) > 0:
-        raise TypeError(
-            "Impossible to link FrozenModel to other Nodes or "
-            f"Model. FrozenModel found: {frozens}."
-        )
-
     # get left side
-    if isinstance(node1, Sequence):
-        left_model = Model(name=str(uuid4()))
+    if (isinstance(node1, Sequence) and len(node1) > 1) or (
+        isinstance(node1, Model) and len(node1.output_nodes) > 1
+    ):
+
+        # only output nodes for left side Model are connected to input nodes
+        # from right side Model
+        if isinstance(node1, Model):
+            interface = node1.output_nodes
+            left_model = node1
+        else:
+            interface = node1
+            left_model = Model(name=str(uuid4()))
 
         if isinstance(node2, Concat):  # no need to add a Concat node then
-            for n in node1:
+            for n in interface:
                 left_model &= _link_1to1(n, node2, name=str(uuid4()))
             return left_model
         else:  # concatenate everything on left side
             concat = Concat()
-            for n in node1:
+            for n in interface:
                 left_model &= _link_1to1(n, concat, name=str(uuid4()))
     else:
         left_model = node1
