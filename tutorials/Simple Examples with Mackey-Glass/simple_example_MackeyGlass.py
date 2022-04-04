@@ -42,9 +42,9 @@ if __name__ == "__main__":
     rpy.verbosity(0)
 
     # ---- Loading data ----
-    units = 10000
+    timesteps = 10000
     tau = 17
-    data = mackey_glass(10000, tau=tau)
+    data = mackey_glass(timesteps, tau=tau)
 
     normalize = True
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     )
 
     # create a readout layer equiped with an offline learning rule
-    readout = Ridge(ridge=regularization_coef, transient=warmup, name="readout")
+    readout = Ridge(ridge=regularization_coef, name="readout")
 
     if feedback:
         reservoir = reservoir << readout
@@ -251,7 +251,7 @@ if __name__ == "__main__":
 
     # ---- Train the ESN ----
 
-    esn = esn.fit(X, y)
+    esn = esn.fit(X, y, warmup=warmup)
 
     # ---- Evaluate the ESN ----
 
