@@ -130,7 +130,7 @@ def _run_and_partial_fit(
     for node in offlines:
         node.partial_fit(dist_states[node.name], y_seq[node.name], warmup=warmup)
 
-        return dist_states
+    return dist_states
 
 
 def _filter_teacher_nodes(Y):
