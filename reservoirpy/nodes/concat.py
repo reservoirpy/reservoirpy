@@ -7,8 +7,6 @@ import numpy as np
 
 from ..node import Node
 
-# from ..utils.validation import check_node_io
-
 
 def concat_forward(concat: Node, data):
     axis = concat.axis
@@ -37,25 +35,10 @@ def concat_initialize(concat: Node, x=None, **kwargs):
 
 
 class Concat(Node):
-    def __init__(self, axis=1, name=None):
+    def __init__(self, axis=1, **kwargs):
         super(Concat, self).__init__(
             hypers={"axis": axis},
             forward=concat_forward,
             initializer=concat_initialize,
-            name=name,
+            **kwargs,
         )
-
-    # def _check_io(self, X, *args, io_type="input", **kwargs):
-    #     if io_type == "input":
-    #         if isinstance(X, np.ndarray):
-    #             return check_node_io(self, X, *args, io_type=io_type, **kwargs)
-    #         elif isinstance(X, Sequence):
-    #             checked_X = []
-    #             for i in range(len(X)):
-    #                 input_dim = None
-    #                 if self.is_initialized:
-    #                     input_dim = self.input_dim[i]
-    #                 checked_X.append(check_node_io(self, X[i], input_dim, **kwargs))
-    #             return checked_X
-    #         else:
-    #             return check_node_io(self, X, *args, io_type=io_type, **kwargs)
