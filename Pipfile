@@ -21,6 +21,7 @@ Sphinx = "*"
 sphinx-autobuild = "*"
 hyperopt = "*"
 scikit-learn = "*"
+networkx = "*"
 
 [dev-packages]
 
