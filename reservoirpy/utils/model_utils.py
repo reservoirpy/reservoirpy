@@ -29,14 +29,8 @@ def _build_forward_sumodels(nodes, edges, already_trained):
 def _dist_states_to_next_subgraph(states, relations):
     dist_states = {}
     for curr_node, next_nodes in relations.items():
-        if len(next_nodes) > 1:
-            for next_node in next_nodes:
-                if dist_states.get(next_node) is None:
-                    dist_states[next_node] = list()
-                dist_states[next_node].append(states[curr_node])
-        else:
-            dist_states[next_nodes[0]] = states[curr_node]
-
+        for next_node in next_nodes:
+            dist_states[next_node] = states[curr_node]
     return dist_states
 
 

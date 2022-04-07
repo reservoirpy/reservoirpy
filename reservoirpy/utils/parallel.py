@@ -22,8 +22,6 @@ if sys.version_info < (3, 8):
 else:
     _BACKEND = "loky"
 
-temp_registry = defaultdict(list)
-
 
 def get_joblib_backend(workers=-1, backend=None):
     if backend is not None:
@@ -49,41 +47,3 @@ def set_joblib_backend(backend):
             f"backend value. Available backends are "
             f"{_AVAILABLE_BACKENDS}."
         )
-
-
-def memmap_buffer(node, data=None, shape=None, dtype=None, mode="w+", name=None):
-    global temp_registry
-
-    caller = node.name
-    if data is None:
-        if shape is None:
-            raise ValueError(
-                f"Impossible to create buffer for node {node}: "
-                f"neither data nor shape were given."
-            )
-
-    name = name if name is not None else uuid.uuid4()
-    temp = os.path.join(tempfile.gettempdir(), f"{caller + str(name)}")
-
-    temp_registry[node].append(temp)
-
-    shape = shape if shape is not None else data.shape
-    dtype = dtype if dtype is not None else global_dtype
-
-    memmap = np.memmap(temp, shape=shape, mode=mode, dtype=dtype)
-
-    if data is not None:
-        memmap[:] = data
-
-    return memmap
-
-
-def clean_tempfile(caller):
-    global temp_registry
-
-    gc.collect()
-    for file in temp_registry[caller]:
-        try:
-            os.remove(file)
-        except OSError:
-            pass

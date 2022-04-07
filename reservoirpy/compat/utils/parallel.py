@@ -1,9 +1,11 @@
 # Author: Nathan Trouvain at 24/02/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import gc
 import os
 import tempfile
 import uuid
+from collections import defaultdict
 from functools import partial
 from multiprocessing import Manager, Process
 from typing import Tuple
@@ -13,7 +15,9 @@ import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-from ...utils.parallel import clean_tempfile, get_joblib_backend, temp_registry
+from ...utils.parallel import get_joblib_backend
+
+temp_registry = defaultdict(list)
 
 
 def parallelize(
@@ -163,3 +167,41 @@ def as_memmap(data, caller=None):
     joblib.dump(data, filename)
     temp_registry[caller].append(filename)
     return joblib.load(filename, mmap_mode="r+")
+
+
+# def memmap_buffer(node, data=None, shape=None, dtype=None, mode="w+", name=None):
+#     global temp_registry
+#
+#     caller = node.name
+#     if data is None:
+#         if shape is None:
+#             raise ValueError(
+#                 f"Impossible to create buffer for node {node}: "
+#                 f"neither data nor shape were given."
+#             )
+#
+#     name = name if name is not None else uuid.uuid4()
+#     temp = os.path.join(tempfile.gettempdir(), f"{caller + str(name)}")
+#
+#     temp_registry[node].append(temp)
+#
+#     shape = shape if shape is not None else data.shape
+#     dtype = dtype if dtype is not None else global_dtype
+#
+#     memmap = np.memmap(temp, shape=shape, mode=mode, dtype=dtype)
+#
+#     if data is not None:
+#         memmap[:] = data
+#
+#     return memmap
+
+
+def clean_tempfile(caller):
+    global temp_registry
+
+    gc.collect()
+    for file in temp_registry[caller]:
+        try:
+            os.remove(file)
+        except OSError:
+            pass

@@ -138,7 +138,8 @@ from .type import (
 )
 from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
-from .utils.parallel import clean_tempfile, memmap_buffer
+
+# from .utils.parallel import clean_tempfile, memmap_buffer
 from .utils.validation import check_vector
 
 
@@ -234,6 +235,11 @@ def _initialize_feedback_default(node, fb):
     node.set_feedback_dim(fb_dim)
 
 
+def _initialize_buffers_default(node):
+    node.buffers["_X"] = list()
+    node.buffers["_Y"] = list()
+
+
 class Node(_Node):
     """Node base class.
 
@@ -313,8 +319,8 @@ class Node(_Node):
     _trainable: bool
     _fitted: bool
 
-    _X: List  # For partial_fit default behavior (store first, then fit)
-    _Y: List
+    # _X: List  # For partial_fit default behavior (store first, then fit)
+    # _Y: List
 
     def __init__(
         self,
@@ -594,9 +600,7 @@ class Node(_Node):
                 f"{list(self._params.keys())}."
             )
 
-    def create_buffer(
-        self, name: str, shape: Shape = None, data: np.ndarray = None, as_memmap=True
-    ):
+    def create_buffer(self, name: str, shape: Shape = None, data: np.ndarray = None):
         """Create a buffer array on disk, using numpy.memmap. This can be
         used to store transient variables on disk. Typically, called inside
         a `buffers_initializer` function.
@@ -610,13 +614,13 @@ class Node(_Node):
         data : array-like
             Data to store in the buffer array.
         """
-        if as_memmap:
-            self._buffers[name] = memmap_buffer(self, data=data, shape=shape, name=name)
+        # if as_memmap:
+        #     self._buffers[name] = memmap_buffer(self, data=data, shape=shape, name=name)
+        # else:
+        if data is not None:
+            self._buffers[name] = data
         else:
-            if data is not None:
-                self._buffers[name] = data
-            else:
-                self._buffers[name] = np.empty(shape)
+            self._buffers[name] = np.zeros(shape)
 
     def set_buffer(self, name: str, value: np.ndarray):
         """Dump data in the buffer array.
@@ -717,10 +721,10 @@ class Node(_Node):
         """Clean Node's buffer arrays."""
         if len(self._buffers) > 0:
             self._buffers = dict()
-            clean_tempfile(self)
+        #     clean_tempfile(self)
 
         # Empty possibly stored inputs and targets in default buffer.
-        self._X = self._Y = []
+        # self._X = self._Y = []
 
     def reset(self, to_state: np.ndarray = None) -> "Node":
         """Reset the last state saved to zero or to
@@ -1104,7 +1108,7 @@ class Node(_Node):
 
         return self
 
-    def fit(self, X: Data = None, Y: Data = None, warmup=0) -> "Node":
+    def fit(self, X: Data = None, Y: Data = None, warmup=0, buffers=None) -> "Node":
         """Offline fitting method of a Node.
 
         Parameters
@@ -1146,7 +1150,7 @@ class Node(_Node):
                 f"without input and teacher data."
             )
 
-        self._backward(self, self._X, self._Y)
+        self._backward(self, self._X, self._Y, buffers=buffers)
 
         self._fitted = True
         self.clean_buffers()

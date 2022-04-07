@@ -329,3 +329,39 @@ class DataDispatcher:
                 fb = y = None
 
             yield x, fb, y
+
+
+class ChainedNode:
+    def __init__(self, node, parents, stop=False):
+        self.node = node
+        self.parents = parents
+        self.stop = stop
+
+        self._predecessors = None
+
+    def __repr__(self):
+        return self.node.name
+
+    @property
+    def predecessors(self):
+        if self._predecessors is None:
+            predecessors = self.parents
+            for parent in self.parents:
+                preds = parent.predecessors
+
+                for p in preds:
+                    if p not in predecessors:
+                        predecessors.append(p)
+
+            self._predecessors = predecessors
+            return predecessors
+        else:
+            return self._predecessors
+
+
+class DAG:
+    def __init__(self, nodes, edges):
+        ...
+
+    def resolve_fit_order(self):
+        ...

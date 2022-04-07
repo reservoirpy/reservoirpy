@@ -40,8 +40,10 @@ Regression models
     regression_models.RidgeRegression - Tikhonov regression solver
 """
 import json
+import os
 import pathlib
 import re
+import tempfile
 from typing import Union
 
 import dill
@@ -56,6 +58,15 @@ from . import regression_models
 from ._esn import ESN
 from ._esn_online import ESNOnline
 from .utils.save import load
+
+_TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp")
+if not os.path.exists(_TEMPDIR):  # pragma: no cover
+    try:
+        os.mkdir(_TEMPDIR)
+    except OSError:
+        _TEMPDIR = tempfile.gettempdir()
+
+tempfile.tempdir = _TEMPDIR
 
 
 def _load_files_from_v2(dirpath):

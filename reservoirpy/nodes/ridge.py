@@ -17,6 +17,17 @@ def _solve_ridge(XXT, YXT, ridge):
     return linalg.solve(XXT + ridge, YXT.T, assume_a="sym")
 
 
+def _accumulate_buffers(readout: Node, buffers):
+    readout.initialize_buffers()
+
+    XXT, YXT = readout.get_buffer("XXT"), readout.get_buffer("YXT")
+    for buffer in buffers:
+        XXT += buffer["XXT"]
+        YXT += buffer["YXT"]
+
+    return XXT, YXT
+
+
 def partial_backward(readout: Node, X_batch, Y_batch=None):
     """Pre-compute XXt and YXt before final fit."""
     X, Y = _prepare_inputs_for_learning(
@@ -38,10 +49,14 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
     YXT += yxt
 
 
-def backward(readout: Node, *args, **kwargs):
+def backward(readout: Node, *args, buffers=None, **kwargs):
     ridge = readout.ridge
-    XXT = readout.get_buffer("XXT")
-    YXT = readout.get_buffer("YXT")
+
+    if buffers is None:
+        XXT = readout.get_buffer("XXT")
+        YXT = readout.get_buffer("YXT")
+    else:
+        XXT, YXT = _accumulate_buffers(readout, buffers)
 
     input_dim = readout.input_dim
     if readout.input_bias:

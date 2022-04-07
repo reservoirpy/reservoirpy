@@ -71,11 +71,14 @@ a :py:class:`Model`.
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import os
+from collections import defaultdict
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+from joblib import Parallel, delayed
 
 from . import _base
 from ._base import _Node, check_xy
@@ -93,11 +96,13 @@ from .utils.model_utils import (
     _dist_states_to_next_subgraph,
     to_ragged_seq_set,
 )
+from .utils.parallel import get_joblib_backend
 from .utils.validation import is_mapping
 
 
-def _run_and_partial_fit(
-    model,
+def run_and_partial_fit(
+    submodel,
+    complete_model,
     offlines,
     relations,
     x_seq,
@@ -109,18 +114,27 @@ def _run_and_partial_fit(
     force_teachers=True,
 ):
     """Run a submodel and call its partial fit function."""
-
-    if not model.is_empty:
-        x_seq = {n: x for n, x in x_seq.items() if n in model.node_names}
+    if not submodel.is_empty:
+        x_seq = {n: x for n, x in x_seq.items() if n in submodel.node_names}
 
         if force_teachers:
-            y_seq = {n: y for n, y in y_seq.items() if n in [o.name for o in offlines]}
+            y_seq = {
+                n: y
+                for n, y in y_seq.items()
+                if n in [o.name for o in complete_model.nodes if o.is_trained_offline]
+            }
         else:
             y_seq = None
 
-        model._is_initialized = True
-        states = model.run(
-            x_seq, y_seq, return_states=return_states, stateful=stateful, reset=reset
+        submodel._is_initialized = True
+        states = run(
+            complete_model,
+            x_seq,
+            y_seq,
+            return_states=return_states,
+            stateful=stateful,
+            reset=reset,
+            submodel=submodel,
         )
 
         dist_states = _dist_states_to_next_subgraph(states, relations)
@@ -130,7 +144,7 @@ def _run_and_partial_fit(
     for node in offlines:
         node.partial_fit(dist_states[node.name], y_seq[node.name], warmup=warmup)
 
-    return dist_states
+    return {off.name: off.buffers for off in offlines}, dist_states
 
 
 def _filter_teacher_nodes(Y):
@@ -144,7 +158,89 @@ def _filter_teacher_nodes(Y):
         return Y, None
 
 
-def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
+def call(model, x=None, return_states=None, *args, submodel=None, **kwargs):
+
+    if submodel is None:
+        submodel = model
+
+    model._forward(submodel, x)
+
+    state = {}
+    if return_states == "all":
+        for node in submodel.nodes:
+            state[node.name] = node.state()
+
+    elif hasattr(return_states, "__iter__"):
+        for name in return_states:
+            state[name] = submodel[name].state()
+
+    else:
+        if len(submodel.output_nodes) > 1:
+            for out_node in submodel.output_nodes:
+                state[out_node.name] = out_node.state()
+        else:
+            state = submodel.output_nodes[0].state()
+
+    return state
+
+
+def run(
+    model,
+    X: MappedData,
+    forced_feedbacks: Dict[str, np.ndarray] = None,
+    from_state: Dict[str, np.ndarray] = None,
+    stateful=True,
+    reset=False,
+    shift_fb=True,
+    return_states: Sequence[str] = None,
+    submodel=None,
+) -> MappedData:
+
+    if submodel is None:
+        submodel = model
+
+    X_, forced_feedbacks_ = check_xy(
+        submodel, X, forced_feedbacks, allow_n_sequences=False
+    )
+
+    submodel._initialize_on_sequence(X_, forced_feedbacks_)
+
+    states = _allocate_returned_states(submodel, X_, return_states)
+
+    seq = progress(
+        submodel._dispatcher.dispatch(X_, forced_feedbacks_, shift_fb=shift_fb),
+        f"Running {model.name}",
+        total=len(X_),
+    )
+
+    with model.with_state(from_state, stateful=stateful, reset=reset):
+        # load proxys after state update to make it have an
+        # impact on feedback
+        model._load_proxys(keep=True)
+        for i, (x, forced_fb, _) in enumerate(seq):
+
+            with model.with_feedback(forced_fb):
+                state = call(model, x, return_states=return_states, submodel=submodel)
+
+            if is_mapping(state):
+                for name, value in state.items():
+                    states[name][i, :] = value
+            else:
+                states[submodel.output_nodes[0].name][i, :] = state
+
+            model._load_proxys()
+
+    model._clean_proxys()
+
+    # dicts are only relevant if model has several outputs (len > 1) or
+    # if we want to return states from hidden nodes
+    if len(states) == 1 and return_states is None:
+        return states[submodel.output_nodes[0].name]
+
+    return states
+
+
+def forward(model: "Model", x: MappedData, submodel=None) -> List[np.ndarray]:
     """Function applied by a :py:class:`Model` instance.
 
     This function if basically a composition of the forward functions of all
@@ -174,7 +270,7 @@ def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
     data = model.data_dispatcher.load(x)
 
     for node in model.nodes:
-        _base.call(node, data[node].x)
+        node.call(data[node].x)
 
     return [out_node.state() for out_node in model.output_nodes]
 
@@ -339,26 +435,7 @@ class Model(_Node):
             self.initialize(x_init, y_init)
 
     def _call(self, x=None, return_states=None, *args, **kwargs):
-
-        self._forward(self, x)
-
-        state = {}
-        if return_states == "all":
-            for node in self.nodes:
-                state[node.name] = node.state()
-
-        elif hasattr(return_states, "__iter__"):
-            for name in return_states:
-                state[name] = self[name].state()
-
-        else:
-            if len(self.output_nodes) > 1:
-                for out_node in self.output_nodes:
-                    state[out_node.name] = out_node.state()
-            else:
-                state = self.output_nodes[0].state()
-
-        return state
+        return call(self, x, return_states=return_states, *args, **kwargs)
 
     def _unregister_teachers(self):
         """Remove teacher nodes refs from student nodes."""
@@ -805,45 +882,16 @@ class Model(_Node):
             where keys are output nodes names and values
             are corresponding sequences of output vectors.
         """
-        X_, forced_feedbacks_ = check_xy(
-            self, X, forced_feedbacks, allow_n_sequences=False
+        return run(
+            self,
+            X,
+            forced_feedbacks=forced_feedbacks,
+            from_state=from_state,
+            stateful=stateful,
+            reset=reset,
+            shift_fb=shift_fb,
+            return_states=return_states,
         )
-
-        self._initialize_on_sequence(X_, forced_feedbacks_)
-
-        states = _allocate_returned_states(self, X_, return_states)
-
-        seq = progress(
-            self._dispatcher.dispatch(X_, forced_feedbacks_, shift_fb=shift_fb),
-            f"Running {self.name}",
-            total=len(X_),
-        )
-
-        with self.with_state(from_state, stateful=stateful, reset=reset):
-            # load proxys after state update to make it have an
-            # impact on feedback
-            self._load_proxys(keep=True)
-            for i, (x, forced_fb, _) in enumerate(seq):
-
-                with self.with_feedback(forced_fb):
-                    state = self._call(x, return_states=return_states)
-
-                if is_mapping(state):
-                    for name, value in state.items():
-                        states[name][i, :] = value
-                else:
-                    states[self.output_nodes[0].name][i, :] = state
-
-                self._load_proxys()
-
-        self._clean_proxys()
-
-        # dicts are only relevant if model has several outputs (len > 1) or
-        # if we want to return states from hidden nodes
-        if len(states) == 1 and return_states is None:
-            return states[self.output_nodes[0].name]
-
-        return states
 
     def train(
         self,
@@ -962,6 +1010,8 @@ class Model(_Node):
         from_state=None,
         stateful=True,
         reset=False,
+        n_jobs=1,
+        backend="loky",
     ) -> "Model":
         """Fit all offline Nodes in the Model
         using their offline learning rule.
@@ -1035,26 +1085,45 @@ class Model(_Node):
                 next_X = []
                 seq = progress(X, f"Running {self.name}")
 
-                _partial_fit_fn = partial(
-                    _run_and_partial_fit,
-                    force_teachers=force_teachers,
-                    model=submodel,
-                    warmup=warmup,
-                    reset=reset,
-                    offlines=offlines,
-                    relations=relations,
-                    stateful=stateful,
-                    return_states=return_states,
-                )
+                backend = get_joblib_backend(workers=n_jobs, backend=backend)
+                with Parallel(n_jobs=n_jobs, backend=backend) as parallel:
+
+                    partial_fit_fn = delayed(
+                        partial(
+                            run_and_partial_fit,
+                            complete_model=self,
+                            submodel=submodel,
+                            force_teachers=force_teachers,
+                            warmup=warmup,
+                            reset=reset,
+                            offlines=offlines,
+                            relations=relations,
+                            stateful=stateful,
+                            return_states=return_states,
+                        )
+                    )
+
+                    results = parallel(
+                        partial_fit_fn(x_seq=x_seq, y_seq=y_seq)
+                        for x_seq, y_seq in zip(seq, Y)
+                    )
+
+                    buffers = defaultdict(list)
+                    for r in results:
+                        if n_jobs != 1:
+                            for offline_name, buffer in r[0].items():
+                                buffers[offline_name].append(buffer)
+
+                        next_X += [r[1]]
 
                 # for seq/batch in dataset
-                for x_seq, y_seq in zip(seq, Y):
-                    next_X += [_partial_fit_fn(x_seq=x_seq, y_seq=y_seq)]
+                # for x_seq, y_seq in zip(seq, Y):
+                #     next_X += [_partial_fit_fn(x_seq=x_seq, y_seq=y_seq)]
 
                 for node in offlines:
                     if verbosity():
                         print(f"Fitting node {node.name}...")
-                    node.fit()
+                    node.fit(buffers=buffers.get(node.name))
 
                 trained |= set(offlines)
 
