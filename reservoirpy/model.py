@@ -147,6 +147,14 @@ def run_and_partial_fit(
     return {off.name: off.buffers for off in offlines}, dist_states
 
 
+def yield_tasks(X, Y, n_jobs=1):
+
+    X_ = list(*X)
+    Y_ = list(*Y)
+
+    seq = progress(X)
+
+
 def _filter_teacher_nodes(Y):
     if is_mapping(Y):
         sequences = {n: v for n, v in Y.items() if not isinstance(v, _Node)}
@@ -1083,8 +1091,6 @@ class Model(_Node):
 
                 # next inputs for next submodel
                 next_X = []
-                seq = progress(X, f"Running {self.name}")
-
                 backend = get_joblib_backend(workers=n_jobs, backend=backend)
                 with Parallel(n_jobs=n_jobs, backend=backend) as parallel:
 
@@ -1105,7 +1111,7 @@ class Model(_Node):
 
                     results = parallel(
                         partial_fit_fn(x_seq=x_seq, y_seq=y_seq)
-                        for x_seq, y_seq in zip(seq, Y)
+                        for x_seq, y_seq in zip(X, Y)
                     )
 
                     buffers = defaultdict(list)
