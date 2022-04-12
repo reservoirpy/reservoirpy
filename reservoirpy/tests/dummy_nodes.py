@@ -93,13 +93,13 @@ def off_forward(node: Node, x):
     return x + node.b
 
 
-def off_partial_backward(node: Node, X_batch, Y_batch=None):
+def off_partial_backward(node: Node, X_batch, Y_batch=None, **kwargs):
     db = np.mean(np.abs(X_batch - Y_batch))
     b = node.get_buffer("b")
     b += db
 
 
-def off_backward(node: Node, X=None, Y=None):
+def off_backward(node: Node, X=None, Y=None, **kwargs):
     b = node.get_buffer("b")
     node.set_param("b", np.array(b).copy())
 
@@ -127,7 +127,7 @@ class Offline(Node):
         )
 
 
-def off_backward_basic(node: Node, X=None, Y=None):
+def off_backward_basic(node: Node, X=None, Y=None, **kwargs):
     b = np.mean(node._X)
     node.set_param("b", np.array(b).copy())
 
@@ -146,13 +146,13 @@ def off2_forward(node: Node, x):
     return x + node.b
 
 
-def off2_partial_backward(node: Node, X_batch, Y_batch=None):
+def off2_partial_backward(node: Node, X_batch, Y_batch=None, **kwargs):
     db = np.mean(np.abs(X_batch - Y_batch))
     b = node.get_buffer("b")
     b += db
 
 
-def off2_backward(node: Node, X=None, Y=None):
+def off2_backward(node: Node, X=None, Y=None, **kwargs):
     b = node.get_buffer("b")
     node.set_param("b", np.array(b).copy())
 
@@ -205,12 +205,12 @@ def unsupervised_forward(node: Node, x):
     return x + node.b
 
 
-def unsupervised_partial_backward(node: Node, X_batch, Y_batch=None):
+def unsupervised_partial_backward(node: Node, X_batch, Y_batch=None, **kwargs):
     b = np.mean(X_batch)
     node.set_buffer("b", node.get_buffer("b") + b)
 
 
-def unsupervised_backward(node: Node, X=None, Y=None):
+def unsupervised_backward(node: Node, X=None, Y=None, **kwargs):
     b = node.get_buffer("b")
     node.set_param("b", np.array(b).copy())
 
