@@ -138,8 +138,6 @@ from .type import (
 )
 from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
-
-# from .utils.parallel import clean_tempfile, memmap_buffer
 from .utils.validation import check_vector
 
 
@@ -204,22 +202,27 @@ def _partial_backward_default(node, X_batch, Y_batch=None):
     if not hasattr(node.output_dim, "__iter__"):
         output_dim = (output_dim,)
 
+    _X, _Y = node.get_buffer("_X"), node.get_buffer("_Y")
+
     if isinstance(X_batch, np.ndarray):
         if X_batch.shape[1:] == input_dim:
-            node._X.append(X_batch)
+            _X.append(X_batch)
         elif X_batch.shape[2:] == input_dim:
-            node._X.append([X_batch[i] for i in range(len(X_batch))])
+            _X.append([X_batch[i] for i in range(len(X_batch))])
     else:
-        node._X.extend(X_batch)
+        _X.extend(X_batch)
 
     if Y_batch is not None:
         if isinstance(Y_batch, np.ndarray):
             if Y_batch.shape[:1] == output_dim:
-                node._Y.append(Y_batch)
+                _Y.append(Y_batch)
             elif Y_batch.shape[:2] == input_dim:
-                node._Y.append([Y_batch[i] for i in range(len(Y_batch))])
+                _Y.append([Y_batch[i] for i in range(len(Y_batch))])
         else:
-            node._Y.extend(Y_batch)
+            _Y.extend(Y_batch)
+
+    node.set_buffer("_X", _X)
+    node.set_buffer("_Y", _Y)
 
     return
 
@@ -236,8 +239,8 @@ def _initialize_feedback_default(node, fb):
 
 
 def _initialize_buffers_default(node):
-    node.buffers["_X"] = list()
-    node.buffers["_Y"] = list()
+    node.create_buffer("_X", data=list())
+    node.create_buffer("_Y", data=list())
 
 
 class Node(_Node):
@@ -319,9 +322,6 @@ class Node(_Node):
     _trainable: bool
     _fitted: bool
 
-    # _X: List  # For partial_fit default behavior (store first, then fit)
-    # _Y: List
-
     def __init__(
         self,
         params: Dict[str, Any] = None,
@@ -332,7 +332,7 @@ class Node(_Node):
         train: PartialBackFn = None,
         initializer: ForwardInitFn = None,
         fb_initializer: ForwardInitFn = _initialize_feedback_default,
-        buffers_initializer: EmptyInitFn = None,
+        buffers_initializer: EmptyInitFn = _initialize_buffers_default,
         input_dim: int = None,
         output_dim: int = None,
         feedback_dim: int = None,
@@ -376,8 +376,6 @@ class Node(_Node):
         self._trainable = self._backward is not None or self._train is not None
 
         self._fitted = False if self.is_trainable and self.is_trained_offline else True
-
-        self._X, self._Y = [], []
 
     def __lshift__(self, other) -> "_Node":
         return self.link_feedback(other)
@@ -614,15 +612,12 @@ class Node(_Node):
         data : array-like
             Data to store in the buffer array.
         """
-        # if as_memmap:
-        #     self._buffers[name] = memmap_buffer(self, data=data, shape=shape, name=name)
-        # else:
         if data is not None:
             self._buffers[name] = data
         else:
             self._buffers[name] = np.zeros(shape)
 
-    def set_buffer(self, name: str, value: np.ndarray):
+    def set_buffer(self, name: str, value: Any):
         """Dump data in the buffer array.
 
         Parameters
@@ -632,9 +627,12 @@ class Node(_Node):
         value : array-like
             Data to store in the buffer array.
         """
-        self._buffers[name][:] = value.astype(self.dtype)
+        if isinstance(self._buffers[name], np.ndarray):
+            self._buffers[name][:] = value.astype(self.dtype)
+        else:
+            self._buffers[name] = value
 
-    def get_buffer(self, name) -> np.memmap:
+    def get_buffer(self, name) -> Any:
         """Get data from a buffer array.
 
         Parameters
@@ -721,10 +719,6 @@ class Node(_Node):
         """Clean Node's buffer arrays."""
         if len(self._buffers) > 0:
             self._buffers = dict()
-        #     clean_tempfile(self)
-
-        # Empty possibly stored inputs and targets in default buffer.
-        # self._X = self._Y = []
 
     def reset(self, to_state: np.ndarray = None) -> "Node":
         """Reset the last state saved to zero or to
@@ -754,7 +748,7 @@ class Node(_Node):
     ) -> "Node":
         """Modify the state of the Node using a context manager.
         The modification will have effect only within the context defined,
-        before the state returns back to its previous value.
+        before the state returns to its previous value.
 
         Parameters
         ----------
@@ -1150,7 +1144,7 @@ class Node(_Node):
                 f"without input and teacher data."
             )
 
-        self._backward(self, self._X, self._Y, buffers=buffers)
+        self._backward(self, buffers)
 
         self._fitted = True
         self.clean_buffers()
