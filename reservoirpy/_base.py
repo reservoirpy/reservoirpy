@@ -41,92 +41,6 @@ def _remove_input_for_feedback(node) -> Union["Node", "Model"]:
     return Model(filtered_nodes, filtered_edges, name=str(uuid4()))
 
 
-def check_xyfb(
-    caller,
-    x=None,
-    y=None,
-    fb=None,
-    input_dim=None,
-    output_dim=None,
-    allow_n_sequences=True,
-    allow_n_inputs=True,
-    allow_timespans=True,
-    n_jobs=1,
-):
-    if (
-        hasattr(caller, "nodes")
-        and hasattr(caller, "input_nodes")
-        and hasattr(caller, "trainable_nodes")
-        and hasattr(caller, "feedback_nodes")
-    ):
-        input_nodes = {n.name: n for n in caller.input_nodes}
-        trainable_nodes = {n.name for n in caller.trainable_nodes}
-        fb_receivers = {n.name for n in caller.feedback_nodes}
-    elif hasattr(caller, "is_trainable") and hasattr(caller, "has_feedback"):
-        input_nodes = {caller.name: caller}
-        trainable_nodes = {caller.name: caller} if caller.is_trainable else []
-        fb_receivers = {caller.name: caller} if caller.has_feedback else []
-    else:
-        raise TypeError(
-            f"Caller must be a Node or Model-like object, not {type(caller)}. "
-            f"({caller})"
-        )
-
-    if x is not None:
-        if is_mapping(x):
-            receivers = list(x)
-            x_mapping = x
-
-            missing = set(list(input_nodes)) - set(receivers)
-            if len(missing) > 0:
-                raise ValueError(
-                    f"Missing inputs for nodes: {', '.join(missing)} "
-                    f"in {caller.name}."
-                )
-        else:
-            receivers = list(input_nodes)
-            x_mapping = {name: x for name in input_nodes.keys()}
-
-        x_new = dict()
-        for node_name in receivers:
-            if node_name not in input_nodes:
-                raise ValueError(f"No input node named '{node_name}' in {caller.name}.")
-
-            node = input_nodes[node_name]
-            x_new[node_name] = check_n_sequences(
-                x_mapping[node_name],
-                expected_dim=node.input_dim,
-                caller=node,
-                allow_n_sequences=allow_n_sequences,
-                allow_n_inputs=allow_n_inputs,
-                allow_timespans=allow_timespans,
-            )
-
-    if y is not None:
-        if is_mapping(y):
-            receivers = list(y.keys())
-            y_mapping = y
-
-            missing = set(trainables_id) - set(receivers)
-            fitted = set(
-                [n.name for n in trainable_nodes if n.fitted or n.is_trained_online]
-            )
-            if len(missing) > 0 and len(missing - fitted) > 0:
-                raise ValueError(
-                    f"Missing inputs for nodes: {', '.join(missing)} "
-                    f"in {caller.name}."
-                )
-        else:
-            y_mapping = {trainables_id[0]: x}
-
-        y_ = check_node_io(
-            y_mapping, receiver_nodes=trainable_nodes, caller=caller, io_type="target"
-        )
-
-    if fb is not None:
-        ...
-
-
 def check_one_sequence(
     x: Union[np.ndarray, Sequence[np.ndarray]],
     expected_dim=None,
@@ -174,38 +88,31 @@ def check_n_sequences(
             expected_dim = (expected_dim,)
         n_inputs = len(expected_dim)
 
-        # Inputs
-        if n_inputs > 1 and allow_n_inputs:
+        # I
+        if n_inputs > 1:
             if isinstance(x, (list, tuple)):
-                x_check = [x[i] for i in range(len(x))]
+                x_new = [x[i] for i in range(len(x))]
                 timesteps = []
-                n_sequences = 1
                 for i in range(n_inputs):
                     dim = (expected_dim[i],)
-                    x_check[i] = check_n_sequences(
+                    x_new[i] = check_n_sequences(
                         x[i],
                         expected_dim=dim,
                         caller=caller,
                         allow_n_sequences=allow_n_sequences,
                         allow_timespans=allow_timespans,
-                        allow_n_inputs=False,
+                        allow_n_inputs=allow_n_inputs,
                     )
-
-                    if isinstance(x_check[i], (list, tuple)):  # n ragged sequences
-                        timesteps.append(tuple([x_.shape[0] for x_ in x_check[i]]))
-                        n_sequences = len(x_check[i])
-                    else:  # 1 sequence or n-dim array of even sequences
+                    if isinstance(x_new[i], (list, tuple)):
+                        timesteps.append(tuple([x_.shape[0] for x_ in x_new[i]]))
+                    else:
                         dim = dim[0]
                         if not hasattr(dim, "__len__"):
                             dim = (dim,)
-
-                        # single sequence
-                        if len(dim) + 2 > len(x_check[i].shape) >= len(dim) + 1:
-                            timesteps.append((x_check[i].shape[0],))
-                            n_sequences = 1
-                        else:  # several sequences
-                            timesteps.append((x_check[i].shape[1],))
-                            n_sequences = x_check[i].shape[0]
+                        if len(dim) + 2 > len(x_new[i].shape) >= len(dim) + 1:
+                            timesteps.append((x_new[i].shape[0],))
+                        else:
+                            timesteps.append((x_new[i].shape[1],))
 
                 if len(np.unique([len(t) for t in timesteps])) > 1 or any(
                     [
@@ -214,20 +121,9 @@ def check_n_sequences(
                     ]
                 ):
                     raise ValueError("Inputs with different timesteps")
-
-                x_new = []
-                # change data order from inputs first to sequences first
-                for seq_idx in range(n_sequences):
-                    sequence = []
-                    for inp_idx in range(n_inputs):
-                        if n_sequences > 1:
-                            sequence.append(x_check[inp_idx][seq_idx])
-                        else:
-                            sequence.append(x_check[inp_idx])
-                    x_new.append(sequence)
             else:
                 raise ValueError("Expecting several inputs.")
-        else:  # Sequences
+        else:  # L
             dim = expected_dim[0]
             if not hasattr(dim, "__len__"):
                 dim = (dim,)
@@ -299,7 +195,7 @@ def check_n_sequences(
     return x_new
 
 
-def check_node_io(
+def _check_node_io(
     x,
     receiver_nodes=None,
     expected_dim=None,
@@ -467,7 +363,7 @@ def check_xy(
     else:
         input_nodes = None
 
-    x_new = check_node_io(
+    x_new = _check_node_io(
         x,
         receiver_nodes=input_nodes,
         expected_dim=input_dim,
@@ -491,7 +387,7 @@ def check_xy(
             if output_dim is None and hasattr(caller, "output_dim"):
                 output_dim = caller.output_dim
 
-        y_new = check_node_io(
+        y_new = _check_node_io(
             y,
             receiver_nodes=trainable_nodes,
             expected_dim=output_dim,
