@@ -345,10 +345,6 @@ def test_offline_fit_simple_model_fb(basic_offline_node, plus_node, feedback_nod
     X = np.ones((3, 5, 1)) * 0.5
     Y = np.ones((3, 5, 1))
 
-    model.fit(X, Y, n_jobs=-1)
-
-    assert_array_equal(basic_offline_node.b, np.array([9.3]))
-
     model.fit(X, Y, reset=True)
 
     assert_array_equal(basic_offline_node.b, np.array([9.3]))

@@ -83,7 +83,9 @@ def backward(reservoir: "IPReservoir", buffers):
     if buffers is None:
         X = reservoir.get_buffer("_X")
     else:
-        X = [b["_X"] for b in buffers]
+        X = []
+        for b in buffers:
+            X += b["_X"]
 
     for e in range(reservoir.epochs):
         for seq in X:
