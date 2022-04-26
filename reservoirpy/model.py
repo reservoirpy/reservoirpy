@@ -71,7 +71,6 @@ a :py:class:`Model`.
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import os
 from collections import defaultdict
 from contextlib import ExitStack, contextmanager
 from functools import partial
@@ -96,7 +95,7 @@ from .utils.model_utils import (
     _dist_states_to_next_subgraph,
     to_ragged_seq_set,
 )
-from .utils.parallel import get_joblib_backend
+from .utils.parallel import get_joblib_backend, get_joblib_n_jobs
 from .utils.validation import is_mapping
 
 
@@ -142,9 +141,91 @@ def run_and_partial_fit(
         dist_states = x_seq
 
     for node in offlines:
-        node.partial_fit(dist_states[node.name], y_seq[node.name], warmup=warmup)
+        node.partial_fit(dist_states[node.name], y_seq.get(node.name), warmup=warmup)
 
     return {off.name: off.buffers for off in offlines}, dist_states
+
+
+def _parallel_fit(
+    model,
+    submodel,
+    X,
+    Y,
+    force_teachers,
+    warmup,
+    reset,
+    offlines,
+    relations,
+    stateful,
+    return_states,
+    n_jobs,
+    backend,
+):
+    with Parallel(n_jobs=n_jobs, backend=backend) as parallel:
+
+        partial_fit_fn = delayed(
+            partial(
+                run_and_partial_fit,
+                complete_model=model,
+                submodel=submodel,
+                force_teachers=force_teachers,
+                warmup=warmup,
+                reset=reset,
+                offlines=offlines,
+                relations=relations,
+                stateful=stateful,
+                return_states=return_states,
+            )
+        )
+
+        results = parallel(
+            partial_fit_fn(x_seq=x_seq, y_seq=y_seq) for x_seq, y_seq in zip(X, Y)
+        )
+
+        next_X = []
+        buffers = defaultdict(list)
+        for r in results:
+            for offline_name, buffer in r[0].items():
+                buffers[offline_name].append(buffer)
+
+            next_X += [r[1]]
+
+        return next_X, buffers
+
+
+def _sequential_fit(
+    model,
+    submodel,
+    X,
+    Y,
+    force_teachers,
+    warmup,
+    reset,
+    offlines,
+    relations,
+    stateful,
+    return_states,
+):
+    partial_fit_fn = partial(
+        run_and_partial_fit,
+        complete_model=model,
+        submodel=submodel,
+        force_teachers=force_teachers,
+        warmup=warmup,
+        reset=reset,
+        offlines=offlines,
+        relations=relations,
+        stateful=stateful,
+        return_states=return_states,
+    )
+
+    results = []
+    for x_seq, y_seq in zip(X, Y):
+        results += [partial_fit_fn(x_seq=x_seq, y_seq=y_seq)]
+
+    next_X = [r[1] for r in results]
+
+    return next_X
 
 
 def _filter_teacher_nodes(Y):
@@ -1010,8 +1091,6 @@ class Model(_Node):
         from_state=None,
         stateful=True,
         reset=False,
-        n_jobs=1,
-        backend="loky",
     ) -> "Model":
         """Fit all offline Nodes in the Model
         using their offline learning rule.
@@ -1082,43 +1161,41 @@ class Model(_Node):
                     return_states = list(relations.keys())
 
                 # next inputs for next submodel
-                next_X = []
-                seq = progress(X, f"Running {self.name}")
+                backend = get_joblib_backend()
+                n_jobs = get_joblib_n_jobs()
 
-                backend = get_joblib_backend(workers=n_jobs, backend=backend)
-                with Parallel(n_jobs=n_jobs, backend=backend) as parallel:
-
-                    partial_fit_fn = delayed(
-                        partial(
-                            run_and_partial_fit,
-                            complete_model=self,
-                            submodel=submodel,
-                            force_teachers=force_teachers,
-                            warmup=warmup,
-                            reset=reset,
-                            offlines=offlines,
-                            relations=relations,
-                            stateful=stateful,
-                            return_states=return_states,
-                        )
+                if n_jobs == 1 or len(X) == 1 or backend == "sequential":
+                    buffers = dict()
+                    next_X = _sequential_fit(
+                        self,
+                        submodel,
+                        X,
+                        Y,
+                        force_teachers=force_teachers,
+                        warmup=warmup,
+                        reset=reset,
+                        offlines=offlines,
+                        relations=relations,
+                        stateful=stateful,
+                        return_states=return_states,
                     )
 
-                    results = parallel(
-                        partial_fit_fn(x_seq=x_seq, y_seq=y_seq)
-                        for x_seq, y_seq in zip(seq, Y)
+                else:
+                    next_X, buffers = _parallel_fit(
+                        self,
+                        submodel,
+                        X,
+                        Y,
+                        force_teachers=force_teachers,
+                        warmup=warmup,
+                        reset=reset,
+                        offlines=offlines,
+                        relations=relations,
+                        stateful=stateful,
+                        return_states=return_states,
+                        n_jobs=n_jobs,
+                        backend=backend,
                     )
-
-                    buffers = defaultdict(list)
-                    for r in results:
-                        if n_jobs != 1:
-                            for offline_name, buffer in r[0].items():
-                                buffers[offline_name].append(buffer)
-
-                        next_X += [r[1]]
-
-                # for seq/batch in dataset
-                # for x_seq, y_seq in zip(seq, Y):
-                #     next_X += [_partial_fit_fn(x_seq=x_seq, y_seq=y_seq)]
 
                 for node in offlines:
                     if verbosity():
