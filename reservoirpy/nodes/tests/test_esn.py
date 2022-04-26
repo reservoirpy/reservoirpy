@@ -121,32 +121,3 @@ def test_esn_parallel_fit_reproducibility():
         assert esn.reservoir.Wfb.shape == (100, 5)
 
         assert np.mean(esn.readout.Wout) - 0.002418478571198347 < 1e-5
-
-
-def test_hierarchical_esn_forbidden():
-
-    esn1 = ESN(
-        units=100,
-        lr=0.8,
-        sr=0.4,
-        ridge=1e-5,
-        feedback=True,
-        workers=-1,
-        backend="loky",
-        name="E1",
-    )
-
-    esn2 = ESN(
-        units=100,
-        lr=0.8,
-        sr=0.4,
-        ridge=1e-5,
-        feedback=True,
-        workers=-1,
-        backend="loky",
-        name="E2",
-    )
-
-    # FrozenModel can't be linked (for now).
-    with pytest.raises(TypeError):
-        model = esn1 >> esn2

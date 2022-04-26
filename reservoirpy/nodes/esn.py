@@ -1,13 +1,11 @@
 # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from multiprocessing import Manager
-
 import numpy as np
 from joblib import Parallel, delayed
 
 from .._base import _Node, call
-from ..model import FrozenModel
+from ..model import Model
 from ..utils import _obj_from_kwargs, progress, verbosity
 from ..utils.model_utils import to_ragged_seq_set
 from ..utils.parallel import get_joblib_backend
@@ -56,7 +54,7 @@ def _sort_and_unpack(states, return_states=None):
     return states
 
 
-class ESN(FrozenModel):
+class ESN(Model):
     """Echo State Networks as a Node, with parallelization of state update.
 
     This Node is provided as a wrapper for reservoir and readout nodes. Execution
@@ -299,53 +297,3 @@ class ESN(FrozenModel):
                 )
 
         return _sort_and_unpack(states, return_states=return_states)
-
-    def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
-
-        X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
-        self._initialize_on_sequence(X[0], Y[0])
-
-        self.initialize_buffers()
-
-        if (self.workers > 1 or self.workers == -1) and self.backend not in (
-            "sequential",
-            "threading",
-        ):
-            lock = Manager().Lock()
-        else:
-            lock = None
-
-        def run_partial_fit_fn(x, y):
-            states = np.zeros((x.shape[0], self.reservoir.output_dim))
-
-            for i, (x, forced_feedback, _) in enumerate(
-                self._dispatcher.dispatch(x, y, shift_fb=True)
-            ):
-                self._load_proxys()
-
-                with self.readout.with_feedback(forced_feedback[self.readout.name]):
-                    states[i, :] = call(self.reservoir, x[self.reservoir.name])
-
-            self._clean_proxys()
-
-            # Avoid any problem related to multiple
-            # writes from multiple processes
-            if lock is not None:
-                with lock:  # pragma: no cover
-                    self.readout.partial_fit(states, y)
-            else:
-                self.readout.partial_fit(states, y)
-
-        backend = get_joblib_backend(workers=self.workers, backend=self.backend)
-
-        seq = progress(X, f"Running {self.name}")
-        with self.with_state(from_state, reset=reset, stateful=stateful):
-            with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-                parallel(delayed(run_partial_fit_fn)(x, y) for x, y in zip(seq, Y))
-
-            if verbosity():  # pragma: no cover
-                print(f"Fitting node {self.name}...")
-
-            self.readout.fit()
-
-        return self

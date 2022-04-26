@@ -23,29 +23,21 @@ from typing import Iterable, Sequence, Union
 from uuid import uuid4
 
 from ._base import DistantFeedback, _Node
-from .model import FrozenModel, Model
+from .model import Model
 from .nodes.concat import Concat
 
 
 def _check_all_nodes(*nodes):
     msg = "Impossible to link nodes: object {} is neither a Node nor a Model."
-    frozen_msg = (
-        "Impossible to link FrozenModel to other Nodes or Model. "
-        "FrozenModel found: {}."
-    )
 
     for nn in nodes:
         if isinstance(nn, Iterable):
             for n in nn:
                 if not isinstance(n, _Node):
                     raise TypeError(msg.format(n))
-                elif isinstance(n, FrozenModel):
-                    raise TypeError(frozen_msg.format(n.name))
         else:
             if not isinstance(nn, _Node):
                 raise TypeError(msg.format(nn))
-            elif isinstance(nn, FrozenModel):
-                raise TypeError(frozen_msg.format(nn.name))
     return
 
 
@@ -54,7 +46,7 @@ def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
     # fetch all nodes in the two subgraphs, if they are models.
     all_nodes = []
     for node in (node1, node2):
-        if isinstance(node, Model) and not isinstance(node, FrozenModel):
+        if isinstance(node, Model):
             all_nodes += node.nodes
         else:
             all_nodes += [node]
@@ -62,19 +54,19 @@ def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
     # fetch all edges in the two subgraphs, if they are models.
     all_edges = []
     for node in (node1, node2):
-        if isinstance(node, Model) and not isinstance(node, FrozenModel):
+        if isinstance(node, Model):
             all_edges += node.edges
 
     # create edges between output nodes of the
     # subgraph 1 and input nodes of the subgraph 2.
     senders = []
-    if isinstance(node1, Model) and not isinstance(node, FrozenModel):
+    if isinstance(node1, Model):
         senders += node1.output_nodes
     else:
         senders += [node1]
 
     receivers = []
-    if isinstance(node2, Model) and not isinstance(node, FrozenModel):
+    if isinstance(node2, Model):
         receivers += node2.input_nodes
     else:
         receivers += [node2]
@@ -371,14 +363,14 @@ def merge(
         all_edges = set()
         for m in models:
             # fuse models nodes and edges (right side argument)
-            if isinstance(m, Model) and not isinstance(m, FrozenModel):
+            if isinstance(m, Model):
                 all_nodes |= set(m.nodes)
                 all_edges |= set(m.edges)
             elif isinstance(m, _Node):
                 all_nodes |= {m}
 
         if inplace:
-            if not isinstance(model, Model) or isinstance(model, FrozenModel):
+            if not isinstance(model, Model):
                 raise ValueError(
                     f"Impossible to merge models inplace: "
                     f"{model} is not a Model instance."
@@ -387,7 +379,7 @@ def merge(
 
         else:
             # add left side model nodes
-            if isinstance(model, Model) and not isinstance(model, FrozenModel):
+            if isinstance(model, Model):
                 all_nodes |= set(model.nodes)
                 all_edges |= set(model.edges)
             else:

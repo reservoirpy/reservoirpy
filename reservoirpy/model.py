@@ -1208,18 +1208,3 @@ class Model(_Node):
 
     def copy(self, *args, **kwargs):
         raise NotImplementedError()
-
-
-class FrozenModel(Model):
-    """A FrozenModel is a Model that can not be
-    linked to other nodes or models.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(FrozenModel, self).__init__(*args, **kwargs)
-
-    def update_graph(self, new_nodes, new_edges):
-        raise TypeError(
-            f"Impossible to update FrozenModel {self}: "
-            f"model is frozen and cannot be modified."
-        )
