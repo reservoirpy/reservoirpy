@@ -49,7 +49,7 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
     YXT += yxt
 
 
-def backward(readout: Node, *args, buffers=None, **kwargs):
+def backward(readout: Node, buffers):
     ridge = readout.ridge
 
     if buffers is None:
