@@ -375,7 +375,7 @@ def test_offline_node_default_partial(basic_offline_node):
     Y = np.ones((10, 5))
 
     basic_offline_node.partial_fit(X, Y, warmup=2)
-    assert_array_equal(basic_offline_node._X[0], X[2:])
+    assert_array_equal(basic_offline_node.get_buffer("_X")[0], X[2:])
 
 
 def test_multi_input(multiinput):

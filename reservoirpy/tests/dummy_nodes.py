@@ -127,8 +127,12 @@ class Offline(Node):
         )
 
 
-def off_backward_basic(node: Node, X=None, Y=None, **kwargs):
-    b = np.mean(node._X)
+def off_backward_basic(node: Node, buffers):
+    if buffers is not None:
+        X = [b["_X"] for b in buffers]
+        b = np.mean(X)
+    else:
+        b = np.mean(node.get_buffer("_X"))
     node.set_param("b", np.array(b).copy())
 
 

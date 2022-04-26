@@ -3,7 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
 from reservoirpy.nodes.io import Input
 
@@ -322,8 +322,8 @@ def test_offline_fit_simple_model_fb(basic_offline_node, plus_node, feedback_nod
     model = plus_node >> feedback_node >> basic_offline_node
     feedback_node <<= basic_offline_node
 
-    X = np.ones((5, 5)) * 0.5
-    Y = np.ones((5, 5))
+    X = np.ones((5, 1)) * 0.5
+    Y = np.ones((5, 1))
 
     model.fit(X, Y)
 
@@ -332,22 +332,31 @@ def test_offline_fit_simple_model_fb(basic_offline_node, plus_node, feedback_nod
     model = plus_node >> feedback_node >> basic_offline_node
     feedback_node <<= basic_offline_node
 
-    X = np.ones((3, 5, 5)) * 0.5
-    Y = np.ones((3, 5, 5))
+    X = np.ones((3, 5, 1)) * 0.5
+    Y = np.ones((3, 5, 1))
 
-    model.fit(X, Y)
+    model.fit(X, Y, stateful=False)
 
-    assert_array_equal(basic_offline_node.b, np.array([11.4]))
+    assert_array_equal(basic_offline_node.b, np.array([9.3]))
+
+    model = plus_node >> feedback_node >> basic_offline_node
+    feedback_node <<= basic_offline_node
+
+    X = np.ones((3, 5, 1)) * 0.5
+    Y = np.ones((3, 5, 1))
+
+    model.fit(X, Y, n_jobs=-1)
+
+    assert_array_equal(basic_offline_node.b, np.array([9.3]))
 
     model.fit(X, Y, reset=True)
 
-    assert_array_equal(basic_offline_node.b, np.array([5.15]))
+    assert_array_equal(basic_offline_node.b, np.array([9.3]))
 
     res = model.run(X[0], reset=True)
 
-    exp = np.tile(np.array([8.65, 19.8, 33.45, 49.6, 68.25]), 5).reshape(5, 5).T
-
-    assert_array_equal(exp, res)
+    exp = np.array([12.8, 28.1, 45.9, 66.2, 89.0]).reshape(-1, 1)
+    assert_allclose(exp, res)
 
 
 def test_offline_fit_complex(
