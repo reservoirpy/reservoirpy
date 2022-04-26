@@ -79,7 +79,12 @@ def ip_activation(state, *, reservoir, f):
     return f(a * state + b)
 
 
-def backward(reservoir: "IPReservoir", X=None, *args, **kwargs):
+def backward(reservoir: "IPReservoir", buffers):
+    if buffers is None:
+        X = reservoir.get_buffer("_X")
+    else:
+        X = [b["_X"] for b in buffers]
+
     for e in range(reservoir.epochs):
         for seq in X:
             for u in seq:
@@ -409,6 +414,10 @@ class IPReservoir(Node):
             name=name,
             **kwargs,
         )
+
+    @property
+    def fitted(self):
+        return True
 
     def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "Node":
         """Partial offline fitting method of a Node.
