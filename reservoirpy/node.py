@@ -615,9 +615,9 @@ class Node(_Node):
         if data is not None:
             self._buffers[name] = data
         else:
-            self._buffers[name] = np.zeros(shape)
+            self._buffers[name] = np.zeros(shape, dtype=self.dtype)
 
-    def set_buffer(self, name: str, value: Any):
+    def set_buffer(self, name: str, value: Any, replace: bool = False):
         """Dump data in the buffer array.
 
         Parameters
@@ -626,11 +626,18 @@ class Node(_Node):
             Name of the buffer array.
         value : array-like
             Data to store in the buffer array.
+        replace : bool, default to False
+            If True and buffer is an array, then will change the current buffer array
+            with the new array/object in value. Else, will try to change the values of
+            the buffer array inplace.
         """
         if isinstance(self._buffers[name], np.ndarray):
-            self._buffers[name][:] = value.astype(self.dtype)
-        else:
-            self._buffers[name] = value
+            value = value.astype(self.dtype)
+            if not replace:
+                self._buffers[name][:] = value
+                return
+
+        self._buffers[name] = value
 
     def get_buffer(self, name) -> Any:
         """Get data from a buffer array.
@@ -1193,7 +1200,9 @@ class Node(_Node):
                 fb_copy = deepcopy(self._feedback)
                 new_obj._feedback = fb_copy
 
-        n = self._get_name(name)
-        new_obj._name = n
+        if name is None:
+            name = self.name
+
+        new_obj._name = str(name)
 
         return new_obj

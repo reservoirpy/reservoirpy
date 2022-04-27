@@ -45,8 +45,16 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
 
     # This is not thread-safe, apparently, using Numpy memmap as buffers
     # ok for parallelization then with a lock (see ESN object)
+    if not XXT.flags.writeable:
+        XXT = XXT.copy()
+    if not YXT.flags.writeable:
+        YXT = YXT.copy()
+
     XXT += xxt
     YXT += yxt
+
+    readout.set_buffer("XXT", XXT, replace=True)
+    readout.set_buffer("YXT", YXT, replace=True)
 
 
 def backward(readout: Node, buffers):

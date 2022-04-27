@@ -73,6 +73,7 @@ a :py:class:`Model`.
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
 from contextlib import ExitStack, contextmanager
+from copy import copy
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -90,9 +91,10 @@ from .utils.graphflow import (
     topological_sort,
 )
 from .utils.model_utils import (
-    _allocate_returned_states,
-    _build_forward_sumodels,
-    _dist_states_to_next_subgraph,
+    allocate_returned_states,
+    build_forward_sumodels,
+    dist_states_to_next_subgraph,
+    pack_sequences,
     to_ragged_seq_set,
 )
 from .utils.parallel import get_joblib_backend, get_joblib_n_jobs
@@ -104,8 +106,8 @@ def run_and_partial_fit(
     complete_model,
     offlines,
     relations,
-    x_seq,
-    y_seq,
+    X_batch,
+    Y_batch,
     warmup,
     stateful=True,
     reset=False,
@@ -113,37 +115,45 @@ def run_and_partial_fit(
     force_teachers=True,
 ):
     """Run a submodel and call its partial fit function."""
-    if not submodel.is_empty:
-        x_seq = {n: x for n, x in x_seq.items() if n in submodel.node_names}
+    next_states = []
+    for x_batch, y_batch in zip(X_batch, Y_batch):
+        if not submodel.is_empty:
+            x_batch = {n: x for n, x in x_batch.items() if n in submodel.node_names}
 
-        if force_teachers:
-            y_seq = {
-                n: y
-                for n, y in y_seq.items()
-                if n in [o.name for o in complete_model.nodes if o.is_trained_offline]
-            }
+            if force_teachers:
+                y_batch = {
+                    n: y
+                    for n, y in y_batch.items()
+                    if n
+                    in [o.name for o in complete_model.nodes if o.is_trained_offline]
+                }
+            else:
+                y_batch = None
+
+            submodel._is_initialized = True
+
+            states = run(
+                complete_model,
+                x_batch,
+                y_batch,
+                return_states=return_states,
+                stateful=stateful,
+                reset=reset,
+                submodel=submodel,
+            )
+
+            offline_outputs = dist_states_to_next_subgraph(states, relations)
         else:
-            y_seq = None
+            offline_outputs = x_batch
 
-        submodel._is_initialized = True
-        states = run(
-            complete_model,
-            x_seq,
-            y_seq,
-            return_states=return_states,
-            stateful=stateful,
-            reset=reset,
-            submodel=submodel,
-        )
+        next_states.append(offline_outputs)
 
-        dist_states = _dist_states_to_next_subgraph(states, relations)
-    else:
-        dist_states = x_seq
+        for node in offlines:
+            node.partial_fit(
+                offline_outputs[node.name], y_batch.get(node.name), warmup=warmup
+            )
 
-    for node in offlines:
-        node.partial_fit(dist_states[node.name], y_seq.get(node.name), warmup=warmup)
-
-    return {off.name: off.buffers for off in offlines}, dist_states
+    return {off.name: off.buffers for off in offlines}, next_states
 
 
 def _parallel_fit(
@@ -160,6 +170,7 @@ def _parallel_fit(
     return_states,
     n_jobs,
     backend,
+    batch_size,
 ):
     with Parallel(n_jobs=n_jobs, backend=backend) as parallel:
 
@@ -171,15 +182,24 @@ def _parallel_fit(
                 force_teachers=force_teachers,
                 warmup=warmup,
                 reset=reset,
-                offlines=offlines,
                 relations=relations,
                 stateful=stateful,
                 return_states=return_states,
+                offlines=offlines,
             )
         )
 
+        X_batched = []
+        Y_batched = []
+        n_batches = len(X) // batch_size
+        if n_batches > 1:
+            for i in range(n_batches - 1):
+                X_batched.append(X[i * batch_size : (i + 1) * batch_size])
+                Y_batched.append(Y[i * batch_size : (i + 1) * batch_size])
+
         results = parallel(
-            partial_fit_fn(x_seq=x_seq, y_seq=y_seq) for x_seq, y_seq in zip(X, Y)
+            partial_fit_fn(X_batch=x_seq, Y_batch=y_seq)
+            for x_seq, y_seq in zip(X_batched, Y_batched)
         )
 
         next_X = []
@@ -218,13 +238,7 @@ def _sequential_fit(
         stateful=stateful,
         return_states=return_states,
     )
-
-    results = []
-    for x_seq, y_seq in zip(X, Y):
-        results += [partial_fit_fn(x_seq=x_seq, y_seq=y_seq)]
-
-    next_X = [r[1] for r in results]
-
+    _, next_X = partial_fit_fn(X_batch=X, Y_batch=Y)
     return next_X
 
 
@@ -280,19 +294,14 @@ def run(
     if submodel is None:
         submodel = model
 
-    X_, forced_feedbacks_ = check_xy(
-        submodel, X, forced_feedbacks, allow_n_sequences=False
-    )
+    # X_, forced_feedbacks_ = check_xy(
+    #     submodel, X, forced_feedbacks, allow_n_sequences=True
+    # )
+    submodel._initialize_on_sequence(X, forced_feedbacks)
 
-    submodel._initialize_on_sequence(X_, forced_feedbacks_)
+    states = allocate_returned_states(submodel, X, return_states)
 
-    states = _allocate_returned_states(submodel, X_, return_states)
-
-    seq = progress(
-        submodel._dispatcher.dispatch(X_, forced_feedbacks_, shift_fb=shift_fb),
-        f"Running {model.name}",
-        total=len(X_),
-    )
+    seq = submodel._dispatcher.dispatch(X, forced_feedbacks, shift_fb=shift_fb)
 
     with model.with_state(from_state, stateful=stateful, reset=reset):
         # load proxys after state update to make it have an
@@ -317,6 +326,42 @@ def run(
     # if we want to return states from hidden nodes
     if len(states) == 1 and return_states is None:
         return states[submodel.output_nodes[0].name]
+
+    return states
+
+
+def parallel_run(
+    model,
+    X: MappedData,
+    forced_feedbacks: Dict[str, np.ndarray] = None,
+    from_state: Dict[str, np.ndarray] = None,
+    stateful=True,
+    reset=False,
+    shift_fb=True,
+    return_states: Sequence[str] = None,
+    submodel=None,
+    n_jobs: int = 1,
+    backend: str = "loky",
+) -> MappedData:
+    @delayed
+    def _parallel_run(x, fb, idx):
+        return idx, run(
+            model=model,
+            X=x,
+            forced_feedbacks=fb,
+            from_state=from_state,
+            stateful=stateful,
+            reset=reset,
+            shift_fb=shift_fb,
+            return_states=return_states,
+            submodel=submodel,
+        )
+
+    with Parallel(n_jobs=n_jobs, backend=backend) as parallel:
+        states = parallel(
+            _parallel_run(x, fb, idx)
+            for x, fb, idx in zip(X, forced_feedbacks, range(len(X)))
+        )
 
     return states
 
@@ -476,6 +521,16 @@ class Model(_Node):
         from .ops import merge
 
         return merge(self, other, inplace=True)
+
+    def __contains__(self, item):
+        if isinstance(item, str):
+            if item in self.node_names:
+                return True
+
+        if item in self.nodes:
+            return True
+
+        return False
 
     def _check_if_only_online(self):
         if any([n.is_trained_offline and not n.fitted for n in self.nodes]):
@@ -963,16 +1018,59 @@ class Model(_Node):
             where keys are output nodes names and values
             are corresponding sequences of output vectors.
         """
-        return run(
-            self,
-            X,
-            forced_feedbacks=forced_feedbacks,
-            from_state=from_state,
-            stateful=stateful,
-            reset=reset,
-            shift_fb=shift_fb,
-            return_states=return_states,
+        X_, forced_feedbacks_ = check_xy(
+            self, X, forced_feedbacks, allow_n_sequences=True
         )
+
+        X_ = to_ragged_seq_set(X_)
+        if forced_feedbacks_ is not None:
+            forced_feedbacks_ = to_ragged_seq_set(forced_feedbacks_)
+
+        data = list(self._dispatcher.dispatch(X_, forced_feedbacks_, shift_fb=False))
+        X_ = [datum[0] for datum in data]
+        forced_feedbacks_ = [datum[1] for datum in data]
+
+        if forced_feedbacks_ is not None:
+            init_fb = forced_feedbacks_[0]
+            forced_fb = forced_feedbacks_
+        else:
+            init_fb = forced_feedbacks_
+            forced_fb = (None for _ in range(len(X_)))
+
+        self._initialize_on_sequence(X_[0], init_fb)
+
+        backend = get_joblib_backend()
+        n_jobs = get_joblib_n_jobs()
+        if n_jobs == 1 or len(X) == 1 or backend == "sequential":
+            states = []
+            for x, fb in zip(X_, forced_fb):
+                states.append(
+                    run(
+                        model=self,
+                        X=x,
+                        forced_feedbacks=fb,
+                        from_state=from_state,
+                        stateful=stateful,
+                        reset=reset,
+                        shift_fb=shift_fb,
+                        return_states=return_states,
+                    )
+                )
+            return pack_sequences(states, return_states=return_states)
+        else:
+            states = parallel_run(
+                model=self,
+                X=X_,
+                forced_feedbacks=forced_fb,
+                from_state=from_state,
+                stateful=stateful,
+                reset=reset,
+                shift_fb=shift_fb,
+                return_states=return_states,
+                n_jobs=n_jobs,
+                backend=backend,
+            )
+            return pack_sequences(states, return_states=return_states, sort_idxs=True)
 
     def train(
         self,
@@ -1041,7 +1139,7 @@ class Model(_Node):
 
         self._initialize_on_sequence(X_, Y_)
 
-        states = _allocate_returned_states(self, X_, return_states)
+        states = allocate_returned_states(self, X_, return_states)
 
         dispatch = self._dispatcher.dispatch(
             X_, Y_, return_targets=True, force_teachers=force_teachers
@@ -1091,6 +1189,7 @@ class Model(_Node):
         from_state=None,
         stateful=True,
         reset=False,
+        batch_size=1,
     ) -> "Model":
         """Fit all offline Nodes in the Model
         using their offline learning rule.
@@ -1150,7 +1249,7 @@ class Model(_Node):
 
         with self.with_state(from_state, reset=reset, stateful=stateful):
             for i, ((nodes, edges), relations) in enumerate(subgraphs):
-                submodel, offlines = _build_forward_sumodels(nodes, edges, trained)
+                submodel, offlines = build_forward_sumodels(nodes, edges, trained)
 
                 if next_X is not None:
                     for j in range(len(X)):
@@ -1195,6 +1294,7 @@ class Model(_Node):
                         return_states=return_states,
                         n_jobs=n_jobs,
                         backend=backend,
+                        batch_size=batch_size,
                     )
 
                 for node in offlines:
@@ -1206,5 +1306,28 @@ class Model(_Node):
 
         return self
 
-    def copy(self, *args, **kwargs):
-        raise NotImplementedError()
+    def copy(self, name: str = None, copy_feedback=False, shallow=False):
+        if shallow:
+            new_obj = copy(self)
+        else:
+            new_nodes = []
+            for node in self.nodes:
+                if node.has_feedback:
+                    if node._feedback._sender not in self:
+                        new_nodes.append(node.copy(copy_feedback=copy_feedback))
+                        continue
+                new_nodes.append(node.copy())
+
+            registry = {n.name: n for n in new_nodes}
+
+            new_edges = []
+            for sender, receiver in self.edges:
+                new_edges.append((registry[sender.name], registry[receiver.name]))
+            new_obj = Model(new_nodes, new_edges)
+
+        if name is None:
+            name = self.name
+
+        new_obj._name = name
+
+        return new_obj

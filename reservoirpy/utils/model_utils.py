@@ -9,7 +9,7 @@ import numpy as np
 from .validation import is_mapping, is_sequence_set
 
 
-def _build_forward_sumodels(nodes, edges, already_trained):
+def build_forward_sumodels(nodes, edges, already_trained):
     from ..model import Model
 
     offline_nodes = [
@@ -26,7 +26,7 @@ def _build_forward_sumodels(nodes, edges, already_trained):
     return submodel, offline_nodes
 
 
-def _dist_states_to_next_subgraph(states, relations):
+def dist_states_to_next_subgraph(states, relations):
     dist_states = {}
     for curr_node, next_nodes in relations.items():
         for next_node in next_nodes:
@@ -34,7 +34,7 @@ def _dist_states_to_next_subgraph(states, relations):
     return dist_states
 
 
-def _allocate_returned_states(model, inputs, return_states=None):
+def allocate_returned_states(model, inputs, return_states=None):
 
     seq_len = inputs[list(inputs.keys())[0]].shape[0]
 
@@ -74,3 +74,48 @@ def to_ragged_seq_set(data):
                 return data
         else:
             return data
+
+
+def sort_and_unpack(states, return_states=None):
+    """Maintain input order (even with parallelization on)"""
+    states = sorted(states, key=lambda s: s[0])
+    states = {n: [s[1][n] for s in states] for n in states[0][1].keys()}
+
+    for n, s in states.items():
+        if len(s) == 1:
+            states[n] = s[0]
+
+    if len(states) == 1 and return_states is None:
+        states = states[0]
+
+    return states
+
+
+def pack_sequences(sequences, return_states=None, sort_idxs=False):
+    if is_mapping(sequences) or isinstance(sequences, np.ndarray):
+        return sequences
+
+    if hasattr(sequences, "__iter__"):
+        if sort_idxs:
+            sequences = sorted(sequences, key=lambda s: s[0])
+            sequences = [s[1] for s in sequences]  # remove index
+
+        if len(sequences) == 1:
+            return sequences[0]
+
+        if is_mapping(sequences[0]):
+            packed = {k: [] for k in sequences[0].keys()}
+            for seq_map in sequences:
+                for node_name, sequence in seq_map.items():
+                    packed[node_name].append(sequence)
+
+            if len(packed) == 1 and return_states is None:  # only one output node
+                packed = packed[list(packed.keys())[0]]
+        else:
+            packed = sequences
+            if len(packed) == 1:  # only one sequence
+                return packed[0]
+
+        return packed
+    else:
+        return sequences
