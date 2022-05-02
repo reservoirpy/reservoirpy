@@ -108,7 +108,7 @@ from typing import Callable, Iterable, Union
 import numpy as np
 from numpy.random import Generator
 from scipy import sparse, stats
-from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
+from scipy.sparse.linalg import ArpackNoConvergence
 
 from .observables import spectral_radius
 from .type import global_dtype
