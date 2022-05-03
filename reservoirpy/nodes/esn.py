@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 from .._base import _Node, call
 from ..model import Model
 from ..utils import _obj_from_kwargs, progress, verbosity
-from ..utils.model_utils import to_ragged_seq_set
+from ..utils.model_utils import sort_and_unpack, to_ragged_seq_set
 from ..utils.parallel import get_joblib_backend
 from ..utils.validation import is_mapping
 from .reservoirs import NVAR, Reservoir
@@ -35,21 +35,6 @@ def _allocate_returned_states(model, inputs, return_states=None):
         }
     else:
         states = {"readout": np.zeros((seq_len, model.readout.output_dim))}
-
-    return states
-
-
-def _sort_and_unpack(states, return_states=None):
-    """Maintain input order (even with parallelization on)"""
-    states = sorted(states, key=lambda s: s[0])
-    states = {n: [s[1][n] for s in states] for n in states[0][1].keys()}
-
-    for n, s in states.items():
-        if len(s) == 1:
-            states[n] = s[0]
-
-    if len(states) == 1 and return_states is None:
-        states = states["readout"]
 
     return states
 
@@ -296,4 +281,4 @@ class ESN(Model):
                     for idx, (x, y) in enumerate(zip(seq, fb_gen))
                 )
 
-        return _sort_and_unpack(states, return_states=return_states)
+        return sort_and_unpack(states, return_states=return_states)

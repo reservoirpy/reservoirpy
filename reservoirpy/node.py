@@ -287,6 +287,8 @@ class Node(_Node):
         Dimension of the feedback signal received by the Node.
     name : str
         Name of the Node. It must be a unique identifier.
+    dtype : :py:class:`~numpy.dtype`, default to :py:class:`~numpy.float64`.
+        Numerical type for node parameters.
 
     See also
     --------

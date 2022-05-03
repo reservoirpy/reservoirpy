@@ -5,7 +5,7 @@ import sys
 import warnings
 
 _AVAILABLE_BACKENDS = ("loky", "multiprocessing", "threading", "sequential")
-_JOBS = 2
+_JOBS = 1
 # FIX waiting for a workaround to avoid crashing with multiprocessing
 # activated with Python < 3.8. Seems to be due to compatibility issues
 # with pickle5 protocol and loky library.

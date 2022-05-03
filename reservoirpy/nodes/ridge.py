@@ -175,6 +175,7 @@ class Ridge(Node):
         bias=zeros,
         input_bias=True,
         name=None,
+        **kwargs,
     ):
         super(Ridge, self).__init__(
             params={"Wout": None, "bias": None},
@@ -186,4 +187,5 @@ class Ridge(Node):
             initializer=partial(initialize, Wout_init=Wout, bias_init=bias),
             buffers_initializer=initialize_buffers,
             name=name,
+            **kwargs,
         )
