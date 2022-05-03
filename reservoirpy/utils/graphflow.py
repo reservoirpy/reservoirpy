@@ -302,29 +302,32 @@ class DataDispatcher:
             sequence_length = len(X_map[current_node])
 
         for i in range(sequence_length):
-            x = {node: X_map[node][i] for node in X_map.keys()}
+            x = {node: X_map[node][np.newaxis, i] for node in X_map.keys()}
             if Y_map is not None:
                 y = None
                 if return_targets:
-                    y = {node: np.atleast_2d(Y_map[node][i]) for node in Y_map.keys()}
+                    y = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
                 # if feedbacks vectors are meant to be fed
                 # with a delay in time of one timestep w.r.t. 'X_map'
                 if shift_fb:
                     if i == 0:
                         if force_teachers:
                             fb = {
-                                node: np.zeros_like(Y_map[node][i])
+                                node: np.zeros_like(Y_map[node][np.newaxis, i])
                                 for node in Y_map.keys()
                             }
                         else:
                             fb = {node: None for node in Y_map.keys()}
                     else:
-                        fb = {node: Y_map[node][i - 1] for node in Y_map.keys()}
+                        fb = {
+                            node: Y_map[node][np.newaxis, i - 1]
+                            for node in Y_map.keys()
+                        }
                 # else assume that all feedback vectors must be instantaneously
                 # fed to the network. This means that 'Y_map' already contains
                 # data that is delayed by one timestep w.r.t. 'X_map'.
                 else:
-                    fb = {node: Y_map[node][i] for node in Y_map.keys()}
+                    fb = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
             else:
                 fb = y = None
 
