@@ -266,6 +266,8 @@ class Model(_Node):
 
         self._name = self._get_name(name)
 
+        nodes, edges = self._concat_multi_inputs(nodes, edges)
+
         self._edges = edges
 
         # always maintain nodes in topological order
@@ -273,7 +275,8 @@ class Model(_Node):
             self._inputs, self._outputs = find_entries_and_exits(nodes, edges)
             self._nodes = topological_sort(nodes, edges, self._inputs)
         else:
-            self._inputs = self._outputs = list()
+            self._inputs = list()
+            self._outputs = list()
             self._nodes = nodes
 
         self._is_initialized = False
@@ -299,6 +302,12 @@ class Model(_Node):
         from .ops import merge
 
         return merge(self, other, inplace=True)
+
+    @staticmethod
+    def _concat_multi_inputs(nodes, edges):
+        from .ops import concat_multi_inputs
+
+        return concat_multi_inputs(nodes, edges)
 
     def _check_if_only_online(self):
         if any([n.is_trained_offline and not n.fitted for n in self.nodes]):
