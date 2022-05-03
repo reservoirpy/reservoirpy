@@ -25,6 +25,36 @@ from uuid import uuid4
 from ._base import DistantFeedback, _Node
 from .model import FrozenModel, Model
 from .nodes.concat import Concat
+from .utils.graphflow import find_parents_and_children
+
+_MULTI_INPUTS_OPS = (Concat,)
+
+
+def concat_multi_inputs(nodes, edges):
+    parents, _ = find_parents_and_children(edges)
+
+    concatenated = {}
+    new_nodes = set()
+    new_edges = set()
+    for node in nodes:
+        indegree = len(parents[node])
+        if indegree > 1 and type(node) not in _MULTI_INPUTS_OPS:
+            # if parents are already concatenated, use the previously created Concat
+            if all([p.name in concatenated for p in parents[node]]):
+                concat = concatenated[parents[node][0].name]
+            else:
+                # add a Concat node
+                concat = Concat()
+
+            new_nodes |= {concat, node}
+            new_edges |= set([(p, concat) for p in parents[node]] + [(concat, node)])
+            # add concatenated nodes to the registry
+            concatenated.update({p.name: concat for p in parents[node]})
+        else:
+            new_nodes |= {node}
+            new_edges |= set([(p, node) for p in parents[node]])
+
+    return new_nodes, new_edges
 
 
 def _check_all_nodes(*nodes):
@@ -39,7 +69,7 @@ def _check_all_nodes(*nodes):
                 raise TypeError(msg.format(nn))
 
 
-def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
+def _link_1to1(node1: _Node, node2: _Node):
     """Connects two nodes or models. See `link` doc for more info."""
     # fetch all nodes in the two subgraphs, if they are models.
     all_nodes = []
@@ -55,7 +85,7 @@ def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
         if isinstance(node, Model) and not isinstance(node, FrozenModel):
             all_edges += node.edges
 
-    # create edges between output nodes of the
+    # create edges between output no  des of the
     # subgraph 1 and input nodes of the subgraph 2.
     senders = []
     if isinstance(node1, Model) and not isinstance(node, FrozenModel):
@@ -91,8 +121,7 @@ def _link_1to1(node1: _Node, node2: _Node, name=None) -> Model:
     # all inputs from subgraph 2.
     all_edges += new_edges
 
-    # pack everything
-    return Model(nodes=all_nodes, edges=all_edges, name=name)
+    return all_nodes, all_edges
 
 
 def link(
@@ -190,27 +219,38 @@ def link(
     # get left side
     if isinstance(node1, Sequence):
         left_model = Model(name=str(uuid4()))
-
-        if isinstance(node2, Concat):  # no need to add a Concat node then
-            for n in node1:
-                left_model &= _link_1to1(n, node2, name=str(uuid4()))
-            return left_model
-        else:  # concatenate everything on left side
-            concat = Concat()
-            for n in node1:
-                left_model &= _link_1to1(n, concat, name=str(uuid4()))
+        for n in node1:
+            left_model &= n
     else:
         left_model = node1
 
-    # connect left side with right side
-    model = Model(name=name)
-    if isinstance(node2, Sequence):
-        for n in node2:
-            model &= _link_1to1(left_model, n, name=str(uuid4()))
-    else:
-        model &= _link_1to1(left_model, node2, name=str(uuid4()))
+        # if isinstance(node2, Concat):  # no need to add a Concat node then
+        #     for n in node1:
+        #         left_model &= _link_1to1(n, node2, name=str(uuid4()))
+        #     return left_model
+        # else:  # concatenate everything on left side
+        #     concat = Concat()
+        #     for n in node1:
+        #         left_model &= _link_1to1(n, concat, name=str(uuid4()))
+    # else:
+    #     left_model = node1
 
-    return model
+    # connect left side with right side
+    # model =
+    if isinstance(node2, Sequence):
+        nodes = []
+        edges = []
+        for n in node2:
+            new_nodes, new_edges = _link_1to1(left_model, n)
+            nodes.extend(new_nodes)
+            edges.extend(new_edges)
+    else:
+        nodes, edges = _link_1to1(left_model, node2)
+
+    # nodes, edges = _link_1to1(left_model, node2)
+    # nodes, edges = _concat_multi_inputs(nodes, edges)
+
+    return Model(nodes, edges, name=name)
 
 
 def link_feedback(

@@ -450,3 +450,19 @@ def test_model_return_states():
     res = model.run(X, return_states=["offline"])
 
     assert set(res.keys()) == {"offline"}
+
+
+def test_multiinputs():
+    import numpy as np
+
+    from reservoirpy.nodes import Input, Reservoir
+
+    source1, source2 = Input(name="s1", input_dim=5,), Input(
+        name="s2",
+        input_dim=3,
+    )
+    res1, res2 = Reservoir(100), Reservoir(100)
+    model = source1 >> [res1, res2] & source2 >> [res1, res2]
+    print(model)
+    # model = [source1, source2] >> res1 & [source1, source2] >> res2
+    outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})
