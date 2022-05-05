@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import numpy as np
 
+from .._base import check_xy
 from .validation import is_mapping, is_sequence_set
 
 
@@ -80,3 +81,60 @@ def to_ragged_seq_set(data):
                 return data
         else:
             return data
+
+
+def build_mapping(nodes, data):
+    data = to_ragged_seq_set(data)
+    if not is_mapping(data):
+        data_map = {n.name: data for n in nodes}
+    else:
+        data_map = data.copy()
+
+    return data_map
+
+
+def unfold_mapping(data_map):
+
+    seq_numbers = [len(data_map[n]) for n in data_map.keys()]
+    if len(np.unique(seq_numbers)) > 1:
+        seq_numbers = {n: len(data_map[n]) for n in data_map.keys()}
+        raise ValueError(
+            f"Found dataset with inconsistent number of sequences for each node. "
+            f"Current number of sequences per node: {seq_numbers}"
+        )
+
+    # select an input dataset and check
+    n_sequences = len(data_map[list(data_map.keys())[0]])
+
+    mapped_sequences = []
+    for i in range(n_sequences):
+        sequence = {n: data_map[n][i] for n in data_map.keys()}
+        mapped_sequences.append(sequence)
+
+    return mapped_sequences
+
+
+def to_data_mapping(model, X, Y=None):
+
+    X_map = build_mapping(model.input_nodes, X)
+
+    Y_map = None
+    if Y is not None:
+        Y_map = build_mapping(model.trainable_nodes, Y)
+    #
+    # fb_map = None
+    # if feedbacks is not None:
+    #     fb_map = build_mapping(model.feedback_nodes, feedbacks)
+    #
+
+    X_map, Y_map = check_xy(model, x=X_map, y=Y_map)
+
+    X_sequences = unfold_mapping(X_map)
+
+    if Y_map is None:
+        n_sequences = len(X_sequences)
+        Y_sequences = [None] * n_sequences
+    else:
+        Y_sequences = unfold_mapping(Y_map)
+
+    return X_sequences, Y_sequences
