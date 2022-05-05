@@ -178,6 +178,37 @@ def test_model_run(plus_node, minus_node):
             assert_array_equal(expected_minus[-1][np.newaxis, :], minus_node.state())
 
 
+def test_model_run_on_sequences(plus_node, minus_node):
+    input_node = Input()
+    branch1 = input_node >> plus_node
+    branch2 = input_node >> minus_node
+
+    model = branch1 & branch2
+
+    data = np.zeros((5, 3, 5))
+    res = model.run(data)
+
+    assert set(res.keys()) == {plus_node.name, minus_node.name}
+    assert len(res[plus_node.name]) == 5
+    assert len(res[minus_node.name]) == 5
+    assert res[plus_node.name][0].shape == (3, 5)
+
+    input_node = Input()
+    branch1 = input_node >> plus_node
+    branch2 = input_node >> minus_node
+
+    model = branch1 & branch2
+
+    data = [np.zeros((3, 5)), np.zeros((8, 5))]
+    res = model.run(data)
+
+    assert set(res.keys()) == {plus_node.name, minus_node.name}
+    assert len(res[plus_node.name]) == 2
+    assert len(res[minus_node.name]) == 2
+    assert res[plus_node.name][0].shape == (3, 5)
+    assert res[plus_node.name][1].shape == (8, 5)
+
+
 def test_model_feedback(plus_node, minus_node, feedback_node):
 
     model = plus_node >> feedback_node >> minus_node
@@ -462,7 +493,6 @@ def test_multiinputs():
         input_dim=3,
     )
     res1, res2 = Reservoir(100), Reservoir(100)
-    model = source1 >> [res1, res2] & source2 >> [res1, res2]
-    print(model)
-    # model = [source1, source2] >> res1 & [source1, source2] >> res2
+    # model = source1 >> [res1, res2] & source2 >> [res1, res2]
+    model = [source1, source2] >> res1 & [source1, source2] >> res2
     outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})

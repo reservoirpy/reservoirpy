@@ -121,11 +121,6 @@ def to_data_mapping(model, X, Y=None):
     Y_map = None
     if Y is not None:
         Y_map = build_mapping(model.trainable_nodes, Y)
-    #
-    # fb_map = None
-    # if feedbacks is not None:
-    #     fb_map = build_mapping(model.feedback_nodes, feedbacks)
-    #
 
     X_map, Y_map = check_xy(model, x=X_map, y=Y_map)
 
