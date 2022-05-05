@@ -54,7 +54,7 @@ def concat_multi_inputs(nodes, edges):
             new_nodes |= {node}
             new_edges |= set([(p, node) for p in parents[node]])
 
-    return new_nodes, new_edges
+    return list(new_nodes), list(new_edges)
 
 
 def _check_all_nodes(*nodes):
@@ -250,7 +250,7 @@ def link(
     # nodes, edges = _link_1to1(left_model, node2)
     # nodes, edges = _concat_multi_inputs(nodes, edges)
 
-    return Model(nodes, edges, name=name)
+    return Model(nodes=list(nodes), edges=list(edges), name=name)
 
 
 def link_feedback(
