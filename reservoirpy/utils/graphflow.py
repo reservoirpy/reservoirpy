@@ -249,7 +249,7 @@ class DataDispatcher:
                 x.append(parent)
 
         # in theory, only operators can support several incoming signal
-        # i.e. several operands, so unpack data is the list is unecessary
+        # i.e. several operands, so unpack data if the list is unecessary
         if len(x) == 1:
             x = x[0]
 
