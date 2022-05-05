@@ -91,6 +91,7 @@ from .utils.model_utils import (
     _allocate_returned_states,
     _build_forward_sumodels,
     _dist_states_to_next_subgraph,
+    to_data_mapping,
     to_ragged_seq_set,
 )
 from .utils.validation import is_mapping
@@ -1015,10 +1016,12 @@ class Model(_Node):
                 "no offline nodes found in model."
             )
 
-        X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
-        data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
-        X = [datum[0] for datum in data]
-        Y = [datum[1] for datum in data]
+        # X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
+        # data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
+        # X = [datum[0] for datum in data]
+        # Y = [datum[1] for datum in data]
+
+        X, Y = to_data_mapping(self, X, Y)
 
         self._initialize_on_sequence(X[0], Y[0])
         self.initialize_buffers()
