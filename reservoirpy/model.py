@@ -71,6 +71,7 @@ a :py:class:`Model`.
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from collections import defaultdict
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -369,6 +370,49 @@ class Model(_Node):
                 state = self.output_nodes[0].state()
 
         return state
+
+    def _run(
+        self,
+        X,
+        feedback,
+        from_state=None,
+        stateful=True,
+        shift_fb=True,
+        return_states=None,
+    ):
+        states = _allocate_returned_states(self, X, return_states)
+
+        seq = progress(
+            self._dispatcher.dispatch(X, feedback, shift_fb=shift_fb),
+            f"Running {self.name}",
+            total=len(X),
+        )
+
+        with self.with_state(from_state, stateful=stateful):
+            # load proxys after state update to make it have an
+            # impact on feedback
+            self._load_proxys(keep=True)
+            for i, (x, forced_fb, _) in enumerate(seq):
+
+                with self.with_feedback(forced_fb):
+                    state = self._call(x, return_states=return_states)
+
+                if is_mapping(state):
+                    for name, value in state.items():
+                        states[name][i, :] = value
+                else:
+                    states[self.output_nodes[0].name][i, :] = state
+
+                self._load_proxys()
+
+        self._clean_proxys()
+
+        # dicts are only relevant if model has several outputs (len > 1) or
+        # # if we want to return states from hidden nodes
+        # if len(states) == 1 and return_states is None:
+        #     return states[self.output_nodes[0].name]
+
+        return states
 
     def _unregister_teachers(self):
         """Remove teacher nodes refs from student nodes."""
@@ -815,45 +859,73 @@ class Model(_Node):
             where keys are output nodes names and values
             are corresponding sequences of output vectors.
         """
-        X_, forced_feedbacks_ = check_xy(
-            self, X, forced_feedbacks, allow_n_sequences=False
-        )
+        # X_, forced_feedbacks_ = check_xy(
+        #     self, X, forced_feedbacks, allow_n_sequences=False
+        # )
 
-        self._initialize_on_sequence(X_, forced_feedbacks_)
+        X_, forced_feedbacks_ = to_data_mapping(self, X, forced_feedbacks)
 
-        states = _allocate_returned_states(self, X_, return_states)
+        self._initialize_on_sequence(X_[0], forced_feedbacks_[0])
 
-        seq = progress(
-            self._dispatcher.dispatch(X_, forced_feedbacks_, shift_fb=shift_fb),
-            f"Running {self.name}",
-            total=len(X_),
-        )
+        states = []
+        for X_seq, fb_seq in zip(X_, forced_feedbacks_):
+            with self.with_state(reset=reset, stateful=stateful):
+                states_seq = self._run(
+                    X_seq,
+                    fb_seq,
+                    from_state=from_state,
+                    stateful=stateful,
+                    shift_fb=shift_fb,
+                    return_states=return_states,
+                )
 
-        with self.with_state(from_state, stateful=stateful, reset=reset):
-            # load proxys after state update to make it have an
-            # impact on feedback
-            self._load_proxys(keep=True)
-            for i, (x, forced_fb, _) in enumerate(seq):
+                states.append(states_seq)
 
-                with self.with_feedback(forced_fb):
-                    state = self._call(x, return_states=return_states)
+        n_sequences = len(states)
+        if n_sequences == 1:
+            states_map = states[0]
+        else:
+            states_map = defaultdict(list)
+            for i in range(n_sequences):
+                for node_name, seq in states[i].items():
+                    states_map[node_name] += [seq]
 
-                if is_mapping(state):
-                    for name, value in state.items():
-                        states[name][i, :] = value
-                else:
-                    states[self.output_nodes[0].name][i, :] = state
+        if len(states_map) == 1 and return_states is None:
+            return states_map[self.output_nodes[0].name]
 
-                self._load_proxys()
+        return states_map
 
-        self._clean_proxys()
-
-        # dicts are only relevant if model has several outputs (len > 1) or
-        # if we want to return states from hidden nodes
-        if len(states) == 1 and return_states is None:
-            return states[self.output_nodes[0].name]
-
-        return states
+        # states = _allocate_returned_states(self, X_seq, return_states)
+        #
+        # seq = progress(
+        #     self._dispatcher.dispatch(X_seq, fb_seq, shift_fb=shift_fb),
+        #     f"Running {self.name}",
+        #     total=len(X_seq),
+        # )
+        #
+        # with self.with_state(from_state, stateful=stateful, reset=reset):
+        #     # load proxys after state update to make it have an
+        #     # impact on feedback
+        #     self._load_proxys(keep=True)
+        #     for i, (x, forced_fb, _) in enumerate(seq):
+        #
+        #         with self.with_feedback(forced_fb):
+        #             state = self._call(x, return_states=return_states)
+        #
+        #         if is_mapping(state):
+        #             for name, value in state.items():
+        #                 states[name][i, :] = value
+        #         else:
+        #             states[self.output_nodes[0].name][i, :] = state
+        #
+        #         self._load_proxys()
+        #
+        # self._clean_proxys()
+        #
+        # # dicts are only relevant if model has several outputs (len > 1) or
+        # # if we want to return states from hidden nodes
+        # if len(states) == 1 and return_states is None:
+        #     return states[self.output_nodes[0].name]
 
     def train(
         self,
