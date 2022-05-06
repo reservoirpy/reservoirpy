@@ -12,6 +12,8 @@ from .validation import is_mapping, is_sequence_set
 
 
 def build_forward_sumodels(nodes, edges, already_trained):
+    """Separate unfitted offline nodes from fitted nodes and gather all fitted
+    nodes in submodels."""
     from ..model import Model
 
     offline_nodes = [
@@ -29,6 +31,10 @@ def build_forward_sumodels(nodes, edges, already_trained):
 
 
 def dist_states_to_next_subgraph(states, relations):
+    """Map submodel output state vectors to input nodes of next submodel.
+
+    Edges between first and second submodel are stored in 'relations'.
+    """
     dist_states = {}
     for curr_node, next_nodes in relations.items():
         if len(next_nodes) > 1:
@@ -43,7 +49,7 @@ def dist_states_to_next_subgraph(states, relations):
 
 
 def allocate_returned_states(model, inputs, return_states=None):
-
+    """Allocate output states matrices."""
     seq_len = inputs[list(inputs.keys())[0]].shape[0]
 
     # pre-allocate states
@@ -61,6 +67,8 @@ def allocate_returned_states(model, inputs, return_states=None):
 
 
 def to_ragged_seq_set(data):
+    """Convert dataset from mapping/array of sequences
+    to lists of mappings of sequences."""
     # data is a dict
     if is_mapping(data):
         new_data = {}
@@ -85,6 +93,7 @@ def to_ragged_seq_set(data):
 
 
 def build_mapping(nodes, data, io_type="input"):
+    """Map input/target data to input/trainable nodes in the model."""
     data = to_ragged_seq_set(data)
     if not is_mapping(data):
         if io_type == "input":
@@ -104,7 +113,7 @@ def build_mapping(nodes, data, io_type="input"):
 
 
 def unfold_mapping(data_map):
-
+    """Convert a mapping of sequence lists into a list of sequence to nodes mappings."""
     seq_numbers = [len(data_map[n]) for n in data_map.keys()]
     if len(np.unique(seq_numbers)) > 1:
         seq_numbers = {n: len(data_map[n]) for n in data_map.keys()}
@@ -125,6 +134,8 @@ def unfold_mapping(data_map):
 
 
 def fold_mapping(model, states, return_states):
+    """Convert a list of sequence to nodes mappings into a mapping of lists or a
+    simple array if possible."""
     n_sequences = len(states)
     if n_sequences == 1:
         states_map = states[0]
@@ -141,7 +152,7 @@ def fold_mapping(model, states, return_states):
 
 
 def to_data_mapping(model, X, Y=None):
-
+    """Map dataset to input/target nodes in the model."""
     X_map = build_mapping(model.input_nodes, X, io_type="input")
 
     Y_map = None
