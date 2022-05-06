@@ -49,7 +49,7 @@ initLen = 100  # number of time steps during which internal activations are wash
 trainLen = 2000  # number of time steps during which we train the network
 testLen = 2000  # number of time steps during which we test/run the network
 
-data = np.loadtxt("examples/MackeyGlass_t17.txt")
+data = np.loadtxt("./MackeyGlass_t17.txt")
 
 # plot some of it
 plt.figure(0).clear()
