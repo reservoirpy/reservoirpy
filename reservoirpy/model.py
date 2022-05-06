@@ -130,7 +130,9 @@ def _run_and_partial_fit(
         dist_states = x_seq
 
     for node in offlines:
-        node.partial_fit(dist_states[node.name], y_seq[node.name], warmup=warmup)
+        node.partial_fit(
+            dist_states.get(node.name), y_seq.get(node.name), warmup=warmup
+        )
 
         return dist_states
 
