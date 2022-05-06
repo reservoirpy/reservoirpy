@@ -180,9 +180,9 @@ def research(objective, dataset, config_path, report_path=None):
     trials = hopt.Trials()
 
     if config.get("seed") is None:
-        rs = np.random.RandomState()
+        rs = np.random.default_rng()
     else:
-        rs = np.random.RandomState(config["seed"])
+        rs = np.random.default_rng(config["seed"])
 
     best = hopt.fmin(
         objective_wrapper,
