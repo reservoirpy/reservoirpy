@@ -48,6 +48,8 @@ def check_one_sequence(
     allow_timespans=True,
 ):
 
+    caller_name = caller.name + "is" if caller is not None else ""
+
     if expected_dim is not None and not hasattr(expected_dim, "__iter__"):
         expected_dim = (expected_dim,)
 
@@ -59,11 +61,16 @@ def check_one_sequence(
     # Check x dimension
     if expected_dim is not None:
         if len(expected_dim) != len(data_dim):
-            raise ValueError()
+            raise ValueError(
+                f"{caller_name} expecting {len(expected_dim)} inputs "
+                f"but received {len(data_dim)}: {x_new}."
+            )
         for dim in expected_dim:
             if all([dim != ddim for ddim in data_dim]):
-                raise ValueError()
-
+                raise ValueError(
+                    f"{caller_name} expecting data of shape "
+                    f"{expected_dim} but received shape {data_dim}."
+                )
     return x_new
 
 
@@ -602,7 +609,7 @@ class _Node(ABC):
     def __del__(self):
         try:
             type(self)._registry.remove(self._name)
-        except ValueError:
+        except (ValueError, AttributeError):
             pass
 
     def __getattr__(self, item):
