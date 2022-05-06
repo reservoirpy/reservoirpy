@@ -216,39 +216,18 @@ def link(
             f"Model. FrozenModel found: {frozens}."
         )
 
-    # get left side
-    if isinstance(node1, Sequence):
-        left_model = Model(name=str(uuid4()))
-        for n in node1:
-            left_model &= n
-    else:
-        left_model = node1
+    nodes = set()
+    edges = set()
+    if not isinstance(node1, Sequence):
+        node1 = [node1]
+    if not isinstance(node2, Sequence):
+        node2 = [node2]
 
-        # if isinstance(node2, Concat):  # no need to add a Concat node then
-        #     for n in node1:
-        #         left_model &= _link_1to1(n, node2, name=str(uuid4()))
-        #     return left_model
-        # else:  # concatenate everything on left side
-        #     concat = Concat()
-        #     for n in node1:
-        #         left_model &= _link_1to1(n, concat, name=str(uuid4()))
-    # else:
-    #     left_model = node1
-
-    # connect left side with right side
-    # model =
-    if isinstance(node2, Sequence):
-        nodes = []
-        edges = []
-        for n in node2:
-            new_nodes, new_edges = _link_1to1(left_model, n)
-            nodes.extend(new_nodes)
-            edges.extend(new_edges)
-    else:
-        nodes, edges = _link_1to1(left_model, node2)
-
-    # nodes, edges = _link_1to1(left_model, node2)
-    # nodes, edges = _concat_multi_inputs(nodes, edges)
+    for left in node1:
+        for right in node2:
+            new_nodes, new_edges = _link_1to1(left, right)
+            nodes |= set(new_nodes)
+            edges |= set(new_edges)
 
     return Model(nodes=list(nodes), edges=list(edges), name=name)
 

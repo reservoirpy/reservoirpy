@@ -48,7 +48,7 @@ def check_one_sequence(
     allow_timespans=True,
 ):
 
-    caller_name = caller.name + "is" if caller is not None else ""
+    caller_name = caller.name + "is " if caller is not None else ""
 
     if expected_dim is not None and not hasattr(expected_dim, "__iter__"):
         expected_dim = (expected_dim,)

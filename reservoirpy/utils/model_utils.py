@@ -1,6 +1,7 @@
 # Author: Nathan Trouvain at 19/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from collections import defaultdict
 from typing import Iterable
 from uuid import uuid4
 
@@ -10,7 +11,7 @@ from .._base import check_xy
 from .validation import is_mapping, is_sequence_set
 
 
-def _build_forward_sumodels(nodes, edges, already_trained):
+def build_forward_sumodels(nodes, edges, already_trained):
     from ..model import Model
 
     offline_nodes = [
@@ -27,7 +28,7 @@ def _build_forward_sumodels(nodes, edges, already_trained):
     return submodel, offline_nodes
 
 
-def _dist_states_to_next_subgraph(states, relations):
+def dist_states_to_next_subgraph(states, relations):
     dist_states = {}
     for curr_node, next_nodes in relations.items():
         if len(next_nodes) > 1:
@@ -41,7 +42,7 @@ def _dist_states_to_next_subgraph(states, relations):
     return dist_states
 
 
-def _allocate_returned_states(model, inputs, return_states=None):
+def allocate_returned_states(model, inputs, return_states=None):
 
     seq_len = inputs[list(inputs.keys())[0]].shape[0]
 
@@ -90,7 +91,7 @@ def build_mapping(nodes, data, io_type="input"):
             data_map = {n.name: data for n in nodes}
         elif io_type == "target":
             # Remove unsupervised or already fitted nodes from the mapping
-            data_map = {n.name: data for n in nodes if not n.fitted}
+            data_map = {n.name: data for n in nodes if not n.unsupervised}
         else:
             raise ValueError(
                 f"Unknown io_type: '{io_type}'. "
@@ -121,6 +122,22 @@ def unfold_mapping(data_map):
         mapped_sequences.append(sequence)
 
     return mapped_sequences
+
+
+def fold_mapping(model, states, return_states):
+    n_sequences = len(states)
+    if n_sequences == 1:
+        states_map = states[0]
+    else:
+        states_map = defaultdict(list)
+        for i in range(n_sequences):
+            for node_name, seq in states[i].items():
+                states_map[node_name] += [seq]
+
+    if len(states_map) == 1 and return_states is None:
+        return states_map[model.output_nodes[0].name]
+
+    return states_map
 
 
 def to_data_mapping(model, X, Y=None):

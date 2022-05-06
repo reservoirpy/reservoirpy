@@ -143,6 +143,50 @@ def find_entries_and_exits(nodes, edges):
     return list(entrypoints), list(endpoints)
 
 
+def dispatch(
+    X,
+    Y=None,
+    shift_fb=True,
+    return_targets=False,
+    force_teachers=True,
+):
+    """Transform data from a dict of arrays
+    ([node], timesteps, dimension) to an iterator yielding
+    a node: data mapping for each timestep."""
+    X_map, Y_map = X, Y
+    current_node = list(X_map.keys())[0]
+    sequence_length = len(X_map[current_node])
+
+    for i in range(sequence_length):
+        x = {node: X_map[node][np.newaxis, i] for node in X_map.keys()}
+        if Y_map is not None:
+            y = None
+            if return_targets:
+                y = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
+            # if feedbacks vectors are meant to be fed
+            # with a delay in time of one timestep w.r.t. 'X_map'
+            if shift_fb:
+                if i == 0:
+                    if force_teachers:
+                        fb = {
+                            node: np.zeros_like(Y_map[node][np.newaxis, i])
+                            for node in Y_map.keys()
+                        }
+                    else:
+                        fb = {node: None for node in Y_map.keys()}
+                else:
+                    fb = {node: Y_map[node][np.newaxis, i - 1] for node in Y_map.keys()}
+            # else assume that all feedback vectors must be instantaneously
+            # fed to the network. This means that 'Y_map' already contains
+            # data that is delayed by one timestep w.r.t. 'X_map'.
+            else:
+                fb = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
+        else:
+            fb = y = None
+
+        yield x, fb, y
+
+
 class DataDispatcher:
     """A utility used to feed data to nodes in a Model."""
 
@@ -185,57 +229,6 @@ class DataDispatcher:
                         f"node requires "
                         f"target values."
                     )
-
-    def _format_xy(self, X, Y):
-        if not is_mapping(X):
-            X_map = {inp.name: X for inp in self._inputs}
-        else:
-            X_map = X.copy()
-        self._check_inputs(X_map)
-
-        Y_map = None
-        if Y is not None:
-            if not is_mapping(Y):
-                Y_map = {trainable.name: Y for trainable in self._trainables}
-            else:
-                Y_map = Y.copy()
-            self._check_targets(Y_map)
-
-        # check if all sequences have same length,
-        # taking the length of the first input sequence
-        # as reference
-        current_node = list(X_map.keys())[0]
-        sequence_length = len(X_map[current_node])
-        for node, sequence in X_map.items():
-            if sequence_length != len(sequence):
-                raise ValueError(
-                    f"Impossible to use data with inconsistent "
-                    f"number of timesteps: {node} is given "
-                    f"a sequence of length {len(sequence)} as "
-                    f"input "
-                    f"while {current_node} is given a sequence "
-                    f"of length {sequence_length}"
-                )
-
-        if Y_map is not None:
-            # Pad teacher nodes in a sequence
-            for node, value in Y_map.items():
-                if isinstance(value, _Node):
-                    Y_map[node] = [value for _ in range(sequence_length)]
-
-            for node, sequence in Y_map.items():
-                # Y_map might be a teacher node (not a sequence)
-                if hasattr(Y_map, "__len__"):
-                    if sequence_length != len(sequence):
-                        raise ValueError(
-                            f"Impossible to use data with inconsistent "
-                            f"number of timesteps: {node} is given "
-                            f"a sequence of length {len(sequence)} as "
-                            f"targets/feedbacks while {current_node} is "
-                            f"given a sequence of length {sequence_length}."
-                        )
-
-        return X_map, Y_map, sequence_length
 
     def get(self, item):
         parents = self._parents.get(item, ())
@@ -281,54 +274,3 @@ class DataDispatcher:
                     if node in self._trainables:
                         self._teachers[node] = Y
         return self
-
-    def dispatch(
-        self,
-        X,
-        Y=None,
-        shift_fb=True,
-        return_targets=False,
-        force_teachers=True,
-        format_xy=True,
-    ):
-        """Transform data from a dict of arrays
-        ([node], timesteps, dimension) to an iterator yielding
-        a node: data mapping for each timestep."""
-        if format_xy:
-            X_map, Y_map, sequence_length = self._format_xy(X, Y)
-        else:
-            X_map, Y_map = X, Y
-            current_node = list(X_map.keys())[0]
-            sequence_length = len(X_map[current_node])
-
-        for i in range(sequence_length):
-            x = {node: X_map[node][np.newaxis, i] for node in X_map.keys()}
-            if Y_map is not None:
-                y = None
-                if return_targets:
-                    y = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
-                # if feedbacks vectors are meant to be fed
-                # with a delay in time of one timestep w.r.t. 'X_map'
-                if shift_fb:
-                    if i == 0:
-                        if force_teachers:
-                            fb = {
-                                node: np.zeros_like(Y_map[node][np.newaxis, i])
-                                for node in Y_map.keys()
-                            }
-                        else:
-                            fb = {node: None for node in Y_map.keys()}
-                    else:
-                        fb = {
-                            node: Y_map[node][np.newaxis, i - 1]
-                            for node in Y_map.keys()
-                        }
-                # else assume that all feedback vectors must be instantaneously
-                # fed to the network. This means that 'Y_map' already contains
-                # data that is delayed by one timestep w.r.t. 'X_map'.
-                else:
-                    fb = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
-            else:
-                fb = y = None
-
-            yield x, fb, y
