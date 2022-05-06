@@ -410,6 +410,11 @@ class IPReservoir(Node):
             **kwargs,
         )
 
+    # TODO: handle unsupervised learners with a specific attribute
+    @property
+    def fitted(self):
+        return True
+
     def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "Node":
         """Partial offline fitting method of a Node.
         Can be used to perform batched fitting or to precompute some variables

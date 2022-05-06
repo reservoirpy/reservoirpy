@@ -83,10 +83,19 @@ def to_ragged_seq_set(data):
             return data
 
 
-def build_mapping(nodes, data):
+def build_mapping(nodes, data, io_type="input"):
     data = to_ragged_seq_set(data)
     if not is_mapping(data):
-        data_map = {n.name: data for n in nodes}
+        if io_type == "input":
+            data_map = {n.name: data for n in nodes}
+        elif io_type == "target":
+            # Remove unsupervised or already fitted nodes from the mapping
+            data_map = {n.name: data for n in nodes if not n.fitted}
+        else:
+            raise ValueError(
+                f"Unknown io_type: '{io_type}'. "
+                f"Accepted io_types are 'input' and 'target'."
+            )
     else:
         data_map = data.copy()
 
@@ -116,11 +125,11 @@ def unfold_mapping(data_map):
 
 def to_data_mapping(model, X, Y=None):
 
-    X_map = build_mapping(model.input_nodes, X)
+    X_map = build_mapping(model.input_nodes, X, io_type="input")
 
     Y_map = None
     if Y is not None:
-        Y_map = build_mapping(model.trainable_nodes, Y)
+        Y_map = build_mapping(model.trainable_nodes, Y, io_type="target")
 
     X_map, Y_map = check_xy(model, x=X_map, y=Y_map)
 
