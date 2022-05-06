@@ -84,22 +84,24 @@ from .type import MappedData
 from .utils import progress, verbosity
 from .utils.graphflow import (
     DataDispatcher,
+    dispatch,
     find_entries_and_exits,
     get_offline_subgraphs,
     topological_sort,
 )
 from .utils.model_utils import (
-    _allocate_returned_states,
-    _build_forward_sumodels,
-    _dist_states_to_next_subgraph,
+    allocate_returned_states,
+    build_forward_sumodels,
+    dist_states_to_next_subgraph,
+    fold_mapping,
     to_data_mapping,
-    to_ragged_seq_set,
 )
 from .utils.validation import is_mapping
 
 
-def _run_and_partial_fit(
-    model,
+def run_and_partial_fit(
+    submodel,
+    complete_model,
     offlines,
     relations,
     x_seq,
@@ -112,40 +114,77 @@ def _run_and_partial_fit(
 ):
     """Run a submodel and call its partial fit function."""
 
-    if not model.is_empty:
-        x_seq = {n: x for n, x in x_seq.items() if n in model.node_names}
+    if not submodel.is_empty:
+        x_seq = {n: x for n, x in x_seq.items() if n in submodel.node_names}
 
-        if force_teachers:
-            y_seq = {n: y for n, y in y_seq.items() if n in [o.name for o in offlines]}
+        if force_teachers and y_seq is not None:
+            y_seq = {
+                n: y
+                for n, y in y_seq.items()
+                if n in [o.name for o in complete_model.nodes if o.is_trained_offline]
+            }
         else:
             y_seq = None
 
-        model._is_initialized = True
-        states = model.run(
-            x_seq, y_seq, return_states=return_states, stateful=stateful, reset=reset
+        submodel._is_initialized = True
+        states = run_submodel(
+            complete_model,
+            submodel,
+            x_seq,
+            y_seq,
+            return_states=return_states,
+            stateful=stateful,
+            reset=reset,
         )
 
-        dist_states = _dist_states_to_next_subgraph(states, relations)
+        dist_states = dist_states_to_next_subgraph(states, relations)
     else:
         dist_states = x_seq
 
-    for node in offlines:
-        node.partial_fit(
-            dist_states.get(node.name), y_seq.get(node.name), warmup=warmup
-        )
-
-        return dist_states
-
-
-def _filter_teacher_nodes(Y):
-    if is_mapping(Y):
-        sequences = {n: v for n, v in Y.items() if not isinstance(v, _Node)}
-        teachers = {n: v for n, v in Y.items() if isinstance(v, _Node)}
-        return sequences, teachers
-    elif isinstance(Y, _Node):
-        return None, Y
+    if y_seq is not None:
+        for node in offlines:
+            node.partial_fit(
+                dist_states.get(node.name), y_seq.get(node.name), warmup=warmup
+            )
     else:
-        return Y, None
+        for node in offlines:
+            node.partial_fit(dist_states.get(node.name), warmup=warmup)
+
+    return dist_states
+
+
+def run_submodel(
+    model,
+    submodel,
+    X: MappedData,
+    forced_feedbacks: Dict[str, np.ndarray] = None,
+    from_state: Dict[str, np.ndarray] = None,
+    stateful=True,
+    reset=False,
+    shift_fb=True,
+    return_states: Sequence[str] = None,
+) -> MappedData:
+
+    X_, forced_feedbacks_ = to_data_mapping(submodel, X, forced_feedbacks)
+
+    submodel._initialize_on_sequence(X_[0], forced_feedbacks_[0])
+
+    states = []
+    for X_seq, fb_seq in zip(X_, forced_feedbacks_):
+        with model.with_state(reset=reset, stateful=stateful):
+            states_seq = model._run(
+                X_seq,
+                fb_seq,
+                from_state=from_state,
+                stateful=stateful,
+                shift_fb=shift_fb,
+                return_states=return_states,
+                submodel=submodel,
+            )
+
+            states.append(states_seq)
+
+    return fold_mapping(submodel, states, return_states)
 
 
 def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
@@ -351,25 +390,28 @@ class Model(_Node):
 
             self.initialize(x_init, y_init)
 
-    def _call(self, x=None, return_states=None, *args, **kwargs):
+    def _call(self, x=None, return_states=None, submodel=None, *args, **kwargs):
 
-        self._forward(self, x)
+        if submodel is None:
+            submodel = self
+
+        self._forward(submodel, x)
 
         state = {}
         if return_states == "all":
-            for node in self.nodes:
+            for node in submodel.nodes:
                 state[node.name] = node.state()
 
         elif hasattr(return_states, "__iter__"):
             for name in return_states:
-                state[name] = self[name].state()
+                state[name] = submodel[name].state()
 
         else:
-            if len(self.output_nodes) > 1:
-                for out_node in self.output_nodes:
+            if len(submodel.output_nodes) > 1:
+                for out_node in submodel.output_nodes:
                     state[out_node.name] = out_node.state()
             else:
-                state = self.output_nodes[0].state()
+                state = submodel.output_nodes[0].state()
 
         return state
 
@@ -381,11 +423,15 @@ class Model(_Node):
         stateful=True,
         shift_fb=True,
         return_states=None,
+        submodel=None,
     ):
-        states = _allocate_returned_states(self, X, return_states)
+        if submodel is None:
+            submodel = self
+
+        states = allocate_returned_states(submodel, X, return_states)
 
         seq = progress(
-            self._dispatcher.dispatch(X, feedback, shift_fb=shift_fb),
+            dispatch(X, feedback, shift_fb=shift_fb),
             f"Running {self.name}",
             total=len(X),
         )
@@ -397,22 +443,17 @@ class Model(_Node):
             for i, (x, forced_fb, _) in enumerate(seq):
 
                 with self.with_feedback(forced_fb):
-                    state = self._call(x, return_states=return_states)
+                    state = submodel._call(x, return_states=return_states)
 
                 if is_mapping(state):
                     for name, value in state.items():
                         states[name][i, :] = value
                 else:
-                    states[self.output_nodes[0].name][i, :] = state
+                    states[submodel.output_nodes[0].name][i, :] = state
 
                 self._load_proxys()
 
         self._clean_proxys()
-
-        # dicts are only relevant if model has several outputs (len > 1) or
-        # # if we want to return states from hidden nodes
-        # if len(states) == 1 and return_states is None:
-        #     return states[self.output_nodes[0].name]
 
         return states
 
@@ -441,8 +482,13 @@ class Model(_Node):
         Model
             The updated Model.
         """
-        self._nodes = list(set(new_nodes) | set(self.nodes))
-        self._edges = list(set(new_edges) | set(self.edges))
+        nodes = list(set(new_nodes) | set(self.nodes))
+        edges = list(set(new_edges) | set(self.edges))
+
+        nodes, edges = self._concat_multi_inputs(nodes, edges)
+
+        self._nodes = nodes
+        self._edges = edges
 
         self._params = {n.name: n.params for n in self._nodes}
         self._hypers = {n.name: n.hypers for n in self._nodes}
@@ -861,10 +907,6 @@ class Model(_Node):
             where keys are output nodes names and values
             are corresponding sequences of output vectors.
         """
-        # X_, forced_feedbacks_ = check_xy(
-        #     self, X, forced_feedbacks, allow_n_sequences=False
-        # )
-
         X_, forced_feedbacks_ = to_data_mapping(self, X, forced_feedbacks)
 
         self._initialize_on_sequence(X_[0], forced_feedbacks_[0])
@@ -883,51 +925,7 @@ class Model(_Node):
 
                 states.append(states_seq)
 
-        n_sequences = len(states)
-        if n_sequences == 1:
-            states_map = states[0]
-        else:
-            states_map = defaultdict(list)
-            for i in range(n_sequences):
-                for node_name, seq in states[i].items():
-                    states_map[node_name] += [seq]
-
-        if len(states_map) == 1 and return_states is None:
-            return states_map[self.output_nodes[0].name]
-
-        return states_map
-
-        # states = _allocate_returned_states(self, X_seq, return_states)
-        #
-        # seq = progress(
-        #     self._dispatcher.dispatch(X_seq, fb_seq, shift_fb=shift_fb),
-        #     f"Running {self.name}",
-        #     total=len(X_seq),
-        # )
-        #
-        # with self.with_state(from_state, stateful=stateful, reset=reset):
-        #     # load proxys after state update to make it have an
-        #     # impact on feedback
-        #     self._load_proxys(keep=True)
-        #     for i, (x, forced_fb, _) in enumerate(seq):
-        #
-        #         with self.with_feedback(forced_fb):
-        #             state = self._call(x, return_states=return_states)
-        #
-        #         if is_mapping(state):
-        #             for name, value in state.items():
-        #                 states[name][i, :] = value
-        #         else:
-        #             states[self.output_nodes[0].name][i, :] = state
-        #
-        #         self._load_proxys()
-        #
-        # self._clean_proxys()
-        #
-        # # dicts are only relevant if model has several outputs (len > 1) or
-        # # if we want to return states from hidden nodes
-        # if len(states) == 1 and return_states is None:
-        #     return states[self.output_nodes[0].name]
+        return fold_mapping(self, states, return_states)
 
     def train(
         self,
@@ -962,11 +960,6 @@ class Model(_Node):
             the real state of these nodes will be sent to the feedback
             receivers
             during training.
-        call : bool, default to True
-            It True, call the Model and update its Nodes states before
-            applying the
-            learning rule. Otherwise, use the train method
-            on the nodes current states.
         learn_every : int, default to 1
             Time interval at which training must occur, when dealing with a
             sequence of input data. By default, the training method is called
@@ -978,6 +971,8 @@ class Model(_Node):
             If True, Node state will be updated by this operation.
         reset : bool, default to False
             If True, Nodes states will be reset to zero before this operation.
+        return_states: list of str, optional
+            Names of Nodes from which to return states as output.
 
         Returns
         -------
@@ -996,9 +991,9 @@ class Model(_Node):
 
         self._initialize_on_sequence(X_, Y_)
 
-        states = _allocate_returned_states(self, X_, return_states)
+        states = allocate_returned_states(self, X_, return_states)
 
-        dispatch = self._dispatcher.dispatch(
+        dispatched_data = dispatch(
             X_, Y_, return_targets=True, force_teachers=force_teachers
         )
 
@@ -1006,7 +1001,7 @@ class Model(_Node):
             # load proxys after state update to make it have an
             # impact on feedback
             self._load_proxys(keep=True)
-            for i, (x, forced_feedback, y) in enumerate(dispatch):
+            for i, (x, forced_feedback, y) in enumerate(dispatched_data):
 
                 if not force_teachers:
                     forced_feedback = None
@@ -1090,11 +1085,6 @@ class Model(_Node):
                 "no offline nodes found in model."
             )
 
-        # X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
-        # data = list(self._dispatcher.dispatch(X, Y, shift_fb=False))
-        # X = [datum[0] for datum in data]
-        # Y = [datum[1] for datum in data]
-
         X, Y = to_data_mapping(self, X, Y)
 
         self._initialize_on_sequence(X[0], Y[0])
@@ -1107,7 +1097,7 @@ class Model(_Node):
 
         with self.with_state(from_state, reset=reset, stateful=stateful):
             for i, ((nodes, edges), relations) in enumerate(subgraphs):
-                submodel, offlines = _build_forward_sumodels(nodes, edges, trained)
+                submodel, offlines = build_forward_sumodels(nodes, edges, trained)
 
                 if next_X is not None:
                     for j in range(len(X)):
@@ -1122,9 +1112,10 @@ class Model(_Node):
                 seq = progress(X, f"Running {self.name}")
 
                 _partial_fit_fn = partial(
-                    _run_and_partial_fit,
+                    run_and_partial_fit,
                     force_teachers=force_teachers,
-                    model=submodel,
+                    complete_model=self,
+                    submodel=submodel,
                     warmup=warmup,
                     reset=reset,
                     offlines=offlines,

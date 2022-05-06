@@ -456,6 +456,10 @@ class Node(_Node):
         """Numpy numerical type of node parameters."""
         return self._dtype
 
+    @property
+    def unsupervised(self):
+        return False
+
     def state(self) -> Optional[np.ndarray]:
         """Node current internal state.
 
@@ -1199,3 +1203,9 @@ class Node(_Node):
         new_obj._name = n
 
         return new_obj
+
+
+class Unsupervised(Node):
+    @property
+    def unsupervised(self):
+        return True

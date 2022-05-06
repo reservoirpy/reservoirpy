@@ -76,3 +76,25 @@ def test_node_link_feedback(plus_node, minus_node):
 
     plus_node <<= minus_node
     assert id(plus_node._feedback._sender) == id(minus_node)
+
+
+def test_model_merge(plus_node, minus_node, basic_offline_node):
+
+    branch1 = plus_node >> minus_node
+    branch2 = plus_node >> basic_offline_node
+
+    model = branch1 & branch2
+
+    assert set(model.nodes) == {plus_node, minus_node, basic_offline_node}
+    assert set(model.edges) == {
+        (plus_node, minus_node),
+        (plus_node, basic_offline_node),
+    }
+
+    branch1 &= branch2
+
+    assert set(branch1.nodes) == {plus_node, minus_node, basic_offline_node}
+    assert set(branch1.edges) == {
+        (plus_node, minus_node),
+        (plus_node, basic_offline_node),
+    }

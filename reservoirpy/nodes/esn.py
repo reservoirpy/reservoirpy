@@ -9,9 +9,11 @@ from joblib import Parallel, delayed
 from .._base import _Node, call
 from ..model import FrozenModel
 from ..utils import _obj_from_kwargs, progress, verbosity
-from ..utils.model_utils import to_ragged_seq_set
+from ..utils.graphflow import dispatch
+from ..utils.model_utils import to_data_mapping
 from ..utils.parallel import get_joblib_backend
 from ..utils.validation import is_mapping
+from .io import Input
 from .reservoirs import NVAR, Reservoir
 from .ridge import Ridge
 
@@ -22,7 +24,7 @@ _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
 
 def _allocate_returned_states(model, inputs, return_states=None):
     """Create empty placeholders for model outputs."""
-    seq_len = inputs.shape[0]
+    seq_len = inputs[list(inputs.keys())[0]].shape[0]
     vulgar_names = {"reservoir": model.reservoir, "readout": model.readout}
 
     # pre-allocate states
@@ -145,6 +147,7 @@ class ESN(FrozenModel):
         workers=1,
         backend=None,
         name=None,
+        use_raw_inputs=False,
         **kwargs,
     ):
 
@@ -175,9 +178,17 @@ class ESN(FrozenModel):
         if feedback:
             reservoir <<= readout
 
-        super(ESN, self).__init__(
-            nodes=[reservoir, readout], edges=[(reservoir, readout)], name=name
-        )
+        if use_raw_inputs:
+            source = Input()
+            super(ESN, self).__init__(
+                nodes=[reservoir, readout, source],
+                edges=[(source, reservoir), (reservoir, readout), (source, readout)],
+                name=name,
+            )
+        else:
+            super(ESN, self).__init__(
+                nodes=[reservoir, readout], edges=[(reservoir, readout)], name=name
+            )
 
         self._hypers.update(
             {
@@ -254,16 +265,10 @@ class ESN(FrozenModel):
         shift_fb=True,
         return_states=None,
     ):
-        X = to_ragged_seq_set(X)
-        if forced_feedbacks is not None:
-            forced_feedbacks = to_ragged_seq_set(forced_feedbacks)
-            init_fb = forced_feedbacks[0]
-            fb_gen = iter(forced_feedbacks)
-        else:
-            init_fb = forced_feedbacks
-            fb_gen = (None for _ in range(len(X)))
 
-        self._initialize_on_sequence(X[0], init_fb)
+        X, forced_feedbacks = to_data_mapping(self, X, forced_feedbacks)
+
+        self._initialize_on_sequence(X[0], forced_feedbacks[0])
 
         def run_fn(idx, x, forced_fb):
 
@@ -271,7 +276,7 @@ class ESN(FrozenModel):
 
             with self.with_state(from_state, stateful=stateful, reset=reset):
                 for i, (x, forced_feedback, _) in enumerate(
-                    self._dispatcher.dispatch(x, forced_fb, shift_fb=shift_fb)
+                    dispatch(x, forced_fb, shift_fb=shift_fb)
                 ):
                     self._load_proxys()
                     with self.with_feedback(forced_feedback):
@@ -295,14 +300,14 @@ class ESN(FrozenModel):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 states = parallel(
                     delayed(run_fn)(idx, x, y)
-                    for idx, (x, y) in enumerate(zip(seq, fb_gen))
+                    for idx, (x, y) in enumerate(zip(seq, forced_feedbacks))
                 )
 
         return _sort_and_unpack(states, return_states=return_states)
 
     def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
 
-        X, Y = to_ragged_seq_set(X), to_ragged_seq_set(Y)
+        X, Y = to_data_mapping(self, X, Y)
         self._initialize_on_sequence(X[0], Y[0])
 
         self.initialize_buffers()
@@ -316,11 +321,10 @@ class ESN(FrozenModel):
             lock = None
 
         def run_partial_fit_fn(x, y):
-            states = np.zeros((x.shape[0], self.reservoir.output_dim))
+            seq_len = len(x[list(x)[0]])
+            states = np.zeros((seq_len, self.reservoir.output_dim))
 
-            for i, (x, forced_feedback, _) in enumerate(
-                self._dispatcher.dispatch(x, y, shift_fb=True)
-            ):
+            for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
                 self._load_proxys()
 
                 with self.readout.with_feedback(forced_feedback[self.readout.name]):
@@ -332,9 +336,9 @@ class ESN(FrozenModel):
             # writes from multiple processes
             if lock is not None:
                 with lock:  # pragma: no cover
-                    self.readout.partial_fit(states, y)
+                    self.readout.partial_fit(states, y[self.readout.name])
             else:
-                self.readout.partial_fit(states, y)
+                self.readout.partial_fit(states, y[self.readout.name])
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 

@@ -43,6 +43,11 @@ def test_node_link(plus_node, minus_node):
         plus_node >> plus_node
 
 
+def test_empty_model_init():
+    model = Model()
+    assert model.is_empty
+
+
 def test_model_call(plus_node, minus_node):
 
     model = plus_node >> minus_node
@@ -377,11 +382,35 @@ def test_offline_fit_simple_model_fb(
     assert_array_equal(basic_offline_node.b, np.array([5.15]))
 
     res = model.run(X[0], reset=True)
-    print(res)
 
     exp = np.tile(np.array([8.65, 19.8, 33.45, 49.6, 68.25]), 5).reshape(5, 5).T
 
     assert_array_equal(exp, res)
+
+    model = plus_node >> feedback_node >> basic_offline_node
+    feedback_node <<= basic_offline_node
+
+    X = np.ones((3, 5, 5)) * 0.5
+    Y = np.ones((3, 5, 5))
+
+    model.fit(X, Y, force_teachers=False)
+
+
+def test_offline_fit_complex(
+    basic_offline_node, offline_node2, plus_node, minus_node, feedback_node
+):
+
+    model = [plus_node >> basic_offline_node, plus_node] >> minus_node >> offline_node2
+
+    X = np.ones((5, 5, 5)) * 0.5
+    Y_1 = np.ones((5, 5, 5))
+    Y_2 = np.ones((5, 5, 10))  # after concat
+
+    model.fit(X, Y={"BasicOffline-0": Y_1, "Offline2-0": Y_2})
+
+    res = model.run(X[0])
+
+    assert res.shape == (5, 10)
 
 
 def test_online_train_simple(online_node, plus_node):

@@ -16,7 +16,7 @@ import numpy as np
 from ..._base import check_xy
 from ...activationsfunc import get_function, identity
 from ...mat_gen import bernoulli, uniform
-from ...node import Node, _init_with_sequences
+from ...node import Unsupervised, _init_with_sequences
 from ...type import Weights
 from ...utils.random import noise
 from ...utils.validation import is_array
@@ -103,7 +103,7 @@ def initialize(reservoir, *args, **kwargs):
     reservoir.set_param("b", b)
 
 
-class IPReservoir(Node):
+class IPReservoir(Unsupervised):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
 

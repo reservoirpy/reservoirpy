@@ -79,6 +79,11 @@ def test_node_init_empty(plus_node):
     assert plus_noinit.c == 1
     assert_array_equal(plus_noinit.state(), np.zeros((1, 5)))
 
+    multiinput = MultiInput(input_dim=(5, 2))
+    multiinput.initialize()
+
+    assert multiinput.input_dim == (5, 2)
+
     with pytest.raises(RuntimeError):
         plus_noinit = PlusNode()
         plus_noinit.initialize()
@@ -427,6 +432,19 @@ def test_feedback_initialize_feedback(feedback_node):
     res = feedback_node(data)
 
     fb = feedback_node.feedback()
+    inv_state = inv_notinit.state()
+
+    assert_array_equal(inv_state, fb)
+
+    inv_notinit = Inverter(input_dim=5, output_dim=5)
+    plus_noinit = PlusNode(input_dim=5, output_dim=5)
+
+    # default feedback initializer (plus_node is not supposed to handle feedback)
+    plus_noinit <<= inv_notinit
+    plus_noinit.initialize_feedback()
+    res = plus_noinit(data)
+
+    fb = plus_noinit.feedback()
     inv_state = inv_notinit.state()
 
     assert_array_equal(inv_state, fb)
