@@ -17,7 +17,15 @@ def _solve_ridge(XXT, YXT, ridge):
     return linalg.solve(XXT + ridge, YXT.T, assume_a="sym")
 
 
-def partial_backward(readout: Node, X_batch, Y_batch=None):
+def _accumulate(readout, xxt, yxt):
+    """Aggregate Xi.Xi^T and Yi.Xi^T matrices from a state sequence i."""
+    XXT = readout.get_buffer("XXT")
+    YXT = readout.get_buffer("YXT")
+    XXT += xxt
+    YXT += yxt
+
+
+def partial_backward(readout: Node, X_batch, Y_batch=None, lock=None):
     """Pre-compute XXt and YXt before final fit."""
     X, Y = _prepare_inputs_for_learning(
         X_batch,
@@ -29,13 +37,13 @@ def partial_backward(readout: Node, X_batch, Y_batch=None):
     xxt = X.T.dot(X)
     yxt = Y.T.dot(X)
 
-    XXT = readout.get_buffer("XXT")
-    YXT = readout.get_buffer("YXT")
-
-    # This is not thread-safe, apparently, using Numpy memmap as buffers
-    # ok for parallelization then with a lock (see ESN object)
-    XXT += xxt
-    YXT += yxt
+    if lock is not None:
+        # This is not thread-safe using Numpy memmap as buffers
+        # ok for parallelization then with a lock (see ESN object)
+        with lock:
+            _accumulate(readout, xxt, yxt)
+    else:
+        _accumulate(readout, xxt, yxt)
 
 
 def backward(readout: Node, *args, **kwargs):
