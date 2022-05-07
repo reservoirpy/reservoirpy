@@ -63,4 +63,5 @@ reservoirpy.nodes.Ridge
       ~Ridge.name
       ~Ridge.output_dim
       ~Ridge.params
+      ~Ridge.unsupervised
 

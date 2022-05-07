@@ -63,4 +63,5 @@ reservoirpy.nodes.Identity
       ~Identity.name
       ~Identity.output_dim
       ~Identity.params
+      ~Identity.unsupervised
 

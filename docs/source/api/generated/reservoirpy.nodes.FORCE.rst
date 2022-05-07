@@ -63,4 +63,5 @@ reservoirpy.nodes.FORCE
       ~FORCE.name
       ~FORCE.output_dim
       ~FORCE.params
+      ~FORCE.unsupervised
 

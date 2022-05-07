@@ -63,4 +63,5 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.name
       ~Reservoir.output_dim
       ~Reservoir.params
+      ~Reservoir.unsupervised
 

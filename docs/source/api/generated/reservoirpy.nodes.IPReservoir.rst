@@ -63,4 +63,5 @@ reservoirpy.nodes.IPReservoir
       ~IPReservoir.name
       ~IPReservoir.output_dim
       ~IPReservoir.params
+      ~IPReservoir.unsupervised
 

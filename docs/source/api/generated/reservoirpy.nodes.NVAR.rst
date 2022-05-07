@@ -63,4 +63,5 @@ reservoirpy.nodes.NVAR
       ~NVAR.name
       ~NVAR.output_dim
       ~NVAR.params
+      ~NVAR.unsupervised
 
