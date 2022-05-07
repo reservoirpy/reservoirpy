@@ -63,4 +63,5 @@ reservoirpy.nodes.Concat
       ~Concat.name
       ~Concat.output_dim
       ~Concat.params
+      ~Concat.unsupervised
 

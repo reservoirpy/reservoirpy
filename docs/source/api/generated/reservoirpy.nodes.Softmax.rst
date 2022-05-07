@@ -63,4 +63,5 @@ reservoirpy.nodes.Softmax
       ~Softmax.name
       ~Softmax.output_dim
       ~Softmax.params
+      ~Softmax.unsupervised
 

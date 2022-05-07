@@ -63,4 +63,5 @@ reservoirpy.nodes.Output
       ~Output.name
       ~Output.output_dim
       ~Output.params
+      ~Output.unsupervised
 

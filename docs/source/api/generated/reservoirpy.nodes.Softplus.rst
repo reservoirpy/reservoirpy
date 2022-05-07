@@ -63,4 +63,5 @@ reservoirpy.nodes.Softplus
       ~Softplus.name
       ~Softplus.output_dim
       ~Softplus.params
+      ~Softplus.unsupervised
 

@@ -63,4 +63,5 @@ reservoirpy.nodes.Tanh
       ~Tanh.name
       ~Tanh.output_dim
       ~Tanh.params
+      ~Tanh.unsupervised
 

@@ -63,4 +63,5 @@ reservoirpy.nodes.Sigmoid
       ~Sigmoid.name
       ~Sigmoid.output_dim
       ~Sigmoid.params
+      ~Sigmoid.unsupervised
 

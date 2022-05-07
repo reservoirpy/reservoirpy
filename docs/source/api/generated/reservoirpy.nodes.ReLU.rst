@@ -63,4 +63,5 @@ reservoirpy.nodes.ReLU
       ~ReLU.name
       ~ReLU.output_dim
       ~ReLU.params
+      ~ReLU.unsupervised
 
