@@ -312,7 +312,7 @@ class ESN(FrozenModel):
 
         self.initialize_buffers()
 
-        if (self.workers > 1 or self.workers == -1) and self.backend not in (
+        if (self.workers > 1 or self.workers < 0) and self.backend not in (
             "sequential",
             "threading",
         ):
@@ -334,11 +334,11 @@ class ESN(FrozenModel):
 
             # Avoid any problem related to multiple
             # writes from multiple processes
-            if lock is not None:
-                with lock:  # pragma: no cover
-                    self.readout.partial_fit(states, y[self.readout.name])
-            else:
-                self.readout.partial_fit(states, y[self.readout.name])
+            # if lock is not None:
+            # with lock:  # pragma: no cover
+            self.readout.partial_fit(states, y[self.readout.name], lock=lock)
+            # else:
+            #     self.readout.partial_fit(states, y[self.readout.name])
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
