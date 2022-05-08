@@ -64,7 +64,7 @@ pip install reservoirpy
 or
 
 ```bash
-pip install reservoirpy==0.3.2
+pip install reservoirpy==0.3.3
 ```
 
 If you want to use the previous version 0.2.4, you can install ReservoirPy using:
