@@ -67,7 +67,7 @@ or
 pip install reservoirpy==0.3.3
 ```
 
-If you want to run the Python Notebooks of the _turorials_ folder, install the packages in requirements file:
+If you want to run the Python Notebooks of the _turorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
 ```bash
 pip install -r tutorials/requirements.txt
 ```
