@@ -58,7 +58,7 @@ def _format_data(data, block_numbers, one_hot_encode):
     return X, Y
 
 
-def _download(data_folder, file_name, file_role):
+def _download(data_folder, file_name, file_role):  # pragma: no cover
     """Download data from source into the reservoirpy data local directory."""
 
     logger.log(f"Downloading {SOURCE_URL + file_name}.")
