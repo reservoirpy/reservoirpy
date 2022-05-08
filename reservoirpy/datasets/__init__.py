@@ -41,6 +41,17 @@ Discrete timeseries are defined using recurrent time-delay relations.
     narma - NARMA timeseries
 
 
+Classification/pattern recogntion tasks
+=======================================
+
+Classified datasets of timeseries.
+
+.. autosummary::
+    :toctree: generated/
+
+    japanese_vowels - Japense vowels task
+
+
 Miscellaneous
 =============
 
@@ -103,7 +114,11 @@ References
            plasticity‘,
            Neurocomputing, 71. 1159-1171, 2008,
            doi: 10.1016/j.neucom.2007.12.020.
+    .. [16] M. Kudo, J. Toyama and M. Shimbo. (1999).
+           "Multidimensional Curve Classification Using Passing-Through Regions".
+           Pattern Recognition Letters, Vol. 20, No. 11--13, pages 1103--1111.
 """
+from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -118,6 +133,7 @@ from ._chaos import (
     narma,
     rabinovich_fabrikant,
 )
+from ._japanese_vowels import japanese_vowels
 from ._seed import get_seed, set_seed
 
 __all__ = [

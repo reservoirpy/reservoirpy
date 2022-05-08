@@ -73,3 +73,21 @@ def test_to_forecasting_with_test(dataset_func):
     assert y.shape[0] == 200 - 5 - 10
     assert x.shape[0] == y.shape[0]
     assert xt.shape[0] == yt.shape[0] == 10
+
+
+def test_japanese_vowels():
+
+    X, Y, X_test, Y_test = datasets.japanese_vowels()
+
+    assert len(X) == 270 == len(Y)
+    assert len(X_test) == 370 == len(Y_test)
+
+    assert Y[0].shape == (1, 9)
+
+    X, Y, X_test, Y_test = datasets.japanese_vowels(repeat_targets=True)
+
+    assert Y[0].shape == (X[0].shape[0], 9)
+
+    X, Y, X_test, Y_test = datasets.japanese_vowels(one_hot_encode=False)
+
+    assert Y[0].shape == (1, 1)
