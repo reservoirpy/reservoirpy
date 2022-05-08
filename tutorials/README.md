@@ -28,12 +28,18 @@ with choatic timeseries.
 - Second part is composed of two short demos of ESNs applied to "real life" tasks, one concerning robotics and the other
 concerning audio annotation for birdsongs.
 
-2. **[Understand and optimize hyperparameters](4-Understand_and_optimize_hyperparameters.ipynb)**
+4. **[Understand and optimize hyperparameters](4-Understand_and_optimize_hyperparameters.ipynb)**
 
 A gentle introduction to some important hyperparameters defining Reservoir Computing architectures,
 followed by a tutorial on how to combine *hyperopt* with ReservoirPy to find the bests parameters for a model.
 
-4. **[Simple example on chaotic timeseries prediction](Simple%20Examples%20with%20Mackey-Glass)**
+5. **[Classification with Reservoir Computing](5-Classification-with-RC.ipynb)**
+
+A simple example of classification task using Reservoir Computing: the Japanese vowels dataset.
+The notebook describes two simple model (sequence-to-sequence and sequence-to-vector) able to solve
+this task.
+
+**[Simple example on chaotic timeseries prediction](Simple%20Examples%20with%20Mackey-Glass)**
 
 Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation.
 The directory includes both the minimal ESN of Mantas (not using ReservoiPy) and the equivalent simple example
