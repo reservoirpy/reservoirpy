@@ -67,6 +67,11 @@ or
 pip install reservoirpy==0.3.3
 ```
 
+If you want to run the Python Notebooks of the _turorials_ folder, install the packages in requirements file:
+```bash
+pip install -r tutorials/requirements.txt
+```
+
 If you want to use the previous version 0.2.4, you can install ReservoirPy using:
 
 ```bash
