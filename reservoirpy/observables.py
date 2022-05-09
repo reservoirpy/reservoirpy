@@ -35,13 +35,13 @@ from .type import Weights
 def _check_arrays(y_true, y_pred):
     y_true_array = np.asarray(y_true)
     y_pred_array = np.asarray(y_pred)
-   
+
     if not y_true_array.shape == y_pred_array.shape:
         raise ValueError(
-           f"Shape mismatch between y_true and y_pred: 
-           {y_true_array.shape} != {y_pred_array.shape}"
+            f"Shape mismatch between y_true and y_pred: "
+            "{y_true_array.shape} != {y_pred_array.shape}"
         )
-      
+
     return y_true_array, y_pred_array
 
 
@@ -171,7 +171,7 @@ def nrmse(
     -------
     float
         Normalized mean squared error.
-    """     
+    """
     error = rmse(y_true, y_pred)
     if norm_value is not None:
         return error / norm_value
@@ -190,7 +190,7 @@ def nrmse(
                 f"Available methods are {list(norms.keys())}."
             )
         else:
-            return error / norms[norm](y_true_array)
+            return error / norms[norm](np.asarray(y_true))
 
 
 def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -216,7 +216,7 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         Coefficient of determination.
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
-         
+
     d = (y_true_array - y_pred_array) ** 2
     D = (y_true_array - y_pred_array.mean()) ** 2
     return 1 - np.sum(d) / np.sum(D)
