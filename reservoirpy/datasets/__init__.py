@@ -118,7 +118,6 @@ References
            "Multidimensional Curve Classification Using Passing-Through Regions".
            Pattern Recognition Letters, Vol. 20, No. 11--13, pages 1103--1111.
 """
-from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -128,10 +127,12 @@ from ._chaos import (
     henon_map,
     logistic_map,
     lorenz,
+    lorenz96,
     mackey_glass,
     multiscroll,
     narma,
     rabinovich_fabrikant,
+    rossler,
 )
 from ._japanese_vowels import japanese_vowels
 from ._seed import get_seed, set_seed
@@ -145,6 +146,9 @@ __all__ = [
     "rabinovich_fabrikant",
     "narma",
     "doublescroll",
+    "japanese_vowels",
+    "lorenz96",
+    "rossler",
     "set_seed",
     "get_seed",
     "to_forecasting",
