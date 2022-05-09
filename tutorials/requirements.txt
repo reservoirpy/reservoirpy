@@ -1,8 +1,8 @@
-hyperopt==2.5
+hyperopt
 jupyter
 matplotlib
 pandas
 requests
-reservoirpy==0.3.1
+reservoirpy
 scikit-learn
 seaborn
