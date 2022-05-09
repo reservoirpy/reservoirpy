@@ -16,6 +16,10 @@ from ..observables import mse, nrmse, rmse, rsquare, spectral_radius
         (nrmse, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {"norm": "foo"}, "raise"),
         (nrmse, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {"norm_value": 3.0}, None),
         (rsquare, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {}, None),
+        (mse, [1.0, 2.0, 3.0, 4.0], [1.5, 2.5, 3.5], {}, "raise"),
+        (rmse, [[1.0, 2.0, 3.0]], [1.5, 2.5, 3.5], {}, "raise"),
+        (nrmse, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5, 4.2], {}, "raise"),
+        (rsquare, [1.0, 2.0, 3.0, 0.0], [1.5, 2.5, 3.5], {}, "raise"),
     ],
 )
 def test_observable(obs, ytest, ypred, kwargs, expects):
