@@ -586,3 +586,69 @@ def narma(
             + c
         )
     return y[order:, :]
+
+
+def lorenz96(
+    n_timesteps: int,
+    warmup: int = 200,
+    N: int = 36,
+    F: float = 8.0,
+    dF: float = 0.01,
+    h: float = 0.01,
+    x0: Union[list, np.ndarray] = None,
+    **kwargs,
+):
+    if N < 4:
+        raise ValueError("N must be >= 4.")
+
+    if x0 is None:
+        x0 = F * np.ones(N)
+        x0[0] = F + dF
+
+    if len(x0) != N:
+        raise ValueError(
+            f"x0 should have shape ({N},), but have shape {np.asarray(x0).shape}"
+        )
+
+    def lorenz96_diff(t, state):
+        ds = np.zeros(N)
+        for i in range(N):
+            ds[i] = (state[(i + 1) % N] - state[i - 2]) * state[i - 1] - state[i] + F
+        return ds
+
+    t_eval = np.arange(0.0, (warmup + n_timesteps) * h, h)
+
+    sol = solve_ivp(
+        lorenz96_diff,
+        y0=x0,
+        t_span=(0.0, (warmup + n_timesteps) * h),
+        t_eval=t_eval,
+        **kwargs,
+    )
+
+    return sol.y.T[warmup:]
+
+
+def rossler(
+    n_timesteps: int,
+    a: float = 0.2,
+    b: float = 0.2,
+    c: float = 5.7,
+    x0: Union[list, np.ndarray] = [-0.1, 0.0, 0.02],
+    h: float = 0.1,
+    **kwargs,
+):
+    def rossler_diff(t, state):
+        x, y, z = state
+        dx = -y - z
+        dy = x + a * y
+        dz = b + z * (x - c)
+        return dx, dy, dz
+
+    t_eval = np.arange(0.0, n_timesteps * h, h)
+
+    sol = solve_ivp(
+        rossler_diff, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+    )
+
+    return sol.y.T
