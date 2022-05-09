@@ -32,6 +32,19 @@ from scipy.sparse.linalg import eigs
 from .type import Weights
 
 
+def _check_arrays(y_true, y_pred):
+    y_true_array = np.asarray(y_true)
+    y_pred_array = np.asarray(y_pred)
+   
+    if not y_true_array.shape == y_pred_array.shape:
+        raise ValueError(
+           f"Shape mismatch between y_true and y_pred: 
+           {y_true_array.shape} != {y_pred_array.shape}"
+        )
+      
+    return y_true_array, y_pred_array
+
+
 def spectral_radius(W: Weights, maxiter: int = None) -> float:
     """Compute the spectral radius of a matrix `W`.
 
@@ -98,14 +111,7 @@ def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     float
         Mean squared error.
     """
-    y_true_array = np.asarray(y_true)
-    y_pred_array = np.asarray(y_pred)
-      
-    if not y_true_array.shape == y_pred_array.shape:
-        raise ValueError(
-           f"Shape mismatch between y_true and y_pred: 
-           {y_true_array.shape} != {y_pred_array.shape}"
-        )
+    y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
     return float(np.mean((y_true_array - y_pred_array) ** 2))
 
 
@@ -165,16 +171,7 @@ def nrmse(
     -------
     float
         Normalized mean squared error.
-    """
-    y_true_array = np.asarray(y_true)
-    y_pred_array = np.asarray(y_pred)
-      
-    if not y_true_array.shape == y_pred_array.shape:
-        raise ValueError(
-           f"Shape mismatch between y_true and y_pred: 
-           {y_true_array.shape} != {y_pred_array.shape}"
-        )
-         
+    """     
     error = rmse(y_true, y_pred)
     if norm_value is not None:
         return error / norm_value
@@ -218,14 +215,7 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     float
         Coefficient of determination.
     """
-    y_true_array = np.asarray(y_true)
-    y_pred_array = np.asarray(y_pred)
-      
-    if not y_true_array.shape == y_pred_array.shape:
-        raise ValueError(
-           f"Shape mismatch between y_true and y_pred: 
-           {y_true_array.shape} != {y_pred_array.shape}"
-        )
+    y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
          
     d = (y_true_array - y_pred_array) ** 2
     D = (y_true_array - y_pred_array.mean()) ** 2
