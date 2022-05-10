@@ -125,6 +125,7 @@ import numpy as np
 from ._chaos import (
     doublescroll,
     henon_map,
+    kuramoto_sivashinsky,
     logistic_map,
     lorenz,
     lorenz96,
@@ -149,6 +150,7 @@ __all__ = [
     "japanese_vowels",
     "lorenz96",
     "rossler",
+    "kuramoto_sivashinsky",
     "set_seed",
     "get_seed",
     "to_forecasting",
