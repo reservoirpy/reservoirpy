@@ -173,6 +173,14 @@ class Reservoir(Node):
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
 
+    Note
+    ----
+
+    If W, Win, bias or Wfb are initialized with an array-like matrix, then all
+    initializers parameters such as sprectral radius (``sr``) or input scaling
+    (``input_scaling``) are ignored.
+    See :py:mod:`~reservoirpy.mat_gen` for more information.
+
     Example
     -------
 
