@@ -8,6 +8,7 @@ from typing import Union
 
 import numpy as np
 from numpy.random import Generator, RandomState
+from scipy.fft import fft, ifft
 from scipy.integrate import solve_ivp
 
 from ..utils.random import rand_generator
@@ -652,3 +653,65 @@ def rossler(
     )
 
     return sol.y.T
+
+
+def kuramoto_sivashinsky(n_timesteps, N=128, M=16, x0=None, h=0.25):
+
+    # initial conditions
+    x0 = 2 * M * np.pi * np.arange(1, N + 1)[:, np.newaxis] / N
+    u = np.cos(x0 / M) * (1 + np.sin(x0 / M))
+    v = fft(u)
+
+    print("x0:", x0.shape, "u:", u.shape, "v:", v.shape)
+
+    k = (
+        np.concatenate([np.arange(N / 2), [0], np.arange(-N / 2 + 1, 0)])[:, np.newaxis]
+        / M
+    )
+    L = k**2 - k**4
+    E = np.exp(h * L)
+    E2 = np.exp(h * L / 2)
+
+    print("k:", k.shape, "L:", L.shape, "E:", E.shape, "E2:", E2.shape)
+
+    r = np.exp(1j * np.pi * (np.arange(1, M + 1)[np.newaxis, :] - 0.5) / M)
+    LR = h * np.repeat(L, M, axis=1) + np.repeat(r, N, axis=0)
+
+    Q = h * np.real(np.mean(1 / LR * (np.exp(LR / 2) - 1), axis=1)[:, np.newaxis])
+
+    f1_raw = (-4 - LR + np.exp(LR) * (4 - 3 * LR + LR**2)) / LR**3
+    f1 = h * np.real(np.mean(f1_raw, axis=1)[:, np.newaxis])
+
+    f2_raw = (2 + LR + np.exp(LR) * (-2 + LR)) / LR**3
+    f2 = h * np.real(np.mean(f2_raw, axis=1)[:, np.newaxis])
+
+    f3_raw = (-4 - 3 * LR - LR**2 + np.exp(LR) * (4 - LR)) / LR**3
+    f3 = h * np.real(np.mean(f3_raw, axis=1)[:, np.newaxis])
+
+    print("r:", r.shape, "LR:", LR.shape)
+    print("Q:", Q.shape, "f1:", f1.shape, "f2:", f2.shape, "f3:", f3.shape)
+
+    tmax = 150
+    nmax = round(tmax / h)
+    nplt = np.floor((tmax / 100) / h)
+    g = -0.5j * k
+
+    uu = []
+    uu.append(u.T)
+
+    for n in range(nmax):
+        Nv = g * fft(np.real(ifft(v)) ** 2)
+        a = E2 * v + Q * Nv
+        Na = g * fft(np.real(ifft(a)) ** 2)
+        b = E2 * v + Q * Na
+        Nb = g * fft(np.real(ifft(b)) ** 2)
+        c = E2 * a + Q * (2 * Nb - Nv)
+        Nc = g * fft(np.real(ifft(c)) ** 2)
+
+        v = E * v + Nv * f1 + 2 * (Na + Nb) * f2 + Nc * f3
+
+        if n % nplt == 0:
+            u = np.real(ifft(v))
+            uu.append(u.T)
+
+    return np.concatenate(uu)
