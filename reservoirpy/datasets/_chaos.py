@@ -4,16 +4,22 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import collections
+import os
 from typing import Union
 
 import numpy as np
+from joblib import Memory
 from numpy.random import Generator, RandomState
 from scipy.fft import fft, ifft
 from scipy.integrate import solve_ivp
+from tqdm import trange
 
+from .. import _TEMPDIR
 from ..utils.random import rand_generator
 from ..utils.validation import check_vector
 from ._seed import get_seed
+
+memory = Memory(os.path.join(_TEMPDIR, "datasets"), verbose=0)
 
 
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
@@ -136,13 +142,13 @@ def lorenz(
     h: float = 0.03,
     **kwargs,
 ) -> np.ndarray:
-    """Lorenz attractor timeseries [6]_ [7]_:
+    """Lorenz attractor timeseries as defined by Lorenz in 1963 [6]_ [7]_:
 
     .. math::
 
-        \\frac{dx}{dt} &= \\sigma (y-x) \\\\
-        \\frac{dy}{dt} &= x(\\rho - z) - y \\\\
-        \\frac{dz}{dt} &= xy - \\beta z
+        \\frac{\\mathrm{d}x}{\\mathrm{d}t} &= \\sigma (y-x) \\\\
+        \\frac{\\mathrm{d}y}{\\mathrm{d}t} &= x(\\rho - z) - y \\\\
+        \\frac{\\mathrm{d}z}{\\mathrm{d}t} &= xy - \\beta z
 
     Parameters
     ----------
@@ -306,9 +312,9 @@ def multiscroll(
 
     .. math::
 
-        \\frac{dx}{dt} &= a(y - x) \\\\
-        \\frac{dy}{dt} &= (c - a)x - xz + cy \\\\
-        \\frac{dz}{dt} &= xy - bz
+        \\frac{\\mathrm{d}x}{\\mathrm{d}t} &= a(y - x) \\\\
+        \\frac{\\mathrm{d}y}{\\mathrm{d}t} &= (c - a)x - xz + cy \\\\
+        \\frac{\\mathrm{d}z}{\\mathrm{d}t} &= xy - bz
 
     Parameters
     ----------
@@ -375,10 +381,10 @@ def doublescroll(
 
     .. math::
 
-        \\frac{dV_1}{dt} &= \\frac{V_1}{R_1} - \\frac{\\Delta V}{R_2} -
+        \\frac{\\mathrm{d}V_1}{\\mathrm{d}t} &= \\frac{V_1}{R_1} - \\frac{\\Delta V}{R_2} -
         2I_r \\sinh(\\beta\\Delta V) \\\\
-        \\frac{dV_2}{dt} &= \\frac{\\Delta V}{R_2} +2I_r \\sinh(\\beta\\Delta V) - I\\\\
-        \\frac{dI}{dt} &= V_2 - R_4 I
+        \\frac{\\mathrm{d}V_2}{\\mathrm{d}t} &= \\frac{\\Delta V}{R_2} +2I_r \\sinh(\\beta\\Delta V) - I\\\\
+        \\frac{\\mathrm{d}I}{\\mathrm{d}t} &= V_2 - R_4 I
 
     where :math:`\\Delta V = V_1 - V_2`.
 
@@ -450,9 +456,9 @@ def rabinovich_fabrikant(
 
     .. math::
 
-        \\frac{dx}{dt} &= y(z - 1 + x^2) + \\gamma x \\\\
-        \\frac{dy}{dt} &= x(3z + 1 - x^2) + \\gamma y \\\\
-        \\frac{dz}{dt} &= -2z(\\alpha + xy)
+        \\frac{\\mathrm{d}x}{\\mathrm{d}t} &= y(z - 1 + x^2) + \\gamma x \\\\
+        \\frac{\\mathrm{d}y}{\\mathrm{d}t} &= x(3z + 1 - x^2) + \\gamma y \\\\
+        \\frac{\\mathrm{d}z}{\\mathrm{d}t} &= -2z(\\alpha + xy)
 
     Parameters
     ----------
@@ -539,7 +545,7 @@ def narma(
         Order of the system.
     a1 : float, default to 0.2
         :math:`a_1` parameter of the system.
-    a2 : float, default ot 0.04
+    a2 : float, default to 0.04
         :math:`a_2` parameter of the system.
     b : float, default to 1.5
         :math:`b` parameter of the system.
@@ -591,7 +597,7 @@ def narma(
 
 def lorenz96(
     n_timesteps: int,
-    warmup: int = 200,
+    warmup: int = 0,
     N: int = 36,
     F: float = 8.0,
     dF: float = 0.01,
@@ -599,6 +605,49 @@ def lorenz96(
     x0: Union[list, np.ndarray] = None,
     **kwargs,
 ):
+    """Lorenz96 attractor timeseries as defined by Lorenz in 1996 [17]_:
+
+    .. math::
+
+        \\frac{\\mathrm{d}x_i}{\\mathrm{d} t} = (x_{i+1} - x_{i-2}) x_{i-1} - x_i + F
+
+    where :math:`i = 1, \\dots, N` and :math:`x_{-1} = x_{N-1}`
+    and :math:`x_{N+1} = x_1` and :math:`N \\geq 4`.
+
+    Parameters
+    ----------
+    n_timesteps : int
+        Number of timesteps to generate.
+    warmup : int, default to 0
+        Number of timesteps to discard at the begining of the signal, to remove
+        transient states.
+    N: int, default to 36
+        Dimension of the system.
+    F : float, default to F
+        :math:`F` parameter of the system.
+    dF : float, default to 0.01
+        Pertubation applied to initial condition if x0 is None.
+    h : float, default to 0.01
+        Time delta between two discrete timesteps.
+    x0 : array-like of shape (N,), default to None
+        Initial conditions of the system. If None, the array is initialized to
+        an array of shape (N, ) with value F, except for the first value of the
+        array that takes the value F + dF.
+    **kwargs:
+        Other parameters to pass to the `scipy.integrate.solve_ivp`
+        solver.
+
+    Returns
+    -------
+    array of shape (n_timesteps - warmup, N)
+        Lorenz96 timeseries.
+
+    References
+    ----------
+    .. [17] Lorenz, E. N. (1996, September).
+            Predictability: A problem partly solved. In Proc.
+            Seminar on predictability (Vol. 1, No. 1).
+    """
     if N < 4:
         raise ValueError("N must be >= 4.")
 
@@ -639,6 +688,49 @@ def rossler(
     h: float = 0.1,
     **kwargs,
 ):
+    """Rössler attractor timeseries [18]_:
+
+    .. math::
+
+        \\frac{\\mathrm{d}x}{\\mathrm{d}t} &= -y - z \\\\
+        \\frac{\\mathrm{d}y}{\\mathrm{d}t} &= x + a y \\\\
+        \\frac{\\mathrm{d}z}{\\mathrm{d}t} &= b + z (x - c)
+
+    Parameters
+    ----------
+    n_timesteps : int
+        Number of timesteps to generate.
+    a : float, default to 0.2
+        :math:`a` parameter of the system.
+    b : float, default to 0.2
+        :math:`b` parameter of the system.
+    c : float, default to 5.7
+        :math:`c` parameter of the system.
+    x0 : array-like of shape (3,), default to [-0.1, 0.0, 0.02]
+        Initial conditions of the system.
+    h : float, default to 0.1
+        Time delta between two discrete timesteps.
+    **kwargs:
+        Other parameters to pass to the `scipy.integrate.solve_ivp`
+        solver.
+
+    Returns
+    -------
+    array of shape (n_timesteps, 3)
+        Rössler attractor timeseries.
+
+    References
+    ----------
+
+    .. [18] O.E. Rössler, "An equation for continuous chaos", Physics Letters A,
+            vol 57, Issue 5, Pages 397-398, ISSN 0375-9601, 1976,
+            https://doi.org/10.1016/0375-9601(76)90101-8.
+    """
+    if len(x0) != 3:
+        raise ValueError(
+            f"x0 should have shape (3,), but have shape {np.asarray(x0).shape}"
+        )
+
     def rossler_diff(t, state):
         x, y, z = state
         dx = -y - z
@@ -655,63 +747,134 @@ def rossler(
     return sol.y.T
 
 
-def kuramoto_sivashinsky(n_timesteps, N=128, M=16, x0=None, h=0.25):
+def _kuramoto_sivashinsky_etdrk4(v, *, g, E, E2, Q, f1, f2, f3):
+    """
+    https://github.com/E-Renshaw/kuramoto-sivashinsky
+
+    Kassam, A. K., & Trefethen, L. N. (2005). Fourth-order time-stepping for stiff PDEs.
+    SIAM Journal on Scientific Computing, 26(4), 1214-1233.
+    """
+
+    Nv = g * fft(np.real(ifft(v)) ** 2)
+    a = E2 * v + Q * Nv
+    Na = g * fft(np.real(ifft(a)) ** 2)
+    b = E2 * v + Q * Na
+    Nb = g * fft(np.real(ifft(b)) ** 2)
+    c = E2 * a + Q * (2 * Nb - Nv)
+    Nc = g * fft(np.real(ifft(c)) ** 2)
+    v = E * v + Nv * f1 + 2 * (Na + Nb) * f2 + Nc * f3
+
+    return v
+
+
+@memory.cache
+def kuramoto_sivashinsky(
+    n_timesteps: int,
+    warmup: int = 0,
+    N: int = 128,
+    M: float = 16,
+    x0: Union[list, np.ndarray] = None,
+    h: float = 0.25,
+):
+    """Kuramoto-Sivashinsky oscillators [19]_ [20]_ [21]_:
+
+    .. math::
+
+        y_t = -yy_x - y_{xx} - y_{xxxx}, ~~ x \\in [0, 32\\pi]
+
+    This 1D partial differential equation is solved using ETDRK4
+    (Exponential Time-Differencing 4th order Runge-Kutta) method, as described in [23]_.
+
+    Parameters
+    ----------
+    n_timesteps : int
+        Number of timesteps to generate.
+    warmup : int, default to 0
+        Number of timesteps to discard at the begining of the signal, to remove
+        transient states.
+    N : int, default to 128
+        Dimension of the system.
+    M : float, default to 0.2
+        Number of points for complex means. Modify beahviour of the resulting
+        multivariate timeseries.
+    x0 : array-like of shape (N,), default to None.
+        Initial conditions of the system. If None, x0 is equal to
+        :math:`\\cos (\\frac{y}{M}) * (1 + \\sin(\\frac{y}{M}))`
+        with :math:`y = 2M\\pi x / N, ~~ x \\in [1, N]`.
+    h : float, default to 0.25
+        Time delta between two discrete timesteps.
+
+    Returns
+    -------
+    array of shape (n_timesteps - warmup, N)
+        Kuramoto-Sivashinsky equation solution.
+
+    References
+    ----------
+
+    .. [19] Kuramoto, Y. (1978). Diffusion-Induced Chaos in Reaction Systems.
+            Progress of Theoretical Physics Supplement, 64, 346–367.
+            https://doi.org/10.1143/PTPS.64.346
+
+    .. [20] Sivashinsky, G. I. (1977). Nonlinear analysis of hydrodynamic instability
+            in laminar flames—I. Derivation of basic equations.
+            Acta Astronautica, 4(11), 1177–1206.
+            https://doi.org/10.1016/0094-5765(77)90096-0
+
+    .. [21] Sivashinsky, G. I. (1980). On Flame Propagation Under Conditions
+            of Stoichiometry. SIAM Journal on Applied Mathematics, 39(1), 67–82.
+            https://doi.org/10.1137/0139007
+
+    .. [23] Kassam, A. K., & Trefethen, L. N. (2005).
+            Fourth-order time-stepping for stiff PDEs.
+            SIAM Journal on Scientific Computing, 26(4), 1214-1233.
+    """
 
     # initial conditions
-    x0 = 2 * M * np.pi * np.arange(1, N + 1)[:, np.newaxis] / N
-    u = np.cos(x0 / M) * (1 + np.sin(x0 / M))
-    v = fft(u)
+    if x0 is None:
+        x = 2 * M * np.pi * np.arange(1, N + 1) / N
+        x0 = np.cos(x / M) * (1 + np.sin(x / M))
+    else:
+        if not np.asarray(x0).shape[0] == N:
+            raise ValueError(
+                f"Initial condition x0 should be of shape {N} (= N) but "
+                f"has shape {np.asarray(x0).shape}"
+            )
+        else:
+            x0 = np.asarray(x0)
 
-    print("x0:", x0.shape, "u:", u.shape, "v:", v.shape)
+    v0 = fft(x0)
 
-    k = (
-        np.concatenate([np.arange(N / 2), [0], np.arange(-N / 2 + 1, 0)])[:, np.newaxis]
-        / M
-    )
+    # ETDRK4 scalars
+    k = np.conj(np.r_[np.arange(0, N / 2), [0], np.arange(-N / 2 + 1, 0)]) / M
+
     L = k**2 - k**4
+
     E = np.exp(h * L)
     E2 = np.exp(h * L / 2)
 
-    print("k:", k.shape, "L:", L.shape, "E:", E.shape, "E2:", E2.shape)
+    r = np.exp(1j * np.pi * (np.arange(1, M + 1) - 0.5) / M)
+    LR = h * np.transpose(np.repeat([L], M, axis=0)) + np.repeat([r], N, axis=0)
 
-    r = np.exp(1j * np.pi * (np.arange(1, M + 1)[np.newaxis, :] - 0.5) / M)
-    LR = h * np.repeat(L, M, axis=1) + np.repeat(r, N, axis=0)
+    Q = h * np.real(np.mean((np.exp(LR / 2) - 1) / LR, axis=1))
 
-    Q = h * np.real(np.mean(1 / LR * (np.exp(LR / 2) - 1), axis=1)[:, np.newaxis])
+    f1 = (-4 - LR + np.exp(LR) * (4 - 3 * LR + LR**2)) / LR**3
+    f1 = h * np.real(np.mean(f1, axis=1))
 
-    f1_raw = (-4 - LR + np.exp(LR) * (4 - 3 * LR + LR**2)) / LR**3
-    f1 = h * np.real(np.mean(f1_raw, axis=1)[:, np.newaxis])
+    f2 = (2 + LR + np.exp(LR) * (-2 + LR)) / LR**3
+    f2 = h * np.real(np.mean(f2, axis=1))
 
-    f2_raw = (2 + LR + np.exp(LR) * (-2 + LR)) / LR**3
-    f2 = h * np.real(np.mean(f2_raw, axis=1)[:, np.newaxis])
+    f3 = (-4 - 3 * LR - LR**2 + np.exp(LR) * (4 - LR)) / LR**3
+    f3 = h * np.real(np.mean(f3, axis=1))
 
-    f3_raw = (-4 - 3 * LR - LR**2 + np.exp(LR) * (4 - LR)) / LR**3
-    f3 = h * np.real(np.mean(f3_raw, axis=1)[:, np.newaxis])
-
-    print("r:", r.shape, "LR:", LR.shape)
-    print("Q:", Q.shape, "f1:", f1.shape, "f2:", f2.shape, "f3:", f3.shape)
-
-    tmax = 150
-    nmax = round(tmax / h)
-    nplt = np.floor((tmax / 100) / h)
     g = -0.5j * k
 
-    uu = []
-    uu.append(u.T)
+    # integration using ETDRK4 method
+    v = np.zeros((n_timesteps, N), dtype=complex)
+    v[0] = v0
+    for n in trange(1, n_timesteps):
+        v[n] = _kuramoto_sivashinsky_etdrk4(
+            v[n - 1], g=g, E=E, E2=E2, Q=Q, f1=f1, f2=f2, f3=f3
+        )
 
-    for n in range(nmax):
-        Nv = g * fft(np.real(ifft(v)) ** 2)
-        a = E2 * v + Q * Nv
-        Na = g * fft(np.real(ifft(a)) ** 2)
-        b = E2 * v + Q * Na
-        Nb = g * fft(np.real(ifft(b)) ** 2)
-        c = E2 * a + Q * (2 * Nb - Nv)
-        Nc = g * fft(np.real(ifft(c)) ** 2)
-
-        v = E * v + Nv * f1 + 2 * (Na + Nb) * f2 + Nc * f3
-
-        if n % nplt == 0:
-            u = np.real(ifft(v))
-            uu.append(u.T)
-
-    return np.concatenate(uu)
+    return np.real(ifft(v[warmup:]))
