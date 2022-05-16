@@ -24,6 +24,9 @@ or from Scipy :py:func:`scipy.integrate.solve_ivp` tool.
     multiscroll - Multi scroll attractor timeseries.
     doublescroll - Double scroll attractor timeseries.
     rabinovich_fabrikant - Rabinovitch-Fabrikant differential equations timeseries.
+    lorenz96 - Lorenz 1996 attractor.
+    rossler - Rossler attractor.
+    kuramoto_sivashinsky - Kuramoto-Sivashinsky oscillators.
 
 Chaotic timeseries on discrete time
 ===================================
@@ -91,32 +94,50 @@ References
             <https://en.wikipedia.org/wiki/Mackey-Glass_equations>`_
             on Wikipedia.
     .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
-       Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
-       Jul. 1999, doi: 10.1142/S0218127499001024.
+            Int. J. Bifurcation Chaos, vol. 09, no. 07, pp. 1465–1466,
+            Jul. 1999, doi: 10.1142/S0218127499001024.
     .. [11] `Chen double scroll attractor
-           <https://en.wikipedia.org/wiki/Multiscroll_attractor
-           #Chen_attractor>`_
-           on Wikipedia.
+            <https://en.wikipedia.org/wiki/Multiscroll_attractor
+            #Chen_attractor>`_ on Wikipedia.
     .. [12] M. I. Rabinovich and A. L. Fabrikant,
-       ‘Stochastic self-modulation of waves in
-       nonequilibrium media’, p. 8, 1979.
+            ‘Stochastic self-modulation of waves in
+            nonequilibrium media’, p. 8, 1979.
     .. [13] `Rabinovich-Fabrikant equations
-           <https://en.wikipedia.org/wiki/Rabinovich%E2%80
-           %93Fabrikant_equations>`_
-           on Wikipedia.
+            <https://en.wikipedia.org/wiki/Rabinovich%E2%80
+            %93Fabrikant_equations>`_
+            on Wikipedia.
     .. [14] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
-       network training: unifying the algorithms and accelerating
-       convergence,‘ in IEEE Transactions on Neural Networks,
-       vol. 11, no. 3, pp. 697-709, May 2000,
-       doi: 10.1109/72.846741.
+            network training: unifying the algorithms and accelerating
+            convergence,‘ in IEEE Transactions on Neural Networks,
+            vol. 11, no. 3, pp. 697-709, May 2000,
+            doi: 10.1109/72.846741.
     .. [15] B.Schrauwen, M. Wardermann, D. Verstraeten, J. Steil,
-           D. Stroobandt, ‘Improving reservoirs using intrinsic
-           plasticity‘,
-           Neurocomputing, 71. 1159-1171, 2008,
-           doi: 10.1016/j.neucom.2007.12.020.
+            D. Stroobandt, ‘Improving reservoirs using intrinsic
+            plasticity‘,
+            Neurocomputing, 71. 1159-1171, 2008,
+            doi: 10.1016/j.neucom.2007.12.020.
     .. [16] M. Kudo, J. Toyama and M. Shimbo. (1999).
-           "Multidimensional Curve Classification Using Passing-Through Regions".
-           Pattern Recognition Letters, Vol. 20, No. 11--13, pages 1103--1111.
+            "Multidimensional Curve Classification Using Passing-Through Regions".
+            Pattern Recognition Letters, Vol. 20, No. 11--13, pages 1103--1111.
+    .. [17] Lorenz, E. N. (1996, September).
+            Predictability: A problem partly solved. In Proc.
+            Seminar on predictability (Vol. 1, No. 1).
+    .. [18] O.E. Rössler, "An equation for continuous chaos", Physics Letters A,
+            vol 57, Issue 5, Pages 397-398, ISSN 0375-9601, 1976,
+            https://doi.org/10.1016/0375-9601(76)90101-8.
+    .. [19] Kuramoto, Y. (1978). Diffusion-Induced Chaos in Reaction Systems.
+            Progress of Theoretical Physics Supplement, 64, 346–367.
+            https://doi.org/10.1143/PTPS.64.346
+    .. [20] Sivashinsky, G. I. (1977). Nonlinear analysis of hydrodynamic instability
+            in laminar flames—I. Derivation of basic equations.
+            Acta Astronautica, 4(11), 1177–1206.
+            https://doi.org/10.1016/0094-5765(77)90096-0
+    .. [21] Sivashinsky, G. I. (1980). On Flame Propagation Under Conditions
+            of Stoichiometry. SIAM Journal on Applied Mathematics, 39(1), 67–82.
+            https://doi.org/10.1137/0139007
+    .. [22] Kassam, A. K., & Trefethen, L. N. (2005).
+            Fourth-order time-stepping for stiff PDEs.
+            SIAM Journal on Scientific Computing, 26(4), 1214-1233.
 """
 from typing import Union
 
