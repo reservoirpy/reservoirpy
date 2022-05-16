@@ -47,7 +47,7 @@ def henon_map(
     b: float = 0.3,
     x0: Union[list, np.ndarray] = [0.0, 0.0],
 ) -> np.ndarray:
-    """Hénon map discrete timeseries [2]_ [3]_:
+    """Hénon map discrete timeseries [2]_ [3]_.
 
     .. math::
 
@@ -90,7 +90,7 @@ def henon_map(
 
 
 def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5) -> np.ndarray:
-    """Logistic map discrete timeseries [4]_ [5]_:
+    """Logistic map discrete timeseries [4]_ [5]_.
 
     .. math::
 
@@ -142,7 +142,7 @@ def lorenz(
     h: float = 0.03,
     **kwargs,
 ) -> np.ndarray:
-    """Lorenz attractor timeseries as defined by Lorenz in 1963 [6]_ [7]_:
+    """Lorenz attractor timeseries as defined by Lorenz in 1963 [6]_ [7]_.
 
     .. math::
 
@@ -208,7 +208,7 @@ def mackey_glass(
     seed: Union[int, RandomState, Generator] = None,
 ) -> np.ndarray:
     """Mackey-Glass timeseries [8]_ [9]_, computed from the Mackey-Glass
-    delayed differential equation:
+    delayed differential equation.
 
     .. math::
 
@@ -523,7 +523,7 @@ def narma(
     c: float = 0.001,
     x0: Union[list, np.ndarray] = [0.0],
     seed: Union[int, RandomState] = None,
-):
+) -> np.ndarray:
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
     as first defined in [14]_, and as used in [15]_.
 
@@ -604,8 +604,8 @@ def lorenz96(
     h: float = 0.01,
     x0: Union[list, np.ndarray] = None,
     **kwargs,
-):
-    """Lorenz96 attractor timeseries as defined by Lorenz in 1996 [17]_:
+) -> np.ndarray:
+    """Lorenz96 attractor timeseries as defined by Lorenz in 1996 [17]_.
 
     .. math::
 
@@ -687,8 +687,8 @@ def rossler(
     x0: Union[list, np.ndarray] = [-0.1, 0.0, 0.02],
     h: float = 0.1,
     **kwargs,
-):
-    """Rössler attractor timeseries [18]_:
+) -> np.ndarray:
+    """Rössler attractor timeseries [18]_.
 
     .. math::
 
@@ -748,8 +748,7 @@ def rossler(
 
 
 def _kuramoto_sivashinsky_etdrk4(v, *, g, E, E2, Q, f1, f2, f3):
-    """
-    https://github.com/E-Renshaw/kuramoto-sivashinsky
+    """A single step of EDTRK4 to solve Kuramoto-Sivashinsky equation.
 
     Kassam, A. K., & Trefethen, L. N. (2005). Fourth-order time-stepping for stiff PDEs.
     SIAM Journal on Scientific Computing, 26(4), 1214-1233.
@@ -768,6 +767,45 @@ def _kuramoto_sivashinsky_etdrk4(v, *, g, E, E2, Q, f1, f2, f3):
 
 
 @memory.cache
+def _kuramoto_sivashinsky(n_timesteps, *, warmup, N, M, x0, h):
+    # initial conditions
+    v0 = fft(x0)
+
+    # ETDRK4 scalars
+    k = np.conj(np.r_[np.arange(0, N / 2), [0], np.arange(-N / 2 + 1, 0)]) / M
+
+    L = k**2 - k**4
+
+    E = np.exp(h * L)
+    E2 = np.exp(h * L / 2)
+
+    r = np.exp(1j * np.pi * (np.arange(1, M + 1) - 0.5) / M)
+    LR = h * np.transpose(np.repeat([L], M, axis=0)) + np.repeat([r], N, axis=0)
+
+    Q = h * np.real(np.mean((np.exp(LR / 2) - 1) / LR, axis=1))
+
+    f1 = (-4 - LR + np.exp(LR) * (4 - 3 * LR + LR**2)) / LR**3
+    f1 = h * np.real(np.mean(f1, axis=1))
+
+    f2 = (2 + LR + np.exp(LR) * (-2 + LR)) / LR**3
+    f2 = h * np.real(np.mean(f2, axis=1))
+
+    f3 = (-4 - 3 * LR - LR**2 + np.exp(LR) * (4 - LR)) / LR**3
+    f3 = h * np.real(np.mean(f3, axis=1))
+
+    g = -0.5j * k
+
+    # integration using ETDRK4 method
+    v = np.zeros((n_timesteps, N), dtype=complex)
+    v[0] = v0
+    for n in trange(1, n_timesteps):
+        v[n] = _kuramoto_sivashinsky_etdrk4(
+            v[n - 1], g=g, E=E, E2=E2, Q=Q, f1=f1, f2=f2, f3=f3
+        )
+
+    return np.real(ifft(v[warmup:]))
+
+
 def kuramoto_sivashinsky(
     n_timesteps: int,
     warmup: int = 0,
@@ -775,15 +813,15 @@ def kuramoto_sivashinsky(
     M: float = 16,
     x0: Union[list, np.ndarray] = None,
     h: float = 0.25,
-):
-    """Kuramoto-Sivashinsky oscillators [19]_ [20]_ [21]_:
+) -> np.ndarray:
+    """Kuramoto-Sivashinsky oscillators [19]_ [20]_ [21]_.
 
     .. math::
 
         y_t = -yy_x - y_{xx} - y_{xxxx}, ~~ x \\in [0, 32\\pi]
 
     This 1D partial differential equation is solved using ETDRK4
-    (Exponential Time-Differencing 4th order Runge-Kutta) method, as described in [23]_.
+    (Exponential Time-Differencing 4th order Runge-Kutta) method, as described in [22]_.
 
     Parameters
     ----------
@@ -825,12 +863,10 @@ def kuramoto_sivashinsky(
             of Stoichiometry. SIAM Journal on Applied Mathematics, 39(1), 67–82.
             https://doi.org/10.1137/0139007
 
-    .. [23] Kassam, A. K., & Trefethen, L. N. (2005).
+    .. [22] Kassam, A. K., & Trefethen, L. N. (2005).
             Fourth-order time-stepping for stiff PDEs.
             SIAM Journal on Scientific Computing, 26(4), 1214-1233.
     """
-
-    # initial conditions
     if x0 is None:
         x = 2 * M * np.pi * np.arange(1, N + 1) / N
         x0 = np.cos(x / M) * (1 + np.sin(x / M))
@@ -843,38 +879,4 @@ def kuramoto_sivashinsky(
         else:
             x0 = np.asarray(x0)
 
-    v0 = fft(x0)
-
-    # ETDRK4 scalars
-    k = np.conj(np.r_[np.arange(0, N / 2), [0], np.arange(-N / 2 + 1, 0)]) / M
-
-    L = k**2 - k**4
-
-    E = np.exp(h * L)
-    E2 = np.exp(h * L / 2)
-
-    r = np.exp(1j * np.pi * (np.arange(1, M + 1) - 0.5) / M)
-    LR = h * np.transpose(np.repeat([L], M, axis=0)) + np.repeat([r], N, axis=0)
-
-    Q = h * np.real(np.mean((np.exp(LR / 2) - 1) / LR, axis=1))
-
-    f1 = (-4 - LR + np.exp(LR) * (4 - 3 * LR + LR**2)) / LR**3
-    f1 = h * np.real(np.mean(f1, axis=1))
-
-    f2 = (2 + LR + np.exp(LR) * (-2 + LR)) / LR**3
-    f2 = h * np.real(np.mean(f2, axis=1))
-
-    f3 = (-4 - 3 * LR - LR**2 + np.exp(LR) * (4 - LR)) / LR**3
-    f3 = h * np.real(np.mean(f3, axis=1))
-
-    g = -0.5j * k
-
-    # integration using ETDRK4 method
-    v = np.zeros((n_timesteps, N), dtype=complex)
-    v[0] = v0
-    for n in trange(1, n_timesteps):
-        v[n] = _kuramoto_sivashinsky_etdrk4(
-            v[n - 1], g=g, E=E, E2=E2, Q=Q, f1=f1, f2=f2, f3=f3
-        )
-
-    return np.real(ifft(v[warmup:]))
+    return _kuramoto_sivashinsky(n_timesteps, warmup=warmup, N=N, M=M, x0=x0, h=h)
