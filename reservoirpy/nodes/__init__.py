@@ -16,15 +16,25 @@ Reservoirs
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
    IPReservoir - Reservoir with intrinsic plasticy learning rule
 
-Readouts
-========
+Offline readouts
+================
 
 .. autosummary::
    :toctree: generated/
    :template: autosummary/class.rst
 
    Ridge - Layer of neurons connected through offline linear regression.
-   FORCE - Layer of neurons connected through online FORCE learning.
+
+Online readouts
+===============
+
+.. autosummary::
+   :toctree: generated/
+   :template: autosummary/class.rst
+
+   LMS - Layer of neurons connected through least mean squares learning rule.
+   RLS - Layer of neurons connected through recursive least squares learning rule.
+   FORCE - Layer of neurons connected through online learning rules.
 
 Optimized ESN
 =============
@@ -74,10 +84,9 @@ Operators
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .concat import Concat
 from .esn import ESN
-from .force import FORCE
 from .io import Input, Output
+from .readouts import FORCE, LMS, RLS, Ridge
 from .reservoirs import NVAR, IPReservoir, Reservoir
-from .ridge import Ridge
 
 __all__ = [
     "Reservoir",
@@ -85,6 +94,8 @@ __all__ = [
     "Output",
     "Ridge",
     "FORCE",
+    "LMS",
+    "RLS",
     "Tanh",
     "Softmax",
     "Softplus",

@@ -7,8 +7,6 @@ import numpy as np
 
 from ..node import Node
 
-# from ..utils.validation import check_node_io
-
 
 def concat_forward(concat: Node, data):
     axis = concat.axis
