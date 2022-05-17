@@ -3,8 +3,8 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 
-from ..node import Node
-from ..utils.validation import add_bias, check_vector
+from ...node import Node
+from ...utils.validation import add_bias, check_vector
 
 
 def _initialize_readout(
@@ -106,3 +106,10 @@ def _split_and_save_wout(node, wo):
         node.set_param("bias", bias)
     else:
         node.set_param("Wout", wo)
+
+
+def _compute_error(node, x, y=None):
+    """Error between target and prediction."""
+    prediction = node.state()
+    error = prediction - y
+    return error, x.T

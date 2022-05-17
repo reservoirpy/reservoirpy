@@ -6,10 +6,10 @@ from functools import partial
 import numpy as np
 from scipy import linalg
 
-from ..mat_gen import zeros
-from ..node import Node
-from ..type import global_dtype
-from .utils import _initialize_readout, _prepare_inputs_for_learning, readout_forward
+from ...mat_gen import zeros
+from ...node import Node
+from ...type import global_dtype
+from .base import _initialize_readout, _prepare_inputs_for_learning, readout_forward
 
 
 def _solve_ridge(XXT, YXT, ridge):

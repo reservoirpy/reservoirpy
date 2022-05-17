@@ -1,15 +1,15 @@
-# Author: Nathan Trouvain at 06/08/2021 <nathan.trouvain@inria.fr>
+# Author: Nathan Trouvain at 17/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from reservoirpy.nodes import FORCE, Reservoir
+from reservoirpy.nodes import RLS, Reservoir
 
 
-def test_force_init():
+def test_rls_init():
 
-    node = FORCE(10)
+    node = RLS(10)
 
     data = np.ones((1, 100))
     res = node(data)
@@ -24,9 +24,9 @@ def test_force_init():
     assert res.shape == (10000, 10)
 
 
-def test_force_train_one_step():
+def test_rls_train_one_step():
 
-    node = FORCE(10)
+    node = RLS(10)
 
     x = np.ones((5, 2))
     y = np.ones((5, 10))
@@ -44,21 +44,9 @@ def test_force_train_one_step():
     assert res.shape == (10000, 10)
 
 
-def test_force_train():
+def test_rls_train():
 
-    node = FORCE(10)
-
-    X, Y = np.ones((200, 100)), np.ones((200, 10))
-
-    res = node.train(X, Y)
-
-    assert res.shape == (200, 10)
-    assert node.Wout.shape == (100, 10)
-    assert_array_almost_equal(node.Wout, np.ones((100, 10)) * 0.01, decimal=4)
-    assert node.bias.shape == (1, 10)
-    assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
-
-    node = FORCE(10)
+    node = RLS(10)
 
     X, Y = np.ones((200, 100)), np.ones((200, 10))
 
@@ -70,7 +58,19 @@ def test_force_train():
     assert node.bias.shape == (1, 10)
     assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
 
-    node = FORCE(10)
+    node = RLS(10)
+
+    X, Y = np.ones((200, 100)), np.ones((200, 10))
+
+    res = node.train(X, Y)
+
+    assert res.shape == (200, 10)
+    assert node.Wout.shape == (100, 10)
+    assert_array_almost_equal(node.Wout, np.ones((100, 10)) * 0.01, decimal=4)
+    assert node.bias.shape == (1, 10)
+    assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
+
+    node = RLS(10)
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
 
@@ -82,57 +82,15 @@ def test_force_train():
     assert node.bias.shape == (1, 10)
     assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
 
-    data = np.ones((10000, 100))
+    data = np.ones((1000, 100))
     res = node.run(data)
 
-    assert res.shape == (10000, 10)
+    assert res.shape == (1000, 10)
 
 
-def test_force_lms():
+def test_esn_rls():
 
-    node = FORCE(10, rule="lms")
-
-    X, Y = np.ones((200, 100)), np.ones((200, 10))
-
-    res = node.train(X, Y)
-
-    assert res.shape == (200, 10)
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
-
-    def alpha_gen():
-        while True:
-            yield 1e-6
-
-    node = FORCE(10, rule="lms", alpha=alpha_gen())
-
-    X, Y = np.ones((200, 100)), np.ones((200, 10))
-
-    res = node.train(X, Y)
-
-    assert res.shape == (200, 10)
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
-
-    node = FORCE(10, rule="lms", alpha=alpha_gen())
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-
-    for x, y in zip(X, Y):
-        res = node.train(x, y, learn_every=5)
-
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
-
-    data = np.ones((10000, 100))
-    res = node.run(data)
-
-    assert res.shape == (10000, 10)
-
-
-def test_esn_force():
-
-    readout = FORCE(10)
+    readout = RLS(10)
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -145,35 +103,15 @@ def test_esn_force():
     assert readout.Wout.shape == (100, 10)
     assert readout.bias.shape == (1, 10)
 
-    data = np.ones((10000, 100))
+    data = np.ones((1000, 100))
     res = esn.run(data)
 
-    assert res.shape == (10000, 10)
+    assert res.shape == (1000, 10)
 
 
-def test_esn_force_lms():
-    readout = FORCE(10, rule="lms")
-    reservoir = Reservoir(100)
+def test_rls_feedback():
 
-    esn = reservoir >> readout
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-
-    for x, y in zip(X, Y):
-        res = esn.train(x, y)
-
-    assert readout.Wout.shape == (100, 10)
-    assert readout.bias.shape == (1, 10)
-
-    data = np.ones((10000, 100))
-    res = esn.run(data)
-
-    assert res.shape == (10000, 10)
-
-
-def test_force_feedback():
-
-    readout = FORCE(10)
+    readout = RLS(10)
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -188,17 +126,17 @@ def test_force_feedback():
     assert readout.bias.shape == (1, 10)
     assert reservoir.Wfb.shape == (100, 10)
 
-    data = np.ones((10000, 8))
+    data = np.ones((1000, 8))
     res = esn.run(data)
 
-    assert res.shape == (10000, 10)
+    assert res.shape == (1000, 10)
 
 
 def test_hierarchical_esn():
 
-    readout1 = FORCE(10, name="r1")
+    readout1 = RLS(10, name="r1")
     reservoir1 = Reservoir(100)
-    readout2 = FORCE(3, name="r2")
+    readout2 = RLS(3, name="r2")
     reservoir2 = Reservoir(100)
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
@@ -223,9 +161,9 @@ def test_hierarchical_esn():
 
 def test_dummy_mutual_supervision():
 
-    readout1 = FORCE(1, name="r1")
+    readout1 = RLS(1, name="r1")
     reservoir1 = Reservoir(100)
-    readout2 = FORCE(1, name="r2")
+    readout2 = RLS(1, name="r2")
     reservoir2 = Reservoir(100)
 
     reservoir1 <<= readout1
