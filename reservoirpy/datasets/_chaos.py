@@ -12,7 +12,6 @@ from joblib import Memory
 from numpy.random import Generator, RandomState
 from scipy.fft import fft, ifft
 from scipy.integrate import solve_ivp
-from tqdm import trange
 
 from .. import _TEMPDIR
 from ..utils.random import rand_generator
@@ -798,7 +797,7 @@ def _kuramoto_sivashinsky(n_timesteps, *, warmup, N, M, x0, h):
     # integration using ETDRK4 method
     v = np.zeros((n_timesteps, N), dtype=complex)
     v[0] = v0
-    for n in trange(1, n_timesteps):
+    for n in range(1, n_timesteps):
         v[n] = _kuramoto_sivashinsky_etdrk4(
             v[n - 1], g=g, E=E, E2=E2, Q=Q, f1=f1, f2=f2, f3=f3
         )
