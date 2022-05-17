@@ -14,8 +14,8 @@ from ..utils.model_utils import to_data_mapping
 from ..utils.parallel import get_joblib_backend
 from ..utils.validation import is_mapping
 from .io import Input
+from .readouts import Ridge
 from .reservoirs import NVAR, Reservoir
-from .ridge import Ridge
 
 _LEARNING_METHODS = {"ridge": Ridge}
 
