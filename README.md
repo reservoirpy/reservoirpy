@@ -228,10 +228,10 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 ```
 
 <div align="left">
-  <img src="./static/inr_logo_rouge.jpg" width=300><br>
+  [<img src="./static/inr_logo_rouge.jpg" width=300><br>](https://www.inria.fr/en)
 </div>
 
 
-This package is developped and supported by Inria at Bordeaux, France. Inria is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
+This package is developped and supported by Inria at Bordeaux, France in [Mnemosyne group](https://team.inria.fr/mnemosyne/). [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
 
 
