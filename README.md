@@ -230,7 +230,7 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 This package is developped and supported by Inria at Bordeaux, France. Inria is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
 
 <div align="left">
-  <img src="./static/inr_logo_rouge.jpg"><br>
+  <img src="./static/inr_logo_rouge.jpg" width=50><br>
 </div>
 
 
