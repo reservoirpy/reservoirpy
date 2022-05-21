@@ -199,6 +199,7 @@ More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
 If you want your paper to appear here, please contact us (see contact link below).
 
+- Chaix-Eichel et al. (2022) From implicit learning to explicit representations. arXiv preprint arXiv:2204.02484. [arXiv](https://arxiv.org/abs/2204.02484) [PDF](https://arxiv.org/pdf/2204.02484)
 - Trouvain & Hinaut (2021) Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) [HAL](https://hal.inria.fr/hal-03203374) [PDF](https://hal.inria.fr/hal-03203374/document)
 - Pagliarini et al. (2021) Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator. ICDL 2021. [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF)
 - Pagliarini et al. (2021) What does the Canary Say? Low-Dimensional GAN Applied to Birdsong. HAL preprint. [HAL](https://hal.inria.fr/hal-03244723/) [PDF](https://hal.inria.fr/hal-03244723/document)
@@ -228,10 +229,10 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 ```
 
 <div align="left">
-  [<img src="./static/inr_logo_rouge.jpg" width=300><br>](https://www.inria.fr/en)
+  <img src="./static/inr_logo_rouge.jpg" width=300><br>
 </div>
 
 
-This package is developped and supported by Inria at Bordeaux, France in [Mnemosyne group](https://team.inria.fr/mnemosyne/). [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
+This package is developped and supported by Inria at Bordeaux, France in [Mnemosyne](https://team.inria.fr/mnemosyne/) group. [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
 
 
