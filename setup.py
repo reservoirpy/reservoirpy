@@ -81,5 +81,5 @@ if __name__ == "__main__":
         ],
         python_requires=">=3.6",
         install_requires=INSTALL_REQUIRES,
-        extra_require=EXTRA_REQUIRES,
+        extras_require=EXTRA_REQUIRES,
     )
