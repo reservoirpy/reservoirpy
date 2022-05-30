@@ -2,7 +2,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
-import tempfile
 import uuid
 from functools import partial
 from multiprocessing import Manager, Process
@@ -138,14 +137,13 @@ def memmap(shape: Tuple, dtype: np.dtype, mode: str = "w+", caller=None) -> np.m
 
     """
     global temp_registry
+    from ... import _TEMPDIR
 
     if caller is not None:
         caller_name = caller.__class__.__name__
     else:
         caller_name = ""
-    filename = os.path.join(
-        tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat"
-    )
+    filename = os.path.join(_TEMPDIR, f"{caller_name + str(uuid.uuid4())}.dat")
     if caller is not None:
         temp_registry[caller].append(filename)
     return np.memmap(filename, shape=shape, mode=mode, dtype=dtype)
@@ -153,13 +151,13 @@ def memmap(shape: Tuple, dtype: np.dtype, mode: str = "w+", caller=None) -> np.m
 
 def as_memmap(data, caller=None):
     global temp_registry
+    from ... import _TEMPDIR
+
     if caller is not None:
         caller_name = caller.__class__.__name__
     else:
         caller_name = ""
-    filename = os.path.join(
-        tempfile.gettempdir(), f"{caller_name + str(uuid.uuid4())}.dat"
-    )
+    filename = os.path.join(_TEMPDIR, f"{caller_name + str(uuid.uuid4())}.dat")
     joblib.dump(data, filename)
     temp_registry[caller].append(filename)
     return joblib.load(filename, mmap_mode="r+")

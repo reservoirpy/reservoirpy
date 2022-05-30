@@ -21,8 +21,6 @@ if not os.path.exists(_TEMPDIR):  # pragma: no cover
     except OSError:
         _TEMPDIR = tempfile.gettempdir()
 
-tempfile.tempdir = _TEMPDIR
-
 __all__ = [
     "__version__",
     "mat_gen",
