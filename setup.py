@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 NAME = "reservoirpy"
 
-__version__ = None
+__version__ = ""
 version_file = os.path.join("reservoirpy", "_version.py")
 with open(version_file) as f:
     exec(f.read())
@@ -66,7 +66,7 @@ if __name__ == "__main__":
             "License :: OSI Approved :: MIT License",
             "Programming Language :: Python",
             "Topic :: Scientific/Engineering",
-            ("Topic :: Scientific/Engineering :: " "Artificial Intelligence"),
+            "Topic :: Scientific/Engineering :: Artificial Intelligence",
             "Operating System :: Microsoft :: Windows",
             "Operating System :: POSIX",
             "Operating System :: Unix",
@@ -77,7 +77,7 @@ if __name__ == "__main__":
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9",
-            ("Programming Language :: Python :: " "Implementation :: PyPy"),
+            "Programming Language :: Python :: Implementation :: PyPy",
         ],
         python_requires=">=3.6",
         install_requires=INSTALL_REQUIRES,
