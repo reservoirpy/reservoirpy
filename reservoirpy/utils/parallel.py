@@ -4,7 +4,6 @@
 import gc
 import os
 import sys
-import tempfile
 import uuid
 from collections import defaultdict
 
@@ -52,6 +51,9 @@ def set_joblib_backend(backend):
 
 
 def memmap_buffer(node, data=None, shape=None, dtype=None, mode="w+", name=None):
+
+    from .. import _TEMPDIR
+
     global temp_registry
 
     caller = node.name
@@ -63,7 +65,7 @@ def memmap_buffer(node, data=None, shape=None, dtype=None, mode="w+", name=None)
             )
 
     name = name if name is not None else uuid.uuid4()
-    temp = os.path.join(tempfile.gettempdir(), f"{caller + str(name)}")
+    temp = os.path.join(_TEMPDIR, f"{caller + str(name)}")
 
     temp_registry[node].append(temp)
 
