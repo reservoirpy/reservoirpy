@@ -9,7 +9,7 @@
 [![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
 
-# ReservoirPy (v0.3.4) 🌀🧠
+# ReservoirPy (v0.3.5) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 
@@ -65,7 +65,7 @@ pip install reservoirpy
 or
 
 ```bash
-pip install reservoirpy==0.3.4
+pip install reservoirpy==0.3.5
 ```
 
 If you want to run the Python Notebooks of the _turorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
