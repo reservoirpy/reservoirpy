@@ -56,8 +56,6 @@ to learn more about the main features of ReservoirPy, its API and the installati
 
 ## Installation
 
-To install it, use one of the following command:
-
 ```bash
 pip install reservoirpy
 ```
@@ -158,6 +156,7 @@ If you have some issues testing some examples, have a look at the [extended pack
 
 ## More installation options 
 
+To install it, use one of the following command:
 
 ```bash
 pip install reservoirpy
