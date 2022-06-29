@@ -46,7 +46,7 @@ This library works for **Python 3.8** and higher.
 
 [Follow @reservoirpy](https://twitter.com/reservoirpy) updates and new releases on Twitter.
 
-## Offcial documentation 📖
+## Official documentation 📖
 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
@@ -62,29 +62,8 @@ To install it, use one of the following command:
 pip install reservoirpy
 ```
 
-or
+(See below for more advanced installation options)
 
-```bash
-pip install reservoirpy==0.3.5
-```
-
-If you want to run the Python Notebooks of the _turorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
-```bash
-pip install -r tutorials/requirements.txt
-```
-
-If you want to use the previous version 0.2.4, you can install ReservoirPy using:
-
-```bash
-pip install reservoirpy==0.2.4
-```
-
-If you want to enable the `hyper` package and its hyperparameter optimization helpers using
-[hyperopt](http://hyperopt.github.io/hyperopt/), use:
-
-```bash
-pip install reservoirpy[hyper]
-```
 
 ## Quick try ⚡
 
@@ -176,6 +155,36 @@ Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-
     ```
 
 If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
+
+## More installation options 
+
+
+```bash
+pip install reservoirpy
+```
+or
+
+```bash
+pip install reservoirpy==0.3.5
+```
+
+If you want to run the Python Notebooks of the _tutorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
+```bash
+pip install -r tutorials/requirements.txt
+```
+
+If you want to use the previous version 0.2.4, you can install ReservoirPy using:
+
+```bash
+pip install reservoirpy==0.2.4
+```
+
+If you want to enable the `hyper` package and its hyperparameter optimization helpers using
+[hyperopt](http://hyperopt.github.io/hyperopt/), use:
+
+```bash
+pip install reservoirpy[hyper]
+```
 
 ## More examples and tutorials 🎓
 
