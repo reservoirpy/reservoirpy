@@ -1,6 +1,6 @@
 <div align="center">
   <!-- <img src="https://github.com/reservoirpy/reservoirpy/raw/master/static/rpy_banner_bw.png"><br> !-->
-  <img src="./static/rpy_banner_bw.png"><br>
+  <img src="./static/rpy_banner_bw_small-size.jpg"><br>
 </div>
 
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/reservoirpy)
