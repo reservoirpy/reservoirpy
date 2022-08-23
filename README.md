@@ -12,8 +12,10 @@
 # ReservoirPy (v0.3.5) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
+!!!!!
 Looking for a machine learning engineer to work on ReservoirPy in Bordeaux, France!
 Send your CV, motivation & github profile by 17th September at xavier dot hinaut the-well-known-home-symbol inria dot fr
+!!!!!
 
 ```python
 from reservoirpy.nodes import Reservoir, Ridge, Input
