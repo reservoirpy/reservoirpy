@@ -12,6 +12,8 @@
 # ReservoirPy (v0.3.5) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
+Looking for a machine learning engineer to work on ReservoirPy in Bordeaux, France!
+Send your CV, motivation & github profile by 17th September at xavier dot hinaut the-well-known-home-symbol inria dot fr
 
 ```python
 from reservoirpy.nodes import Reservoir, Ridge, Input
@@ -214,7 +216,7 @@ If you want your paper to appear here, please contact us (see contact link below
 - Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318) [PDF](https://hal.inria.fr/hal-03203318)
 
 ## Contact
-If you have a question regarding the library, please open an Issue. If you have more general question or feedback you can [contact us on twitter](https://twitter.com/reservoirpy) or by email to nathan dot trouvain at inria dot fr and to xavier dot hinaut at inria dot fr.
+If you have a question regarding the library, please open an Issue. If you have more general question or feedback you can [contact us on twitter](https://twitter.com/reservoirpy) or by email to xavier dot hinaut the-famous-home-symbol inria dot fr.
 
 ## Citing ReservoirPy
 
