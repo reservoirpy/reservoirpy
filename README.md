@@ -15,12 +15,14 @@
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reservoirpy/reservoirpy/HEAD)
 
 
-**!!! JOB OFFER !!!**
+**!!! <JOB OFFER> !!!**
 
-**Looking for a machine learning engineer to work on ReservoirPy in Bordeaux, France!
-Send your CV, motivation & github profile by 17th September at xavier dot hinaut the-well-known-home-symbol inria dot fr**
+**Looking for a machine learning engineer to work on ReservoirPy in Bordeaux, France!**
+More info and application here: [https://recrutement.inria.fr/public/classic/en/offres/2022-05343](https://recrutement.inria.fr/public/classic/en/offres/2022-05343)
+Apply before **20th September 2022**.
+Informal chat and more info by email at xavier dot hinaut the-well-known-home-symbol inria dot fr
 
-**!!!!!**
+**!!! </JOB OFFER> !!!**
 
 ```python
 from reservoirpy.nodes import Reservoir, Ridge, Input
