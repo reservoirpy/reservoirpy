@@ -15,7 +15,7 @@
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reservoirpy/reservoirpy/HEAD)
 
 
-**!!! <JOB OFFER> !!!**
+**!!! JOB OFFER {START} !!!**
 
 **Looking for a machine learning engineer to work on ReservoirPy in Bordeaux, France!**
   
@@ -25,7 +25,7 @@ Apply before **20th September 2022**.
  
 Informal chat and more info by email at xavier dot hinaut the-well-known-home-symbol inria dot fr
 
-**!!! </JOB OFFER> !!!**
+**!!! JOB OFFER {END} !!!**
 
 ```python
 from reservoirpy.nodes import Reservoir, Ridge, Input
