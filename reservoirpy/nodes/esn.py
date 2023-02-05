@@ -305,7 +305,7 @@ class ESN(FrozenModel):
 
         return _sort_and_unpack(states, return_states=return_states)
 
-    def fit(self, X=None, Y=None, from_state=None, stateful=True, reset=False):
+    def fit(self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False):
 
         X, Y = to_data_mapping(self, X, Y)
         self._initialize_on_sequence(X[0], Y[0])
@@ -336,7 +336,7 @@ class ESN(FrozenModel):
             # writes from multiple processes
             # if lock is not None:
             # with lock:  # pragma: no cover
-            self.readout.partial_fit(states, y[self.readout.name], lock=lock)
+            self.readout.partial_fit(states, y[self.readout.name], warmup=warmup, lock=lock)
             # else:
             #     self.readout.partial_fit(states, y[self.readout.name])
 
