@@ -1102,9 +1102,9 @@ class Node(_Node):
                 )
 
             if Y_seq is not None:
-                self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:])
+                self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:], **kwargs)
             else:
-                self._partial_backward(self, X_seq[warmup:])
+                self._partial_backward(self, X_seq[warmup:], **kwargs)
 
         return self
 
