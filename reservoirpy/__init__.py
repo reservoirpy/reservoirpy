@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import warnings
 
 from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, type
 from ._version import __version__
@@ -13,6 +14,8 @@ from .utils import verbosity
 from .utils.random import set_seed
 
 logger = logging.getLogger(__name__)
+
+warnings.simplefilter("once")
 
 _TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp")
 if not os.path.exists(_TEMPDIR):  # pragma: no cover
