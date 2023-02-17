@@ -24,13 +24,18 @@ from uuid import uuid4
 
 from ._base import DistantFeedback, _Node
 from .model import FrozenModel, Model
-from .nodes.ops import Concat
+from .nodes.ops import Concat, Add
 from .utils.graphflow import find_parents_and_children
 
-_MULTI_INPUTS_OPS = (Concat,)
+_MULTI_INPUTS_OPS = (Concat, Add)
 
 
 def concat_multi_inputs(nodes, edges):
+    """
+    Implicitly creates Concat nodes where needed
+
+    Automatically detects and merges redundant Concat nodes
+    """
     parents, _ = find_parents_and_children(edges)
 
     concatenated = {}
