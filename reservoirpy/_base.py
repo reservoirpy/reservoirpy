@@ -641,9 +641,17 @@ class _Node(ABC):
         return merge(self, other)
 
     def __add__(self, other: Union["_Node", Sequence["_Node"]]) -> "Model":
-        from .ops import Add
+        from .ops import Add, link
+        from .nodes import Constant
 
+        if hasattr(self, "output_nodes") and len(self.output_nodes) == 1 \
+                    and isinstance(self.output_nodes[0], Add):
+            new = link(other, self.output_nodes[0])
+            return self & new
+        elif isinstance(other, (int, float, np.ndarray)):
+            return self + Constant(other)
         return (self, other) >> Add()
+
 
     def _get_name(self, name=None):
         if name is None:
