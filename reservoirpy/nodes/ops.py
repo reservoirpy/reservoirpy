@@ -48,7 +48,7 @@ def add_forward(add: Node, data):
     if isinstance(data, np.ndarray):
         return data
     elif isinstance(data, Sequence):
-        return np.sum(data, axis=0)
+        return sum(data)
 
 
 def add_initialize(add: Node, x=None, **kwargs):
@@ -58,8 +58,10 @@ def add_initialize(add: Node, x=None, **kwargs):
         add.set_input_dim(x.shape[1])
         add.set_output_dim(x.shape[1])
     elif isinstance(x, Sequence):
+        # Checking that all the shapes are equal or one (scalar inputs)
         dims = set(i.shape[1] for i in x)
-        if len(dims) != 1:
+        dims -= {1}
+        if len(dims) > 1:
             raise AttributeError(
                 "The inputs of the Add Node must all have the same dimension")
         dim = dims.pop()
