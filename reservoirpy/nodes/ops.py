@@ -42,3 +42,34 @@ class Concat(Node):
             initializer=concat_initialize,
             name=name,
         )
+
+
+def add_forward(add: Node, data):
+    if isinstance(data, np.ndarray):
+        return data
+    elif isinstance(data, Sequence):
+        return np.sum(data, axis=0)
+
+
+def add_initialize(add: Node, x=None, **kwargs):
+    if x is None:
+        return
+    if isinstance(x, np.ndarray):
+        add.set_input_dim(x.shape[1])
+        add.set_output_dim(x.shape[1])
+    elif isinstance(x, Sequence):
+        dims = set(i.shape[1] for i in x)
+        if len(dims) != 1:
+            raise AttributeError(
+                "The inputs of the Add Node must all have the same dimension")
+        dim = dims.pop()
+        add.set_input_dim(dim)
+        add.set_output_dim(dim)
+
+
+class Add(Node):
+    def __init__(self, name=None):
+        super(Add, self).__init__(
+            forward=add_forward,
+            initializer=add_initialize,
+            name=name)

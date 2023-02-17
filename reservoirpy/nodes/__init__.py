@@ -82,7 +82,7 @@ Operators
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
-from .concat import Concat
+from .ops import Concat, Add
 from .esn import ESN
 from .io import Input, Output
 from .readouts import FORCE, LMS, RLS, Ridge
@@ -105,5 +105,6 @@ __all__ = [
     "NVAR",
     "ESN",
     "Concat",
+    "Add",
     "IPReservoir",
 ]
