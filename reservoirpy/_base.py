@@ -640,6 +640,11 @@ class _Node(ABC):
 
         return merge(self, other)
 
+    def __add__(self, other: Union["_Node", Sequence["_Node"]]) -> "Model":
+        from .ops import Add
+
+        return (self, other) >> Add()
+
     def _get_name(self, name=None):
         if name is None:
             type(self)._factory_id += 1
