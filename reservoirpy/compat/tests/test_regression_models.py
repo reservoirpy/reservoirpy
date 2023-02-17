@@ -8,21 +8,6 @@ from ..regression_models import RidgeRegression
 
 
 @pytest.fixture(scope="session")
-def dummy_clf_data():
-    Xn0 = np.array([[np.sin(x), np.cos(x)] for x in np.linspace(0, 4 * np.pi, 250)])
-    Xn1 = np.array(
-        [
-            [np.sin(10 * x), np.cos(10 * x)]
-            for x in np.linspace(np.pi / 4, 4 * np.pi + np.pi / 4, 250)
-        ]
-    )
-    X = np.vstack([Xn0, Xn1])
-    y = np.r_[np.zeros(250), np.ones(250)].reshape(-1, 1)
-
-    return X, y
-
-
-@pytest.fixture(scope="session")
 def dummy_data():
     X = np.ones(shape=(200, 50))
     Y = np.ones(shape=(200, 5))
