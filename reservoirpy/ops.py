@@ -24,7 +24,7 @@ from uuid import uuid4
 
 from ._base import DistantFeedback, _Node
 from .model import FrozenModel, Model
-from .nodes.concat import Concat
+from .nodes.ops import Concat
 from .utils.graphflow import find_parents_and_children
 
 _MULTI_INPUTS_OPS = (Concat,)
