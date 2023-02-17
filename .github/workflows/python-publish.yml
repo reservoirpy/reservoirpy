@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  publish-pypi:
 
     runs-on: ubuntu-latest
 
@@ -37,3 +37,20 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+  
+  publish-conda:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    steps:
+    - name: build-conda-package
+      env: 
+        ANACONDA_TOKEN: ${{secrets.ANACONDA_TOKEN}}
+      run: |
+        export PATH=$CONDA/bin:$PATH
+        conda create -n upload -y python=3.8
+        source activate upload
+        conda install -c conda-forge grayskull -y
+        conda install -y anaconda-client conda-build
+        grayskull pypi --strict-conda-forge reservoirpy --maintainers nTrouvain
+        conda config --set anaconda_upload yes
+        conda-build reservoirpy --token "$ANACONDA_TOKEN" --user fbessou
