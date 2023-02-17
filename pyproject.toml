@@ -1,6 +1,37 @@
+[tool.poetry]
+name = "reservoirpy"
+version = "0.3.6"
+description = "\"A simple and flexible code for Reservoir Computing architectures like Echo State Networks.\""
+authors = ["Xavier Hinaut <xavier.hinaut@inria.fr>"]
+maintainers = [
+    "Xavier Hinaut <xavier.hinaut@inria.fr>",
+    "Nathan Trouvain <nathan.trouvain@inria.fr>",
+]
+license = "MIT License"
+readme = "README.md"
+repository = "https://github.com/reservoirpy/reservoirpy"
+
+[tool.poetry.dependencies]
+python = "~3.8"
+numpy = "^1.24.2"
+dill = "^0.3.6"
+scipy = "^1.10.0"
+tqdm = "^4.64.1"
+joblib = "^1.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest-cov = "^4.0.0"
+black = "^23.1.0"
+pytest = "^7.2.1"
+scikit-learn = "^1.2.1"
+matplotlib = ">=2.2.0"
+hyperopt = "^0.2.7"
+seaborn = "^0.12.2"
+
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 
 [tool.black]
 line-length = 88
