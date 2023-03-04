@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 
-from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, type
+from . import activationsfunc, scikit_helper, compat, hyper, mat_gen, nodes, observables, type
 from ._version import __version__
 from .compat import load_compat
 from .compat.utils.save import load
@@ -25,6 +25,7 @@ __all__ = [
     "__version__",
     "mat_gen",
     "activationsfunc",
+    "scikit_helper",
     "observables",
     "hyper",
     "nodes",

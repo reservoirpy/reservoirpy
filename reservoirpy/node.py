@@ -140,7 +140,7 @@ from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
 from .utils.parallel import clean_tempfile, memmap_buffer
 from .utils.validation import check_vector
-
+import pdb
 
 def _init_with_sequences(node, X, Y=None):
     """Initialize a Node with a sequence of inputs/targets."""
@@ -356,7 +356,6 @@ class Node(_Node):
         self._input_dim = input_dim
         self._output_dim = output_dim
         self._feedback_dim = feedback_dim
-
         self._name = self._get_name(name)
         self._dtype = dtype
 
@@ -966,7 +965,6 @@ class Node(_Node):
                     x = [np.atleast_2d(Xi[i]) for Xi in X_]
                 else:
                     x = np.atleast_2d(X_[i])
-
                 s = call(self, x)
                 states[i, :] = s
 
@@ -1082,13 +1080,12 @@ class Node(_Node):
         """
         if not self.is_trained_offline:
             raise TypeError(f"Node {self} has no offline learning rule implemented.")
-
+        # import pdb;pdb.set_trace()
         X, Y = check_xy(self, X_batch, Y_batch, allow_n_inputs=False)
 
         X, Y = _init_with_sequences(self, X, Y)
 
         self.initialize_buffers()
-
         for i in range(len(X)):
             X_seq = X[i]
             Y_seq = None
@@ -1100,7 +1097,6 @@ class Node(_Node):
                     f"Warmup set to {warmup} timesteps, but one timeseries is only "
                     f"{X_seq.shape[0]} long."
                 )
-
             if Y_seq is not None:
                 self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:], **kwargs)
             else:
@@ -1149,7 +1145,7 @@ class Node(_Node):
                 f"is not initialized, and fit was called "
                 f"without input and teacher data."
             )
-
+        
         self._backward(self, self._X, self._Y)
 
         self._fitted = True

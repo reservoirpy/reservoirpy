@@ -1086,7 +1086,6 @@ class Model(_Node):
             )
 
         X, Y = to_data_mapping(self, X, Y)
-
         self._initialize_on_sequence(X[0], Y[0])
         self.initialize_buffers()
 

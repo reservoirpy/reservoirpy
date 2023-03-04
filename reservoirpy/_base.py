@@ -527,6 +527,7 @@ class DistantFeedback:
 def call(node, x, from_state=None, stateful=True, reset=False):
     """One-step call, without input check."""
     with node.with_state(from_state, stateful=stateful, reset=reset):
+        # import pdb; pdb.set_trace()
         state = node._forward(node, x)
         node._state = state.astype(node.dtype)
         node._flag_feedback()
