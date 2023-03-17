@@ -18,7 +18,7 @@ from ...activationsfunc import get_function, identity
 from ...mat_gen import bernoulli, uniform
 from ...node import Unsupervised, _init_with_sequences
 from ...type import Weights
-from ...utils.random import noise
+from ...utils.random import noise, rand_generator
 from ...utils.validation import is_array
 from .base import forward_external
 from .base import initialize as initialize_base
@@ -347,6 +347,8 @@ class IPReservoir(Unsupervised):
                 "appliying intrinsic plasticity."
             )
 
+        rng = rand_generator(seed=seed)
+
         super(IPReservoir, self).__init__(
             fb_initializer=partial(
                 initialize_feedback,
@@ -387,7 +389,7 @@ class IPReservoir(Unsupervised):
                 ),
                 "fb_activation": fb_activation,
                 "units": units,
-                "noise_generator": partial(noise, seed=seed),
+                "noise_generator": partial(noise, rng=rng),
             },
             forward=forward_external,
             initializer=partial(

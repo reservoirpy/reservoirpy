@@ -15,7 +15,7 @@ from ...activationsfunc import get_function, identity, tanh
 from ...mat_gen import bernoulli, normal
 from ...node import Node
 from ...type import Weights
-from ...utils.random import noise
+from ...utils.random import noise, rand_generator
 from ...utils.validation import is_array
 from .base import forward_external, forward_internal, initialize, initialize_feedback
 
@@ -259,6 +259,8 @@ class Reservoir(Node):
         if type(fb_activation) is str:
             fb_activation = get_function(fb_activation)
 
+        rng = rand_generator(seed)
+
         super(Reservoir, self).__init__(
             fb_initializer=partial(
                 initialize_feedback,
@@ -290,7 +292,7 @@ class Reservoir(Node):
                 "activation": activation,
                 "fb_activation": fb_activation,
                 "units": units,
-                "noise_generator": partial(noise, seed=seed),
+                "noise_generator": partial(noise, rng=rng),
             },
             forward=forward,
             initializer=partial(
