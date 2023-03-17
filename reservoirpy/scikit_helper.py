@@ -24,7 +24,8 @@ def get_linear(name: str) -> Callable:
     index = {
         "linear_regression": linear_regression,
         "ridge_regression": ridge_regression,
-        "perceptron": perceptron,
+        "elastic_net":elastic_net,
+        "lasso":lasso
     }
 
     if index.get(name) is None:
@@ -41,5 +42,21 @@ def ridge_regression(**kwargs):
         tol=kwargs["tol"],
         fit_intercept=kwargs["fit_intercept"])
 
-def perceptron(**kwargs):
-    return linear_model.Perceptron()
+def elastic_net(**kwargs):
+    return linear_model.ElasticNet(
+        alpha=kwargs["alpha"],
+        max_iter=kwargs["max_iter"],
+        tol=kwargs["tol"],
+        fit_intercept=kwargs["fit_intercept"],
+        warm_start=kwargs['warm_start'],
+        l1_ratio=kwargs['l1_ratio']
+        )
+
+def lasso(**kwargs):
+    return linear_model.Lasso(
+        alpha=kwargs["alpha"],
+        max_iter=kwargs["max_iter"],
+        tol=kwargs["tol"],
+        fit_intercept=kwargs["fit_intercept"],
+        warm_start=kwargs['warm_start'],
+        )

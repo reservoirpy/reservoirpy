@@ -85,7 +85,8 @@ from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .concat import Concat
 from .esn import ESN
 from .io import Input, Output
-from .readouts import FORCE, LMS, RLS, Ridge, LinearRegression, RidgeRegression, Perceptron
+from .readouts import FORCE, LMS, RLS, Ridge, LinearRegression, \
+RidgeRegression, ElasticNet, Lasso
 from .reservoirs import NVAR, IPReservoir, Reservoir
 
 __all__ = [
@@ -95,7 +96,8 @@ __all__ = [
     "Ridge",
     "LinearRegression",
     "RidgeRegression",
-    "Perceptron",
+    "ElasticNet",
+    "Lasso",
     "FORCE",
     "LMS",
     "RLS",

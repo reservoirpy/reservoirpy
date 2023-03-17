@@ -18,7 +18,6 @@ def readout_forward(readout: Node, X):
 def partial_backward(readout: Node, X_batch, Y_batch=None):
 	"""Pre-compute XXt and YXt before final fit."""
 	readout.clf.fit(X_batch, Y_batch.squeeze())
-	# readout.clf.partial_fit(X_batch.reshape(1, -1), Y_batch[0], classes=[0,1,2,3,4,5])
 
 def backward(readout: Node, X, Y):
 	pass
@@ -72,7 +71,7 @@ class RidgeRegression(Node):
 		name=None
 	):
 		super(RidgeRegression, self).__init__(
-			hypers={"f":get_linear("ridge_regression")},
+			hypers={"f":get_linear("ridge_regression"), "tol":tol, "alpha":alpha},
 			forward=readout_forward,
 			partial_backward=partial_backward,
 			backward=backward,
@@ -85,31 +84,57 @@ class RidgeRegression(Node):
 			name=name,
 		)
 
-class Perceptron(Node):
+class ElasticNet(Node):
 	def __init__(
 		self,
 		output_dim=None,
 		penalty=None,
-		alpha=1e-4,
-		l1_ratio=0.15,
+		alpha=1.0,
+		l1_ratio=0.5,
 		fit_intercept=True,
 		max_iter=1000,
-		tol=1e-3,
-		eta0=1,
+		tol=1e-4,
+		warm_start=False,
 		name=None
 	):
-		super(Perceptron, self).__init__(
-			hypers={"f":get_linear("perceptron")},
+		super(ElasticNet, self).__init__(
+			hypers={"f":get_linear("elastic_net")},
 				forward=readout_forward,
 				partial_backward=partial_backward,
 				backward=backward,
 				output_dim=output_dim,
 				initializer=partial(initialize,
-					penalty=penalty,
 					alpha=alpha,
 					max_iter=max_iter,
 					l1_ratio=l1_ratio,
-					eta0=eta0,
+					warm_start=warm_start,
+					fit_intercept=fit_intercept,
+					tol=tol),
+				name=name,
+			)
+
+class Lasso(Node):
+	def __init__(
+		self,
+		output_dim=None,
+		penalty=None,
+		alpha=1.0,
+		fit_intercept=True,
+		max_iter=1000,
+		tol=1e-4,
+		warm_start=False,
+		name=None
+	):
+		super(Lasso, self).__init__(
+			hypers={"f":get_linear("lasso")},
+				forward=readout_forward,
+				partial_backward=partial_backward,
+				backward=backward,
+				output_dim=output_dim,
+				initializer=partial(initialize,
+					alpha=alpha,
+					max_iter=max_iter,
+					warm_start=warm_start,
 					fit_intercept=fit_intercept,
 					tol=tol),
 				name=name,

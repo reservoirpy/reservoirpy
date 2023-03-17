@@ -18,7 +18,7 @@ X_train, Y_train, X_test, Y_test = japanese_vowels()
 
 source = Input()
 reservoir = Reservoir(500, sr=0.9, lr=0.1)
-readout = RidgeRegression()
+readout = RidgeRegression(tol=0.1)
 # readout = Ridge(ridge=1e-6)
 model = source >> reservoir >> readout
 
