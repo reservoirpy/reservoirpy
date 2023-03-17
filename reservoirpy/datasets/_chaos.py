@@ -291,7 +291,7 @@ def mackey_glass(
             xtau = history.popleft()
             history.append(xt)
 
-        xth = _mg_rk4(xt, xtau, a=a, b=b, n=n)
+        xth = _mg_rk4(xt, xtau, a=a, b=b, n=n, h=h)
 
         xt = xth
 
