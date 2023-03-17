@@ -9,7 +9,7 @@ else:
     from typing import Literal
 
 from functools import partial
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, Optional, Sequence, Union, Dict
 
 from ...activationsfunc import get_function, identity, tanh
 from ...mat_gen import bernoulli, normal
@@ -110,6 +110,9 @@ class Reservoir(Node):
     noise_type : str, default to "normal"
         Distribution of noise. Must be a Numpy random variable generator
         distribution (see :py:class:`numpy.random.Generator`).
+    noise_kwargs : dict, optional
+        Keyword arguments to pass to the noise generator, such as `low` and `high`
+        values of uniform distribution.
     input_scaling : float or array-like of shape (features,), default to 1.0.
         Input gain. An array of the same dimension as the inputs can be used to
         set up different input scaling for each feature.
@@ -221,6 +224,7 @@ class Reservoir(Node):
         noise_in: float = 0.0,
         noise_fb: float = 0.0,
         noise_type: str = "normal",
+        noise_kwargs: Dict = None,
         input_scaling: Union[float, Sequence] = 1.0,
         bias_scaling: float = 1.0,
         fb_scaling: Union[float, Sequence] = 1.0,
@@ -261,6 +265,8 @@ class Reservoir(Node):
 
         rng = rand_generator(seed)
 
+        noise_kwargs = dict() if noise_kwargs is None else noise_kwargs
+
         super(Reservoir, self).__init__(
             fb_initializer=partial(
                 initialize_feedback,
@@ -292,7 +298,7 @@ class Reservoir(Node):
                 "activation": activation,
                 "fb_activation": fb_activation,
                 "units": units,
-                "noise_generator": partial(noise, rng=rng),
+                "noise_generator": partial(noise, rng=rng, **noise_kwargs),
             },
             forward=forward,
             initializer=partial(
