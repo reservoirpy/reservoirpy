@@ -33,7 +33,7 @@ def partial_backward(readout: Node, X_batch, Y_batch=None, lock=None):
         bias=readout.input_bias,
         allow_reshape=True,
     )
-
+    import pdb;pdb.set_trace()
     xxt = X.T.dot(X)
     yxt = Y.T.dot(X)
 

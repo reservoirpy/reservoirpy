@@ -441,7 +441,6 @@ class Model(_Node):
             # impact on feedback
             self._load_proxys(keep=True)
             for i, (x, forced_fb, _) in enumerate(seq):
-
                 with self.with_feedback(forced_fb):
                     state = submodel._call(x, return_states=return_states)
 
@@ -1097,7 +1096,6 @@ class Model(_Node):
         with self.with_state(from_state, reset=reset, stateful=stateful):
             for i, ((nodes, edges), relations) in enumerate(subgraphs):
                 submodel, offlines = build_forward_sumodels(nodes, edges, trained)
-
                 if next_X is not None:
                     for j in range(len(X)):
                         X[j].update(next_X[j])

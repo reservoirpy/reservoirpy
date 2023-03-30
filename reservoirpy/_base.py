@@ -362,7 +362,7 @@ def check_xy(
     # caller is a Node
     else:
         input_nodes = None
-
+    
     x_new = _check_node_io(
         x,
         receiver_nodes=input_nodes,
@@ -527,7 +527,6 @@ class DistantFeedback:
 def call(node, x, from_state=None, stateful=True, reset=False):
     """One-step call, without input check."""
     with node.with_state(from_state, stateful=stateful, reset=reset):
-        # import pdb; pdb.set_trace()
         state = node._forward(node, x)
         node._state = state.astype(node.dtype)
         node._flag_feedback()

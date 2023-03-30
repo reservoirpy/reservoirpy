@@ -7,7 +7,7 @@ import pdb
 from reservoirpy.datasets import japanese_vowels
 from reservoirpy import set_seed, verbosity
 from reservoirpy.observables import nrmse, rsquare
-from reservoirpy.nodes import Reservoir, RidgeRegression, LinearRegression, Perceptron, Ridge, Input
+from reservoirpy.nodes import Reservoir, Input, ScikitNodes, Input, Ridge
 from sklearn.metrics import accuracy_score
 
 set_seed(42)
@@ -18,16 +18,19 @@ X_train, Y_train, X_test, Y_test = japanese_vowels()
 
 source = Input()
 reservoir = Reservoir(500, sr=0.9, lr=0.1)
-readout = RidgeRegression(tol=0.1)
-# readout = Ridge(ridge=1e-6)
+readout = ScikitNodes(name="RidgeClassifier")
 model = source >> reservoir >> readout
 
-states_train = []
-for x in X_train:
-    states = reservoir.run(x, reset=True)
-    states_train.append(states[-1, np.newaxis])
-
-readout.fit(np.array(states_train).squeeze(), np.array(Y_train).squeeze())
+from sklearn.linear_model import LogisticRegression
+states = reservoir.run(X_train, reset=True)
+import pdb;pdb.set_trace()
+# states_train = []
+# for x in X_train:
+#     states = reservoir.run(x, reset=True)
+#     states_train.append(states[-1, np.newaxis])
+# readout.fit(np.array(states_train).squeeze(), np.array(Y_train).squeeze())
+# import pdb;pdb.set_trace()
+# readout.fit(np.array(states_train).squeeze(), np.argmax(np.array(Y_train).squeeze(), axis=1))
 
 states_test = []
 for x in X_test:

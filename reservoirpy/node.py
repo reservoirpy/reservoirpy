@@ -620,7 +620,6 @@ class Node(_Node):
                 self._buffers[name] = data
             else:
                 self._buffers[name] = np.empty(shape)
-
     def set_buffer(self, name: str, value: np.ndarray):
         """Dump data in the buffer array.
 
@@ -1078,6 +1077,7 @@ class Node(_Node):
         Node
             Partially fitted Node.
         """
+        # pdb.set_trace()
         if not self.is_trained_offline:
             raise TypeError(f"Node {self} has no offline learning rule implemented.")
         # import pdb;pdb.set_trace()
@@ -1098,6 +1098,7 @@ class Node(_Node):
                     f"{X_seq.shape[0]} long."
                 )
             if Y_seq is not None:
+                # pdb.set_trace()
                 self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:], **kwargs)
             else:
                 self._partial_backward(self, X_seq[warmup:], **kwargs)
@@ -1127,7 +1128,6 @@ class Node(_Node):
         Node
             Node trained offline.
         """
-
         if not self.is_trained_offline:
             raise TypeError(f"Node {self} has no offline learning rule implemented.")
 
@@ -1145,7 +1145,7 @@ class Node(_Node):
                 f"is not initialized, and fit was called "
                 f"without input and teacher data."
             )
-        
+
         self._backward(self, self._X, self._Y)
 
         self._fitted = True
