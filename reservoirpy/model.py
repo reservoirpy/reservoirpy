@@ -164,7 +164,6 @@ def run_submodel(
     shift_fb=True,
     return_states: Sequence[str] = None,
 ) -> MappedData:
-
     X_, forced_feedbacks_ = to_data_mapping(submodel, X, forced_feedbacks)
 
     submodel._initialize_on_sequence(X_[0], forced_feedbacks_[0])

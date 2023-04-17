@@ -19,11 +19,9 @@ X_train, Y_train, X_test, Y_test = japanese_vowels()
 source = Input()
 reservoir = Reservoir(500, sr=0.9, lr=0.1)
 readout = ScikitNodes(name="RidgeClassifier")
-model = source >> reservoir >> readout
+model = readout
 
-from sklearn.linear_model import LogisticRegression
-states = reservoir.run(X_train, reset=True)
-import pdb;pdb.set_trace()
+
 # states_train = []
 # for x in X_train:
 #     states = reservoir.run(x, reset=True)

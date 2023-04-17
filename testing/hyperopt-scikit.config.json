@@ -1,0 +1,1 @@
+{"exp": "hyperopt-scikit", "hp_max_evals": 5, "hp_method": "random", "seed": 42, "instances_per_trial": 3, "hp_space": {"ridge": ["loguniform", 0.01, 10], "seed": ["choice", 1234]}}

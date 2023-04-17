@@ -1,7 +1,7 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from functools import partial
+# from functools import partial
 
 import numpy as np
 
@@ -10,44 +10,32 @@ from ...node import Node
 from ...type import global_dtype
 from ...scikit_helper2 import get_linear
 
+from functools import partial
 import pdb
 
 def readout_forward(readout: Node, X):
-    pred = readout.clf.predict(X)
-    if pred.ndim == 1:
-        pred_onehot = np.zeros(readout.output_dim)
-        pred_onehot[pred[0]] = 1
-        return pred_onehot
-    return pred
+    pred = readout.clf.predict(X[None, :, -1])
+    if readout.name in ['Perceptron', 'LogisticRegression', 
+    'RidgeClassifier', 'SGDClassifier']:
+        return pred[0]
+    return np.argmax(pred)
 
 def partial_backward(readout: Node, X_batch, Y_batch=None):
-    X_buff = readout.get_buffer("X_buff")
-    Y_buff = readout.get_buffer("Y_buff")
-    counter = readout.get_buffer("counter")
-    index = int(counter[0])
-    X_buff[index] = X_batch[:, -1] # last step
-    Y_buff[index] = Y_batch[:, 0]
-    index += 1
-    counter[0] = index
+    readout.X_buff.append(X_batch[:, -1])
+    readout.Y_buff.append(Y_batch[:, 0])
     
 
 def initialize_buffers(readout):
     input_dim = readout.input_dim
     output_dim = readout.output_dim
-    readout.create_buffer("X_buff", (10000, 561))
-    readout.create_buffer("Y_buff", (10000, 6))
-    readout.create_buffer("counter", (1))
 
 def backward(readout: Node, X, Y):
-    X_buff = readout.get_buffer("X_buff")
-    Y_buff = readout.get_buffer("Y_buff")
-    counter = readout.get_buffer("counter")
-    X, Y = X_buff[:int(counter[0])], Y_buff[:int(counter[0])]
+    X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
     if readout.name in ['Perceptron', 
         'LogisticRegression', 'RidgeClassifier', 'SGDClassifier']:
-        Y_batch = np.argmax(np.array(Y), axis=1)
+        Y = np.argmax(np.array(Y), axis=1)
+    # pdb.set_trace()
     readout.clf.fit(X, Y)
-    # pass
 
 
 def initialize(readout: Node, x=None, y=None, *args, **kwargs):
@@ -79,7 +67,7 @@ class ScikitNodes(Node):
         **kwargs
     ):
         super(ScikitNodes, self).__init__(
-            hypers={"f":get_linear(name)},
+            hypers={"f":get_linear(name), 'X_buff':list(), 'Y_buff':list()},
             forward=readout_forward,
             partial_backward=partial_backward,
             buffers_initializer=initialize_buffers,
@@ -89,3 +77,4 @@ class ScikitNodes(Node):
                 **kwargs),
             name=name,
             )
+

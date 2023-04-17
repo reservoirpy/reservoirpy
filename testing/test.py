@@ -36,12 +36,14 @@ Y_train = Y_train_onehot
 
 source = Input()
 reservoir = Reservoir(500, sr=0.9, lr=0.1)
-readout = ScikitNodes(name="Ridge", alpha=1.0, tol=1e-3)
+
+readout = ScikitNodes(name="RidgeClassifier", alpha=1.0, tol=1e-3)
 # readout = Ridge()
 model = readout
+
+# pdb.set_trace()
 model = model.fit(X_train[:, :, None], Y_train[:, :, None])
 Y_pred = model.run(X_test[:, :, None])
-Y_pred = np.argmax(Y_pred, axis=1)
 score = accuracy_score(Y_test, Y_pred)
 print("Accuracy: ", f"{score * 100:.3f} %")
 
