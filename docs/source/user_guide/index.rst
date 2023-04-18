@@ -22,7 +22,6 @@ see :ref:`quick`.
     node
     model
     learning_rules
-    feedback
     hyper
     create_new_node
     compat
