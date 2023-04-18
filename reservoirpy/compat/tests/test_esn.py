@@ -48,21 +48,6 @@ def dummy_data():
     return Xn0, Xn1
 
 
-@pytest.fixture(scope="session")
-def dummy_clf_data():
-    Xn0 = np.array([[sin(x), cos(x)] for x in np.linspace(0, 4 * np.pi, 250)])
-    Xn1 = np.array(
-        [
-            [sin(10 * x), cos(10 * x)]
-            for x in np.linspace(np.pi / 4, 4 * np.pi + np.pi / 4, 250)
-        ]
-    )
-    X = np.vstack([Xn0, Xn1])
-    y = np.r_[np.zeros(250), np.ones(250)].reshape(-1, 1)
-
-    return X, y
-
-
 def test_esn(matrices, dummy_data):
     W, Win = matrices
     esn = ESN(lr=0.1, W=W, Win=Win, input_bias=False)
@@ -215,7 +200,6 @@ def test_save(matrices_fb, dummy_data):
     )
 
     with TemporaryDirectory() as tempdir:
-
         esn.save(f"{tempdir}/esn")
         esn = load(f"{tempdir}/esn")
 
@@ -246,7 +230,6 @@ def test_save_sparse(matrices_fb, dummy_data):
     )
 
     with TemporaryDirectory() as tempdir:
-
         esn.save(f"{tempdir}/esn")
         esn = load(f"{tempdir}/esn")
 

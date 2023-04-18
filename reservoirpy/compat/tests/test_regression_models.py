@@ -8,21 +8,6 @@ from ..regression_models import RidgeRegression
 
 
 @pytest.fixture(scope="session")
-def dummy_clf_data():
-    Xn0 = np.array([[np.sin(x), np.cos(x)] for x in np.linspace(0, 4 * np.pi, 250)])
-    Xn1 = np.array(
-        [
-            [np.sin(10 * x), np.cos(10 * x)]
-            for x in np.linspace(np.pi / 4, 4 * np.pi + np.pi / 4, 250)
-        ]
-    )
-    X = np.vstack([Xn0, Xn1])
-    y = np.r_[np.zeros(250), np.ones(250)].reshape(-1, 1)
-
-    return X, y
-
-
-@pytest.fixture(scope="session")
 def dummy_data():
     X = np.ones(shape=(200, 50))
     Y = np.ones(shape=(200, 5))
@@ -86,7 +71,7 @@ def test_ridge_regression(dummy_data):
     assert w.shape == (5, 51)
 
 
-def test_ridge_regression_raises(bad_xdata, bad_ydata):
+def test_ridge_regression_raises(bad_xdata, bad_ydata, dummy_data):
     model = RidgeRegression(ridge=0.1)
     model.initialize(50, 5)
 
@@ -103,3 +88,39 @@ def test_ridge_regression_raises(bad_xdata, bad_ydata):
             model.partial_fit(x, y)
             XXT = model._XXT.copy()
             YXT = model._YXT.copy()
+
+    X, Y = dummy_data
+    with pytest.raises(RuntimeError):
+        RidgeRegression(ridge=0.1).partial_fit(X, Y)
+
+
+def test_ridge_setter():
+    model = RidgeRegression(ridge=0.1)
+    model.ridge = 1e-7
+    assert model._ridge == 1e-7
+    assert model._ridgeid is None
+
+    model.initialize(50, 5)
+    model.ridge = 1e-7
+    assert model._ridge == 1e-7
+    assert isinstance(model._ridgeid, np.ndarray)
+    assert model._ridgeid.shape == (51, 51)
+
+
+def test_input_preparation(dummy_data):
+    x_not_prepared = [50 * [1] for _ in range(200)]
+    y_not_prepared = [5 * [1] for _ in range(200)]
+
+    model = RidgeRegression(ridge=0.1)
+    model.initialize(50, 5)
+    model.partial_fit(x_not_prepared, y_not_prepared)
+
+    X, Y = dummy_data
+    model2 = RidgeRegression(ridge=0.1)
+    model2.initialize(50, 5)
+    model2.partial_fit(X, Y)
+
+    assert type(model._XXT) == type(model2._XXT)
+    # numpy does not have any test equality for memmap
+    # so use tolist to check that
+    assert model._XXT.tolist() == model2._XXT.tolist()
