@@ -2,7 +2,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 # from functools import partial
-
 import numpy as np
 
 from ...node import Node
@@ -10,7 +9,7 @@ from ...type import global_dtype
 from ...scikit_helper import get_linear
 
 from functools import partial
-import pdb
+
 def readout_forward(readout: Node, X):
     pred = readout.clf.predict(X)
     return pred
@@ -25,7 +24,6 @@ def initialize_buffers(readout):
 
 def backward(readout: Node, X, Y):
     X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
-    # assert X.ndim == Y.ndim, "X and Y dimensions should be same"
     N, T, D = X.shape
     C = Y.shape[-1]
     X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C)) # concating the 1st and 2nd dim
@@ -54,6 +52,36 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
         readout.clf = readout.f(**kwargs)
 
 class ScikitNode(Node):
+    """
+    A node representing a scikit-learn linear model that learns the connections
+    between input and output data.
+
+    The ScikitNode can take any scikit-learn linear model as input and create a node
+    with the specified model.
+
+    :py:attr:`ScikitNode.hypers` **list**
+
+    ================== =================================================================
+    ``f``              Function to get the scikit-learn linear model.
+    ``X_buff``         Buffer to store input data.
+    ``Y_buff``         Buffer to store output data.
+    ================== =================================================================
+
+    Parameters
+    ----------
+    output_dim : int, optional
+        Number of units in the readout, can be inferred at first call.
+    name : str, optional
+        Node name.
+    **kwargs
+        Additional keyword arguments for the scikit-learn linear model.
+
+    Example
+    -------
+    >>> from reservoirpy import ScikitNode
+    >>> node = ScikitNode(name="Ridge", alpha=0.5)
+    """
+
     def __init__(
         self,
         output_dim=None,
@@ -61,14 +89,17 @@ class ScikitNode(Node):
         **kwargs
     ):
         super(ScikitNode, self).__init__(
-            hypers={"f":get_linear(name), 'X_buff':list(), 'Y_buff':list()},
+            hypers={
+                "f": get_linear(name),
+                "X_buff": list(),
+                "Y_buff": list(),
+            },
             forward=readout_forward,
             partial_backward=partial_backward,
             buffers_initializer=initialize_buffers,
             backward=backward,
             output_dim=output_dim,
-            initializer=partial(initialize,
-                **kwargs),
+            initializer=partial(initialize, **kwargs),
             name=name,
-            )
+        )
 
