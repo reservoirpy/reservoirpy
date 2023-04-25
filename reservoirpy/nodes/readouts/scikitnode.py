@@ -5,36 +5,30 @@
 
 import numpy as np
 
-
 from ...node import Node
 from ...type import global_dtype
-from ...scikit_helper2 import get_linear
+from ...scikit_helper import get_linear
 
 from functools import partial
 import pdb
-
 def readout_forward(readout: Node, X):
-    pred = readout.clf.predict(X[None, :, -1])
-    if readout.name in ['Perceptron', 'LogisticRegression', 
-    'RidgeClassifier', 'SGDClassifier']:
-        return pred[0]
-    return np.argmax(pred)
+    pred = readout.clf.predict(X)
+    return pred
 
 def partial_backward(readout: Node, X_batch, Y_batch=None):
-    readout.X_buff.append(X_batch[:, -1])
-    readout.Y_buff.append(Y_batch[:, 0])
-    
-
+    readout.X_buff.append(X_batch)
+    readout.Y_buff.append(Y_batch)
+   
 def initialize_buffers(readout):
     input_dim = readout.input_dim
     output_dim = readout.output_dim
 
 def backward(readout: Node, X, Y):
     X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
-    if readout.name in ['Perceptron', 
-        'LogisticRegression', 'RidgeClassifier', 'SGDClassifier']:
-        Y = np.argmax(np.array(Y), axis=1)
-    # pdb.set_trace()
+    # assert X.ndim == Y.ndim, "X and Y dimensions should be same"
+    N, T, D = X.shape
+    C = Y.shape[-1]
+    X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C)) # concating the 1st and 2nd dim
     readout.clf.fit(X, Y)
 
 
@@ -59,14 +53,14 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
         kwargs = {k:v for k,v in kwargs.items() if v}
         readout.clf = readout.f(**kwargs)
 
-class ScikitNodes(Node):
+class ScikitNode(Node):
     def __init__(
         self,
         output_dim=None,
         name=None,
         **kwargs
     ):
-        super(ScikitNodes, self).__init__(
+        super(ScikitNode, self).__init__(
             hypers={"f":get_linear(name), 'X_buff':list(), 'Y_buff':list()},
             forward=readout_forward,
             partial_backward=partial_backward,

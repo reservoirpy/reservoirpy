@@ -49,7 +49,6 @@ def backward(readout: Node, *args, **kwargs):
     ridge = readout.ridge
     XXT = readout.get_buffer("XXT")
     YXT = readout.get_buffer("YXT")
-
     input_dim = readout.input_dim
     if readout.input_bias:
         input_dim += 1
