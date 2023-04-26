@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from reservoirpy.nodes import ScikitNode, Ridge, Reservoir
-from reservoirpy.scikit_helper import check_scikit_dim
+from reservoirpy.nodes import SklearnNode, Ridge, Reservoir
+from reservoirpy.utils.sklearn_helper import check_sklearn_dim
 from ..concat import Concat
 import pdb
 
@@ -11,13 +11,13 @@ import pdb
 	"linear_model",
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
-def test_scikit_regression(linear_model):
-	node = ScikitNode(name=linear_model, alpha=1e-4)
+def test_sklearn_regression(linear_model):
+	node = SklearnNode(name=linear_model, alpha=1e-4)
 	from sklearn.datasets import make_regression
 	X, y = make_regression(n_samples=10, n_features=2, 
                        random_state=123)
 	
-	X, y = check_scikit_dim(X, y, node)
+	X, y = check_sklearn_dim(X, y, node)
 	res = node.fit(X[:-1], y[:-1])
 	pred = node.run(X[-1])
 	real = y[-1]
@@ -28,12 +28,12 @@ def test_scikit_regression(linear_model):
 	"linear_model",
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
-def test_scikit_timeseries(linear_model):
-	node = ScikitNode(name=linear_model, alpha=1e-3)
+def test_sklearn_timeseries(linear_model):
+	node = SklearnNode(name=linear_model, alpha=1e-3)
 	X = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
 	X_train = X[:50]
 	y_train = X[1:51]
-	X_train, y_train = check_scikit_dim(X_train, y_train, node)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, node)
 	res = node.fit(X_train, y_train)
 	pred = node.run(X[50:])
 	real = X[50:]
@@ -45,15 +45,15 @@ def test_scikit_timeseries(linear_model):
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
 
-def test_scikit_esn_regression(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_esn_regression(linear_model):
+	readout = SklearnNode(name=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
 	from sklearn.datasets import make_regression
 	X, y = make_regression(n_samples=10, n_features=2, 
                        random_state=123)
 	
-	X, y = check_scikit_dim(X, y, readout)
+	X, y = check_sklearn_dim(X, y, readout)
 	res = esn.fit(X[:-1], y[:-1])
 	pred = esn.run(X[-1])
 	assert pred.shape == y[-1].shape
@@ -64,14 +64,14 @@ def test_scikit_esn_regression(linear_model):
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
 
-def test_scikit_esn_timeseries(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_esn_timeseries(linear_model):
+	readout = SklearnNode(name=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
 	X = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
 	X_train = X[:50]
 	y_train = X[1:51]
-	X_train, y_train = check_scikit_dim(X_train, y_train, readout)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
 	res = esn.fit(X_train, y_train)
 	pred = esn.run(X[50:])
 	real =  X[50:]
@@ -82,8 +82,8 @@ def test_scikit_esn_timeseries(linear_model):
 	"linear_model",
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
-def test_scikit_esn_feedback(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_esn_feedback(linear_model):
+	readout = SklearnNode(name=linear_model)
 	reservoir = Reservoir(100)
 
 	esn = reservoir >> readout
@@ -93,7 +93,7 @@ def test_scikit_esn_feedback(linear_model):
 	X = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
 	X_train = X[:50]
 	y_train = X[1:51]
-	X_train, y_train = check_scikit_dim(X_train, y_train, readout)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
 	res = esn.fit(X_train, y_train)
 	pred = esn.run(X[50:])
 	real =  X[50:]
@@ -103,14 +103,14 @@ def test_scikit_esn_feedback(linear_model):
 	"linear_model",
 	[("LogisticRegression"), ("RidgeClassifier"), ("SGDClassifier"), ("Perceptron")])
 
-def test_scikit_classification(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_classification(linear_model):
+	readout = SklearnNode(name=linear_model)
 	from sklearn.datasets import make_classification
 	from sklearn.metrics import accuracy_score
 	X, y = make_classification(n_samples=150, n_features=4, 
                            n_classes=2, random_state=0)
 	X_train, y_train = X[:100], y[:100]
-	X_train, y_train = check_scikit_dim(X_train, y_train, readout)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
 	res = readout.fit(X_train, y_train)
 	pred = readout.run(X[100:])
 	real = y[100:]
@@ -121,14 +121,14 @@ def test_scikit_classification(linear_model):
 	[("ElasticNet"), ("Lasso"), ("LinearRegression")]
 )
 
-def test_scikit_classification_with_regressors(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_classification_with_regressors(linear_model):
+	readout = SklearnNode(name=linear_model)
 	from sklearn.datasets import make_classification
 	from sklearn.metrics import accuracy_score
 	X, y = make_classification(n_samples=150, n_features=4, 
                            n_classes=2, random_state=0)
 	X_train, y_train = X[:100], y[:100]
-	X_train, y_train = check_scikit_dim(X_train, y_train, readout)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
 	res = readout.fit(X_train, y_train)
 	pred = readout.run(X[100:])
 	pred = np.argmax(pred, axis=1)
@@ -140,8 +140,8 @@ def test_scikit_classification_with_regressors(linear_model):
 	"linear_model",
 	[("LogisticRegression"), ("RidgeClassifier"), ("Perceptron"), ("SGDClassifier")]
 )
-def test_scikit_esn_classification(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_esn_classification(linear_model):
+	readout = SklearnNode(name=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
 	from sklearn.datasets import make_classification
@@ -149,7 +149,7 @@ def test_scikit_esn_classification(linear_model):
 	X, y = make_classification(n_samples=250, n_features=6, 
                            n_classes=3, random_state=0, n_informative=3)
 	X_train, y_train = X[:100], y[:100]
-	X_train, y_train = check_scikit_dim(X_train, y_train, readout)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
 	res = esn.fit(X_train, y_train)
 	pred = esn.run(X[100:])
 	real = y[100:]
@@ -160,8 +160,8 @@ def test_scikit_esn_classification(linear_model):
 	"linear_model",
 	[("ElasticNet"), ("Lasso"), ("LinearRegression")]
 )
-def test_scikit_esn_classification_with_regressors(linear_model):
-	readout = ScikitNode(name=linear_model)
+def test_sklearn_esn_classification_with_regressors(linear_model):
+	readout = SklearnNode(name=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
 	from sklearn.datasets import make_classification
@@ -169,11 +169,11 @@ def test_scikit_esn_classification_with_regressors(linear_model):
 	X, y = make_classification(n_samples=250, n_features=6, 
                            n_classes=3, random_state=0, n_informative=3)
 	X_train, y_train = X[:200], y[:200]
-	X_train, y_train = check_scikit_dim(X_train, y_train, readout)
+	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
 	res = esn.fit(X_train, y_train)
 	pred = esn.run(X[200:])
 	pred = np.argmax(pred, axis=1)
 	real = y[200:]
 	assert pred.shape == real.shape
 
-# test_scikit_esn_classification_with_regressors("Ridge")
+# test_sklearn_esn_classification_with_regressors("Ridge")

@@ -25,7 +25,7 @@ def get_linear(name) -> Callable:
     return getattr(linear_model, name)
 
 
-def check_scikit_dim(X, y, readout):
+def check_sklearn_dim(X, y, readout):
     """
     Checks input dimensions and ensures that the input and output dimensions are
     consistent with the ScikitNode format (shape: [num of data points, number of time steps, num of features]).
@@ -51,7 +51,7 @@ def check_scikit_dim(X, y, readout):
     NotImplementedError
         If the input dimensions are not supported by the function.
     """
-    if X.shape == y.shape:
+    if X.ndim == y.ndim:
         return X, y
     else:
         y = y.squeeze()

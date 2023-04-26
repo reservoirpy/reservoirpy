@@ -6,7 +6,7 @@ import numpy as np
 
 from ...node import Node
 from ...type import global_dtype
-from ...scikit_helper import get_linear
+from ...utils.sklearn_helper import get_linear
 
 from functools import partial
 
@@ -51,18 +51,18 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
         kwargs = {k:v for k,v in kwargs.items() if v}
         readout.clf = readout.f(**kwargs)
 
-class ScikitNode(Node):
+class SklearnNode(Node):
     """
-    A node representing a scikit-learn linear model that learns the connections
+    A node representing a sklearn linear model that learns the connections
     between input and output data.
 
-    The ScikitNode can take any scikit-learn linear model as input and create a node
+    The Sklearn can take any sklearn linear model as input and create a node
     with the specified model.
 
-    :py:attr:`ScikitNode.hypers` **list**
+    :py:attr:`SklearnNode.hypers` **list**
 
     ================== =================================================================
-    ``f``              Function to get the scikit-learn linear model.
+    ``f``              Function to get the sklearn linear model.
     ``X_buff``         Buffer to store input data.
     ``Y_buff``         Buffer to store output data.
     ================== =================================================================
@@ -74,12 +74,12 @@ class ScikitNode(Node):
     name : str, optional
         Node name.
     **kwargs
-        Additional keyword arguments for the scikit-learn linear model.
+        Additional keyword arguments for the sklearn linear model.
 
     Example
     -------
-    >>> from reservoirpy import ScikitNode
-    >>> node = ScikitNode(name="Ridge", alpha=0.5)
+    >>> from reservoirpy import SklearnNode
+    >>> node = SklearnNode(name="Ridge", alpha=0.5)
     """
 
     def __init__(
@@ -88,7 +88,7 @@ class ScikitNode(Node):
         name=None,
         **kwargs
     ):
-        super(ScikitNode, self).__init__(
+        super(SklearnNode, self).__init__(
             hypers={
                 "f": get_linear(name),
                 "X_buff": list(),
