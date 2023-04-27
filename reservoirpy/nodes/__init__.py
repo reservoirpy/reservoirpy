@@ -24,6 +24,8 @@ Offline readouts
    :template: autosummary/class.rst
 
    Ridge - Layer of neurons connected through offline linear regression.
+   SklearnNode - The SklearnNode can take any sklearn linear model as input and create a node
+    with the specified model.
 
 Online readouts
 ===============

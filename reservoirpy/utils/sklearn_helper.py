@@ -2,7 +2,7 @@ from functools import wraps
 from typing import Callable
 
 import numpy as np
-try:
+try: #pragma: no cover
     from sklearn import linear_model
 except ImportError:
     sklearn = None

@@ -59,6 +59,13 @@ class SklearnNode(Node):
     The Sklearn can take any sklearn linear model as input and create a node
     with the specified model.
 
+    Currently we support Linear classifiers like LogisticRegression, Perceptron, 
+    RidgeClassifiers, SGDClassifier and Linear regressors like Ridge, LinearRegression
+    Lasso and ElastiNet.
+
+    For more information on the above mentioned estimators, 
+    please visit sklearn linear model API reference <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
+
     :py:attr:`SklearnNode.hypers` **list**
 
     ================== =================================================================
