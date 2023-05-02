@@ -17,7 +17,7 @@ def readout_forward(readout: Node, X):
 def partial_backward(readout: Node, X_batch, Y_batch=None):
     readout.X_buff.append(X_batch)
     readout.Y_buff.append(Y_batch)
-   
+
 def initialize_buffers(readout):
     input_dim = readout.input_dim
     output_dim = readout.output_dim
@@ -26,7 +26,7 @@ def backward(readout: Node, X, Y):
     X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
     N, T, D = X.shape
     C = Y.shape[-1]
-    X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C)) # concating the 1st and 2nd dim
+    X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C)) # concating the 1st and 2nd dimis
     readout.clf.fit(X, Y)
 
 
@@ -92,14 +92,15 @@ class SklearnNode(Node):
     def __init__(
         self,
         output_dim=None,
-        name=None,
+        method=None,
         **kwargs
     ):
         super(SklearnNode, self).__init__(
             hypers={
-                "f": get_linear(name),
+                "f": get_linear(method),
                 "X_buff": list(),
                 "Y_buff": list(),
+                "method_name":method
             },
             forward=readout_forward,
             partial_backward=partial_backward,
@@ -107,6 +108,6 @@ class SklearnNode(Node):
             backward=backward,
             output_dim=output_dim,
             initializer=partial(initialize, **kwargs),
-            name=name,
+            method=method,
         )
 

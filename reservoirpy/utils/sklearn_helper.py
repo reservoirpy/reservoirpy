@@ -8,21 +8,21 @@ except ImportError:
     sklearn = None
 
 
-def get_linear(name) -> Callable:
+def get_linear(method) -> Callable:
     """
-    Returns a scikit-learn linear model class given its name as a string.
+    Returns a scikit-learn linear model class given its method as a string.
 
     Parameters
     ----------
-    name : str
-        The name of the scikit-learn linear model.
+    method : str
+        The method of the scikit-learn linear model.
 
     Returns
     -------
     Callable
         The scikit-learn linear model class.
     """
-    return getattr(linear_model, name)
+    return getattr(linear_model, method)
 
 
 def check_sklearn_dim(X, y, readout):
@@ -57,14 +57,14 @@ def check_sklearn_dim(X, y, readout):
         y = y.squeeze()
         if y.ndim == 1:  # classification task
             if X.shape[0] == y.shape[0]:
-                if readout.name in ["Ridge", "ElasticNet", "Lasso", "LinearRegression"]:
+                if readout.method_name in ["Ridge", "ElasticNet", "Lasso", "LinearRegression"]:
                     mask = np.array([val.is_integer() for val in y], dtype=np.int)
                     if np.sum(mask) == len(y):
                         y_numpy = np.zeros((len(y), len(np.unique(y))))
                         y_numpy[np.arange(len(y)), y] = 1
                         y = y_numpy
                         if X.ndim != y.ndim:
-                            raise ValueError("Current scipy regressors do not support per time step regression task. Use scipy classifiers")
+                            raise ValueError("Current sklearn regressors do not support per time step regression task. Use scipy classifiers")
                         return X, y
                 if X.ndim == 2 and y.ndim == 1:
                     return X[:, None, :], y[:, None, None]
