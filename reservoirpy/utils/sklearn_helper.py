@@ -68,6 +68,8 @@ def check_sklearn_dim(X, y, readout):
                         return X, y
                 if X.ndim == 2 and y.ndim == 1:
                     return X[:, None, :], y[:, None, None]
+                elif X.ndim == 3 and y.ndim == 1:
+                    return X, y[:, None, None]
                 elif X.ndim == 3 and y.ndim == 2:
                     return X, y[:, None, :]
             else:
