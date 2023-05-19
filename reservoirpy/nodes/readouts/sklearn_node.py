@@ -9,7 +9,7 @@ from ...type import global_dtype
 from ...utils.sklearn_helper import get_linear
 
 from functools import partial
-
+import pdb
 def readout_forward(readout: Node, X):
     pred = readout.clf.predict(X)
     return pred
@@ -24,9 +24,14 @@ def initialize_buffers(readout):
 
 def backward(readout: Node, X, Y):
     X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
-    N, T, D = X.shape
-    C = Y.shape[-1]
-    X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C)) # concating the 1st and 2nd dimis
+    if readout.method_name in ["LogisticRegression", "RidgeClassifier", "Perceptron"]:
+        X, Y = X[:, -1:, :], Y[:, -1, 0]
+        N, T, D = X.shape
+        X = np.reshape(X, (N*T, D))
+    else:
+        N, T, D = X.shape
+        C = Y.shape[-1]
+        X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C))  # concating the 1st and 2nd dimis
     readout.clf.fit(X, Y)
 
 
