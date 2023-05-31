@@ -95,7 +95,7 @@ class Reservoir(Node):
     units : int, optional
         Number of reservoir units. If None, the number of units will be infered from
         the ``W`` matrix shape.
-    lr : float, default to 1.0
+    lr : float or array-like of shape (units,), default to 1.0
         Neurons leak rate. Must be in :math:`[0, 1]`.
     sr : float, optional
         Spectral radius of recurrent weight matrix.
