@@ -36,6 +36,20 @@ def test_reservoir_init():
     assert id(res.fb_activation) == id(relu)
 
 
+def test_reservoir_init_from_lr_is_arrays():
+    lr = np.ones((100,)) * 0.5
+    input_scaling = np.ones((10,)) * 0.8
+    node = Reservoir(100, lr=lr, input_scaling=input_scaling)
+
+    data = np.ones((2, 10))
+    res = node.run(data)
+
+    assert node.W.shape == (100, 100)
+    assert node.Win.shape == (100, 10)
+    assert_array_equal(node.lr, np.ones(100) * 0.5)
+    assert_array_equal(node.input_scaling, np.ones(10) * 0.8)
+
+
 def test_reservoir_init_from_matrices():
     Win = np.ones((100, 10))
 
