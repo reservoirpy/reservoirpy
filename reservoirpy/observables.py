@@ -218,5 +218,5 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 
     d = (y_true_array - y_pred_array) ** 2
-    D = (y_true_array - y_pred_array.mean()) ** 2
+    D = (y_true_array - y_true_array.mean()) ** 2
     return 1 - np.sum(d) / np.sum(D)
