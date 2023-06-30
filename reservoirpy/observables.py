@@ -86,7 +86,7 @@ def spectral_radius(W: Weights, maxiter: int = None) -> float:
             maxiter = W.shape[0] * 20
 
         return max(
-            abs(eigs(W, k=1, which="LM", maxiter=maxiter, return_eigenvectors=False))
+            abs(eigs(W, k=1, which="LM", maxiter=maxiter, return_eigenvectors=False, v0=np.ones(W.shape[0], W.dtype)))
         )
 
     return max(abs(linalg.eig(W)[0]))
