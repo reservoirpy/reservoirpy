@@ -187,10 +187,12 @@ def lorenz(
         x, y, z = state
         return sigma * (y - x), x * (rho - z) - y, x * y - beta * z
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        lorenz_diff, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+        lorenz_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
@@ -355,13 +357,15 @@ def multiscroll(
         dz = x * y - b * z
         return dx, dy, dz
 
-    t = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        multiscroll_diff, y0=x0, t_span=(0.0, n_timesteps * h), dense_output=True
+        multiscroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
     )
 
-    return sol.sol(t).T
+    return sol.y.T
 
 
 def doublescroll(
@@ -423,7 +427,7 @@ def doublescroll(
            on Wikipedia.
     """
 
-    def doublescroll(t, state):
+    def doublescroll_diff(t, state):
         V1, V2, i = state
 
         dV = V1 - V2
@@ -434,10 +438,12 @@ def doublescroll(
 
         return dV1, dV2, dI
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        doublescroll, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+        doublescroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
     )
 
     return sol.y.T
@@ -500,14 +506,12 @@ def rabinovich_fabrikant(
         dz = -2 * z * (alpha + x * y)
         return dx, dy, dz
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        rabinovich_fabrikant_diff,
-        y0=x0,
-        t_span=(0.0, n_timesteps * h),
-        t_eval=t_eval,
-        **kwargs,
+        rabinovich_fabrikant_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
     )
 
     return sol.y.T
@@ -665,12 +669,14 @@ def lorenz96(
             ds[i] = (state[(i + 1) % N] - state[i - 2]) * state[i - 1] - state[i] + F
         return ds
 
-    t_eval = np.arange(0.0, (warmup + n_timesteps) * h, h)
+    t_max = (warmup + n_timesteps) * h
+
+    t_eval = np.linspace(0.0, t_max * h, n_timesteps)
 
     sol = solve_ivp(
         lorenz96_diff,
         y0=x0,
-        t_span=(0.0, (warmup + n_timesteps) * h),
+        t_span=(0.0, t_max * h),
         t_eval=t_eval,
         **kwargs,
     )
@@ -737,10 +743,12 @@ def rossler(
         dz = b + z * (x - c)
         return dx, dy, dz
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        rossler_diff, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+        rossler_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
     )
 
     return sol.y.T
