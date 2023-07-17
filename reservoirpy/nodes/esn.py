@@ -22,6 +22,20 @@ _LEARNING_METHODS = {"ridge": Ridge}
 _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
 
 
+def _run_partial_fit_fn(esn, x, y, lock, warmup):
+    seq_len = len(x[list(x)[0]])
+    states = np.zeros((seq_len, esn.reservoir.output_dim))
+
+    for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
+        esn._load_proxys()
+
+        with esn.readout.with_feedback(forced_feedback[esn.readout.name]):
+            states[i, :] = call(esn.reservoir, x[esn.reservoir.name])
+
+    esn._clean_proxys()
+    esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
+
+
 def _allocate_returned_states(model, inputs, return_states=None):
     """Create empty placeholders for model outputs."""
     seq_len = inputs[list(inputs.keys())[0]].shape[0]
@@ -320,32 +334,12 @@ class ESN(FrozenModel):
         else:
             lock = None
 
-        def run_partial_fit_fn(x, y):
-            seq_len = len(x[list(x)[0]])
-            states = np.zeros((seq_len, self.reservoir.output_dim))
-
-            for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-                self._load_proxys()
-
-                with self.readout.with_feedback(forced_feedback[self.readout.name]):
-                    states[i, :] = call(self.reservoir, x[self.reservoir.name])
-
-            self._clean_proxys()
-
-            # Avoid any problem related to multiple
-            # writes from multiple processes
-            # if lock is not None:
-            # with lock:  # pragma: no cover
-            self.readout.partial_fit(states, y[self.readout.name], warmup=warmup, lock=lock)
-            # else:
-            #     self.readout.partial_fit(states, y[self.readout.name])
-
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
         seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-                parallel(delayed(run_partial_fit_fn)(x, y) for x, y in zip(seq, Y))
+                parallel(delayed(_run_partial_fit_fn)(self, x, y, lock, warmup) for x, y in zip(seq, Y))
 
             if verbosity():  # pragma: no cover
                 print(f"Fitting node {self.name}...")
