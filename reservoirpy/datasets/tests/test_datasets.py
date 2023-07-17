@@ -131,7 +131,7 @@ def test_to_forecasting_with_test(dataset_func):
 
 def test_japanese_vowels():
 
-    X, Y, X_test, Y_test = datasets.japanese_vowels()
+    X, Y, X_test, Y_test = datasets.japanese_vowels(reload=True)
 
     assert len(X) == 270 == len(Y)
     assert len(X_test) == 370 == len(Y_test)
