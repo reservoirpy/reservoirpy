@@ -4,11 +4,8 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import io
 import zipfile
-import requests
-from pathlib import Path
 from urllib.request import urlopen
 
-import joblib
 import numpy as np
 
 from .. import logger
@@ -65,13 +62,9 @@ def _download(data_folder):  # pragma: no cover
 
     logger.info(f"Downloading {SOURCE_URL}.")
 
-    r = requests.get(SOURCE_URL)
-
-    if r.ok:
-        z = zipfile.ZipFile(io.BytesIO(r.content))
-        z.extractall(data_folder)
-    else:
-        r.raise_for_status()
+    with urlopen(SOURCE_URL) as zipresp:
+        with zipfile.ZipFile(io.BytesIO(zipresp.read())) as zfile:
+            zfile.extractall(data_folder)
 
 
 def _repeat_target(blocks, targets):
