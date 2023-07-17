@@ -45,6 +45,7 @@ def henon_map(
     a: float = 1.4,
     b: float = 0.3,
     x0: Union[list, np.ndarray] = [0.0, 0.0],
+    **kwargs,
 ) -> np.ndarray:
     """Hénon map discrete timeseries [2]_ [3]_.
 
@@ -88,7 +89,7 @@ def henon_map(
     return states
 
 
-def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5) -> np.ndarray:
+def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs) -> np.ndarray:
     """Logistic map discrete timeseries [4]_ [5]_.
 
     .. math::
@@ -207,6 +208,7 @@ def mackey_glass(
     x0: float = 1.2,
     h: float = 1.0,
     seed: Union[int, RandomState, Generator] = None,
+    **kwargs,
 ) -> np.ndarray:
     """Mackey-Glass timeseries [8]_ [9]_, computed from the Mackey-Glass
     delayed differential equation.
@@ -307,6 +309,7 @@ def multiscroll(
     c: float = 28.0,
     x0: Union[list, np.ndarray] = [-0.1, 0.5, -0.6],
     h: float = 0.01,
+    **kwargs,
 ) -> np.ndarray:
     """Double scroll attractor timeseries [10]_ [11]_,
     a particular case of multiscroll attractor timeseries.
@@ -362,7 +365,7 @@ def multiscroll(
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        multiscroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
+        multiscroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
@@ -443,7 +446,7 @@ def doublescroll(
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        doublescroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
+        doublescroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
@@ -511,7 +514,7 @@ def rabinovich_fabrikant(
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        rabinovich_fabrikant_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
+        rabinovich_fabrikant_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
@@ -748,7 +751,7 @@ def rossler(
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        rossler_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval,
+        rossler_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
