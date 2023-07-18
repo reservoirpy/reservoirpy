@@ -36,6 +36,28 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
 
 
+def _run_fn(esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb):
+    states = _allocate_returned_states(esn, x, return_states)
+
+    with esn.with_state(from_state, stateful=stateful, reset=reset):
+        for i, (x, forced_feedback, _) in enumerate(
+                dispatch(x, forced_fb, shift_fb=shift_fb)
+                ):
+            esn._load_proxys()
+            with esn.with_feedback(forced_feedback):
+                state = esn._call(x, return_states=return_states)
+
+            if is_mapping(state):
+                for name, value in state.items():
+                    states[name][i, :] = value
+            else:
+                states["readout"][i, :] = state
+
+    esn._clean_proxys()
+
+    return idx, states
+
+
 def _allocate_returned_states(model, inputs, return_states=None):
     """Create empty placeholders for model outputs."""
     seq_len = inputs[list(inputs.keys())[0]].shape[0]
@@ -284,28 +306,6 @@ class ESN(FrozenModel):
 
         self._initialize_on_sequence(X[0], forced_feedbacks[0])
 
-        def run_fn(idx, x, forced_fb):
-
-            states = _allocate_returned_states(self, x, return_states)
-
-            with self.with_state(from_state, stateful=stateful, reset=reset):
-                for i, (x, forced_feedback, _) in enumerate(
-                    dispatch(x, forced_fb, shift_fb=shift_fb)
-                ):
-                    self._load_proxys()
-                    with self.with_feedback(forced_feedback):
-                        state = self._call(x, return_states=return_states)
-
-                    if is_mapping(state):
-                        for name, value in state.items():
-                            states[name][i, :] = value
-                    else:
-                        states["readout"][i, :] = state
-
-            self._clean_proxys()
-
-            return idx, states
-
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
         seq = progress(X, f"Running {self.name}")
@@ -313,7 +313,17 @@ class ESN(FrozenModel):
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 states = parallel(
-                    delayed(run_fn)(idx, x, y)
+                    delayed(_run_fn)(
+                        self,
+                        idx,
+                        x,
+                        y,
+                        return_states,
+                        from_state,
+                        stateful,
+                        reset,
+                        shift_fb
+                    )
                     for idx, (x, y) in enumerate(zip(seq, forced_feedbacks))
                 )
 
