@@ -24,6 +24,8 @@ Offline readouts
    :template: autosummary/class.rst
 
    Ridge - Layer of neurons connected through offline linear regression.
+   SklearnNode - The SklearnNode can take any sklearn linear model as input and create a node
+    with the specified model.
 
 Online readouts
 ===============
@@ -85,7 +87,7 @@ from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .concat import Concat
 from .esn import ESN
 from .io import Input, Output
-from .readouts import FORCE, LMS, RLS, Ridge
+from .readouts import FORCE, LMS, RLS, Ridge, SklearnNode
 from .reservoirs import NVAR, IPReservoir, Reservoir
 
 __all__ = [
@@ -94,8 +96,10 @@ __all__ = [
     "Output",
     "Ridge",
     "FORCE",
+    "SklearnNode",
     "LMS",
     "RLS",
+    "MLP",
     "Tanh",
     "Softmax",
     "Softplus",

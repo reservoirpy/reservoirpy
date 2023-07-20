@@ -148,8 +148,9 @@ def check_n_sequences(
                         caller=caller,
                     )
                 elif len(x.shape) == len(dim) + 2:  # several sequences
-                    if not allow_n_sequences:
-                        raise TypeError("No lists, only arrays.")
+                    # import pdb;pdb.set_trace()
+                    # if not allow_n_sequences:
+                    #     raise TypeError("No lists, only arrays.")
                     x_new = x
                     for i in range(len(x)):
                         x_new[i] = check_one_sequence(

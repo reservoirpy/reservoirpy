@@ -44,7 +44,6 @@ def rand_generator(seed: Union[int, Generator, RandomState] = None) -> Generator
     else:
         return default_rng(seed)
 
-
 def noise(rng, dist="normal", shape=1, gain=1.0, **kwargs):
     """Generate noise from a given distribution, and apply a gain factor.
 
