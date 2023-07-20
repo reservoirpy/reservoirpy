@@ -49,7 +49,6 @@ def test_sklearn_esn_timeseries(linear_model):
 	assert pred.shape == real.shape
 
 
-
 @pytest.mark.parametrize(
 	"linear_model",
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
