@@ -9,7 +9,7 @@ from .compat.utils.save import load
 from .model import Model
 from .node import Node
 from .ops import link, link_feedback, merge
-from .utils import verbosity, sklearn_helper
+from .utils import verbosity
 from .utils.random import set_seed
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,6 @@ __all__ = [
     "__version__",
     "mat_gen",
     "activationsfunc",
-    "sklearn_helper",
     "observables",
     "hyper",
     "nodes",
