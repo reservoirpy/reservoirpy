@@ -179,6 +179,10 @@ def dispatch(
                     else:
                         fb = {node: None for node in Y_map.keys()}
                 else:
+                    fb = {}
+                    # for node in Y_map.keys():
+                        # import pdb;pdb.set_trace()
+                        # fb[node] = Y_map[node][np.newaxis, i - 1]
                     fb = {node: Y_map[node][np.newaxis, i - 1] for node in Y_map.keys()}
             # else assume that all feedback vectors must be instantaneously
             # fed to the network. This means that 'Y_map' already contains
