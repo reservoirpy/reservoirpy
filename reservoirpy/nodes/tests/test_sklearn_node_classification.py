@@ -5,13 +5,13 @@ from numpy.testing import assert_array_almost_equal
 from reservoirpy.nodes import SklearnNode, Ridge, Reservoir
 from reservoirpy.utils.sklearn_helper import TransformInputSklearn, TransformOutputSklearn
 from ..concat import Concat
-import pdb
 
 @pytest.mark.parametrize(
 	"linear_model",
 	[("LogisticRegression"), ("RidgeClassifier")])
 
 def test_sklearn_classification(linear_model):
+	pytest.importorskip("sklearn")
 	readout = SklearnNode(method=linear_model)
 	from sklearn.datasets import make_classification
 	from sklearn.metrics import accuracy_score
@@ -33,6 +33,7 @@ def test_sklearn_classification(linear_model):
 	[("LogisticRegression"), ("RidgeClassifier")]
 )
 def test_sklearn_esn_classification(linear_model):
+	pytest.importorskip("sklearn")
 	readout = SklearnNode(method=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
