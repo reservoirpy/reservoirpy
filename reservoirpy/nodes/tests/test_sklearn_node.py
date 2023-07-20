@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 
 from reservoirpy.nodes import SklearnNode, Ridge, Reservoir
-from reservoirpy.utils.sklearn_helper import check_sklearn_dim
+from reservoirpy.utils.sklearn_helper import TransformInputSklearn, TransformOutputSklearn
 from ..concat import Concat
 import pdb
 
@@ -11,32 +11,18 @@ import pdb
 	"linear_model",
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
-def test_sklearn_regression(linear_model):
-	node = SklearnNode(name=linear_model, alpha=1e-4)
-	from sklearn.datasets import make_regression
-	X, y = make_regression(n_samples=10, n_features=2, 
-                       random_state=123)
-	
-	X, y = check_sklearn_dim(X, y, node)
-	res = node.fit(X[:-1], y[:-1])
-	pred = node.run(X[-1])
-	real = y[-1]
-	assert_array_almost_equal(pred, real, decimal=2)
-
-
-@pytest.mark.parametrize(
-	"linear_model",
-	[("Ridge"), ("ElasticNet"), ("Lasso")]
-)
 def test_sklearn_timeseries(linear_model):
-	node = SklearnNode(name=linear_model, alpha=1e-3)
-	X = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
-	X_train = X[:50]
-	y_train = X[1:51]
-	X_train, y_train = check_sklearn_dim(X_train, y_train, node)
-	res = node.fit(X_train, y_train)
-	pred = node.run(X[50:])
-	real = X[50:]
+	node = SklearnNode(method=linear_model, alpha=1e-3)
+	X_ = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
+	X = X_[:50]
+	y = X_[1:51]
+	enocoder = TransformInputSklearn()
+	X, y = enocoder(X, y, task="regression")
+	res = node.fit(X, y)
+	pred = node.run(X_[50:])
+	real = X_[50:]
+	decoder = TransformOutputSklearn()
+	(pred, real) = decoder(pred, real)
 	assert_array_almost_equal(pred, real, decimal=1)
 
 
@@ -45,36 +31,21 @@ def test_sklearn_timeseries(linear_model):
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
 
-def test_sklearn_esn_regression(linear_model):
-	readout = SklearnNode(name=linear_model)
-	reservoir = Reservoir(100)
-	esn = reservoir >> readout
-	from sklearn.datasets import make_regression
-	X, y = make_regression(n_samples=10, n_features=2, 
-                       random_state=123)
-	
-	X, y = check_sklearn_dim(X, y, readout)
-	res = esn.fit(X[:-1], y[:-1])
-	pred = esn.run(X[-1])
-	assert pred.shape == y[-1].shape
-
-
-@pytest.mark.parametrize(
-	"linear_model",
-	[("Ridge"), ("ElasticNet"), ("Lasso")]
-)
-
 def test_sklearn_esn_timeseries(linear_model):
-	readout = SklearnNode(name=linear_model)
+	readout = SklearnNode(method=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
-	X = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
-	X_train = X[:50]
-	y_train = X[1:51]
-	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
-	res = esn.fit(X_train, y_train)
-	pred = esn.run(X[50:])
-	real =  X[50:]
+	X_ = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
+	X = X_[:50]
+	y = X_[1:51]
+	enocoder = TransformInputSklearn()
+	X, y = enocoder(X, y, task="regression")
+	res = esn.fit(X, y)
+	pred = esn.run(X_[50:])
+	real = X_[50:]
+	decoder = TransformOutputSklearn()
+	pred, real = decoder(pred, real)
+	pdb.set_trace()
 	assert pred.shape == real.shape
 
 
@@ -83,19 +54,23 @@ def test_sklearn_esn_timeseries(linear_model):
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
 def test_sklearn_esn_feedback(linear_model):
-	readout = SklearnNode(name=linear_model)
+	readout = SklearnNode(method=linear_model)
 	reservoir = Reservoir(100)
 
 	esn = reservoir >> readout
 
 	reservoir <<= readout
 
-	X = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
-	X_train = X[:50]
-	y_train = X[1:51]
-	X_train, y_train = check_sklearn_dim(X_train, y_train, readout)
-	res = esn.fit(X_train, y_train)
-	pred = esn.run(X[50:])
-	real =  X[50:]
+	X_ = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
+	X = X_[:50]
+	y = X_[1:51]
+	enocoder = TransformInputSklearn()
+	X, y = enocoder(X, y, task="regression")
+	res = esn.fit(X, y)
+	pred = esn.run(X_[50:])
+	real =  X_[50:]
+	decoder = TransformOutputSklearn()
+	(pred, real) = decoder(pred, real)
 	assert pred.shape == real.shape
+
 

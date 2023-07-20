@@ -7,11 +7,12 @@ import numpy as np
 from ...node import Node
 from ...type import global_dtype
 from ...utils.sklearn_helper import get_linear
-
 from functools import partial
-import pdb
+
 def readout_forward(readout: Node, X):
     pred = readout.clf.predict(X)
+    if readout.method_name in ["LogisticRegression", "RidgeClassifier"] and pred.ndim>1:
+        return np.argmax(pred)
     return pred
 
 def partial_backward(readout: Node, X_batch, Y_batch=None):
