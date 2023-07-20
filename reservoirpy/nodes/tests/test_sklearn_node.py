@@ -45,7 +45,6 @@ def test_sklearn_esn_timeseries(linear_model):
 	real = X_[50:]
 	decoder = TransformOutputSklearn()
 	pred, real = decoder(pred, real)
-	pdb.set_trace()
 	assert pred.shape == real.shape
 
 
