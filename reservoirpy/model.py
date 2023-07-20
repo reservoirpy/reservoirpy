@@ -164,6 +164,7 @@ def run_submodel(
     shift_fb=True,
     return_states: Sequence[str] = None,
 ) -> MappedData:
+
     X_, forced_feedbacks_ = to_data_mapping(submodel, X, forced_feedbacks)
 
     submodel._initialize_on_sequence(X_[0], forced_feedbacks_[0])
@@ -440,6 +441,7 @@ class Model(_Node):
             # impact on feedback
             self._load_proxys(keep=True)
             for i, (x, forced_fb, _) in enumerate(seq):
+
                 with self.with_feedback(forced_fb):
                     state = submodel._call(x, return_states=return_states)
 
@@ -1084,6 +1086,7 @@ class Model(_Node):
             )
 
         X, Y = to_data_mapping(self, X, Y)
+
         self._initialize_on_sequence(X[0], Y[0])
         self.initialize_buffers()
 
@@ -1095,6 +1098,7 @@ class Model(_Node):
         with self.with_state(from_state, reset=reset, stateful=stateful):
             for i, ((nodes, edges), relations) in enumerate(subgraphs):
                 submodel, offlines = build_forward_sumodels(nodes, edges, trained)
+
                 if next_X is not None:
                     for j in range(len(X)):
                         X[j].update(next_X[j])
