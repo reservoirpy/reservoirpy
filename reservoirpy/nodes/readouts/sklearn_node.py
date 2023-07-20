@@ -11,7 +11,7 @@ from functools import partial
 
 def readout_forward(readout: Node, X):
     pred = readout.clf.predict(X)
-    if readout.method_name in ["LogisticRegression", "RidgeClassifier"] and pred.ndim>1:
+    if readout.method_name in ["LogisticRegression", "RidgeClassifier"] or pred.ndim>1:
         return np.argmax(pred)
     return pred
 

@@ -30,9 +30,12 @@ class TransformInputSklearn(object):
         # Squeeze X and y to remove any unnecessary dimensions
         X, y = np.squeeze(X), np.squeeze(y)
         # Ensure X and y have the same number of dimensions
+        # import pdb;pdb.set_trace()
         if X.ndim != y.ndim:
             if X.ndim == 2:
                 X = X[:, :, None]
+            if y.ndim == 1:
+                y = y[:, None, None]
             elif y.ndim == 2:
                 y = y[:, :, None]
             else:
@@ -101,10 +104,14 @@ class TransformOutputSklearn(object):
     def __call__(self, y_pred, y_true):
         if isinstance(y_pred, list):
             y_pred = np.array(y_pred)
-        assert y_pred.shape == y_test.shape
-        y_true = [y_true[i][-1][0] for i in range(len(y_true))]
-        y_pred = [y_pred[i][-1][0] for i in range(len(y_pred))]
-        return y_pred, y_test
+        if isinstance(y_true, list):
+            y_true = np.array(y_true)
+        if y_pred.shape == y_true.shape:
+            return y_pred,y_true 
+        # y_true = [y_true[i][-1][0] for i in range(len(y_true))]
+        # y_pred = [y_pred[i][-1][0] for i in range(len(y_pred))]
+        y_pred = y_pred.reshape(y_true.shape)
+        return y_pred, y_true
 
 def check_sklearn_dim(X, y, readout):
     """
