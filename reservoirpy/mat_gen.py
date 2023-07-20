@@ -114,7 +114,6 @@ from .observables import spectral_radius
 from .type import global_dtype
 from .utils.random import rand_generator
 
-import pdb
 __all__ = [
     "fast_spectral_initialization",
     "generate_internal_weights",

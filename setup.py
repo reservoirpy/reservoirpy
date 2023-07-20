@@ -36,7 +36,7 @@ INSTALL_REQUIRES = [
 ]
 
 EXTRA_REQUIRES = {
-    "hyper": ["matplotlib>=2.2.0", "hyperopt", "seaborn", "scikit-learn"],
+    "hyper": ["matplotlib>=2.2.0", "hyperopt", "seaborn"],
 }
 
 PROJECT_URLS = {
