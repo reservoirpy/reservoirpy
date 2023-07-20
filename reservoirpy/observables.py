@@ -86,7 +86,7 @@ def spectral_radius(W: Weights, maxiter: int = None) -> float:
             maxiter = W.shape[0] * 20
 
         return max(
-            abs(eigs(W, k=1, which="LM", maxiter=maxiter, return_eigenvectors=False))
+            abs(eigs(W, k=1, which="LM", maxiter=maxiter, return_eigenvectors=False, v0=np.ones(W.shape[0], W.dtype)))
         )
 
     return max(abs(linalg.eig(W)[0]))
@@ -218,5 +218,5 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 
     d = (y_true_array - y_pred_array) ** 2
-    D = (y_true_array - y_pred_array.mean()) ** 2
+    D = (y_true_array - y_true_array.mean()) ** 2
     return 1 - np.sum(d) / np.sum(D)

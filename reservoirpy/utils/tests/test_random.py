@@ -35,10 +35,20 @@ def test_random_generator_from_seed():
 
 
 def test_noise():
-    a = noise(gain=0.0)
+
+    rng = np.random.default_rng(123)
+
+    a = noise(rng, gain=0.0)
     assert_equal(a, np.zeros((1,)))
 
-    a = noise(dist="uniform", gain=2.0, seed=123)
+    rng = np.random.default_rng(123)
+
+    a = noise(rng, dist="uniform", gain=2.0)
     b = 2.0 * np.random.default_rng(123).uniform()
 
     assert_equal(a, b)
+
+    a = noise(rng, dist="uniform", gain=2.0)
+    b = noise(rng, dist="uniform", gain=2.0)
+
+    assert np.any(np.abs(a - b) > 1e-8)

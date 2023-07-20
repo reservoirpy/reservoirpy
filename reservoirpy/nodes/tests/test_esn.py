@@ -95,7 +95,8 @@ def test_esn_feedback():
     assert esn.reservoir.Wfb.shape == (100, 5)
 
 
-def test_esn_parallel_fit_reproducibility():
+@pytest.mark.parametrize("backend", ("loky", "multiprocessing", "threading"))
+def test_esn_parallel_fit_reproducibility(backend):
 
     for i in range(10):
         set_seed(45)
@@ -107,7 +108,7 @@ def test_esn_parallel_fit_reproducibility():
             ridge=1e-5,
             feedback=True,
             workers=-1,
-            backend="loky",
+            backend=backend,
         )
 
         X, Y = np.ones((10, 100, 10)), np.ones((10, 100, 5))

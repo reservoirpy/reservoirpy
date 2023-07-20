@@ -10,7 +10,6 @@ from reservoirpy.nodes import Reservoir
 
 
 def test_reservoir_init():
-
     node = Reservoir(100, lr=0.8, input_bias=False)
 
     data = np.ones((1, 10))
@@ -37,8 +36,21 @@ def test_reservoir_init():
     assert id(res.fb_activation) == id(relu)
 
 
-def test_reservoir_init_from_matrices():
+def test_reservoir_init_from_lr_is_arrays():
+    lr = np.ones((100,)) * 0.5
+    input_scaling = np.ones((10,)) * 0.8
+    node = Reservoir(100, lr=lr, input_scaling=input_scaling)
 
+    data = np.ones((2, 10))
+    res = node.run(data)
+
+    assert node.W.shape == (100, 100)
+    assert node.Win.shape == (100, 10)
+    assert_array_equal(node.lr, np.ones(100) * 0.5)
+    assert_array_equal(node.input_scaling, np.ones(10) * 0.8)
+
+
+def test_reservoir_init_from_matrices():
     Win = np.ones((100, 10))
 
     node = Reservoir(100, lr=0.8, Win=Win, input_bias=False)
@@ -108,7 +120,6 @@ def test_reservoir_init_from_matrices():
 
 
 def test_reservoir_bias():
-
     node = Reservoir(100, lr=0.8, input_bias=False)
 
     data = np.ones((1, 10))
@@ -169,7 +180,6 @@ def test_reservoir_run():
 
 
 def test_reservoir_chain():
-
     node1 = Reservoir(100, lr=0.8, input_bias=False)
     node2 = Reservoir(50, lr=1.0, input_bias=False)
 
@@ -185,7 +195,6 @@ def test_reservoir_chain():
 
 
 def test_reservoir_feedback():
-
     node1 = Reservoir(100, lr=0.8, input_bias=False)
     node2 = Reservoir(50, lr=1.0, input_bias=False)
 
@@ -226,3 +235,33 @@ def test_reservoir_feedback():
         node1 <<= node2
         data = np.ones((1, 10))
         res = (node1 >> node2)(data)
+
+
+def test_reservoir_noise():
+    node1 = Reservoir(100, seed=123, noise_rc=0.1, noise_in=0.5)
+    node2 = Reservoir(100, seed=123, noise_rc=0.1, noise_in=0.5)
+
+    data = np.ones((10, 10))
+
+    assert_array_equal(node1.run(data), node2.run(data))
+
+    node1 = Reservoir(
+        100,
+        seed=123,
+        noise_rc=0.1,
+        noise_in=0.5,
+        noise_type="uniform",
+        noise_kwargs={"low": -1, "high": 0.5},
+    )
+    node2 = Reservoir(
+        100,
+        seed=123,
+        noise_rc=0.1,
+        noise_in=0.5,
+        noise_type="uniform",
+        noise_kwargs={"low": -1, "high": 0.5},
+    )
+
+    data = np.ones((10, 10))
+
+    assert_array_equal(node1.run(data), node2.run(data))

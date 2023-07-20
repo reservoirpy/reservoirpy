@@ -621,7 +621,7 @@ class _Node(ABC):
         elif item in self._hypers:
             return self._hypers.get(item)
         else:
-            raise AttributeError(f"{self.name} has no attribute '{str(item)}'")
+            raise AttributeError(f"'{str(item)}'")
 
     def __call__(self, *args, **kwargs) -> np.ndarray:
         return self.call(*args, **kwargs)
