@@ -5,7 +5,7 @@ import numpy as np
 try: #pragma: no cover
     from sklearn import linear_model
 except ImportError:
-    sklearn = None
+    raise ImportError("The sklearn library is required for this module.")
 
 
 def get_linear(method) -> Callable:
