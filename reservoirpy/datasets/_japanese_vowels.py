@@ -2,18 +2,17 @@
 # Author: Nathan Trouvain at 07/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from io import StringIO
-from pathlib import Path
+import io
+import zipfile
 from urllib.request import urlopen
 
-import joblib
 import numpy as np
 
 from .. import logger
 from ._utils import _get_data_folder
 
 SOURCE_URL = (
-    "https://archive.ics.uci.edu/ml/machine-learning-databases/JapaneseVowels-mld/"
+    "https://archive.ics.uci.edu/static/public/128/japanese+vowels.zip"
 )
 
 REMOTE_FILES = {
@@ -31,12 +30,12 @@ ONE_HOT_SPEAKERS = np.eye(9)
 
 
 def _format_data(data, block_numbers, one_hot_encode):
-    """Load and parse data from downloaded binary files."""
+    """Load and parse data from downloaded files."""
 
     X = []
     Y = []
 
-    data = data.decode("utf-8").split("\n\n")[:-1]
+    data = data.split("\n\n")[:-1]
 
     block_cursor = 0
     speaker_cursor = 0
@@ -46,7 +45,7 @@ def _format_data(data, block_numbers, one_hot_encode):
             block_cursor = 0
             speaker_cursor += 1
 
-        X.append(np.loadtxt(StringIO(block)))
+        X.append(np.loadtxt(io.StringIO(block)))
 
         if one_hot_encode:
             Y.append(ONE_HOT_SPEAKERS[speaker_cursor].reshape(1, -1))
@@ -58,28 +57,14 @@ def _format_data(data, block_numbers, one_hot_encode):
     return X, Y
 
 
-def _download(data_folder, file_name, file_role):  # pragma: no cover
+def _download(data_folder):  # pragma: no cover
     """Download data from source into the reservoirpy data local directory."""
 
-    logger.info(f"Downloading {SOURCE_URL + file_name}.")
+    logger.info(f"Downloading {SOURCE_URL}.")
 
-    file_path = Path(file_name)
-
-    with urlopen(SOURCE_URL + file_name) as f:
-
-        # extract data block sizes integer lists
-        if file_role in ["train_sizes", "test_sizes"]:
-            data = [s for s in f.read().decode("utf-8").split(" ")]
-
-            # remove empty characters and spaces
-            data = [int(s) for s in filter(lambda s: s not in ["", "\n", " "], data)]
-
-        else:
-            data = f.read()
-
-        joblib.dump(data, data_folder / file_path, compress=6)
-
-    return data
+    with urlopen(SOURCE_URL) as zipresp:
+        with zipfile.ZipFile(io.BytesIO(zipresp.read())) as zfile:
+            zfile.extractall(data_folder)
 
 
 def _repeat_target(blocks, targets):
@@ -117,7 +102,7 @@ def japanese_vowels(
     ============================   ===============================
 
     Data is downloaded from:
-    https://archive.ics.uci.edu/ml/machine-learning-databases/JapaneseVowels-mld/
+    https://doi.org/10.24432/C5NS47
 
     Parameters
     ----------
@@ -148,14 +133,30 @@ def japanese_vowels(
 
     data_folder = _get_data_folder(data_folder)
 
+    complete = True
+    for file_role, file_name in REMOTE_FILES.items():
+        if not (data_folder / file_name).exists():
+            complete = False
+            break
+
+    if reload or not complete:
+        _download(data_folder)
+
     data_files = {}
     for file_role, file_name in REMOTE_FILES.items():
-        file_path = Path(file_name)
 
-        if not (data_folder / file_path).exists() or reload:  # pragma: no cover
-            data_files[file_role] = _download(data_folder, file_name, file_role)
-        else:
-            data_files[file_role] = joblib.load(data_folder / file_path)
+        with open(data_folder / file_name, "r") as fp:
+
+            if file_role in ["train_sizes", "test_sizes"]:
+                data = fp.read().split(" ")
+                # remove empty characters and spaces
+                data = [int(s) for s in filter(lambda s: s not in ["", "\n", " "],
+                data)]
+
+            else:
+                data = fp.read()
+
+        data_files[file_role] = data
 
     X_train, Y_train = _format_data(
         data_files["train"], data_files["train_sizes"], one_hot_encode

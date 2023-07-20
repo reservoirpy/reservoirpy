@@ -18,6 +18,10 @@ def find_parents_and_children(edges):
     parents = defaultdict(list)
     children = defaultdict(list)
 
+    # Kludge to always have the parents and children in the same order at every run.
+    # TODO: refactor the graphflow part.
+    edges = sorted(list(edges), key=lambda x: x[0].name + x[1].name)
+
     for edge in edges:
         parent, child = edge
         parents[child] += [parent]

@@ -11,6 +11,12 @@ __global_rg = default_rng()
 
 
 def set_seed(seed):
+    """Set random state seed globally.
+
+    Parameters
+    ----------
+        seed : int
+    """
     global __SEED
     global __global_rg
     if type(seed) is int:
@@ -38,10 +44,32 @@ def rand_generator(seed: Union[int, Generator, RandomState] = None) -> Generator
     else:
         return default_rng(seed)
 
-import pdb
-def noise(dist="normal", shape=1, gain=1.0, seed=None, **kwargs):
+def noise(rng, dist="normal", shape=1, gain=1.0, **kwargs):
+    """Generate noise from a given distribution, and apply a gain factor.
+
+    Parameters
+    ----------
+        rng : numpy.random.Generator
+            A random number generator.
+        dist : str, default to 'normal'
+            A random variable distribution.
+        shape : int or tuple of ints, default to 1
+            Shape of the noise vector.
+        gain : float, default to 1.0
+            Gain factor applied to noise.
+        **kwargs
+            Any other parameters of the noise distribution.
+
+    Returns
+    -------
+        np.ndarray
+            A noise vector.
+
+    Note
+    ----
+        If `gain` is 0, then noise vector is null.
+    """
     if abs(gain) > 0.0:
-        rng = rand_generator(seed)
         return gain * getattr(rng, dist)(**kwargs, size=shape)
     else:
         return np.zeros(shape)
