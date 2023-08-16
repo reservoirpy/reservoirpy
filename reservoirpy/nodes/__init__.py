@@ -85,7 +85,7 @@ from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .concat import Concat
 from .esn import ESN
 from .io import Input, Output
-from .readouts import FORCE, LMS, RLS, Ridge
+from .readouts import FORCE, LMS, RLS, Ridge, SklearnNode
 from .reservoirs import NVAR, IPReservoir, Reservoir
 
 __all__ = [
