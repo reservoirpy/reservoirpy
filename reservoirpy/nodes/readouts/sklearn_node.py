@@ -12,8 +12,7 @@ from functools import partial
 def readout_forward(readout: Node, X):
     pred = readout.clf.predict(X)
     if readout.method_name in ["LogisticRegression", "RidgeClassifier"]:
-        # and pred.ndim>1
-        return np.argmax(pred)
+        return pred[0]
     return pred
 
 def partial_backward(readout: Node, X_batch, Y_batch=None):
@@ -29,10 +28,12 @@ def backward(readout: Node, X, Y):
     if readout.method_name in ["LogisticRegression", "RidgeClassifier", "Perceptron"]:
         X, Y = X[:, -1:, :], Y[:, -1, 0]
         N, T, D = X.shape
+        # sklearn expects inputs in the dimensions of (n_samples, n_features)
         X = np.reshape(X, (N*T, D))
     else:
         N, T, D = X.shape
         C = Y.shape[-1]
+        # sklearn expects inputs in the dimensions of (n_samples, n_features)
         X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C))  # concating the 1st and 2nd dimis
     readout.clf.fit(X, Y)
 
@@ -58,22 +59,22 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
         kwargs = {k:v for k,v in kwargs.items() if v}
         readout.clf = readout.f(**kwargs)
 
-class SklearnNode(Node):
+class ScikitLearnNode(Node):
     """
     A node representing a sklearn linear model that learns the connections
     between input and output data.
 
-    The Sklearn can take any sklearn linear model as input and create a node
+    The ScikitLearnNode can take any sklearn linear model as input and create a node
     with the specified model.
 
-    Currently we support Linear classifiers like LogisticRegression, Perceptron, 
-    RidgeClassifiers, SGDClassifier and Linear regressors like Ridge, LinearRegression
+    Currently we support Linear classifiers like LogisticRegression, 
+    RidgeClassifiers and Linear regressors like Ridge, LinearRegression
     Lasso and ElastiNet.
 
     For more information on the above mentioned estimators, 
     please visit sklearn linear model API reference <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
 
-    :py:attr:`SklearnNode.hypers` **list**
+    :py:attr:`ScikitLearnNode.hypers` **list**
 
     ================== =================================================================
     ``f``              Function to get the sklearn linear model.
@@ -92,8 +93,8 @@ class SklearnNode(Node):
 
     Example
     -------
-    >>> from reservoirpy import SklearnNode
-    >>> node = SklearnNode(name="Ridge", alpha=0.5)
+    >>> from reservoirpy import ScikitLearnNode
+    >>> node = ScikitLearnNode(name="Ridge", alpha=0.5)
     """
 
     def __init__(
@@ -102,7 +103,7 @@ class SklearnNode(Node):
         method=None,
         **kwargs
     ):
-        super(SklearnNode, self).__init__(
+        super(ScikitLearnNode, self).__init__(
             hypers={
                 "f": get_linear(method),
                 "X_buff": list(),

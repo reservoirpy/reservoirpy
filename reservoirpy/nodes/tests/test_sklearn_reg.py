@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from reservoirpy.nodes import SklearnNode, Ridge, Reservoir
+from reservoirpy.nodes import ScikitLearnNode, Ridge, Reservoir
 from reservoirpy.utils.sklearn_helper import TransformInputSklearn, TransformOutputSklearn
 from ..concat import Concat
 
@@ -12,7 +12,7 @@ from ..concat import Concat
 )
 def test_sklearn_timeseries(linear_model):
 	pytest.importorskip("sklearn")
-	node = SklearnNode(method=linear_model, alpha=1e-3)
+	node = ScikitLearnNode(method=linear_model, alpha=1e-3)
 	X_ = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
 	X = X_[:50]
 	y = X_[1:51]
@@ -33,7 +33,7 @@ def test_sklearn_timeseries(linear_model):
 
 def test_sklearn_esn_timeseries(linear_model):
 	pytest.importorskip("sklearn")
-	readout = SklearnNode(method=linear_model)
+	readout = ScikitLearnNode(method=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
 	X_ = np.sin(np.linspace(0, 6*np.pi, 100)).reshape(-1, 1)
@@ -54,7 +54,7 @@ def test_sklearn_esn_timeseries(linear_model):
 	[("Ridge"), ("ElasticNet"), ("Lasso")]
 )
 def test_sklearn_esn_feedback(linear_model):
-	readout = SklearnNode(method=linear_model)
+	readout = ScikitLearnNode(method=linear_model)
 	reservoir = Reservoir(100)
 
 	esn = reservoir >> readout
