@@ -102,6 +102,9 @@ class TransformInputSklearn(object):
 
 class TransformOutputSklearn(object):
     def __call__(self, y_pred, y_true):
+        """
+        Converts y_pred and y_true as arrays. Ensures they have the same dimensions
+        """
         if isinstance(y_pred, list):
             y_pred = np.array(y_pred)
         if isinstance(y_true, list):

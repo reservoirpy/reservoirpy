@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from reservoirpy.nodes import SklearnNode, Ridge, Reservoir
+from reservoirpy.nodes import ScikitLearnNode, Ridge, Reservoir
 from reservoirpy.utils.sklearn_helper import TransformInputSklearn, TransformOutputSklearn
 from ..concat import Concat
 
@@ -12,7 +12,7 @@ from ..concat import Concat
 
 def test_sklearn_classification(linear_model):
 	pytest.importorskip("sklearn")
-	readout = SklearnNode(method=linear_model)
+	readout = ScikitLearnNode(method=linear_model)
 	from sklearn.datasets import make_classification
 	from sklearn.metrics import accuracy_score
 	X, y = make_classification(n_samples=150, n_features=4, 
@@ -34,7 +34,7 @@ def test_sklearn_classification(linear_model):
 )
 def test_sklearn_esn_classification(linear_model):
 	pytest.importorskip("sklearn")
-	readout = SklearnNode(method=linear_model)
+	readout = ScikitLearnNode(method=linear_model)
 	reservoir = Reservoir(100)
 	esn = reservoir >> readout
 	from sklearn.datasets import make_classification
