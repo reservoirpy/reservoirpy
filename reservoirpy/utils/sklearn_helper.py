@@ -2,7 +2,8 @@ from functools import wraps
 from typing import Callable
 
 import numpy as np
-try: #pragma: no cover
+
+try:  # pragma: no cover
     from sklearn import linear_model
 except ImportError:
     raise ImportError("The sklearn library is required for this module.")
@@ -44,7 +45,7 @@ class TransformInputSklearn(object):
             if X.ndim == y.ndim == 1:
                 return X[:, None, None], y[:, None, None]
         return X, y
-    
+
     def _for_classification(self, X, y):
         # Squeeze X and y to remove any unnecessary dimensions
         X, y = np.squeeze(X), np.squeeze(y)
@@ -59,23 +60,21 @@ class TransformInputSklearn(object):
                 y = np.argmax(y, axis=1)
             else:
                 raise ValueError("X and y must have the same number of dimensions")
-        
+
         # One-hot encode y if it is not already one-hot encoded
         if y.ndim == 1:
             y_onehot = np.zeros((N, T))
             for i in range(N):
-                y_onehot[i, T-1] = y[i]
+                y_onehot[i, T - 1] = y[i]
             y = y_onehot[:, :, None]
 
         return X, y
-
-
 
     def __call__(self, X, y, task=None):
         """
         Checks input dimensions and ensures that the input and output dimensions are
         consistent with the ScikitNode format (shape: [num of data points, number of time steps, num of features]).
-        
+
         Parameters
         ----------
         X : numpy.ndarray
@@ -100,6 +99,7 @@ class TransformInputSklearn(object):
         elif task == "regression":
             return self._for_regression(X, y)
 
+
 class TransformOutputSklearn(object):
     def __call__(self, y_pred, y_true):
         """
@@ -110,17 +110,18 @@ class TransformOutputSklearn(object):
         if isinstance(y_true, list):
             y_true = np.array(y_true)
         if y_pred.shape == y_true.shape:
-            return y_pred,y_true 
+            return y_pred, y_true
         # y_true = [y_true[i][-1][0] for i in range(len(y_true))]
         # y_pred = [y_pred[i][-1][0] for i in range(len(y_pred))]
         y_pred = y_pred.reshape(y_true.shape)
         return y_pred, y_true
 
+
 def check_sklearn_dim(X, y, readout):
     """
     Checks input dimensions and ensures that the input and output dimensions are
     consistent with the ScikitNode format (shape: [num of data points, number of time steps, num of features]).
-    
+
     Parameters
     ----------
     X : numpy.ndarray
@@ -150,14 +151,21 @@ def check_sklearn_dim(X, y, readout):
         y = y.squeeze()
         if y.ndim == 1:  # classification task
             if X.shape[0] == y.shape[0]:
-                if readout.method_name in ["Ridge", "ElasticNet", "Lasso", "LinearRegression"]:
+                if readout.method_name in [
+                    "Ridge",
+                    "ElasticNet",
+                    "Lasso",
+                    "LinearRegression",
+                ]:
                     mask = np.array([val.is_integer() for val in y], dtype=np.int)
                     if np.sum(mask) == len(y):
                         y_numpy = np.zeros((len(y), len(np.unique(y))))
                         y_numpy[np.arange(len(y)), y] = 1
                         y = y_numpy
                         if X.ndim != y.ndim:
-                            raise ValueError("Current sklearn regressors do not support per time step regression task. Use scipy classifiers")
+                            raise ValueError(
+                                "Current sklearn regressors do not support per time step regression task. Use scipy classifiers"
+                            )
                         return X, y
                 if X.ndim == 2 and y.ndim == 1:
                     return X[:, None, :], y[:, None, None]
