@@ -9,7 +9,7 @@ else:
     from typing import Literal
 
 from functools import partial
-from typing import Callable, Optional, Sequence, Union, Dict
+from typing import Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
 

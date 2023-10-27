@@ -155,7 +155,7 @@ Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-
 
 If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
 
-## More installation options 
+## More installation options
 
 To install it, use one of the following command:
 

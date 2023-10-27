@@ -9,7 +9,7 @@ from .compat.utils.save import load
 from .model import Model
 from .node import Node
 from .ops import link, link_feedback, merge
-from .utils import verbosity, sklearn_helper
+from .utils import sklearn_helper, verbosity
 from .utils.random import set_seed
 
 logger = logging.getLogger(__name__)

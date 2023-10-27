@@ -2,12 +2,14 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 # from functools import partial
+from functools import partial
+
 import numpy as np
 
 from ...node import Node
 from ...type import global_dtype
 from ...utils.sklearn_helper import get_linear
-from functools import partial
+
 
 def readout_forward(readout: Node, X):
     pred = readout.clf.predict(X)
@@ -15,13 +17,16 @@ def readout_forward(readout: Node, X):
         return pred[0]
     return pred
 
+
 def partial_backward(readout: Node, X_batch, Y_batch=None):
     readout.X_buff.append(X_batch)
     readout.Y_buff.append(Y_batch)
 
+
 def initialize_buffers(readout):
     input_dim = readout.input_dim
     output_dim = readout.output_dim
+
 
 def backward(readout: Node, X, Y):
     X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
@@ -29,12 +34,14 @@ def backward(readout: Node, X, Y):
         X, Y = X[:, -1:, :], Y[:, -1, 0]
         N, T, D = X.shape
         # sklearn expects inputs in the dimensions of (n_samples, n_features)
-        X = np.reshape(X, (N*T, D))
+        X = np.reshape(X, (N * T, D))
     else:
         N, T, D = X.shape
         C = Y.shape[-1]
         # sklearn expects inputs in the dimensions of (n_samples, n_features)
-        X, Y = np.reshape(X, (N*T, D)), np.reshape(Y, (N*T, C))  # concating the 1st and 2nd dimis
+        X, Y = np.reshape(X, (N * T, D)), np.reshape(
+            Y, (N * T, C)
+        )  # concating the 1st and 2nd dimis
     readout.clf.fit(X, Y)
 
 
@@ -55,9 +62,10 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
             )
 
         readout.set_input_dim(in_dim)
-        readout.set_output_dim(out_dim) 
-        kwargs = {k:v for k,v in kwargs.items() if v}
+        readout.set_output_dim(out_dim)
+        kwargs = {k: v for k, v in kwargs.items() if v}
         readout.clf = readout.f(**kwargs)
+
 
 class ScikitLearnNode(Node):
     """
@@ -67,11 +75,11 @@ class ScikitLearnNode(Node):
     The ScikitLearnNode can take any sklearn linear model as input and create a node
     with the specified model.
 
-    Currently we support Linear classifiers like LogisticRegression, 
+    Currently we support Linear classifiers like LogisticRegression,
     RidgeClassifiers and Linear regressors like Ridge, LinearRegression
     Lasso and ElastiNet.
 
-    For more information on the above mentioned estimators, 
+    For more information on the above mentioned estimators,
     please visit sklearn linear model API reference <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
 
     :py:attr:`ScikitLearnNode.hypers` **list**
@@ -97,18 +105,13 @@ class ScikitLearnNode(Node):
     >>> node = ScikitLearnNode(name="Ridge", alpha=0.5)
     """
 
-    def __init__(
-        self,
-        output_dim=None,
-        method=None,
-        **kwargs
-    ):
+    def __init__(self, output_dim=None, method=None, **kwargs):
         super(ScikitLearnNode, self).__init__(
             hypers={
                 "f": get_linear(method),
                 "X_buff": list(),
                 "Y_buff": list(),
-                "method_name":method
+                "method_name": method,
             },
             forward=readout_forward,
             partial_backward=partial_backward,
@@ -118,4 +121,3 @@ class ScikitLearnNode(Node):
             initializer=partial(initialize, **kwargs),
             method=method,
         )
-
