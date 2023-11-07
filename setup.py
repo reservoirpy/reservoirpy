@@ -27,15 +27,15 @@ URL = "https://github.com/reservoirpy/reservoirpy"
 DOWNLOAD_URL = f"{URL}/v{__version__}.tar.gz"
 
 INSTALL_REQUIRES = [
-    "dill>=0.3.0",
-    "joblib>=0.12",
+    "dill>=0.3.1.1",
+    "joblib>=0.14.1",
     "numpy>=1.21.1",
     "scipy>=1.4.1",
     "tqdm>=4.43.0",
 ]
 
 EXTRA_REQUIRES = {
-    "hyper": ["matplotlib>=2.2.0", "hyperopt", "seaborn"],
+    "hyper": ["hyperopt", "matplotlib>=2.2.0", "seaborn"],
     "sklearn": ["scikit-learn>=0.24.2"],
 }
 
