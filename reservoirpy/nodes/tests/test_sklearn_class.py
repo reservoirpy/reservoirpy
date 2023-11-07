@@ -1,3 +1,7 @@
+# Author: Deepayan Das at 16/08/2023 <deepayan.das@inria.fr>
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_almost_equal
