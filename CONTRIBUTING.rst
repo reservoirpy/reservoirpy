@@ -14,7 +14,7 @@ If you are reading this, **thank you very much for considering contributing**, a
 **All of the above are equally important contributions to us.**
 
 If you have any question about this document and contribution in general, do not hesitate to contact
-nathan.trouvain<@>inria.fr, main developer, or xavier.hinaut<@>inria.fr, head of the project.
+paul.bernard<@>inria.fr, main developer, or xavier.hinaut<@>inria.fr, head of the project.
 
 This document is based on and inspired by the `scikit-learn project contributing guidelines
 <https://scikit-learn.org/dev/developers/contributing.html#submitting-a-bug-report-or-a-feature-request>`

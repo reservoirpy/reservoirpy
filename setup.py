@@ -12,8 +12,8 @@ with open(version_file) as f:
 AUTHOR = "Xavier Hinaut"
 AUTHOR_EMAIL = "xavier.hinaut@inria.fr"
 
-MAINTAINERS = "Xavier Hinaut, Nathan Trouvain"
-MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, nathan.trouvain@inria.fr"
+MAINTAINERS = "Xavier Hinaut, Paul Bernard"
+MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, paul.bernard@inria.fr"
 
 DESCRIPTION = (
     "A simple and flexible code for Reservoir "
@@ -43,6 +43,7 @@ PROJECT_URLS = {
     "Bug Tracker": "https://github.com/reservoirpy/reservoirpy/issues",
     "Documentation": "https://reservoirpy.readthedocs.io/en/latest/index.html",
     "Source Code": URL,
+    "Release notes": "https://github.com/reservoirpy/reservoirpy/releases",
 }
 
 if __name__ == "__main__":
