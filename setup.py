@@ -27,12 +27,11 @@ URL = "https://github.com/reservoirpy/reservoirpy"
 DOWNLOAD_URL = f"{URL}/v{__version__}.tar.gz"
 
 INSTALL_REQUIRES = [
-    "tqdm>=4.43.0",
-    "joblib>=0.12",
     "dill>=0.3.0",
-    "numpy>=1.21.1",
-    "scipy>=1.0.0,<=1.7.3",
     "joblib>=0.12",
+    "numpy>=1.21.1",
+    "scipy>=1.4.1",
+    "tqdm>=4.43.0",
 ]
 
 EXTRA_REQUIRES = {
