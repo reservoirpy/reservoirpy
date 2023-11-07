@@ -3,11 +3,6 @@ from typing import Callable
 
 import numpy as np
 
-try:  # pragma: no cover
-    from sklearn import linear_model
-except ImportError:
-    raise ImportError("The sklearn library is required for this module.")
-
 
 def get_linear(method) -> Callable:
     """
@@ -23,6 +18,11 @@ def get_linear(method) -> Callable:
     Callable
         The scikit-learn linear model class.
     """
+    try:  # pragma: no cover
+        from sklearn import linear_model
+    except ImportError:
+        raise ImportError("The scikit-learn library is required for this module.")
+
     return getattr(linear_model, method)
 
 
