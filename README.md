@@ -48,7 +48,7 @@ This library works for **Python 3.8** and higher.
 [Follow @reservoirpy](https://twitter.com/reservoirpy) updates and new releases on Twitter.
 
 ## Official documentation 📖
-
+ 
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
 
@@ -157,7 +157,7 @@ If you have some issues testing some examples, have a look at the [extended pack
 
 ## More installation options
 
-To install it, use one of the following command:
+To install it, use one of the following commands:
 
 ```bash
 pip install reservoirpy
