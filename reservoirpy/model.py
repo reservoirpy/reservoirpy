@@ -573,7 +573,8 @@ class Model(_Node):
     @property
     def input_nodes(self):
         """First Nodes in the graph held by the Model."""
-        return self._inputs
+        from .nodes import Constant
+        return [i for i in self._inputs if not isinstance(i, Constant)]
 
     @property
     def output_nodes(self):
