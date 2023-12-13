@@ -24,6 +24,7 @@ Offline readouts
    :template: autosummary/class.rst
 
    Ridge - Layer of neurons connected through offline linear regression.
+   ScikitLearnNode - Interface for linear models from the scikit-learn library.
 
 Online readouts
 ===============
@@ -106,4 +107,5 @@ __all__ = [
     "ESN",
     "Concat",
     "IPReservoir",
+    "ScikitLearnNode",
 ]

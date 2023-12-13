@@ -18,6 +18,7 @@ repos:
         args:
           - --maxkb=2048
       - id: trailing-whitespace
+        exclude: docs/source/api/generated
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
