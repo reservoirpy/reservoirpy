@@ -5,12 +5,12 @@ reservoirpy.compat.ESN
 
 .. autoclass:: ESN
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~ESN.__init__
       ~ESN.compute_all_states
       ~ESN.compute_outputs
@@ -21,15 +21,15 @@ reservoirpy.compat.ESN
       ~ESN.train
       ~ESN.zero_feedback
       ~ESN.zero_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~ESN.N
       ~ESN.W
       ~ESN.Wfb
@@ -40,4 +40,5 @@ reservoirpy.compat.ESN
       ~ESN.input_bias
       ~ESN.ridge
       ~ESN.use_raw_input
-
+   
+   

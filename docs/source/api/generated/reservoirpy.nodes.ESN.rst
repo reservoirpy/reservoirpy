@@ -5,12 +5,12 @@ reservoirpy.nodes.ESN
 
 .. autoclass:: ESN
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~ESN.__init__
       ~ESN.call
       ~ESN.copy
@@ -26,15 +26,15 @@ reservoirpy.nodes.ESN
       ~ESN.update_graph
       ~ESN.with_feedback
       ~ESN.with_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~ESN.data_dispatcher
       ~ESN.edges
       ~ESN.feedback_nodes
@@ -56,4 +56,5 @@ reservoirpy.nodes.ESN
       ~ESN.output_nodes
       ~ESN.params
       ~ESN.trainable_nodes
-
+   
+   

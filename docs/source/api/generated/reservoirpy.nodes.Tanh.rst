@@ -5,12 +5,12 @@ reservoirpy.nodes.Tanh
 
 .. autoclass:: Tanh
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~Tanh.__init__
       ~Tanh.call
       ~Tanh.clean_buffers
@@ -40,15 +40,15 @@ reservoirpy.nodes.Tanh
       ~Tanh.with_state
       ~Tanh.zero_feedback
       ~Tanh.zero_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~Tanh.dtype
       ~Tanh.feedback_dim
       ~Tanh.fitted
@@ -64,4 +64,5 @@ reservoirpy.nodes.Tanh
       ~Tanh.output_dim
       ~Tanh.params
       ~Tanh.unsupervised
-
+   
+   
