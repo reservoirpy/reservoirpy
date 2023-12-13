@@ -5,12 +5,12 @@ reservoirpy.nodes.IPReservoir
 
 .. autoclass:: IPReservoir
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~IPReservoir.__init__
       ~IPReservoir.call
       ~IPReservoir.clean_buffers
@@ -40,15 +40,15 @@ reservoirpy.nodes.IPReservoir
       ~IPReservoir.with_state
       ~IPReservoir.zero_feedback
       ~IPReservoir.zero_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~IPReservoir.dtype
       ~IPReservoir.feedback_dim
       ~IPReservoir.fitted
@@ -64,4 +64,5 @@ reservoirpy.nodes.IPReservoir
       ~IPReservoir.output_dim
       ~IPReservoir.params
       ~IPReservoir.unsupervised
-
+   
+   

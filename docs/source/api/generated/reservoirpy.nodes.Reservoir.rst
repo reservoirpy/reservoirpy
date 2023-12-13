@@ -5,12 +5,12 @@ reservoirpy.nodes.Reservoir
 
 .. autoclass:: Reservoir
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~Reservoir.__init__
       ~Reservoir.call
       ~Reservoir.clean_buffers
@@ -40,15 +40,15 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.with_state
       ~Reservoir.zero_feedback
       ~Reservoir.zero_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~Reservoir.dtype
       ~Reservoir.feedback_dim
       ~Reservoir.fitted
@@ -64,4 +64,5 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.output_dim
       ~Reservoir.params
       ~Reservoir.unsupervised
-
+   
+   
