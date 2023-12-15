@@ -300,10 +300,10 @@ class IPReservoir(Unsupervised):
 
     >>> from reservoirpy.datasets import narma
     >>> x = narma(1000)
-    >>> reservoir.fit(x, warmup=100)
+    >>> _ = reservoir.fit(x, warmup=100)
     >>> states = reservoir.run(x)
 
-    .. plot:: ./api/generated/intrinsic_plasticity_example.py
+    .. plot:: ./api/intrinsic_plasticity_example.py
 
     """
 

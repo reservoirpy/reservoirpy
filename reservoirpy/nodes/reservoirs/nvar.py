@@ -152,6 +152,7 @@ class NVAR(Node):
     Example
     -------
 
+    >>> import numpy as np
     >>> from reservoirpy.nodes import NVAR, Ridge
     >>> nvar = NVAR(delay=2, order=2, strides=1)
     >>> readout = Ridge(3, ridge=2.5e-6)
@@ -165,7 +166,6 @@ class NVAR(Node):
     >>> Xi  = X[:600]
     >>> dXi = X[1:601] - X[:600]  # difference u[t+1] - u[t]
     >>> Y_test = X[600:]  # testing data
-    >>> model = model.fit(Xi, dXi)
     >>> model.fit(Xi, dXi, warmup=200)
 
     We can now predict the differences and integrate these predictions:
@@ -173,10 +173,10 @@ class NVAR(Node):
     >>> u = X[600]
     >>> res = np.zeros((5400-600, readout.output_dim))
     >>> for i in range(5400-600):
-    >>>    u = u + model(u)
-    >>>    res[i, :] = u
+    >>>     u = u + model(u)
+    >>>     res[i, :] = u
 
-    .. plot:: ./api/generated/nvar_example.py
+    .. plot:: ./api/nvar_example.py
 
     """
 
