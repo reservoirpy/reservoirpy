@@ -21,10 +21,11 @@ This document is based on and inspired by the `scikit-learn project contributing
 and `geomstats project contributing guidelines
 <https://github.com/geomstats/geomstats/blob/master/docs/contributing.rst>`
 
+.. _opening_an_issue:
+
 Submitting a bug report or a feature request
 ============================================
 
-.. _opening_an_issue:
 
 We use GitHub issues to track all bugs and feature requests; feel free to `open
 an issue <https://github.com/reservoirpy/reservoirpy/issues>`_ if you have found a
@@ -38,12 +39,13 @@ following rules before submitting:
    or `pull requests <https://github.com/reservoirpy/reservoirpy/pulls?q=>`_.
 
 -  If you are submitting a bug report, we strongly encourage you to
-   follow the guidelines in :ref:`_submiting_a_bug_report`.
+   follow the guidelines in :ref:`submitting_a_bug_report`.
+
+.. _submitting_a_bug_report:
 
 How to Write a Good Bug Report
 ------------------------------
 
-.. _submiting_a_bug_report:
 
 When you submit an issue to `Github
 <https://github.com/reservoirpy/reservoirpy/issues>`__, please do your best to

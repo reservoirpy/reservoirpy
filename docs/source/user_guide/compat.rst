@@ -254,10 +254,10 @@ odd transient states. This can be achieved using the `init_fb` parameter::
 The ``last_output`` variable must be a Numpy array storing a V-dimensional vector, where
 V is the output dimension of the reservoir.
 
+.. _train_esn:
+
 Train an ESN
 ============
-
-.. _train esn:
 
 ESNs can be trained on various tasks using very simple learning rules, usually adapated from
 linear regression techniques. This learning phase allows to create a new weight matrix `Wout`,
@@ -358,7 +358,7 @@ Use the ESN for prediction
 ==========================
 
 To start predicting values with an :py:class:`reservoirpy.ESN` object, you must first train it on a
-task as presented in the :ref:`train esn` section.
+task as presented in the :ref:`train_esn` section.
 
 Once the training process is done, your :py:class:`compat.ESN` object is ready to use for prediction,
 using its learnt `Wout` matrix. To predict values from a sequence of inputs, you can use the

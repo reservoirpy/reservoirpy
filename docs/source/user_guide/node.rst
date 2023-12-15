@@ -92,7 +92,7 @@ In ReservoirPy, a node internal state is accessible through the :py:meth:`~.Node
 The state is always a :py:class:`~.numpy.ndarray` vector, of shape ``(1, ndim)``, where ``ndim`` is the dimension of the
 node internal state.
 
-To learn how to modify or initialize a node state, see :ref:`state`.
+To learn how to modify or initialize a node state, see :ref:`/user_guide/quickstart.ipynb#Reset-or-modify-reservoir-state`.
 
 Applying node function and updating state
 -----------------------------------------
@@ -114,7 +114,7 @@ This operation automatically triggers the update of the node internal state (:nu
     # node internal state have been updated from s_t0 to s_t1
     assert node.state() == s_t1
 
-To learn how to modify this automatic update, see :ref:`state`.
+To learn how to modify this automatic update, see :ref:`/user_guide/quickstart.ipynb#Reset-or-modify-reservoir-state`.
 
 .. _node_t1_update:
 .. figure:: ../_static/user_guide/node/node_t1_update.svg
@@ -173,7 +173,9 @@ They can also directly be accessed as attributes:
     In [4]: node.hyper1
     Out [4]: 1.0
 
+
 .. _naming_nodes:
+
 Naming nodes
 ------------
 
@@ -186,7 +188,6 @@ Nodes can be named at instanciation.
 Naming your nodes is a good practice, especially when working with complex models involving a lot of different nodes.
 
 .. warning::
-
     All nodes created should have a unique name. If two nodes have the same name within your environment, an exception will
     be raised.
 
@@ -322,7 +323,7 @@ Now that you are more familiar with the basic concepts of the Node API, you can 
 
 - :ref:`learning_rules` on how to make your nodes and models learn from data,
 
-- :ref:`feedback` on how to create feedback connections between your nodes,
+- :ref:`/user_guide/advanced_demo.ipynb#Feedback-connections` on how to create feedback connections between your nodes,
 
 - :ref:`create_new_node` on how to create your own nodes, equipped with custom functions and learning rules.
 

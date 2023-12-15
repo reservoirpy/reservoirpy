@@ -50,7 +50,7 @@ architectures with a particular focus on Echo State Networks (ESN).
 
     +++
 
-    .. link-button:: getting_started
+    .. link-button:: get_started
             :type: ref
             :text: To the getting started guide
             :classes: btn-block btn-secondary stretched-link
@@ -98,7 +98,7 @@ architectures with a particular focus on Echo State Networks (ESN).
 
     +++
 
-    .. link-button:: development
+    .. link-button:: developer_guide
             :type: ref
             :text: To the development guide
             :classes: btn-block btn-secondary stretched-link
