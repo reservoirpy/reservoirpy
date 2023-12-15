@@ -1,4 +1,4 @@
-.. _getting_started:
+.. _get_started:
 
 ===============
 Getting started
@@ -9,7 +9,7 @@ Python version support
 ======================
 
 For now, full suppport is guaranteed for Python 3.8 and higher. Support is partial for Python 3.6 and 3.7
-(see :ref:`distributed`).
+(see :ref:`advanced_install`).
 
 
 Installation
@@ -51,7 +51,7 @@ Installation
 
     A complete walkthrough for beginners and some instructions for developers.
 
-    .. link-button:: ../developer_guide/advanced_install.html
+    .. link-button:: ../developer_guide/advanced_install.rst
         :type: url
         :text: Learn more
         :classes: btn-secondary stretched-link

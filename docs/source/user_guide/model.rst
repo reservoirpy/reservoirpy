@@ -217,7 +217,7 @@ the name of a model input node, and the value a data point (or a timeseries) to 
 Multi outputs models
 --------------------
 
-Similarly, imagine that we need node A to be connected to both node B1 and node B2 (:numref:`ABBgraph:`):
+Similarly, imagine that we need node A to be connected to both node B1 and node B2 (:numref:`ABBgraph`):
 
 .. _ABBgraph:
 .. figure:: ../_static/user_guide/model/ABBgraph.svg
@@ -311,7 +311,7 @@ Now that you are more familiar with the basic concepts of models, you can see:
 
 - :ref:`learning_rules` on how to make your nodes and models learn from data,
 
-- :ref:`feedback` on how to create feedback connections between your nodes,
+- :ref:`/user_guide/advanced_demo.ipynb#Feedback-connections` on how to create feedback connections between your nodes,
 
 - :ref:`create_new_node` on how to create your own nodes, equipped with custom functions and learning rules.
 
