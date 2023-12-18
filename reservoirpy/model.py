@@ -32,7 +32,6 @@ a :py:class:`Model`.
       ~Model.get_node
       ~Model.initialize
       ~Model.initialize_buffers
-      ~Model.link
       ~Model.reset
       ~Model.run
       ~Model.train

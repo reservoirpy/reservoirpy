@@ -290,7 +290,7 @@ on the GitHub issue).
   right direction.
 
 Stalled Pull Requests
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 As contributing a feature can be a lengthy process, some
 pull requests appear inactive but unfinished. In such a case, taking
@@ -383,7 +383,7 @@ Writing Docstrings
 ==================
 
 Intro to Docstrings
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 A docstring is a well-formatted description of your function/class/module which includes
 its purpose, usage, and other information.
@@ -402,7 +402,7 @@ Try this out with the np.array class and the np.mean function to see good exampl
     >>> print(np.mean.__doc__)
 
 The Anatomy of a Docstring
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 These are some of the most common elements for functions (and ones we’d like you to add where appropriate):
 
@@ -444,7 +444,7 @@ N.B. Within Notes, you can
 .. _docstring_examples:
 
 Docstring Examples
-^^^^^^^^^^^^^^^^^^
+------------------
 
 Here's a generic docstring template::
 

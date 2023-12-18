@@ -2,13 +2,13 @@
 
 {{ header }}
 
-.. |warrow| image:: ../_static/user_guide/node/w_weight.svg
-
-.. |winarrow| image:: ../_static/user_guide/node/win_weight.svg
-
 ===================
 Node functional API
 ===================
+
+.. |warrow| image:: ../_static/user_guide/node/w_weight.svg
+
+.. |winarrow| image:: ../_static/user_guide/node/win_weight.svg
 
 The Node API features a simple implementation of computational graphs to develop complex reservoir computing
 architectures, similar to what can be found in other popular deep learning and differenciable calculus

@@ -183,8 +183,8 @@ class Initializer:
     >>> from reservoirpy.mat_gen import random_sparse
     >>> init_func = random_sparse(dist="uniform")
     >>> init_func = init_func(connectivity=0.1)
-    >>> init_func(5, 5)  # actually creates the matrix
-    >>> random_sparse(5, 5, dist="uniform", connectivity=0.1)  # also creates the matrix
+    >>> matrix = init_func(5, 5)  # actually creates the matrix
+    >>> matrix = random_sparse(5, 5, dist="uniform", connectivity=0.1)  # also creates the matrix
     """
 
     def __init__(

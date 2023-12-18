@@ -6,7 +6,7 @@ from functools import partial
 import numpy as np
 
 from ..node import Node
-from ..nodes.utils import (
+from ..nodes.readouts.base import (
     _initialize_readout,
     _prepare_inputs_for_learning,
     readout_forward,

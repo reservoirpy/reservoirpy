@@ -512,6 +512,7 @@ class _ESNBase(metaclass=ABCMeta):
                 memory of your computer.
 
             verbose: bool, optional
+
             backend:
                 kept for compatibility with previous versions.
 
