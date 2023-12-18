@@ -166,15 +166,16 @@ class NVAR(Node):
     >>> Xi  = X[:600]
     >>> dXi = X[1:601] - X[:600]  # difference u[t+1] - u[t]
     >>> Y_test = X[600:]  # testing data
-    >>> model.fit(Xi, dXi, warmup=200)
+    >>> _ = model.fit(Xi, dXi, warmup=200)
 
     We can now predict the differences and integrate these predictions:
 
     >>> u = X[600]
     >>> res = np.zeros((5400-600, readout.output_dim))
     >>> for i in range(5400-600):
-    >>>     u = u + model(u)
-    >>>     res[i, :] = u
+    ...     u = u + model(u)
+    ...     res[i, :] = u
+    ...
 
     .. plot:: ./api/nvar_example.py
 

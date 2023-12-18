@@ -135,9 +135,6 @@ References
     .. [21] Sivashinsky, G. I. (1980). On Flame Propagation Under Conditions
             of Stoichiometry. SIAM Journal on Applied Mathematics, 39(1), 67–82.
             https://doi.org/10.1137/0139007
-    .. [22] Kassam, A. K., & Trefethen, L. N. (2005).
-            Fourth-order time-stepping for stiff PDEs.
-            SIAM Journal on Scientific Computing, 26(4), 1214-1233.
 """
 from typing import Union
 

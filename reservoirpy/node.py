@@ -65,7 +65,6 @@ See the following guides to:
       ~Node.initialize
       ~Node.initialize_buffers
       ~Node.initialize_feedback
-      ~Node.link
       ~Node.link_feedback
       ~Node.partial_fit
       ~Node.reset

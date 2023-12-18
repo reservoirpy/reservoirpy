@@ -16,19 +16,19 @@ by the new node class:
 
 .. ipython::
 
-    In [1]: import numpy as np
+    import numpy as np
 
-    In [2]: from reservoirpy import Node
+    from reservoirpy import Node
 
-    In [3]: def forward(node: Node, x: np.ndarray) -> np.ndarray:
-       ...:     '''Does something to the current state of the node, the input
-       ...:     data and some feedback.'''
-       ...:     state = node.state()  # get current node state
-       ...:     if node.has_feedback:
-       ...:         feedback = node.feedback()  # call state of some distant node
-       ...:     some_param = node.const1
-       ...:     some_other_param = node.const2
-       ...:     return x + some_param * state + some_other_param * feedback
+    def forward(node: Node, x: np.ndarray) -> np.ndarray:
+       '''Does something to the current state of the node, the input
+       data and some feedback.'''
+       state = node.state()  # get current node state
+       if node.has_feedback:
+           feedback = node.feedback()  # call state of some distant node
+       some_param = node.const1
+       some_other_param = node.const2
+       return x + some_param * state + some_other_param * feedback
 
 
 This function **must** take as parameter a vector `x` of shape
@@ -42,16 +42,17 @@ Then, one needs to create the `initialize` function that will be used at
 runtime to infer the input and output dimensions of the node, and optionaly
 initialize some parameters (some neuronal weights, for instance):
 
-.. ipython::
+.. ipython:: python
 
-    In [4]: def initialize(node: Node, x: np.ndarray = None):
-       ...:      '''This function receives a data point x at runtime and uses it to
-       ...:      infer input and output dimensions.'''
-       ...:      if x is not None:
-       ...:          node.set_input_dim(x.shape[1])
-       ...:          node.set_output_dim(x.shape[1])
-       ...:          # you can initialize parameters here
-       ...:          node.set_param("const1", 1)
+    def initialize(node: Node, x: np.ndarray = None):
+        """This function receives a data point x at runtime and uses it to
+        infer input and output dimensions.
+        """
+        if x is not None:
+            node.set_input_dim(x.shape[1])
+            node.set_output_dim(x.shape[1])
+            # you can initialize parameters here
+            node.set_param("const1", 1)
 
 Initialize feedback connections
 -------------------------------

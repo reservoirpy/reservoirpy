@@ -10,7 +10,6 @@ import numpy as np
 from ...node import Node
 from ...utils.random import rand_generator
 
-
 def forward(readout: Node, X):
     instances = readout.params.get("instances")
     if type(instances) is not list:

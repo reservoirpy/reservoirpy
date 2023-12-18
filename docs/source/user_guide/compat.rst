@@ -182,10 +182,10 @@ fed to `Wfb`, after being passed to the `fbfunc` function. Here, the output acti
 is just the identity function, but it could be, for instance, a sigmoid function if you are building
 a classifier with logits outputs.
 
+.. _run_reservoir:
+
 Run a reservoir
 ===============
-
-.. _run_reservoir:
 
 The :py:class:`compat.ESN` object provides you with a method to compute internal activations produced
 in response to some inputs: the :py:meth:`compat.ESN.compute_all_states` method::
