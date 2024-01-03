@@ -163,7 +163,7 @@ class _ESNBase(metaclass=ABCMeta):
         return np.zeros((1, self.N), dtype=self.typefloat)
 
     def zero_feedback(self):
-        """Returns a zero feedabck vector."""
+        """Returns a zero feedback vector."""
         if self.Wfb is not None:
             return np.zeros((1, self.dim_out), dtype=self.typefloat)
         else:
@@ -265,7 +265,7 @@ class _ESNBase(metaclass=ABCMeta):
                               of computations. (default: {None})
 
         Raises:
-            RuntimeError: raised if no teachers are specifiyed for training
+            RuntimeError: raised if no teachers are specified for training
             with feedback.
 
         Returns:
@@ -281,7 +281,7 @@ class _ESNBase(metaclass=ABCMeta):
 
         check_input_lists(input, self.dim_in, forced_teacher, self.dim_out)
 
-        # to track successives internal states of the reservoir
+        # to track successive internal states of the reservoir
         states = np.zeros((len(input), self.N), dtype=self.typefloat)
 
         # if a feedback matrix is available, feedback will be set to 0 or to
@@ -575,7 +575,7 @@ class _ESNBase(metaclass=ABCMeta):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Run the ESN on generative mode.
 
-        After the `̀warming_inputs` are consumed, new outputs are
+        After the `warming_inputs` are consumed, new outputs are
         used as inputs for the next nb_timesteps, i.e. the
         ESN is feeding himself with its own outputs.
 
@@ -592,7 +592,7 @@ class _ESNBase(metaclass=ABCMeta):
         ----------
             nb_timesteps: int
                 Number of timesteps of data to generate
-                from the intial input.
+                from the initial input.
             warming_inputs: numpy.ndarray
                 Input data used to initiate generative mode.
                 This data is meant to "seed" the ESN internal
@@ -605,8 +605,8 @@ class _ESNBase(metaclass=ABCMeta):
                 Feedback initialization vector for the reservoir, if feedback is
                 enabled. By default, feedback is initialized to 0.
             verbose: bool, optional
-            init_intputs: list of numpy.ndarray, optional
-                Same as ``warming_inputs̀``.
+            init_inputs: list of numpy.ndarray, optional
+                Same as ``warming_inputs``.
                 Kept for compatibility with previous version. Deprecated
                 since 0.2.2, will be removed soon.
             return_init: bool, optional
@@ -672,14 +672,14 @@ class _ESNBase(metaclass=ABCMeta):
                 seed=child_seeds[0],
             )
 
-            # initial state (at begining of generation)
+            # initial state (at beginning of generation)
             s0 = warming_states[-1, :].reshape(1, -1)
             warming_outputs = self.compute_outputs([warming_states])[0]
-            # intial input (at begining of generation)
+            # initial input (at beginning of generation)
             u1 = warming_outputs[-1, :].reshape(1, -1)
 
             if init_fb is not None:
-                # initial feedback (at begining of generation)
+                # initial feedback (at beginning of generation)
                 fb0 = warming_outputs[-2, :].reshape(1, -1)
             else:
                 fb0 = None

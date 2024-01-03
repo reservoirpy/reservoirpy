@@ -11,7 +11,7 @@ add feedback connections, enable parallelization, and more.
 Before using :mod:`reservoirpy`, make sure you have correctly installed
 the package and all its dependencies by :ref:`get_started`.
 
-To learn how to create an Echo State Networks within a few minutes and get hands on ResevoirPy basic features,
+To learn how to create an Echo State Networks within a few minutes and get hands on ReservoirPy basic features,
 see :doc:`quickstart`.
 
 .. toctree::

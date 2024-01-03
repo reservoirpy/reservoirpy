@@ -31,7 +31,7 @@ hesitate to submit a pull request, we will be happy to count you as a contributo
 Disclaimer
 ==========
 
-These reproductions may not be complete or follow exaclty the original paper or implementation. They
+These reproductions may not be complete or follow exactly the original paper or implementation. They
 are simply provided as demonstration of RC techniques and ReservoirPy capacities.
 
 References

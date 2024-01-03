@@ -5,7 +5,7 @@ Create your own :py:class:`Node`
 ================================
 
 Subclassing the :py:class:`Node` to create a custom operator takes only a
-few steps to be done and operational. Sublasses of :py:class:`Node` can
+few steps to be done and operational. Subclasses of :py:class:`Node` can
 then be used as any other node instances.
 
 Create a ``forward`` function
@@ -39,7 +39,7 @@ Create an ``initialize`` function
 ---------------------------------
 
 Then, one needs to create the `initialize` function that will be used at
-runtime to infer the input and output dimensions of the node, and optionaly
+runtime to infer the input and output dimensions of the node, and optionally
 initialize some parameters (some neuronal weights, for instance):
 
 .. ipython:: python
@@ -57,7 +57,7 @@ initialize some parameters (some neuronal weights, for instance):
 Initialize feedback connections
 -------------------------------
 
-Additionaly, another function can be created to initialize feedback signal
+Additionally, another function can be created to initialize feedback signal
 dimension, if the node requires feedback:
 
 .. ipython:: python
@@ -76,7 +76,7 @@ Finally, you can add some other functions to train the parameter of your
 node. See .. TODO: add link to train page
 for more information.
 
-Instanciate a new :py:class:`Node`
+Instantiate a new :py:class:`Node`
 ----------------------------------
 
 That's it! You can now create a new :py:class:`Node` instance
@@ -95,7 +95,7 @@ parametrized with the functions you have just written:
 
 .. note::
     Do not forget to declare the mutable parameters `params` and immutable
-    hyperparameters `hypers` as dictionnaries. `params` should store all
+    hyperparameters `hypers` as dictionaries. `params` should store all
     parameters that need to be initialized and that will evolve during the
     life cycle of the node (for example, neuronal weights whom value will
     change during training). `hypers` should store parameters used to
@@ -129,6 +129,6 @@ subclass ``__init__``, and to pass it to the base class as parameter.
 It is a good practice to find meaningful names for your node instances.
 
 .. warning::
-    All Node instances names must be unique !
+    All Node instances names must be unique!
     ReservoirPy will raise an exception if it is not the case.
     All node classes generate their own unique default names though.

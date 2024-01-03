@@ -107,7 +107,7 @@ class IPReservoir(Unsupervised):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
 
-    Intrinisc Plasticity is applied as described in [1]_ and [2]_.
+    Intrinsic Plasticity is applied as described in [1]_ and [2]_.
 
     Reservoir neurons states, gathered in a vector :math:`\\mathbf{x}`, follow
     the update rule below:
@@ -154,7 +154,7 @@ class IPReservoir(Unsupervised):
     ``Win``            Input weights matrix (:math:`\\mathbf{W}_{in}`).
     ``Wfb``            Feedback weights matrix (:math:`\\mathbf{W}_{fb}`).
     ``bias``           Input bias vector (:math:`\\mathbf{b}_{in}`).
-    ``inernal_state``  Internal state (:math:`\\mathbf{r}`).
+    ``internal_state``  Internal state (:math:`\\mathbf{r}`).
     ``a``              Gain of reservoir activation (:math:`\\mathbf{a}`).
     ``b``              Bias of reservoir activation (:math:`\\mathbf{b}`).
     ================== =================================================================
@@ -186,7 +186,7 @@ class IPReservoir(Unsupervised):
     Parameters
     ----------
     units : int, optional
-        Number of reservoir units. If None, the number of units will be infered from
+        Number of reservoir units. If None, the number of units will be inferred from
         the ``W`` matrix shape.
     lr : float or array-like of shape (units,), default to 1.0
         Neurons leak rate. Must be in :math:`[0, 1]`.
@@ -230,7 +230,7 @@ class IPReservoir(Unsupervised):
         neurons connected to other reservoir neurons, including themselves.
         Must be in :math:`]0, 1]`.
     fb_connectivity : float, default to 0.1
-        Connectivity of feedback neurons, i.e. ratio of feedabck neurons
+        Connectivity of feedback neurons, i.e. ratio of feedback neurons
         connected to reservoir neurons. Must be in :math:`]0, 1]`.
     Win : callable or array-like of shape (units, features), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
         Input weights matrix or initializer. If a callable (like a function) is
@@ -348,7 +348,7 @@ class IPReservoir(Unsupervised):
         if activation not in ["tanh", "sigmoid"]:
             raise ValueError(
                 f"Activation '{activation}' must be 'tanh' or 'sigmoid' when "
-                "appliying intrinsic plasticity."
+                "applying intrinsic plasticity."
             )
 
         rng = rand_generator(seed=seed)
@@ -424,7 +424,7 @@ class IPReservoir(Unsupervised):
 
     def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "Node":
         """Partial offline fitting method of a Node.
-        Can be used to perform batched fitting or to precompute some variables
+        Can be used to perform batched fitting or to pre-compute some variables
         used by the fitting method.
 
         Parameters
@@ -435,7 +435,7 @@ class IPReservoir(Unsupervised):
             A sequence or a batch of sequence of teacher signals.
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
-            discard at the begining of each timeseries before training.
+            discard at the beginning of each timeseries before training.
 
         Returns
         -------

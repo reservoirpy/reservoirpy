@@ -8,7 +8,7 @@ Getting started
 Python version support
 ======================
 
-For now, full suppport is guaranteed for Python 3.8 and higher. Support is partial for Python 3.6 and 3.7
+For now, full support is guaranteed for Python 3.8 and higher. Support is partial for Python 3.6 and 3.7
 (see :ref:`advanced_install`).
 
 
@@ -80,6 +80,6 @@ from beginners to experts.
 Learn more
 ==========
 
-You can now start using ReservoirPy ! Learn more about the software and its capabilities in the :ref:`user_guide`.
+You can now start using ReservoirPy! Learn more about the software and its capabilities in the :ref:`user_guide`.
 You can also find tutorials and examples in the `GitHub repository
 <https://github.com/reservoirpy/reservoirpy/tree/master/tutorials>`_.

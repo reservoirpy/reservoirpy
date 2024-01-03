@@ -23,7 +23,7 @@ in Linux/MacOS/Windows :
 
 When performing the installation of ReservoirPy and all its dependencies, we also recommend using a
 virtual environment to avoid any unintended interactions with the dependencies that are already installed
-on your system. To learn more about virtual environment, you can check `Python documentation on virual
+on your system. To learn more about virtual environment, you can check `Python documentation on virtual
 environments and packages <https://docs.python.org/3/tutorial/venv.html>`_, or the documentation of the
 `conda environment manager <https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html>`_
 if you are using Anaconda.
@@ -58,7 +58,7 @@ Installation using the source code
 You can find the source code of ReservoirPy on `GitHub (https://github.com/reservoirpy/reservoirpy)
 <https://github.com/reservoirpy/reservoirpy>`_.
 
-Dowload the latest version on the ``master`` branch, or any other branch you would like
+Download the latest version on the ``master`` branch, or any other branch you would like
 to install (``dev`` branch or older versions branches). You can also fork the project from
 GitHub.
 
@@ -77,12 +77,22 @@ Additional dependencies and requirements
 
   All basic dependencies of ReservoirPy should be installed when using `pip` as package manager.
 
-  Although, to use the hyperoptimization and visualization tools, you will need to install a few
-  more dependencies in your virutal environment, namely `hyperopt`, `matplotlib` and `seaborn`:
+  Although, to use the hyperoptimization and visualization tools from the :py:mod:`reservoirpy.hyper` module, you will need to install a few
+  more dependencies in your virtual environment, namely `hyperopt`, `matplotlib` and `seaborn`. You can do so using the `hyper` extra dependencies:
 
   .. code-block::
 
-      pip install hyperopt matplotlib seaborn
+      pip install reservoirpy[hyper]
+
+  **ScikitLearnNode**
+
+  You can use some of scikit-learn's linear models through the use of the the ScikitLearnNode.
+
+  In the same manner, you can install scikit-learn with the appropriate version using:
+
+  ..code-block::
+
+      pip install reservoirpy[sklearn]
 
   **Development tools**
 
@@ -96,7 +106,7 @@ Additional dependencies and requirements
 
   **All dependencies**
 
-  A summary of all dependencies and there purpose in ReservoirPy
+  A summary of all dependencies and their purpose in ReservoirPy
   can be found in the table below:
 
   .. list-table:: All dependencies

@@ -14,7 +14,7 @@ Reservoirs
 
    Reservoir - Recurrent pool of leaky integrator neurons
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
-   IPReservoir - Reservoir with intrinsic plasticy learning rule
+   IPReservoir - Reservoir with intrinsic plasticity learning rule
 
 Offline readouts
 ================

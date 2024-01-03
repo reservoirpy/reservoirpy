@@ -14,7 +14,7 @@ from .utils.validation import check_vector, is_mapping
 
 
 def _distant_model_inputs(model):
-    """Get inputs for distant Nodes in a Model used as feedabck or teacher.
+    """Get inputs for distant Nodes in a Model used as feedback or teacher.
     These inputs should be already computed by other Nodes."""
     input_data = {}
     for p, c in model.edges:

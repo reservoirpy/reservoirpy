@@ -31,7 +31,7 @@ where :math:`S` is the set of all internal states of the :math:`n` nodes in the 
 :math:`f_n, \dots, f_2, f_1` are the forward functions of these nodes.
 
 We can represent this model as a *computational graph*, where composition of forward functions is represented as an
-edge in the graph. For instance, if node A is equiped with function :math:`f_A`, and node B with function :math:`f_B`,
+edge in the graph. For instance, if node A is equipped with function :math:`f_A`, and node B with function :math:`f_B`,
 then :math:`(f_B \circ f_A)(s_A[t], s_B[t], x[t]) = f_B(s_B[t], f_A(s_A[t], x[t]))`
 can be represented as the graph in :numref:`ABgraph`.
 
@@ -56,7 +56,7 @@ To define a :py:class:`~.Model`, the simplest way is to use the ``>>`` operator 
 
     model = nodeA >> nodeB
 
-This wille create a very simple model storing the graph in :numref:`ABgraph`.
+This will create a very simple model storing the graph in :numref:`ABgraph`.
 
 The ``>>`` operation between models uses the function :py:func:`~.link` of ReservoirPy. You can either use the function
 or the ``>>`` operator to define models:
@@ -141,7 +141,7 @@ connected neurons, and a *readout*, a simple feed-forward neural network connect
 the reservoir and the readout layer of neurons can be learned (see :ref:`learning_rules` to learn how to train an ESN).
 For now, these connections are kept constant.
 
-In ReservoirPy, a reservoir can be built using a :py:class:`~.Reservoir` node. A readout equiped with a simple linear
+In ReservoirPy, a reservoir can be built using a :py:class:`~.Reservoir` node. A readout equipped with a simple linear
 regression mechanism for connection weight learning can be created using the :py:class:`~.Ridge` node. We start with
 creating a readout and a reservoir node. The reservoir contains 100 neurons, while the readout is a layer of only
 one neuron.
@@ -199,7 +199,7 @@ to node B.
     between nodes A1, A2 and B in that case.
 
 To run this model, we can either give a single data point that will be used by both A1 and A2, or give
-different inputs to each nodes in the call or run method using a dictionnary. In this dictionnary, the key must be
+different inputs to each nodes in the call or run method using a dictionary. In this dictionary, the key must be
 the name of a model input node, and the value a data point (or a timeseries) to give to these input nodes:
 
 .. code-block::
@@ -235,7 +235,7 @@ We can still use ``>>`` and a list of nodes:
 
 This model will give inputs to node A, and then give A's internal state to node B1 and node B2.
 
-In that case, when calling or running the model, output internal states will be a dictionnary. In this dictionnary,
+In that case, when calling or running the model, output internal states will be a dictionary. In this dictionary,
 the keys will be the names of model's output nodes, and the values their respective internal states:
 
 .. code-block:: python

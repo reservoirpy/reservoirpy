@@ -5,20 +5,20 @@ Weights initialization (:mod:`reservoirpy.mat_gen`)
 
 Quick tools for weight matrices initialization.
 
-This module provides simples tools for reservoir internal weights
+This module provides simple tools for reservoir internal weights
 and input/feedback weights initialization. Spectral radius of the
 internal weights, input scaling and sparsity are fully parametrizable.
 
-Because most of the architectures developped in Reservoir Computing
-involve sparsely-connected neuronal units, the prefered format for all
+Because most of the architectures developed in Reservoir Computing
+involve sparsely-connected neuronal units, the preferred format for all
 generated matrices is a :py:mod:`scipy.sparse` format (in most cases *csr*).
 Sparse arrays allow fast computations and compact representations of
 weights matrices, and remains easily readable. They can be parsed back to
 simple Numpy arrays just by calling their ``toarray()`` method.
 
-All functions can take as paramater a :py:class:`numpy.random.Generator`
+All functions can take as parameter a :py:class:`numpy.random.Generator`
 instance, or a seed number, to ensure reproducibility. Both distribution
-of weights and distribution of non-zero connections are controled with the
+of weights and distribution of non-zero connections are controlled with the
 seed.
 
 .. autosummary::
@@ -171,11 +171,11 @@ class Initializer:
         Initializer function. Should have a `shape` argument and return a Numpy array
         or Scipy sparse matrix.
     autorize_sr : bool, default to True
-        Autorize spectral radius rescaling for this initializer.
+        Authorize spectral radius rescaling for this initializer.
     autorize_input_scaling : bool, default to True
-        Autorize input_scaling for this initializer.
+        Authorize input_scaling for this initializer.
     autorize_rescaling : bool, default to True
-        Autorize any kind of rescaling (spectral radius or input scaling) for this
+        Authorize any kind of rescaling (spectral radius or input scaling) for this
         initializer.
 
     Example
@@ -434,8 +434,8 @@ def _random_sparse(
     -------
     scipy.sparse array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     if 0 < connectivity > 1.0:
         raise ValueError("'connectivity' must be >0 and <1.")
@@ -507,8 +507,8 @@ def _uniform(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     if high < low:
         raise ValueError("'high' boundary must be > to 'low' boundary.")
@@ -565,8 +565,8 @@ def _normal(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     return _random_sparse(
         *shape,
@@ -621,8 +621,8 @@ def _bernoulli(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     if 1 < p < 0:
         raise ValueError("'p' must be <= 1 and >= 0.")
@@ -659,8 +659,8 @@ def _ones(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     return np.ones(shape, dtype=dtype)
 
@@ -685,8 +685,8 @@ def _zeros(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
 
     Note
     ----
@@ -742,8 +742,8 @@ def _fast_spectral_initialization(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
 
     Note
     ----
@@ -844,8 +844,8 @@ def _generate_internal_weights(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
 
     warnings.warn(
@@ -938,8 +938,8 @@ def _generate_input_weights(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     warnings.warn(
         "'generate_input_weights' is deprecated since v0.3.1 and will be removed in "
