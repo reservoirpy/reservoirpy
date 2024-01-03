@@ -222,7 +222,7 @@ def plot_hyperopt_report(
     max_deviation=None,
     title=None,
 ):
-    """Cross paramater scatter plot of hyperopt trials.
+    """Cross parameter scatter plot of hyperopt trials.
 
     Note
     ----
@@ -239,13 +239,13 @@ def plot_hyperopt_report(
 
         metric : str, optional
             Metric to use as performance measure,
-            stored in the hyperopt trials results dictionnaries.
+            stored in the hyperopt trials results dictionaries.
             May be different from loss metric. By default,
             'loss' is used as performance metric.
 
         loss_metric : str, optional
             Metric to use as an error measure,
-            stored in the hyperopt trials results dictionnaries.
+            stored in the hyperopt trials results dictionaries.
             May be different from the default `loss` parameter.
 
         loss_behaviour : {'min', 'max'}, optional
@@ -266,7 +266,7 @@ def plot_hyperopt_report(
         max_deviation : float, optional
             Maximum standard deviation expected from the loss mean.
             Useful to remove extreme outliers that may create odd plots.
-            By defautl, all values are kept and plotted.
+            By default, all values are kept and plotted.
 
         title : str, optional
             Optional title for the figure.

@@ -11,7 +11,7 @@ from .. import regression_models
 
 
 def _save(esn, directory: str):
-    """Base utilitary for saving an ESN model, based on the ESN class.
+    """Base utility for saving an ESN model, based on the ESN class.
 
     Arguments:
         esn {ESN} -- ESN model to save.
@@ -66,7 +66,7 @@ def _save(esn, directory: str):
             dill.dump(esn.model.model, f)
 
     # a copy of the ESN class is also serialized.
-    # allow to load an ESN without necesseraly using
+    # allow to load an ESN without necessarily using
     # the same version of Reservoirpy.
     cls_path = f"cls_bin-{current_time}"
     with open(os.path.join(savedir, cls_path), "wb+") as f:

@@ -4,7 +4,7 @@
 Developer guide
 ===============
 
-The following guide provides usefull information for new contributors or developers.
+The following guide provides useful information for new contributors or developers.
 
 **See** :ref:`advanced_install` **to learn more about ReservoirPy complete/developer installation.**
 

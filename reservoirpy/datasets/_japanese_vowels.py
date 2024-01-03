@@ -11,9 +11,7 @@ import numpy as np
 from .. import logger
 from ._utils import _get_data_folder
 
-SOURCE_URL = (
-    "https://archive.ics.uci.edu/static/public/128/japanese+vowels.zip"
-)
+SOURCE_URL = "https://archive.ics.uci.edu/static/public/128/japanese+vowels.zip"
 
 REMOTE_FILES = {
     "DESCR": "JapaneseVowels.data.html",
@@ -84,8 +82,8 @@ def japanese_vowels(
 ):
     """Load the Japanese vowels [16]_ dataset.
 
-    This is a classic audio discimination task. Nine male Japanese speakers
-    pronounced the ` \\ae\\ ` vowel. The task consists in infering the speaker
+    This is a classic audio discrimination task. Nine male Japanese speakers
+    pronounced the ` \\ae\\ ` vowel. The task consists in inferring the speaker
     identity from the audio recording.
 
     Audio recordings are series of 12 LPC cepstrum coefficient. Series contains
@@ -150,8 +148,9 @@ def japanese_vowels(
             if file_role in ["train_sizes", "test_sizes"]:
                 data = fp.read().split(" ")
                 # remove empty characters and spaces
-                data = [int(s) for s in filter(lambda s: s not in ["", "\n", " "],
-                data)]
+                data = [
+                    int(s) for s in filter(lambda s: s not in ["", "\n", " "], data)
+                ]
 
             else:
                 data = fp.read()

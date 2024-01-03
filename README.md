@@ -48,7 +48,7 @@ This library works for **Python 3.8** and higher.
 [Follow @reservoirpy](https://twitter.com/reservoirpy) updates and new releases on Twitter.
 
 ## Official documentation 📖
- 
+
 See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
 
@@ -153,7 +153,7 @@ Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-
     python simple_example_MackeyGlass.py
     ```
 
-If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
+If you have some issues testing some examples, have a look at the [extended packages requirements in ReadTheDocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
 
 ## More installation options
 
@@ -200,7 +200,7 @@ A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt
 
 Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
 
-[Turorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
+[Tutorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
@@ -242,6 +242,6 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 </div>
 
 
-This package is developped and supported by Inria at Bordeaux, France in [Mnemosyne](https://team.inria.fr/mnemosyne/) group. [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
+This package is developed and supported by Inria at Bordeaux, France in [Mnemosyne](https://team.inria.fr/mnemosyne/) group. [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
 
 

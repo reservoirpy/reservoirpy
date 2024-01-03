@@ -583,7 +583,7 @@ guidelines:
    objects living in several namespaces which creates confusion, see
    `<https://docs.python.org/2/howto/doanddont.html#language-constructs-you-should-not-use>`_.
    Keeping the original namespace ensures naming consistency in the codebase
-   and speeds up the code reviews: co-developpers and maintainers do not have
+   and speeds up the code reviews: co-developers and maintainers do not have
    to check if you are using the original module's method or if you have
    overwritten it.
 

@@ -3,19 +3,19 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import norm
 
 from reservoirpy.datasets import narma
+from reservoirpy.nodes import IPReservoir
 
 steps = 1000
 X = narma(steps)
 X = (X - X.min()) / (X.ptp())
 sigma = 0.1
-from reservoirpy.nodes import IPReservoir
 
 reservoir = IPReservoir(100, mu=0.0, sigma=sigma, sr=0.95, activation="tanh", epochs=10)
 reservoir.fit(X, warmup=100).run(X[:100])
 states = reservoir.run(X[100:])
-from scipy.stats import norm
 
 
 def heavyside(x):

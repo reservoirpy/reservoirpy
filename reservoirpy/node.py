@@ -16,7 +16,7 @@ See the following guides to:
 **Simple tools for complex reservoir computing architectures.**
 
 The Node API features a simple implementation of computational graphs, similar
-to what can be found in other popular deep learning and differenciable calculus
+to what can be found in other popular deep learning and differentiable calculus
 libraries. It is however simplified and made the most flexible possible by
 discarding the useless "fully differentiable operations" functionalities. If
 you wish to use learning rules making use of chain rule and full
@@ -37,7 +37,7 @@ Nodes can also be connected together to form a :py:class:`Model`. Models hold
 references to the connected nodes and make data flow from one node to
 the next, allowing to create *deep* models and other more complex
 architectures and computational graphs.
-:py:class:`Model` is essentialy a subclass of :py:class:`Node`,
+:py:class:`Model` is essentially a subclass of :py:class:`Node`,
 that can also be connected to other nodes and models.
 
 See the following guides to:
@@ -266,9 +266,9 @@ class Node(_Node):
         values of its parameters based on the dimension of data received as
         a feedback from another Node.
     buffers_initializer : callable, optional
-        A function called at the begining of an offline training session to
+        A function called at the beginning of an offline training session to
         create buffers used to store intermediate results, for batch or
-        multisequece offline learning.
+        multi-sequence offline learning.
     input_dim : int
         Input dimension of the Node.
     output_dim : int
@@ -380,7 +380,7 @@ class Node(_Node):
 
     def __iand__(self, other):
         raise TypeError(
-            f"Impossible to merge nodes inplace: {self} is not a Model instance."
+            f"Impossible to merge nodes in-place: {self} is not a Model instance."
         )
 
     def _flag_feedback(self):
@@ -447,7 +447,7 @@ class Node(_Node):
 
     @property
     def is_fb_initialized(self):
-        """Returns if the Node feedback intializer has been called already."""
+        """Returns if the Node feedback initializer has been called already."""
         return self._is_fb_initialized
 
     @property
@@ -472,9 +472,9 @@ class Node(_Node):
         return self._state
 
     def state_proxy(self) -> Optional[np.ndarray]:
-        """Returns the internal state freezed to be sent to other Nodes,
+        """Returns the internal state frozen to be sent to other Nodes,
         connected through a feedback connection. This prevents any change
-        occuring on the Node before feedback have reached the other Node to
+        occurring on the Node before feedback have reached the other Node to
         propagate to the other Node to early.
 
         Returns
@@ -503,7 +503,7 @@ class Node(_Node):
             )
 
     def set_state_proxy(self, value: np.ndarray = None):
-        """Change the freezed state of the Node. Used internaly to send
+        """Change the frozen state of the Node. Used internally to send
         the current state to feedback receiver Nodes during the next call.
 
         Parameters
@@ -518,7 +518,7 @@ class Node(_Node):
                 ).astype(self.dtype)
                 self._state_proxy = value
             else:
-                raise RuntimeError(f"{self.name} is not intialized yet.")
+                raise RuntimeError(f"{self.name} is not initialized yet.")
 
     def set_input_dim(self, value: int):
         """Set the input dimension of the Node. Can only be called once,
@@ -526,7 +526,7 @@ class Node(_Node):
         if not self._is_initialized:
             if self._input_dim is not None and value != self._input_dim:
                 raise ValueError(
-                    f"Imposible to use {self.name} with input "
+                    f"Impossible to use {self.name} with input "
                     f"data of dimension {value}. Node has input "
                     f"dimension {self._input_dim}."
                 )
@@ -542,7 +542,7 @@ class Node(_Node):
         if not self._is_initialized:
             if self._output_dim is not None and value != self._output_dim:
                 raise ValueError(
-                    f"Imposible to use {self.name} with target "
+                    f"Impossible to use {self.name} with target "
                     f"data of dimension {value}. Node has output "
                     f"dimension {self._output_dim}."
                 )
@@ -563,7 +563,7 @@ class Node(_Node):
             )
 
     def get_param(self, name: str):
-        """Get one of the parameters or hyperparmeters given its name."""
+        """Get one of the parameters or hyperparameters given its name."""
         if name in self._params:
             return self._params.get(name)
         elif name in self._hypers:
@@ -681,10 +681,10 @@ class Node(_Node):
 
     def initialize_feedback(self) -> "Node":
         """Call the Node feedback initializer. The feedback initializer will
-        determine feedback dimension given some feedback signal, and intialize
+        determine feedback dimension given some feedback signal, and initialize
         all parameters related to the feedback connection.
 
-        Feedback sender Node must be initialized, as the feedback intializer
+        Feedback sender Node must be initialized, as the feedback initializer
         will probably call the :py:meth:`Node.feedback` method to get
         a sample of feedback signal.
 
@@ -829,7 +829,7 @@ class Node(_Node):
 
             yield self
 
-        else:  # maybe a feedback sender then ?
+        else:  # maybe a feedback sender then?
             current_state_proxy = self._state_proxy
 
             if feedback is None:
@@ -899,7 +899,7 @@ class Node(_Node):
         x : array of shape ([n_inputs], 1, input_dim)
             One single step of input data.
         from_state : array of shape (1, output_dim), optional
-            Node state value to use at begining of computation.
+            Node state value to use at beginning of computation.
         stateful : bool, default to True
             If True, Node state will be updated by this operation.
         reset : bool, default to False
@@ -932,7 +932,7 @@ class Node(_Node):
         X : array-like of shape ([n_inputs], timesteps, input_dim)
             A sequence of data of shape (timesteps, features).
         from_state : array of shape (1, output_dim), optional
-            Node state value to use at begining of computation.
+            Node state value to use at beginning of computation.
         stateful : bool, default to True
             If True, Node state will be updated by this operation.
         reset : bool, default to False
@@ -953,7 +953,7 @@ class Node(_Node):
             if not self._is_initialized:
                 self.initialize(np.atleast_2d(X_[0]))
             seq_len = X_.shape[0]
-        else:  # multiple inputs ?
+        else:  # multiple inputs?
             if not self._is_initialized:
                 self.initialize([np.atleast_2d(x[0]) for x in X_])
             seq_len = X_[0].shape[0]
@@ -1005,7 +1005,7 @@ class Node(_Node):
             sequence of input data. By default, the training method is called
             every time the Node receive an input.
         from_state : array of shape (1, output_dim), optional
-            Node state value to use at begining of computation.
+            Node state value to use at beginning of computation.
         stateful : bool, default to True
             If True, Node state will be updated by this operation.
         reset : bool, default to False
@@ -1061,7 +1061,7 @@ class Node(_Node):
         **kwargs,
     ) -> "Node":
         """Partial offline fitting method of a Node.
-        Can be used to perform batched fitting or to precompute some variables
+        Can be used to perform batched fitting or to pre-compute some variables
         used by the fitting method.
 
         Parameters
@@ -1072,7 +1072,7 @@ class Node(_Node):
             A sequence or a batch of sequence of teacher signals.
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
-            discard at the begining of each timeseries before training.
+            discard at the beginning of each timeseries before training.
 
         Returns
         -------
@@ -1123,7 +1123,7 @@ class Node(_Node):
             an unsupervised way, if possible.
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
-            discard at the begining of each timeseries before training.
+            discard at the beginning of each timeseries before training.
 
         Returns
         -------

@@ -44,7 +44,7 @@ Discrete timeseries are defined using recurrent time-delay relations.
     narma - NARMA timeseries
 
 
-Classification/pattern recogntion tasks
+Classification/pattern recognition tasks
 =======================================
 
 Classified datasets of timeseries.
@@ -52,7 +52,7 @@ Classified datasets of timeseries.
 .. autosummary::
     :toctree: generated/
 
-    japanese_vowels - Japense vowels task
+    japanese_vowels - Japanese vowels task
 
 
 Miscellaneous
@@ -75,12 +75,12 @@ References
     .. [2] M. Hénon, ‘A two-dimensional mapping with a strange
            attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
     .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
-           on Wikipédia
+           on Wikipedia
     .. [4] R. M. May, ‘Simple mathematical models with very
            complicated dynamics’, Nature, vol. 261, no. 5560,
            Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
     .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
-           on Wikipédia
+           on Wikipedia
     .. [6] E. N. Lorenz, ‘Deterministic Nonperiodic Flow’,
            Journal of the Atmospheric Sciences, vol. 20, no. 2,
            pp. 130–141, Mar. 1963,

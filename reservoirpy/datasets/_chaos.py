@@ -1,4 +1,4 @@
-"""Choatic timeseries generators.
+"""Chaotic timeseries generators.
 """
 # Author: Nathan Trouvain at 2020 <nathan.trouvain@inria.fr>
 # Licence: MIT License
@@ -23,7 +23,7 @@ memory = Memory(os.path.join(_TEMPDIR, "datasets"), verbose=0)
 
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
     """
-    Mackey-Glass time delay diffential equation, at values x(t) and x(t-tau).
+    Mackey-Glass time delay differential equation, at values x(t) and x(t-tau).
     """
     return -b * xt + a * xtau / (1 + xtau**n)
 
@@ -76,7 +76,7 @@ def henon_map(
            attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
 
     .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
-           on Wikipédia
+           on Wikipedia
 
     """
     states = np.zeros((n_timesteps, 2))
@@ -89,7 +89,9 @@ def henon_map(
     return states
 
 
-def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs) -> np.ndarray:
+def logistic_map(
+    n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs
+) -> np.ndarray:
     """Logistic map discrete timeseries [4]_ [5]_.
 
     .. math::
@@ -117,7 +119,7 @@ def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs) ->
            Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
 
     .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
-           on Wikipédia
+           on Wikipedia
     """
     if r > 0 and 0 < x0 < 1:
         X = np.zeros(n_timesteps)
@@ -192,9 +194,7 @@ def lorenz(
 
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
-    sol = solve_ivp(
-        lorenz_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
-    )
+    sol = solve_ivp(lorenz_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -224,7 +224,7 @@ def mackey_glass(
     tau : int, default to 17
         Time delay :math:`\\tau` of Mackey-Glass equation.
         By defaults, equals to 17. Other values can
-        change the choatic behaviour of the timeseries.
+        change the chaotic behaviour of the timeseries.
     a : float, default to 0.2
         :math:`a` parameter of the equation.
     b : float, default to 0.1
@@ -625,14 +625,14 @@ def lorenz96(
     n_timesteps : int
         Number of timesteps to generate.
     warmup : int, default to 0
-        Number of timesteps to discard at the begining of the signal, to remove
+        Number of timesteps to discard at the beginning of the signal, to remove
         transient states.
     N: int, default to 36
         Dimension of the system.
     F : float, default to F
         :math:`F` parameter of the system.
     dF : float, default to 0.01
-        Pertubation applied to initial condition if x0 is None.
+        Perturbation applied to initial condition if x0 is None.
     h : float, default to 0.01
         Time delta between two discrete timesteps.
     x0 : array-like of shape (N,), default to None
@@ -750,9 +750,7 @@ def rossler(
 
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
-    sol = solve_ivp(
-        rossler_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
-    )
+    sol = solve_ivp(rossler_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -838,12 +836,12 @@ def kuramoto_sivashinsky(
     n_timesteps : int
         Number of timesteps to generate.
     warmup : int, default to 0
-        Number of timesteps to discard at the begining of the signal, to remove
+        Number of timesteps to discard at the beginning of the signal, to remove
         transient states.
     N : int, default to 128
         Dimension of the system.
     M : float, default to 0.2
-        Number of points for complex means. Modify beahviour of the resulting
+        Number of points for complex means. Modify behaviour of the resulting
         multivariate timeseries.
     x0 : array-like of shape (N,), default to None.
         Initial conditions of the system. If None, x0 is equal to

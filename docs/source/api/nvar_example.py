@@ -4,12 +4,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from reservoirpy.datasets import lorenz
 from reservoirpy.nodes import NVAR, Ridge
 
 nvar = NVAR(delay=2, order=2, strides=1)
 readout = Ridge(3, ridge=2.5e-6)
 model = nvar >> readout
-from reservoirpy.datasets import lorenz
 
 X = lorenz(5400, x0=[17.677, 12.931, 43.914], h=0.025, method="RK23")
 Xi = X[:600]

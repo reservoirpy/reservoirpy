@@ -6,7 +6,7 @@ linear regression algorithms, like ridge regularized regression
 or any linear model from scikit-learn API.
 
 These models are already packed in the :py:class:`compat.ESN`
-class, and can instanciated by passing them as arguments to the `ESN`
+class, and can instantiated by passing them as arguments to the `ESN`
 object.
 
 In most cases, you won't need to call this module directly. Simply
@@ -54,7 +54,7 @@ def _check_tikhnonv_terms(XXT, YXT, x, y):
     if y.shape[1] != YXT.shape[0]:
         raise ValueError(
             f"Impossible to perform _ridge regression: dimension mismatch "
-            f"between target sequence of shape {y.shape} and expected ouptut "
+            f"between target sequence of shape {y.shape} and expected output "
             f"dimension ({YXT.shape[0]}) ({y.shape[1]} != {YXT.shape[0]})"
         )
 
@@ -108,7 +108,7 @@ class _Model(metaclass=ABCMeta):
 class _OfflineModel(_Model, metaclass=ABCMeta):
     def partial_fit(self, X: Data, Y: Data):
         """Partially fit the states X to the targets values
-        Y. This method can be used to pre-comppute some
+        Y. This method can be used to pre-compute some
         steps of the final fitting method.
 
         Parameters

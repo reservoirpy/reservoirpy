@@ -25,7 +25,7 @@ large (a thousand units or more), and all their connections are initialized rand
 training**. Initialization of connections weights is therefore a very important step. Two major aspects of this
 initialization are covered by ReservoirPy:
 
-* the **spectral radius**, a parameter controlling the choatic dynamics emerging
+* the **spectral radius**, a parameter controlling the chaotic dynamics emerging
   in the neuronal activities of the reservoir,
 * the **probability of connection**, or *sparsity* of the reservoir, which controls how sparsely connected the neuronal
   units are inside the reservoir.
@@ -46,7 +46,7 @@ be adjusted as well::
     >>> W = generate_internal_weights(100, dist="uniform", low=-1, high=1, sr=0.9)
 
 The non-zero weights in `W` are now uniformly distributed between -1 and 1.
-Because the probability of connection should generaly be quite low, the default `proba` parameter
+Because the probability of connection should generally be quite low, the default `proba` parameter
 is set to 0.1: only 10% of the connections are non-zero.
 
 .. note::
@@ -74,7 +74,7 @@ This function allows to tune two important parameters of the input weights:
 * the **probability of connection**, as in the reservoir, which controls the proportion
   of connection between the inputs and the reservoir units.
 
-In the last exemple, we created an input matrix `Win` of shape `(100, 11)`, meaning that this matrix
+In the last example, we created an input matrix `Win` of shape `(100, 11)`, meaning that this matrix
 is able to operate between 10-dimensional inputs and a reservoir made of 100 neuronal units, with
 an additional bias term, that can be discarded by setting the `input_bias` parameter to ``False``.
 Only 10% of all the possible connections between the reservoir and the inputs are non-zero. All the other
@@ -124,10 +124,10 @@ one or two thousands. ReservoirPy allows to exploit some properties of the inter
 weights of the reservoir to speed up both the initialization of weights
 and the computations during a task.
 
-To speed up the initialization, we use the method of Gallichio et al. [1]_ called
+To speed up the initialization, we use the method of Gallicchio et al. [1]_ called
 *fast spectral spectral initialization*. In large matrices, computing the eigenvalues
 to find the spectral radius can be long. This method allows to fix the spectral radius
-value to a desired constant without having to explicitely compute the spectral radius,
+value to a desired constant without having to explicitly compute the spectral radius,
 saving great amount of time, using the :py:func:`mat_gen.fast_spectral_initialization` function::
 
     >>> from reservoirpy.mat_gen import fast_spectral_initialization
@@ -172,12 +172,12 @@ for *leaking rate*. The leaking rate controls the *memory flow* of the reservoir
 of its internal states. A low leaking rate allows previous states to be *remembered more*, while
 a maximum leaking rate of 0 deactivates the leaky integration.
 
-What about feedback ? It can also be enabled by specifying some more parameters, like an output
+What about feedback? It can also be enabled by specifying some more parameters, like an output
 activation function::
 
     >>> fb_esn = ESN(lr=0.2, W=W, Win=Win, Wfb=Wfb, input_bias=True, fbfunc=lambda x: x)
 
-We just defined an ESN using some feedback connections specifyed in `Wfb`. The outputs will be
+We just defined an ESN using some feedback connections specified in `Wfb`. The outputs will be
 fed to `Wfb`, after being passed to the `fbfunc` function. Here, the output activation function
 is just the identity function, but it could be, for instance, a sigmoid function if you are building
 a classifier with logits outputs.
@@ -194,7 +194,7 @@ in response to some inputs: the :py:meth:`compat.ESN.compute_all_states` method:
 
 Assuming that ``X`` is a list of Numpy arrays, you will obtain a list of internal activations
 ``states`` of the same length. :py:class:`compat.ESN` objects can only operate on Python list objects,
-to enable **parallelization of state computation**. If ``X`` contains several independant
+to enable **parallelization of state computation**. If ``X`` contains several independent
 sequences of inputs, for instance, several sequences of text, or speech, or timeseries,
 ReservoirPy will enabled parallelization of computation by default, using the
 `joblib <https://joblib.readthedocs.io/en/latest/>`_ module. Each sequence will then be
@@ -210,7 +210,7 @@ treated separately and simultaneously to speed up the computation of activations
 Start from a previously computed state
 --------------------------------------
 
-In some cases, you may want to initialize the current state of the resevoir with some
+In some cases, you may want to initialize the current state of the reservoir with some
 previously computed activations to avoid having arbitrary transient values, or to perform
 the computation of next states using the memory accumulated during previous computations.
 This can be achieved by passing a state vector through the `init_state` parameter::
@@ -231,7 +231,7 @@ must be used::
 
     >>> states = fb_esn.compute_all_states(X, forced_teachers=y)
 
-We artificialy use some expected output values ``y`` as feedback values for the ESN. Of course,
+We artificially use some expected output values ``y`` as feedback values for the ESN. Of course,
 the ``y`` values must be the outputs values expected from ``X``, hence ``X`` and ``y`` are both
 sequences of Numpy arrays of same length.
 
@@ -259,7 +259,7 @@ V is the output dimension of the reservoir.
 Train an ESN
 ============
 
-ESNs can be trained on various tasks using very simple learning rules, usually adapated from
+ESNs can be trained on various tasks using very simple learning rules, usually adapted from
 linear regression techniques. This learning phase allows to create a new weight matrix `Wout`,
 that will be used as a *readout* of the internal states: each activation vector produced
 by the reservoir will be *read* using the learnt weights to produce the desired output value.
@@ -272,7 +272,7 @@ is using the :py:meth:`compat.ESN.train` method::
 Using some target values ``y`` and the states produced using the input values ``X``, the ESN
 will learn a new ``Wout`` matrix.
 
-By default, training states are not explicitely computed and returned. You can force this behaviour
+By default, training states are not explicitly computed and returned. You can force this behaviour
 by using the ``return_states`` parameter::
 
     >>> states = esn.train(X, y, return_states=True)
@@ -286,7 +286,7 @@ by using the ``return_states`` parameter::
 This training can be tuned in several ways: first, all the parameters presented in :ref:`run_reservoir`
 can be used in the :py:meth:`compat.ESN.train` method, like `wash_nr_time_steps` or `init_state`. This
 allows to define the behavior of the ESN regarding its transient states. Second, the learning rule
-for ``Wout`` can be specifyed at the creation of the ESN object. By default, this learning rule
+for ``Wout`` can be specified at the creation of the ESN object. By default, this learning rule
 use a pseudo-inversion of the states matrix (the concatenation of all internal states vectors)
 to find the solution of :math:`y = Wout \cdot X`. But many other learning rules are available for
 offline learning, and an another object (:py:class:`compat.ESNOnline`) also provides online learning
@@ -295,8 +295,8 @@ rules.
 Train with ridge regression
 ---------------------------
 
-A common learning process for readout matrix is the `Tikhonov regression <https://fr.wikipedia.org/wiki
-/R%C3%A9gularisation_de_Tikhonov>`_, using L2 regularization,
+A common learning process for readout matrix is the `Tikhonov regression <https://en.wikipedia.org/wiki/
+Ridge_regression#Tikhonov_regularization>`_, using L2 regularization,
 also called *ridge regression*.
 
 Ridge regression is implemented inside ReservoirPy. You can enable ridge regression by simply

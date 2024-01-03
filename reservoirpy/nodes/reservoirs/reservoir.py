@@ -67,7 +67,7 @@ class Reservoir(Node):
     ``Win``            Input weights matrix (:math:`\\mathbf{W}_{in}`).
     ``Wfb``            Feedback weights matrix (:math:`\\mathbf{W}_{fb}`).
     ``bias``           Input bias vector (:math:`\\mathbf{b}`).
-    ``inernal_state``  Internal state used with equation="external" (:math:`\\mathbf{r}`).
+    ``internal_state``  Internal state used with equation="external" (:math:`\\mathbf{r}`).
     ================== ===================================================================
 
     :py:attr:`Reservoir.hypers` **list:**
@@ -93,7 +93,7 @@ class Reservoir(Node):
     Parameters
     ----------
     units : int, optional
-        Number of reservoir units. If None, the number of units will be infered from
+        Number of reservoir units. If None, the number of units will be inferred from
         the ``W`` matrix shape.
     lr : float or array-like of shape (units,), default to 1.0
         Neurons leak rate. Must be in :math:`[0, 1]`.
@@ -129,7 +129,7 @@ class Reservoir(Node):
         neurons connected to other reservoir neurons, including themselves.
         Must be in :math:`]0, 1]`.
     fb_connectivity : float, default to 0.1
-        Connectivity of feedback neurons, i.e. ratio of feedabck neurons
+        Connectivity of feedback neurons, i.e. ratio of feedback neurons
         connected to reservoir neurons. Must be in :math:`]0, 1]`.
     Win : callable or array-like of shape (units, features), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
         Input weights matrix or initializer. If a callable (like a function) is used,
@@ -180,7 +180,7 @@ class Reservoir(Node):
     ----
 
     If W, Win, bias or Wfb are initialized with an array-like matrix, then all
-    initializers parameters such as sprectral radius (``sr``) or input scaling
+    initializers parameters such as spectral radius (``sr``) or input scaling
     (``input_scaling``) are ignored.
     See :py:mod:`~reservoirpy.mat_gen` for more information.
 

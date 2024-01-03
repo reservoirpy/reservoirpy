@@ -59,7 +59,7 @@ def initialize(node, x=None, *args, **kwargs):
 
         # for each monomial created in the non linear part, indices
         # of the n components involved, n being the order of the
-        # monomials. Precompute them to improve efficiency.
+        # monomials. Pre-compute them to improve efficiency.
         idx = np.array(
             list(it.combinations_with_replacement(np.arange(linear_dim), order))
         )
@@ -73,9 +73,9 @@ def initialize(node, x=None, *args, **kwargs):
 class NVAR(Node):
     """Non-linear Vector AutoRegressive machine.
 
-    NVAR is implemeted as described in [1]_.
+    NVAR is implemented as described in [1]_.
 
-    The state :math:`\\mathbb{O}_{total}` of the NVAR first contains a serie of linear
+    The state :math:`\\mathbb{O}_{total}` of the NVAR first contains a series of linear
     features :math:`\\mathbb{O}_{lin}` made of input data concatenated
     with delayed inputs:
 
@@ -90,7 +90,7 @@ class NVAR(Node):
     The operator :math:`\\oplus` denotes the concatenation.
 
     In addition to these linear features, nonlinear representations
-    :math:`\\mathbb{O}_{nonlin}^n` of the inputs are contructed using all unique
+    :math:`\\mathbb{O}_{nonlin}^n` of the inputs are constructed using all unique
     monomials of order :math:`n` of these inputs:
 
     .. math::

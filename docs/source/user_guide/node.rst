@@ -11,7 +11,7 @@ Node functional API
 .. |winarrow| image:: ../_static/user_guide/node/win_weight.svg
 
 The Node API features a simple implementation of computational graphs to develop complex reservoir computing
-architectures, similar to what can be found in other popular deep learning and differenciable calculus
+architectures, similar to what can be found in other popular deep learning and differentiable calculus
 libraries. It is however simplified and made the most flexible possible by
 discarding the useless "fully differentiable operations" functionalities. If
 you wish to use learning rules making use of chain rule and full
@@ -20,11 +20,11 @@ ReservoirPy may not be the tool you need
 (actually, the whole paradigm of reservoir computing might arguably not be the
 tool you need).
 
-What is a Node ?
+What is a Node?
 ----------------
 
 In ReservoirPy, all operations are Nodes. For instance, imagine you want to build an Echo State Network (ESN). An
-ESN is made of a *reservoir*, a pool of randomly connected neurons with reccurent connexions, and a *readout*, a
+ESN is made of a *reservoir*, a pool of randomly connected neurons with recurrent connexions, and a *readout*, a
 layer of linear neurons connected with the neurons of the reservoir. The readout connections are moreover equipped with
 a learning rule such as ridge regression.
 
@@ -38,7 +38,7 @@ parameters, their hyperparameters, their states, their functions, and so on.
 In the following guide, you will learn more about how to work with :py:class:`~.Node` objects. If you want to learn more
 about how to define computational graphs of nodes, you can read :ref:`model`.
 
-What is a Node, really ?
+What is a Node, really?
 ------------------------
 
 In a computational graph, each operation is represented by a :py:class:`~.Node`. A node is able
@@ -58,10 +58,10 @@ graph. Within ReservoirPy, we define a Node as a simple object holding a functio
 Here, a node is given a function :math:`f`, called a **forward function**,
 and an **internal state** :math:`s[t]`. Notice how this state depends
 on a mysterious variable :math:`t`. Well, this is just a discrete representation of time. Indeed, all operations in
-ReservoirPy are **recurrent**: the foward function :math:`f` is always applied on some data and
+ReservoirPy are **recurrent**: the forward function :math:`f` is always applied on some data and
 on its own previous results, stored in the state :math:`s` (:numref:`node_t1_out`).
 
-To summarize, a node performs operations that can be mathematicaly expressed as :eq:`rec_node`:
+To summarize, a node performs operations that can be mathematically expressed as :eq:`rec_node`:
 
 .. math::
     :label: rec_node
@@ -97,7 +97,7 @@ To learn how to modify or initialize a node state, see :ref:`/user_guide/quickst
 Applying node function and updating state
 -----------------------------------------
 
-And to apply the forwardfunction :math:`f` to some input data, one can simply use the :py:meth:`~.Node.call` method of a
+And to apply the forward function :math:`f` to some input data, one can simply use the :py:meth:`~.Node.call` method of a
 node, or directory call the node on some data:
 
 .. code-block:: python
@@ -179,7 +179,7 @@ They can also directly be accessed as attributes:
 Naming nodes
 ------------
 
-Nodes can be named at instanciation.
+Nodes can be named at instantiation.
 
 .. code-block:: python
 
@@ -234,7 +234,7 @@ The forward function of a Reservoir node can be seen in equation :eq:`res_equati
 
 Internal state of the reservoir :math:`s[t]` is in that case a vector containing the activations of all neurons
 at timestep :math:`t`. The forward function is parametrized by an hyperparameter :math:`lr` (called *leaking rate*)
-and two matrices of parameters :math:`W` and :math:`W_{in}`, storing the synpatic weights of all neuronal connections.
+and two matrices of parameters :math:`W` and :math:`W_{in}`, storing the synaptic weights of all neuronal connections.
 Connections stored in :math:`W` are represented using |warrow| in figure :numref:`res_t0`, and connections stored in
 :math:`W_{in}` are represented using |winarrow|.
 
@@ -247,7 +247,7 @@ Connections stored in :math:`W` are represented using |warrow| in figure :numref
     A :py:class:`~.Reservoir`. Internal state of the node is a vector containing activations of all neurons in the
     reservoir.
 
-To instanciate a :py:class:`~.Reservoir`, only the number of units within it is required. Leaking rate will have in that
+To instantiate a :py:class:`~.Reservoir`, only the number of units within it is required. Leaking rate will have in that
 case a default value of 1, and :math:`W` and :math:`W_{in}` will be randomly initialized with a 80% sparsity.
 
 .. ipython:: python
@@ -271,7 +271,7 @@ a null vector. We first create some dummy timeseries ``X``:
     X = np.sin(np.arange(0, 10))[:, np.newaxis]
 
 Notice that all nodes require data to be 2-dimensional arrays, with first axis representing time and second axis
-representing features. We can now call the resevoir on some data, to update its internal state as shown below.
+representing features. We can now call the reservoir on some data, to update its internal state as shown below.
 Reservoir state is accessible using its :py:meth:`~.Reservoir.state` method.
 
 .. ipython:: python

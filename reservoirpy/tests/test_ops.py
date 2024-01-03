@@ -27,7 +27,7 @@ def test_node_link(plus_node, minus_node, offline_node, offline_node2, inverter_
     }
     assert set(model.nodes) == set(model3.nodes) | set(model4.nodes)
 
-    # cycles in the model !
+    # cycles in the model!
     with pytest.raises(RuntimeError):
         model1 & model2
 
