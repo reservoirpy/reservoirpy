@@ -2,47 +2,33 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from copy import deepcopy
 from functools import partial
 
 import numpy as np
 
 from ...node import Node
-from ...type import global_dtype
-from ...utils.sklearn_helper import get_linear
 
 
-def readout_forward(readout: Node, X):
-    pred = readout.clf.predict(X)
-    if readout.method_name in ["LogisticRegression", "RidgeClassifier"]:
-        return pred[0]
-    return pred
-
-
-def partial_backward(readout: Node, X_batch, Y_batch=None):
-    readout.X_buff.append(X_batch)
-    readout.Y_buff.append(Y_batch)
-
-
-def initialize_buffers(readout):
-    input_dim = readout.input_dim
-    output_dim = readout.output_dim
+def forward(readout: Node, X):
+    instances = readout.params.get("instances")
+    if type(instances) is not list:
+        return instances.predict(X)
+    else:
+        return np.concatenate([instance.predict(X) for instance in instances], axis=-1)
 
 
 def backward(readout: Node, X, Y):
-    X, Y = np.array(readout.X_buff), np.array(readout.Y_buff)
-    if readout.method_name in ["LogisticRegression", "RidgeClassifier", "Perceptron"]:
-        X, Y = X[:, -1:, :], Y[:, -1, 0]
-        N, T, D = X.shape
-        # sklearn expects inputs in the dimensions of (n_samples, n_features)
-        X = np.reshape(X, (N * T, D))
+    # Concatenate all the batches as one np.ndarray of shape (timeseries*timesteps, features)
+    X_ = np.concatenate(X, axis=0)
+    Y_ = np.concatenate(Y, axis=0)
+
+    instances = readout.params.get("instances")
+    if type(instances) is not list:
+        instances.fit(X_, Y_)
     else:
-        N, T, D = X.shape
-        C = Y.shape[-1]
-        # sklearn expects inputs in the dimensions of (n_samples, n_features)
-        X, Y = np.reshape(X, (N * T, D)), np.reshape(
-            Y, (N * T, C)
-        )  # concating the 1st and 2nd dimis
-    readout.clf.fit(X, Y)
+        for i, instance in enumerate(instances):
+            instance.fit(X_, Y_[..., i])
 
 
 def initialize(readout: Node, x=None, y=None, *args, **kwargs):
@@ -63,31 +49,40 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
 
         readout.set_input_dim(in_dim)
         readout.set_output_dim(out_dim)
+
         kwargs = {k: v for k, v in kwargs.items() if v}
-        readout.clf = readout.f(**kwargs)
+        first_instance = readout.model(**deepcopy(kwargs))
+        # If there are multiple output but the specified model doesn't support
+        # multiple outputs, we create an instance of the model for each output.
+        if out_dim > 1 and not first_instance._get_tags().get("multioutput"):
+            instances = [readout.model(**deepcopy(kwargs)) for i in range(out_dim)]
+            readout.set_param("instances", instances)
+        else:
+            readout.set_param("instances", first_instance)
+
+        return
 
 
 class ScikitLearnNode(Node):
     """
-    A node representing a sklearn linear model that learns the connections
-    between input and output data.
+    A node interfacing a scikit-learn linear model that can be used as an offline
+    readout node.
 
-    The ScikitLearnNode can take any sklearn linear model as input and create a node
-    with the specified model.
+    The ScikitLearnNode takes a scikit-learn linear model as parameter and creates a
+    node with the specified model.
 
-    Currently we support Linear classifiers like LogisticRegression,
-    RidgeClassifiers and Linear regressors like Ridge, LinearRegression
-    Lasso and ElastiNet.
+    We currently support linear classifiers like `LogisticRegression`,
+    `RidgeClassifier` and linear regressors like `Ridge`, `LinearRegression`
+    Lasso and ElasticNet.
 
-    For more information on the above mentioned estimators,
-    please visit sklearn linear model API reference <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
+    For more information on the above-mentioned estimators,
+    please visit scikit-learn linear model API reference <https://scikit-learn.org/
+    stable/modules/classes.html#module-sklearn.linear_model>`_
 
     :py:attr:`ScikitLearnNode.hypers` **list**
 
     ================== =================================================================
-    ``f``              Function to get the sklearn linear model.
-    ``X_buff``         Buffer to store input data.
-    ``Y_buff``         Buffer to store output data.
+    ``model``              Underlying scikit-learn model.
     ================== =================================================================
 
     Parameters
@@ -97,7 +92,7 @@ class ScikitLearnNode(Node):
     name : str, optional
         Node name.
     **kwargs
-        Additional keyword arguments for the sklearn linear model.
+        Additional keyword arguments for the scikit-learn model.
 
     Example
     -------
@@ -105,19 +100,22 @@ class ScikitLearnNode(Node):
     >>> node = ScikitLearnNode(name="Ridge", alpha=0.5)
     """
 
-    def __init__(self, output_dim=None, method=None, **kwargs):
+    def __init__(self, output_dim=None, model=None, **kwargs):
+        model_name = model.__name__
+        if not hasattr(model, "fit"):
+            raise AttributeError(
+                f"Specified model {model_name} has no method called 'fit'."
+            )
+        if not hasattr(model, "predict"):
+            raise AttributeError(
+                f"Specified model {model_name} has no method called 'predict'."
+            )
+
         super(ScikitLearnNode, self).__init__(
-            hypers={
-                "f": get_linear(method),
-                "X_buff": list(),
-                "Y_buff": list(),
-                "method_name": method,
-            },
-            forward=readout_forward,
-            partial_backward=partial_backward,
-            buffers_initializer=initialize_buffers,
+            hypers={"model": model, **kwargs},
+            params={"instances": None},
+            forward=forward,
             backward=backward,
             output_dim=output_dim,
             initializer=partial(initialize, **kwargs),
-            method=method,
         )
