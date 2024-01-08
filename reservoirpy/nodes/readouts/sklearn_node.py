@@ -19,7 +19,8 @@ def forward(readout: Node, X):
 
 
 def backward(readout: Node, X, Y):
-    # Concatenate all the batches as one np.ndarray of shape (timeseries*timesteps, features)
+    # Concatenate all the batches as one np.ndarray
+    # of shape (timeseries*timesteps, features)
     X_ = np.concatenate(X, axis=0)
     Y_ = np.concatenate(Y, axis=0)
 
@@ -69,16 +70,27 @@ class ScikitLearnNode(Node):
     A node interfacing a scikit-learn linear model that can be used as an offline
     readout node.
 
-    The ScikitLearnNode takes a scikit-learn linear model as parameter and creates a
+    The ScikitLearnNode takes a scikit-learn model as parameter and creates a
     node with the specified model.
 
-    We currently support linear classifiers like `LogisticRegression`,
-    `RidgeClassifier` and linear regressors like `Ridge`, `LinearRegression`
-    Lasso and ElasticNet.
+    We currently support classifiers (like
+    :py:class:`sklearn.linear_model.LogisticRegression` or
+    :py:class:`sklearn.linear_model.RidgeClassifier`) and regressors (like
+    :py:class:`sklearn.linear_model.Lasso` or
+    :py:class:`sklearn.linear_model.ElasticNet`).
 
     For more information on the above-mentioned estimators,
-    please visit scikit-learn linear model API reference <https://scikit-learn.org/
-    stable/modules/classes.html#module-sklearn.linear_model>`_
+    please visit scikit-learn linear model API reference
+    <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
+
+    :py:attr:`ScikitLearnNode.params` **list**
+
+    ================== =================================================================
+    ``instances``      Instance(s) of the model class used to fit and predict. If
+                       :py:attr:`ScikitLearnNode.output_dim` > 1 and the model doesn't
+                       support multi-outputs, `instances` is a list of instances, one
+                       for each output feature.
+    ================== =================================================================
 
     :py:attr:`ScikitLearnNode.hypers` **list**
 
@@ -91,15 +103,18 @@ class ScikitLearnNode(Node):
     ----------
     output_dim : int, optional
         Number of units in the readout, can be inferred at first call.
-    name : str, optional
+    model : str, optional
         Node name.
     model_hypers
         (dict) Additional keyword arguments for the scikit-learn model.
 
     Example
     -------
-    >>> from reservoirpy import ScikitLearnNode
-    >>> node = ScikitLearnNode(name="Ridge", alpha=0.5)
+    >>> from reservoirpy import Reservoir, ScikitLearnNode
+    >>> from sklearn.linear_model import Lasso
+    >>> reservoir = Reservoir(units=100)
+    >>> readout = ScikitLearnNode(model=Lasso, alpha=1e-5)
+    >>> model = reservoir >> readout
     """
 
     def __init__(self, output_dim=None, model=None, model_hypers={}, **kwargs):
