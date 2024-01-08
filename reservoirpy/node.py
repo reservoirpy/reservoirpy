@@ -213,9 +213,9 @@ def _partial_backward_default(node, X_batch, Y_batch=None):
 
     if Y_batch is not None:
         if isinstance(Y_batch, np.ndarray):
-            if Y_batch.shape[:1] == output_dim:
+            if Y_batch.shape[1:] == output_dim:
                 node._Y.append(Y_batch)
-            elif Y_batch.shape[:2] == input_dim:
+            elif Y_batch.shape[2:] == output_dim:
                 node._Y.append([Y_batch[i] for i in range(len(Y_batch))])
         else:
             node._Y.extend(Y_batch)
