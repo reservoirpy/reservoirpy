@@ -529,6 +529,7 @@ def narma(
     c: float = 0.001,
     x0: Union[list, np.ndarray] = [0.0],
     seed: Union[int, RandomState] = None,
+    u: np.ndarray = None,
 ) -> np.ndarray:
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
     as first defined in [14]_, and as used in [15]_.
@@ -542,6 +543,15 @@ def narma(
 
     where :math:`u[t]` are sampled following a uniform distribution in
     :math:`[0, 0.5]`.
+
+    Note
+    ----
+    In most reservoir computing benchmarks, $u$ is given as an input. If you want
+    access to its value, you should create the `u` array and pass it as an argument
+    to the function as shown below.
+    This choice is made to avoid breaking changes. In future ReservoirPy versions, `u`
+    will be returned with `y`.
+    See `related discussion <https://github.com/reservoirpy/reservoirpy/issues/142>`_.
 
     Parameters
     ----------
@@ -561,11 +571,25 @@ def narma(
         Initial conditions of the system.
     seed : int or :py:class:`numpy.random.Generator`, optional
         Random state seed for reproducibility.
+    u : array of shape (`n_timesteps` + `order`, 1), default to None.
+        Input timeseries (usually uniformly distributed). See above note.
 
     Returns
     -------
     array of shape (n_timesteps, 1)
         NARMA timeseries.
+
+    Example
+    -------
+    >>> import numpy as np
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> from reservoirpy.datasets import narma
+    >>> model = Reservoir(100) >> Ridge()
+    >>> n_timesteps, order = 2000, 30
+    >>> rng = np.random.default_rng(seed=2341)
+    >>> u = rng.uniform(0, 0.5, size=(n_timesteps + order, 1))
+    >>> y = narma(n_timesteps=n_timesteps, order=order, u=u)
+    >>> model.fit(u[order:], y)
 
     References
     ----------
@@ -590,12 +614,14 @@ def narma(
     x0 = check_vector(np.atleast_2d(np.asarray(x0)))
     y[: x0.shape[0], :] = x0
 
-    noise = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
+    if u is None:
+        u = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
+
     for t in range(order, n_timesteps + order - 1):
         y[t + 1] = (
             a1 * y[t]
             + a2 * y[t] * np.sum(y[t - order : t])
-            + b * noise[t - order] * noise[t]
+            + b * u[t - order] * u[t]
             + c
         )
     return y[order:, :]
