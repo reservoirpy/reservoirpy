@@ -4,7 +4,6 @@
 
 import numpy as np
 import pytest
-import sklearn
 from sklearn.linear_model import (
     LinearRegression,
     LogisticRegression,
@@ -14,30 +13,29 @@ from sklearn.linear_model import (
     RidgeClassifier,
 )
 
-from reservoirpy.nodes import Reservoir, ScikitLearnNode
+from reservoirpy.nodes import ScikitLearnNode
 
 
 @pytest.mark.parametrize(
-    "model",
+    "model, model_kwargs",
     [
-        LogisticRegression,
-        RidgeClassifier,
-        PassiveAggressiveClassifier,
-        Perceptron,
-        RidgeClassifier,
+        (LogisticRegression, {"random_state": 2341}),
+        (PassiveAggressiveClassifier, {"random_state": 2341}),
+        (Perceptron, {"random_state": 2341}),
+        (RidgeClassifier, {"random_state": 2341}),
     ],
 )
-def test_scikitlearn_classifiers(model):
+def test_scikitlearn_classifiers(model, model_kwargs):
     pytest.importorskip("sklearn")
 
-    rng = np.random.default_rng(2341)
+    rng = np.random.default_rng(seed=2341)
 
-    X_train = rng.normal(0, 1, size=(1000, 2))
-    y_train = (X_train[:, 0:1] + X_train[:, 1:2] > 0.0).astype(np.float16)
+    X_train = rng.normal(0, 1, size=(10000, 2))
+    y_train = (X_train[:, 0:1] > 0.0).astype(np.float16)
     X_test = rng.normal(0, 1, size=(100, 2))
-    y_test = (X_test[:, 0:1] + X_test[:, 1:2] > 0.0).astype(np.float16)
+    y_test = (X_test[:, 0:1] > 0.0).astype(np.float16)
 
-    scikit_learn_node = ScikitLearnNode(model=model)
+    scikit_learn_node = ScikitLearnNode(model=model, **model_kwargs)
 
     scikit_learn_node.fit(X_train, y_train)
     y_pred = scikit_learn_node.run(X_test)
@@ -46,24 +44,24 @@ def test_scikitlearn_classifiers(model):
 
 
 @pytest.mark.parametrize(
-    "model",
+    "model, model_kwargs",
     [
-        LinearRegression,
-        Ridge,
+        (LinearRegression, {}),
+        (Ridge, {"random_state": 2341}),
     ],
 )
-def test_scikitlearn_regressors(model):
+def test_scikitlearn_regressors(model, model_kwargs):
     pytest.importorskip("sklearn")
     seed = 2341
     rng = np.random.default_rng(seed)
-    X_train = rng.normal(0, 1, size=(1000, 2))
+    X_train = rng.normal(0, 1, size=(10000, 2))
     y_train = X_train[:, 0:1] + X_train[:, 1:2]
     y_train = y_train.astype(np.float16)
     X_test = rng.normal(0, 1, size=(100, 2))
     y_test = X_test[:, 0:1] + X_test[:, 1:2]
     y_test = y_test.astype(np.float16)
 
-    scikit_learn_node = ScikitLearnNode(model=model)
+    scikit_learn_node = ScikitLearnNode(model=model, **model_kwargs)
 
     scikit_learn_node.fit(X_train, y_train)
     y_pred = scikit_learn_node.run(X_test)
