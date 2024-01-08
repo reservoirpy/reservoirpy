@@ -17,7 +17,7 @@ from reservoirpy.nodes import ScikitLearnNode
 
 
 @pytest.mark.parametrize(
-    "model, model_kwargs",
+    "model, model_hypers",
     [
         (LogisticRegression, {"random_state": 2341}),
         (PassiveAggressiveClassifier, {"random_state": 2341}),
@@ -25,7 +25,7 @@ from reservoirpy.nodes import ScikitLearnNode
         (RidgeClassifier, {"random_state": 2341}),
     ],
 )
-def test_scikitlearn_classifiers(model, model_kwargs):
+def test_scikitlearn_classifiers(model, model_hypers):
     pytest.importorskip("sklearn")
 
     rng = np.random.default_rng(seed=2341)
@@ -35,7 +35,7 @@ def test_scikitlearn_classifiers(model, model_kwargs):
     X_test = rng.normal(0, 1, size=(100, 2))
     y_test = (X_test[:, 0:1] > 0.0).astype(np.float16)
 
-    scikit_learn_node = ScikitLearnNode(model=model, **model_kwargs)
+    scikit_learn_node = ScikitLearnNode(model=model, model_hypers=model_hypers)
 
     scikit_learn_node.fit(X_train, y_train)
     y_pred = scikit_learn_node.run(X_test)
@@ -44,13 +44,13 @@ def test_scikitlearn_classifiers(model, model_kwargs):
 
 
 @pytest.mark.parametrize(
-    "model, model_kwargs",
+    "model, model_hypers",
     [
         (LinearRegression, {}),
         (Ridge, {"random_state": 2341}),
     ],
 )
-def test_scikitlearn_regressors(model, model_kwargs):
+def test_scikitlearn_regressors(model, model_hypers):
     pytest.importorskip("sklearn")
     seed = 2341
     rng = np.random.default_rng(seed)
@@ -61,7 +61,7 @@ def test_scikitlearn_regressors(model, model_kwargs):
     y_test = X_test[:, 0:1] + X_test[:, 1:2]
     y_test = y_test.astype(np.float16)
 
-    scikit_learn_node = ScikitLearnNode(model=model, **model_kwargs)
+    scikit_learn_node = ScikitLearnNode(model=model, model_hypers=model_hypers)
 
     scikit_learn_node.fit(X_train, y_train)
     y_pred = scikit_learn_node.run(X_test)

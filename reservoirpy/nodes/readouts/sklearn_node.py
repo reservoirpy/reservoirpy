@@ -31,7 +31,7 @@ def backward(readout: Node, X, Y):
             instance.fit(X_, Y_[..., i])
 
 
-def initialize(readout: Node, x=None, y=None, *args, **kwargs):
+def initialize(readout: Node, x=None, y=None, model_hypers={}):
 
     if x is not None:
 
@@ -50,12 +50,13 @@ def initialize(readout: Node, x=None, y=None, *args, **kwargs):
         readout.set_input_dim(in_dim)
         readout.set_output_dim(out_dim)
 
-        kwargs = {k: v for k, v in kwargs.items() if v}
-        first_instance = readout.model(**deepcopy(kwargs))
+        first_instance = readout.model(**deepcopy(model_hypers))
         # If there are multiple output but the specified model doesn't support
         # multiple outputs, we create an instance of the model for each output.
         if out_dim > 1 and not first_instance._get_tags().get("multioutput"):
-            instances = [readout.model(**deepcopy(kwargs)) for i in range(out_dim)]
+            instances = [
+                readout.model(**deepcopy(model_hypers)) for i in range(out_dim)
+            ]
             readout.set_param("instances", instances)
         else:
             readout.set_param("instances", first_instance)
@@ -82,7 +83,8 @@ class ScikitLearnNode(Node):
     :py:attr:`ScikitLearnNode.hypers` **list**
 
     ================== =================================================================
-    ``model``              Underlying scikit-learn model.
+    ``model``          (class) Underlying scikit-learn model.
+    ``model_hypers``   (dict) Keyword arguments for the scikit-learn model.
     ================== =================================================================
 
     Parameters
@@ -91,8 +93,8 @@ class ScikitLearnNode(Node):
         Number of units in the readout, can be inferred at first call.
     name : str, optional
         Node name.
-    **kwargs
-        Additional keyword arguments for the scikit-learn model.
+    model_hypers
+        (dict) Additional keyword arguments for the scikit-learn model.
 
     Example
     -------
@@ -100,7 +102,7 @@ class ScikitLearnNode(Node):
     >>> node = ScikitLearnNode(name="Ridge", alpha=0.5)
     """
 
-    def __init__(self, output_dim=None, model=None, **kwargs):
+    def __init__(self, output_dim=None, model=None, model_hypers={}, **kwargs):
         model_name = model.__name__
         if not hasattr(model, "fit"):
             raise AttributeError(
@@ -112,10 +114,11 @@ class ScikitLearnNode(Node):
             )
 
         super(ScikitLearnNode, self).__init__(
-            hypers={"model": model, **kwargs},
+            hypers={"model": model, "model_hypers": model_hypers},
             params={"instances": None},
             forward=forward,
             backward=backward,
             output_dim=output_dim,
-            initializer=partial(initialize, **kwargs),
+            initializer=partial(initialize, model_hypers=model_hypers),
+            **kwargs,
         )
