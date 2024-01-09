@@ -14,22 +14,22 @@ Create a ``forward`` function
 First, one needs to create the `forward` function that will be applied
 by the new node class:
 
-.. ipython::
+.. ipython:: python
 
     import numpy as np
-
     from reservoirpy import Node
 
     def forward(node: Node, x: np.ndarray) -> np.ndarray:
-       '''Does something to the current state of the node, the input
-       data and some feedback.'''
-       state = node.state()  # get current node state
-       if node.has_feedback:
-           feedback = node.feedback()  # call state of some distant node
-       some_param = node.const1
-       some_other_param = node.const2
-       return x + some_param * state + some_other_param * feedback
-
+        """Does something to the current state of the node, the input
+        data and some feedback."""
+        state = node.state()  # get current node state
+        some_param = node.const1
+        some_other_param = node.const2
+        if node.has_feedback:
+            feedback = node.feedback()  # call state of some distant node
+            return x + some_param * state + some_other_param * feedback
+        else:
+            return x + some_param * state
 
 This function **must** take as parameter a vector `x` of shape
 ``(1, dim x)`` (one timestep of data) and the node instance itself. You can
@@ -44,7 +44,7 @@ initialize some parameters (some neuronal weights, for instance):
 
 .. ipython:: python
 
-    def initialize(node: Node, x: np.ndarray = None):
+    def initialize(node: Node, x: np.ndarray = None, y: np.ndarray = None):
         """This function receives a data point x at runtime and uses it to
         infer input and output dimensions.
         """
@@ -119,7 +119,6 @@ You can also create a new subclass of :py:class:`Node` in a similar way:
                 hypers={"const2": const2},
                 name=name,
             )
-
 
     node = CustomNode(const2=-1, name="custom_node")
 
