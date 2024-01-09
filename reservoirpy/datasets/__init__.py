@@ -45,7 +45,7 @@ Discrete timeseries are defined using recurrent time-delay relations.
 
 
 Classification/pattern recognition tasks
-=======================================
+========================================
 
 Classified datasets of timeseries.
 
