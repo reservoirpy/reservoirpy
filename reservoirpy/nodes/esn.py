@@ -36,13 +36,15 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
 
 
-def _run_fn(esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb):
+def _run_fn(
+    esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
+):
     states = _allocate_returned_states(esn, x, return_states)
 
     with esn.with_state(from_state, stateful=stateful, reset=reset):
         for i, (x, forced_feedback, _) in enumerate(
-                dispatch(x, forced_fb, shift_fb=shift_fb)
-                ):
+            dispatch(x, forced_fb, shift_fb=shift_fb)
+        ):
             esn._load_proxys()
             with esn.with_feedback(forced_feedback):
                 state = esn._call(x, return_states=return_states)
@@ -168,7 +170,9 @@ class ESN(FrozenModel):
 
     Example
     -------
-
+    >>> from reservoirpy.nodes import Reservoir, Ridge, ESN
+    >>> reservoir, readout = Reservoir(100, sr=0.9), Ridge(ridge=1e-6)
+    >>> model = ESN(reservoir=reservoir, readout=readout, workers=-1)
     """
 
     def __init__(
@@ -322,14 +326,16 @@ class ESN(FrozenModel):
                         from_state,
                         stateful,
                         reset,
-                        shift_fb
+                        shift_fb,
                     )
                     for idx, (x, y) in enumerate(zip(seq, forced_feedbacks))
                 )
 
         return _sort_and_unpack(states, return_states=return_states)
 
-    def fit(self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False):
+    def fit(
+        self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False
+    ):
 
         X, Y = to_data_mapping(self, X, Y)
         self._initialize_on_sequence(X[0], Y[0])
@@ -349,7 +355,10 @@ class ESN(FrozenModel):
         seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-                parallel(delayed(_run_partial_fit_fn)(self, x, y, lock, warmup) for x, y in zip(seq, Y))
+                parallel(
+                    delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
+                    for x, y in zip(seq, Y)
+                )
 
             if verbosity():  # pragma: no cover
                 print(f"Fitting node {self.name}...")
