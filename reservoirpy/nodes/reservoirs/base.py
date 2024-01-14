@@ -100,6 +100,7 @@ def forward_external(reservoir, x: np.ndarray) -> np.ndarray:
 def initialize(
     reservoir,
     x=None,
+    y=None,
     sr=None,
     input_scaling=None,
     bias_scaling=None,
@@ -110,7 +111,6 @@ def initialize(
     bias_init=None,
     input_bias=None,
     seed=None,
-    **kwargs,
 ):
     if x is not None:
         reservoir.set_input_dim(x.shape[1])
