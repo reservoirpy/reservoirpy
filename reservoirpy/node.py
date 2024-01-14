@@ -331,8 +331,6 @@ class Node(_Node):
         feedback_dim: int = None,
         name: str = None,
         dtype: np.dtype = global_dtype,
-        *args,
-        **kwargs,
     ):
 
         self._params = dict() if params is None else params
