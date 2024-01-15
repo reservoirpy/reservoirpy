@@ -24,6 +24,7 @@ from sklearn.linear_model import (
 )
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 
+import reservoirpy
 from reservoirpy.nodes import ScikitLearnNode
 
 
@@ -115,3 +116,73 @@ def test_scikitlearn_multioutput():
     assert np.linalg.norm(coef_single[0] - coef_multitask[0]) < 1e-3
     assert np.linalg.norm(coef_single[1] - coef_multitask[1]) < 1e-3
     assert np.linalg.norm(coef_single[2] - coef_multitask[2]) < 1e-3
+
+
+def test_scikitlearn_reproductibility_random_state():
+    pytest.importorskip("sklearn")
+
+    rng = np.random.default_rng(seed=2341)
+    X_train = rng.normal(0, 1, size=(100, 3))
+    y_train = (X_train @ np.array([0.5, 1, 2])).reshape(-1, 1)
+    X_test = rng.normal(0, 1, size=(100, 3))
+
+    # Different scikit-learn random_states
+    reservoirpy.set_seed(0)
+    y_pred1 = (
+        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 1})
+        .fit(X_train, y_train)
+        .run(X_test)
+    )
+
+    reservoirpy.set_seed(0)
+    y_pred2 = (
+        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 2})
+        .fit(X_train, y_train)
+        .run(X_test)
+    )
+
+    assert not np.all(y_pred1 == y_pred2)
+
+    # Same scikit-learn random_states
+    reservoirpy.set_seed(0)
+    y_pred1 = (
+        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 1})
+        .fit(X_train, y_train)
+        .run(X_test)
+    )
+
+    reservoirpy.set_seed(0)
+    y_pred2 = (
+        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 1})
+        .fit(X_train, y_train)
+        .run(X_test)
+    )
+
+    assert np.all(y_pred1 == y_pred2)
+
+
+def test_scikitlearn_reproductibility_rpy_seed():
+    pytest.importorskip("sklearn")
+
+    rng = np.random.default_rng(seed=2341)
+    X_train = rng.normal(0, 1, size=(100, 3))
+    y_train = (X_train @ np.array([0.5, 1, 2])).reshape(-1, 1)
+    X_test = rng.normal(0, 1, size=(100, 3))
+
+    # Different ReservoirPy random generator
+    reservoirpy.set_seed(1)
+    y_pred1 = ScikitLearnNode(model=SGDRegressor).fit(X_train, y_train).run(X_test)
+
+    reservoirpy.set_seed(2)
+    y_pred2 = ScikitLearnNode(model=SGDRegressor).fit(X_train, y_train).run(X_test)
+
+    assert not np.all(y_pred1 == y_pred2)
+
+    # Same ReservoirPy random generator
+    reservoirpy.set_seed(0)
+    y_pred1 = ScikitLearnNode(model=SGDRegressor).fit(X_train, y_train).run(X_test)
+
+    reservoirpy.set_seed(0)
+    y_pred2 = ScikitLearnNode(model=SGDRegressor).fit(X_train, y_train).run(X_test)
+
+    assert np.all(y_pred1 == y_pred2)

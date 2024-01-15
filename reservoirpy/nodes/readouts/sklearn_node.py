@@ -8,6 +8,7 @@ from functools import partial
 import numpy as np
 
 from ...node import Node
+from ...utils.random import rand_generator
 
 
 def forward(readout: Node, X):
@@ -131,6 +132,20 @@ class ScikitLearnNode(Node):
             model_name = model.__name__
             raise AttributeError(
                 f"Specified model {model_name} has no method called 'predict'."
+            )
+
+        # Ensure reproducibility
+        # scikit-learn currently only supports RandomState
+        if (
+            model_hypers.get("random_state") is None
+            and "random_state" in model.__init__.__kwdefaults__
+        ):
+
+            generator = rand_generator()
+            bit_generator = generator.spawn(1)[0].bit_generator
+            _ = generator.normal()
+            model_hypers.update(
+                {"random_state": np.random.RandomState(seed=bit_generator)}
             )
 
         super(ScikitLearnNode, self).__init__(
