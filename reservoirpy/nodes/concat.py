@@ -35,6 +35,21 @@ def concat_initialize(concat: Node, x=None, **kwargs):
 
 
 class Concat(Node):
+    """Concatenate vector of data along feature axis.
+
+    This node is automatically created behind the scene when a node receives the input
+    of more than one node.
+
+    For more information on input concatenation, see
+    :ref:`/user_guide/advanced_demo.ipynb#Input-to-readout-connections`
+
+    :py:attr:`Concat.hypers` **list**
+
+    ============= ======================================================================
+    ``axis``      Concatenation axis.
+    ============= ======================================================================
+    """
+
     def __init__(self, axis=1, name=None):
         super(Concat, self).__init__(
             hypers={"axis": axis},
@@ -42,18 +57,3 @@ class Concat(Node):
             initializer=concat_initialize,
             name=name,
         )
-
-    # def _check_io(self, X, *args, io_type="input", **kwargs):
-    #     if io_type == "input":
-    #         if isinstance(X, np.ndarray):
-    #             return check_node_io(self, X, *args, io_type=io_type, **kwargs)
-    #         elif isinstance(X, Sequence):
-    #             checked_X = []
-    #             for i in range(len(X)):
-    #                 input_dim = None
-    #                 if self.is_initialized:
-    #                     input_dim = self.input_dim[i]
-    #                 checked_X.append(check_node_io(self, X[i], input_dim, **kwargs))
-    #             return checked_X
-    #         else:
-    #             return check_node_io(self, X, *args, io_type=io_type, **kwargs)
