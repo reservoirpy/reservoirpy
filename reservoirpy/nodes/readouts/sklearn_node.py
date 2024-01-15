@@ -32,8 +32,9 @@ def backward(readout: Node, X, Y):
             instance.fit(X_, Y_[..., i])
 
 
-def initialize(readout: Node, x=None, y=None, model_hypers={}):
-
+def initialize(readout: Node, x=None, y=None, model_hypers=None):
+    if model_hypers is None:
+        model_hypers = {}
     if x is not None:
 
         in_dim = x.shape[1]
@@ -117,13 +118,17 @@ class ScikitLearnNode(Node):
     >>> model = reservoir >> readout
     """
 
-    def __init__(self, output_dim=None, model=None, model_hypers={}, **kwargs):
-        model_name = model.__name__
+    def __init__(self, model, model_hypers=None, output_dim=None, **kwargs):
+        if model_hypers is None:
+            model_hypers = {}
+
         if not hasattr(model, "fit"):
+            model_name = model.__name__
             raise AttributeError(
                 f"Specified model {model_name} has no method called 'fit'."
             )
         if not hasattr(model, "predict"):
+            model_name = model.__name__
             raise AttributeError(
                 f"Specified model {model_name} has no method called 'predict'."
             )
