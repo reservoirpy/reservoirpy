@@ -9,7 +9,7 @@ Advanced installation guide
 This page will guide you into installing ReservoirPy on your system.
 
 Before any package installation, make sure that you have a compatible Python distribution already installed
-on your computer. **ReservoirPy is meant to be used only with Python 3.6 and higher**.
+on your computer. **ReservoirPy is meant to be used only with Python 3.8 and higher**.
 
 If you are using Python 2, we recommend that you install a more recent version of Python,
 as the support of Python 2 ended in January 2019.

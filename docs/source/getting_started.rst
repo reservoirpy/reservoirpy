@@ -8,8 +8,8 @@ Getting started
 Python version support
 ======================
 
-For now, full support is guaranteed for Python 3.8 and higher. Support is partial for Python 3.6 and 3.7
-(see :ref:`advanced_install`).
+For now, full support is guaranteed for Python 3.8 and higher. Support is partial for Python 3.7.
+(see :ref:`distributed`).
 
 
 Installation
