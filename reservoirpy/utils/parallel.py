@@ -64,8 +64,7 @@ def memmap_buffer(node, data=None, shape=None, dtype=None, mode="w+", name=None)
                 f"neither data nor shape were given."
             )
 
-    name = name if name is not None else uuid.uuid4()
-    temp = os.path.join(_TEMPDIR, f"{caller + str(name)}")
+    temp = os.path.join(_TEMPDIR, f"{caller}-{name}-{uuid.uuid4()}")
 
     temp_registry[node].append(temp)
 

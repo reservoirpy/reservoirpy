@@ -4,7 +4,10 @@
 # Author: Nathan Trouvain at 06/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import os
+
 import numpy as np
+from joblib import Parallel, delayed
 from numpy.testing import assert_array_almost_equal
 
 from reservoirpy.nodes import Reservoir, Ridge
@@ -130,3 +133,23 @@ def test_hierarchical_esn():
     res = esn.run(data)
 
     assert res.shape == (100, 3)
+
+
+def test_parallel():
+
+    process_count = 4 * os.cpu_count()
+
+    rng = np.random.default_rng(seed=42)
+    x = rng.random((40000, 10))
+    y = x[:, 2::-1] + rng.random((40000, 3)) / 10
+    x_run = rng.random((20, 10))
+
+    def run_ridge(i):
+        readout = Ridge(ridge=1e-8)
+        return readout.fit(x, y).run(x_run)
+
+    parallel = Parallel(n_jobs=process_count, return_as="generator")
+    results = list(parallel(delayed(run_ridge)(i) for i in range(process_count)))
+
+    for result in results:
+        assert np.all(result == results[0])
