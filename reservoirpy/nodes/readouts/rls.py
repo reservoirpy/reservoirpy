@@ -20,7 +20,7 @@ from .base import (
 def _rls(P, r, e):
     """Recursive Least Squares learning rule."""
     k = np.dot(P, r)
-    rPr = np.dot(r.T, k)
+    rPr = np.dot(r.T, k).squeeze()
     c = float(1.0 / (1.0 + rPr))
     P = P - c * np.outer(k, k)
 

@@ -139,7 +139,7 @@ def initialize(
                 reservoir.output_dim,
                 reservoir.output_dim,
                 sr=sr,
-                proba=rc_connectivity,
+                connectivity=rc_connectivity,
                 dtype=dtype,
                 seed=seed,
             )
@@ -183,7 +183,7 @@ def initialize(
                 reservoir.output_dim,
                 x.shape[1],
                 input_scaling=input_scaling,
-                proba=input_connectivity,
+                connectivity=input_connectivity,
                 dtype=dtype,
                 seed=seed,
             )
@@ -199,7 +199,7 @@ def initialize(
                         reservoir.output_dim,
                         1,
                         input_scaling=bias_scaling,
-                        proba=input_connectivity,
+                        connectivity=input_connectivity,
                         dtype=dtype,
                         seed=seed,
                     )
@@ -264,7 +264,7 @@ def initialize_feedback(
                 reservoir.output_dim,
                 fb_dim,
                 input_scaling=fb_scaling,
-                proba=fb_connectivity,
+                connectivity=fb_connectivity,
                 seed=seed,
                 dtype=reservoir.dtype,
             )
