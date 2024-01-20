@@ -41,8 +41,6 @@ from reservoirpy.nodes import ScikitLearnNode
     ],
 )
 def test_scikitlearn_classifiers(model, model_hypers):
-    pytest.importorskip("sklearn")
-
     rng = np.random.default_rng(seed=2341)
 
     X_train = rng.normal(0, 1, size=(10000, 2))
@@ -69,14 +67,10 @@ def test_scikitlearn_classifiers(model, model_hypers):
         (Lasso, {"alpha": 1e-4, "random_state": 2341}),
         (LassoLars, {"alpha": 1e-4, "random_state": 2341}),
         (OrthogonalMatchingPursuitCV, {}),
-        (MultiTaskElasticNet, {"alpha": 1e-4, "random_state": 2341}),
-        (MultiTaskLassoCV, {"random_state": 2341}),
         (MLPRegressor, {"tol": 1e-6, "random_state": 2341}),
     ],
 )
-def test_scikitlearn_regressors(model, model_hypers):
-    pytest.importorskip("sklearn")
-
+def test_scikitlearn_regressors_monooutput(model, model_hypers):
     rng = np.random.default_rng(seed=2341)
     X_train = rng.normal(0, 1, size=(10000, 2))
     y_train = (X_train[:, 0:1] + X_train[:, 1:2]).astype(np.float16)
@@ -93,16 +87,17 @@ def test_scikitlearn_regressors(model, model_hypers):
 
 
 def test_scikitlearn_multioutput():
-    pytest.importorskip("sklearn")
-
     rng = np.random.default_rng(seed=2341)
     X_train = rng.normal(0, 1, size=(10000, 3))
     y_train = X_train @ np.array([[0, 1, 0], [0, 1, 1], [-1, 0, 1]])
 
-    lasso = ScikitLearnNode(model=LassoCV, random_state=2341).fit(X_train, y_train)
-    mt_lasso = ScikitLearnNode(model=MultiTaskLassoCV, random_state=2341).fit(
-        X_train, y_train
-    )
+    lasso = ScikitLearnNode(
+        model=LassoCV, model_hypers={"random_state": 2341}
+    ).fit(X_train, y_train)
+
+    mt_lasso = ScikitLearnNode(
+        model=MultiTaskLassoCV, model_hypers={"random_state": 2341}
+    ).fit(X_train, y_train)
 
     assert type(lasso.params["instances"]) is list
     assert type(mt_lasso.params["instances"]) is not list
@@ -119,8 +114,6 @@ def test_scikitlearn_multioutput():
 
 
 def test_scikitlearn_reproductibility_random_state():
-    pytest.importorskip("sklearn")
-
     rng = np.random.default_rng(seed=2341)
     X_train = rng.normal(0, 1, size=(100, 3))
     y_train = (X_train @ np.array([0.5, 1, 2])).reshape(-1, 1)
@@ -162,8 +155,6 @@ def test_scikitlearn_reproductibility_random_state():
 
 
 def test_scikitlearn_reproductibility_rpy_seed():
-    pytest.importorskip("sklearn")
-
     rng = np.random.default_rng(seed=2341)
     X_train = rng.normal(0, 1, size=(100, 3))
     y_train = (X_train @ np.array([0.5, 1, 2])).reshape(-1, 1)

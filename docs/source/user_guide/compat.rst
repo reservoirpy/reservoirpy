@@ -1,6 +1,6 @@
-.. _compat:
-
 {{ header }}
+
+.. _compat:
 
 ================================
 Previous versions guide (v0.2)

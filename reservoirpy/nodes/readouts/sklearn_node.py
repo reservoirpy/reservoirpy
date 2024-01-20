@@ -27,9 +27,13 @@ def backward(readout: Node, X, Y):
 
     instances = readout.params.get("instances")
     if type(instances) is not list:
-        # Y_ should have 1 feature so we reshape to
-        # (timeseries, ) to avoid scikit-learn's DataConversionWarning
-        instances.fit(X_, Y_[..., 0])
+        if readout.output_dim > 1:
+            # Multi-output node and multi-output sklearn model
+            instances.fit(X_, Y_)
+        else:
+            # Y_ should have 1 feature so we reshape to
+            # (timeseries, ) to avoid scikit-learn's DataConversionWarning
+            instances.fit(X_, Y_[..., 0])
     else:
         for i, instance in enumerate(instances):
             instance.fit(X_, Y_[..., i])
