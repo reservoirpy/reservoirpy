@@ -492,3 +492,16 @@ def test_reproducibility_fsi():
 
     assert_array_almost_equal(W0, W1)
     assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
+
+
+def test_sanity_checks():
+    with pytest.raises(ValueError):
+        _ = uniform(20, 20, degree=10, direction="all")
+    with pytest.raises(ValueError):
+        _ = uniform(30, degree=5, direction="in")
+    with pytest.raises(ValueError):
+        _ = uniform(30, 100, 10, degree=5, direction="in")
+    with pytest.raises(ValueError):
+        _ = bernoulli(30, 100, p=1.1)
+    with pytest.raises(ValueError):
+        _ = uniform(30, 100, low=1, high=0)

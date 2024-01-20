@@ -16,18 +16,11 @@ def forward(node: Node, x, **kwargs):
     return output
 
 
-def initialize(node: Node, x=None, initial_values=None, *args, **kwargs):
+def initialize(node: Node, x=None, y=None, initial_values=None, *args, **kwargs):
     if node.input_dim is not None:
         dim = node.input_dim
-    elif initial_values is not None:
-        dim = initial_values.shape[1]
-    elif x is not None:
-        dim = x.shape[1]
     else:
-        raise ValueError(
-            "'input_dim', 'initial_values' or an input must be specified"
-            "to infer the node input and output dimensions."
-        )
+        dim = x.shape[1]
 
     node.set_input_dim(dim)
     node.set_output_dim(dim)
@@ -75,6 +68,8 @@ class Delay(Node):
         dtype=None,
         **kwargs,
     ):
+        if input_dim is None and type(initial_values) is np.ndarray:
+            input_dim = initial_values.shape[-1]
 
         super(Delay, self).__init__(
             hypers={"delay": delay},

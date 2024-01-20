@@ -4,6 +4,8 @@
 
 import numpy as np
 import pytest
+from sklearn.decomposition import PCA
+from sklearn.gaussian_process.kernels import DotProduct
 from sklearn.linear_model import (
     ElasticNet,
     Lars,
@@ -12,7 +14,6 @@ from sklearn.linear_model import (
     LassoLars,
     LinearRegression,
     LogisticRegression,
-    MultiTaskElasticNet,
     MultiTaskLassoCV,
     OrthogonalMatchingPursuitCV,
     PassiveAggressiveClassifier,
@@ -26,6 +27,32 @@ from sklearn.neural_network import MLPClassifier, MLPRegressor
 
 import reservoirpy
 from reservoirpy.nodes import ScikitLearnNode
+
+
+def test_fail_non_predictors():
+    with pytest.raises(AttributeError):
+        _ = ScikitLearnNode(PCA)
+    with pytest.raises(AttributeError):
+        _ = ScikitLearnNode(DotProduct)
+
+
+def test_scikitlearn_initializer():
+
+    with pytest.raises(RuntimeError):
+        _ = ScikitLearnNode(LinearRegression).initialize()
+
+    with pytest.raises(RuntimeError):
+        _ = ScikitLearnNode(LinearRegression).initialize(np.ones((100, 2)))
+
+    _ = ScikitLearnNode(LinearRegression).initialize(
+        np.ones((100, 2)), np.ones((100, 2))
+    )
+
+    linear_regressor = ScikitLearnNode(
+        LinearRegression, output_dim=2, model_hypers={"positive": False}
+    ).initialize(np.ones((100, 2)))
+
+    assert linear_regressor.model_hypers == {"positive": False}
 
 
 # Note that a different seed may fail the tests
@@ -59,7 +86,7 @@ def test_scikitlearn_classifiers(model, model_hypers):
 @pytest.mark.parametrize(
     "model, model_hypers",
     [
-        (LinearRegression, {}),
+        (LinearRegression, None),
         (Ridge, {"random_state": 2341}),
         (SGDRegressor, {"random_state": 2341}),
         (ElasticNet, {"alpha": 1e-4, "random_state": 2341}),
@@ -72,8 +99,8 @@ def test_scikitlearn_classifiers(model, model_hypers):
 )
 def test_scikitlearn_regressors_monooutput(model, model_hypers):
     rng = np.random.default_rng(seed=2341)
-    X_train = rng.normal(0, 1, size=(10000, 2))
-    y_train = (X_train[:, 0:1] + X_train[:, 1:2]).astype(np.float16)
+    X_train = list(rng.normal(0, 1, size=(30, 100, 2)))
+    y_train = [(x[:, 0:1] + x[:, 1:2]).astype(np.float16) for x in X_train]
     X_test = rng.normal(0, 1, size=(100, 2))
     y_test = (X_test[:, 0:1] + X_test[:, 1:2]).astype(np.float16)
 
@@ -83,21 +110,24 @@ def test_scikitlearn_regressors_monooutput(model, model_hypers):
     y_pred = scikit_learn_node.run(X_test)
     assert y_pred.shape == y_test.shape
     mse = np.mean(np.square(y_pred - y_test))
-    assert mse < 1e-4
+    assert mse < 2e-4
 
 
 def test_scikitlearn_multioutput():
     rng = np.random.default_rng(seed=2341)
     X_train = rng.normal(0, 1, size=(10000, 3))
     y_train = X_train @ np.array([[0, 1, 0], [0, 1, 1], [-1, 0, 1]])
+    X_test = rng.normal(0, 1, size=(100, 3))
 
-    lasso = ScikitLearnNode(
-        model=LassoCV, model_hypers={"random_state": 2341}
-    ).fit(X_train, y_train)
+    lasso = ScikitLearnNode(model=LassoCV, model_hypers={"random_state": 2341}).fit(
+        X_train, y_train
+    )
+    lasso_pred = lasso.run(X_test)
 
     mt_lasso = ScikitLearnNode(
         model=MultiTaskLassoCV, model_hypers={"random_state": 2341}
     ).fit(X_train, y_train)
+    mt_lasso_pred = mt_lasso.run(X_test)
 
     assert type(lasso.params["instances"]) is list
     assert type(mt_lasso.params["instances"]) is not list
@@ -111,6 +141,9 @@ def test_scikitlearn_multioutput():
     assert np.linalg.norm(coef_single[0] - coef_multitask[0]) < 1e-3
     assert np.linalg.norm(coef_single[1] - coef_multitask[1]) < 1e-3
     assert np.linalg.norm(coef_single[2] - coef_multitask[2]) < 1e-3
+
+    assert lasso_pred.shape == mt_lasso_pred.shape == (100, 3)
+    assert np.linalg.norm(mt_lasso_pred - lasso_pred) < 1e-2
 
 
 def test_scikitlearn_reproductibility_random_state():
