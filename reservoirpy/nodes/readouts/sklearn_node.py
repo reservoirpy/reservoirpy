@@ -40,10 +40,7 @@ def backward(readout: Node, X, Y):
 
 
 def initialize(readout: Node, x=None, y=None, model_hypers=None):
-    if model_hypers is None:
-        model_hypers = {}
     if x is not None:
-
         in_dim = x.shape[1]
         if readout.output_dim is not None:
             out_dim = readout.output_dim
@@ -148,10 +145,12 @@ class ScikitLearnNode(Node):
         ):
 
             generator = rand_generator()
-            bit_generator = generator.spawn(1)[0].bit_generator
-            _ = generator.normal()
             model_hypers.update(
-                {"random_state": np.random.RandomState(seed=bit_generator)}
+                {
+                    "random_state": np.random.RandomState(
+                        seed=generator.integers(1 << 32)
+                    )
+                }
             )
 
         super(ScikitLearnNode, self).__init__(

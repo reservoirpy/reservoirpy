@@ -194,30 +194,11 @@ def _init_vectors_placeholders(node, x, y):
 def _partial_backward_default(node, X_batch, Y_batch=None):
     """By default, for offline learners, partial_fit simply stores inputs and
     targets, waiting for fit to be called."""
-    input_dim = node.input_dim
-    if not hasattr(node.input_dim, "__iter__"):
-        input_dim = (input_dim,)
 
-    output_dim = node.output_dim
-    if not hasattr(node.output_dim, "__iter__"):
-        output_dim = (output_dim,)
-
-    if isinstance(X_batch, np.ndarray):
-        if X_batch.shape[1:] == input_dim:
-            node._X.append(X_batch)
-        elif X_batch.shape[2:] == input_dim:
-            node._X.append([X_batch[i] for i in range(len(X_batch))])
-    else:
-        node._X.extend(X_batch)
+    node._X.append(X_batch)
 
     if Y_batch is not None:
-        if isinstance(Y_batch, np.ndarray):
-            if Y_batch.shape[1:] == output_dim:
-                node._Y.append(Y_batch)
-            elif Y_batch.shape[2:] == output_dim:
-                node._Y.append([Y_batch[i] for i in range(len(Y_batch))])
-        else:
-            node._Y.extend(Y_batch)
+        node._Y.append(Y_batch)
 
     return
 

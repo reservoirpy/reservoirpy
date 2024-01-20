@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 07/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from collections import namedtuple
 from pathlib import Path
 
 DATA_FOLDER = Path.home() / Path("reservoirpy-data")

@@ -460,7 +460,7 @@ def _random_degree(
     """
     dtype = np.dtype(dtype)
 
-    if data_rvs is None:
+    if data_rvs is None:  # pragma: no cover
         if np.issubdtype(dtype, np.complexfloating):
 
             def data_rvs(n):
@@ -471,10 +471,10 @@ def _random_degree(
     mn = m * n
 
     tp = np.intc
-    if mn > np.iinfo(tp).max:
+    if mn > np.iinfo(tp).max:  # pragma: no cover
         tp = np.int64
 
-    if mn > np.iinfo(tp).max:
+    if mn > np.iinfo(tp).max:  # pragma: no cover
         msg = """\
 Trying to generate a random sparse matrix such as the product of dimensions is
 greater than %d - this is not supported on this machine

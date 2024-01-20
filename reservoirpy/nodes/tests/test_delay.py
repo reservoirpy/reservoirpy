@@ -4,6 +4,23 @@ from ..delay import Delay
 from ..readouts import Ridge
 
 
+def test_initialize():
+    delay1 = Delay(delay=10)
+    delay1.run(np.ones((10, 2)))
+    assert delay1.input_dim == 2
+    assert np.all(delay1.buffer[0] == 1.0)
+
+    delay2 = Delay(delay=10, input_dim=5)
+    delay2.initialize()
+    assert delay2.input_dim == 5
+    assert np.all(delay2.buffer[0] == 0.0)
+
+    delay3 = Delay(delay=10, initial_values=np.ones((10, 7)))
+    delay3.initialize()
+    assert delay3.input_dim == 7
+    assert np.all(delay3.buffer[0] == 1.0)
+
+
 def test_no_delay():
     delay_node = Delay(delay=0)
 
@@ -30,6 +47,7 @@ def test_1_delay():
 
 
 def test_large_delay():
+    # Note: this is quite slow... is deque the best format?
     delay_node = Delay(delay=1_000)
 
     x = np.array([0.2, 0.3])
