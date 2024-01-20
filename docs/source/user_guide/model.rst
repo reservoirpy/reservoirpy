@@ -1,10 +1,10 @@
 .. _model:
 
-{{ header }}
-
 ====================
 From Nodes to Models
 ====================
+
+{{ header }}
 
 While the :py:class:`~.Node` class alone provides tools to define recurrently defined functions, such as the equations
 of recurrent neural networks, most users will need to combine nodes together to build powerful models.

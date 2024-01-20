@@ -9,7 +9,7 @@ Python version support
 ======================
 
 For now, full support is guaranteed for Python 3.8 and higher. Support is partial for Python 3.7.
-(see :ref:`distributed`).
+(see :ref:`advanced_install`).
 
 
 Installation

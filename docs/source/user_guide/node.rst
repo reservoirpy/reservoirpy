@@ -1,10 +1,10 @@
 .. _node:
 
-{{ header }}
-
 ===================
 Node functional API
 ===================
+
+{{ header }}
 
 .. |warrow| image:: ../_static/user_guide/node/w_weight.svg
 
