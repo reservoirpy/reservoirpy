@@ -10,6 +10,7 @@ import numpy as np
 from ...node import Node
 from ...utils.random import rand_generator
 
+
 def forward(readout: Node, X):
     instances = readout.params.get("instances")
     if type(instances) is not list:
@@ -113,10 +114,10 @@ class ScikitLearnNode(Node):
 
     Example
     -------
-    >>> from reservoirpy import Reservoir, ScikitLearnNode
+    >>> from reservoirpy.nodes import Reservoir, ScikitLearnNode
     >>> from sklearn.linear_model import Lasso
     >>> reservoir = Reservoir(units=100)
-    >>> readout = ScikitLearnNode(model=Lasso, alpha=1e-5)
+    >>> readout = ScikitLearnNode(model=Lasso, model_hypers={"alpha":1e-5})
     >>> model = reservoir >> readout
     """
 

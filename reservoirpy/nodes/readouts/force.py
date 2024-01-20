@@ -26,6 +26,7 @@ class FORCE(Node):
     This class is deprecated since v0.3.4 and will be removed in future versions.
     Please use :py:class:`~reservoirpy.LMS` or :py:class:`~reservoirpy.RLS` instead.
 
+
     The learning rules involved are similar to Recursive Least Squares (``rls`` rule)
     as described in [1]_ or Least Mean Squares (``lms`` rule, similar to Hebbian
     learning) as described in [2]_.
@@ -44,7 +45,7 @@ class FORCE(Node):
 
     ================== =================================================================
     ``alpha``          Learning rate (:math:`\\alpha`) (:math:`1\\cdot 10^{-6}` by
-    default).
+                       default).
     ``input_bias``     If True, learn a bias term (True by default).
     ``rule``           One of RLS or LMS rule ("rls" by default).
     ================== =================================================================

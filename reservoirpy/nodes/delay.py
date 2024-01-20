@@ -57,7 +57,7 @@ class Delay(Node):
     delay: int, defaults to 1.
         Number of timesteps before outputting the input.
     initial_values: array of shape (delay, input_dim), defaults to
-    `np.zeros((delay, input_dim))`.
+        `np.zeros((delay, input_dim))`.
         Initial outputs of the node.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
