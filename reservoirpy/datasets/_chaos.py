@@ -589,7 +589,7 @@ def narma(
     >>> rng = np.random.default_rng(seed=2341)
     >>> u = rng.uniform(0, 0.5, size=(n_timesteps + order, 1))
     >>> y = narma(n_timesteps=n_timesteps, order=order, u=u)
-    >>> model.fit(u[order:], y)
+    >>> model = model.fit(u[order:], y)
 
     References
     ----------
