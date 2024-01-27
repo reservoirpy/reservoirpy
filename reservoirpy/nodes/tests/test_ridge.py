@@ -5,6 +5,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
+import sys
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -136,6 +137,10 @@ def test_hierarchical_esn():
 
 
 def test_parallel():
+    if sys.platform in ["win32", "cygwin"] and sys.version_info < (3, 8):
+        # joblib>=1.3.0 & Windows & Python<3.8 & loky combined are incompatible
+        # see https://github.com/joblib/loky/issues/411
+        return
 
     process_count = 4 * os.cpu_count()
 
