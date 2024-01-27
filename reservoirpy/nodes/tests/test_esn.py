@@ -95,7 +95,9 @@ def test_esn_feedback():
     assert esn.reservoir.Wfb.shape == (100, 5)
 
 
-@pytest.mark.parametrize("backend", ("loky", "multiprocessing", "threading"))
+@pytest.mark.parametrize(
+    "backend", ("loky", "multiprocessing", "threading", "sequential")
+)
 def test_esn_parallel_fit_reproducibility(backend):
 
     for i in range(10):
@@ -103,15 +105,14 @@ def test_esn_parallel_fit_reproducibility(backend):
 
         esn = ESN(
             units=100,
-            lr=0.8,
-            sr=0.4,
             ridge=1e-5,
             feedback=True,
             workers=-1,
             backend=backend,
         )
-
-        X, Y = np.ones((10, 100, 10)), np.ones((10, 100, 5))
+        rng = np.random.default_rng(seed=45)
+        X = list(rng.normal(0, 1, (10, 100, 10)))
+        Y = [x @ rng.normal(0, 1, size=(10, 5)) for x in X]
         esn.fit(X, Y)
 
         assert esn.reservoir.W.shape == (100, 100)
@@ -120,8 +121,7 @@ def test_esn_parallel_fit_reproducibility(backend):
 
         assert esn.reservoir.Wfb is not None
         assert esn.reservoir.Wfb.shape == (100, 5)
-
-        assert np.mean(esn.readout.Wout) - 0.002418478571198347 < 1e-5
+        assert np.abs(np.mean(esn.readout.Wout) - -0.004600376011779) < 1e-10
 
 
 def test_hierarchical_esn_forbidden():
