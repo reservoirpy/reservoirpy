@@ -1,6 +1,7 @@
 # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from copy import deepcopy
 from multiprocessing import Manager
 
 import numpy as np
@@ -22,18 +23,23 @@ _LEARNING_METHODS = {"ridge": Ridge}
 _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
 
 
-def _run_partial_fit_fn(esn, x, y, lock, warmup):
+def _run_partial_fit_fn(_esn, x, y, lock, warmup, clone_esn):
+    if clone_esn:
+        # the 'loky' and 'multiprocessing' back-ends already clone the esn
+        esn = deepcopy(_esn)
+    else:
+        esn = _esn
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
     for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
         esn._load_proxys()
 
-        with esn.readout.with_feedback(forced_feedback[esn.readout.name]):
-            states[i, :] = call(esn.reservoir, x[esn.reservoir.name])
+        with esn.readout.with_feedback(forced_feedback[_esn.readout.name]):
+            states[i, :] = call(esn.reservoir, x[_esn.reservoir.name])
 
     esn._clean_proxys()
-    esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
+    _esn.readout.partial_fit(states, y[_esn.readout.name], warmup=warmup, lock=lock)
 
 
 def _run_fn(
@@ -342,13 +348,11 @@ class ESN(FrozenModel):
 
         self.initialize_buffers()
 
-        if (self.workers > 1 or self.workers < 0) and self.backend not in (
-            "sequential",
-            "threading",
-        ):
+        if (self.workers > 1 or self.workers < 0) and self.backend != "sequential":
             lock = Manager().Lock()
         else:
             lock = None
+        clone_esn = self.backend in ("threading", "sequential")
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
@@ -356,7 +360,7 @@ class ESN(FrozenModel):
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 parallel(
-                    delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
+                    delayed(_run_partial_fit_fn)(self, x, y, lock, warmup, clone_esn)
                     for x, y in zip(seq, Y)
                 )
 
