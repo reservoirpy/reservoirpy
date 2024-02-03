@@ -23,37 +23,37 @@ _LEARNING_METHODS = {"ridge": Ridge}
 _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
 
 
-def _run_partial_fit_fn(_esn, x, y, lock, warmup, clone_esn):
-    if clone_esn:
-        # the 'loky' and 'multiprocessing' back-ends already clone the esn
-        esn = deepcopy(_esn)
-    else:
-        esn = _esn
+def _run_partial_fit_fn(esn, x, y, lock, warmup):
+    # the 'loky' and 'multiprocessing' backends already deep-copies the ESN. See
+    # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+    _esn = deepcopy(esn)
+    _esn.reservoir.reset()
+
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
     for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-        esn._load_proxys()
+        with _esn.readout.with_feedback(forced_feedback[esn.readout.name]):
+            states[i, :] = call(_esn.reservoir, x[esn.reservoir.name])
 
-        with esn.readout.with_feedback(forced_feedback[_esn.readout.name]):
-            states[i, :] = call(esn.reservoir, x[_esn.reservoir.name])
-
-    esn._clean_proxys()
-    _esn.readout.partial_fit(states, y[_esn.readout.name], warmup=warmup, lock=lock)
+    esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
 
 
 def _run_fn(
     esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
 ):
-    states = _allocate_returned_states(esn, x, return_states)
+    _esn = deepcopy(esn)
+    X = {_esn.reservoir.name: x[esn.reservoir.name]}
 
-    with esn.with_state(from_state, stateful=stateful, reset=reset):
-        for i, (x, forced_feedback, _) in enumerate(
-            dispatch(x, forced_fb, shift_fb=shift_fb)
+    states = _allocate_returned_states(_esn, X, return_states)
+
+    with _esn.with_state(from_state, stateful=stateful, reset=reset):
+        for i, (x_step, forced_feedback, _) in enumerate(
+            dispatch(X, forced_fb, shift_fb=shift_fb)
         ):
-            esn._load_proxys()
-            with esn.with_feedback(forced_feedback):
-                state = esn._call(x, return_states=return_states)
+            _esn._load_proxys()
+            with _esn.readout.with_feedback(forced_feedback):
+                state = _esn._call(x_step, return_states=return_states)
 
             if is_mapping(state):
                 for name, value in state.items():
@@ -61,8 +61,7 @@ def _run_fn(
             else:
                 states["readout"][i, :] = state
 
-    esn._clean_proxys()
-
+    _esn._clean_proxys()
     return idx, states
 
 
@@ -352,7 +351,6 @@ class ESN(FrozenModel):
             lock = Manager().Lock()
         else:
             lock = None
-        clone_esn = self.backend in ("threading", "sequential")
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
@@ -360,7 +358,7 @@ class ESN(FrozenModel):
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 parallel(
-                    delayed(_run_partial_fit_fn)(self, x, y, lock, warmup, clone_esn)
+                    delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
                     for x, y in zip(seq, Y)
                 )
 
