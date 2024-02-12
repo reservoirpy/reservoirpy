@@ -206,7 +206,7 @@ class Reservoir(Node):
         fig, ax = plt.subplots(6, 1, figsize=(7, 10), sharex=True)
         ax[0].plot(x)
         ax[0].grid()
-        ax[0].set_title("Input (Mackey-Glass")
+        ax[0].set_title("Neuron states (on Mackey-Glass)")
         for i in range(1, 6):
             ax[i].plot(states[:, i], label=f"Neuron {i}")
             ax[i].legend()
