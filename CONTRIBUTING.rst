@@ -4,12 +4,12 @@ Contributing
 If you are reading this, **thank you very much for considering contributing**, and welcome to ReservoirPy project!
 **Wether you feel like a developer or not is not important. There are many ways to help:**
 
-- `I would like to submit a bug report or suggest a new feature <opening_an_issue>`
-- `I would like to improve code, style, or add features <contributing_code>`
-- `I can help answer questions and solve issues <solve_issues>`
-- `I have a suggestion to improve or complete documentation <contribute_documentation>`
-- `I want to reference you in my work <https://github.com/reservoirpy/reservoirpy#cite>`
-- `I use the project and add a star <https://github.com/reservoirpy/reservoirpy>`
+- :ref:`I would like to submit a bug report or suggest a new feature <opening_an_issue>`
+- :ref:`I would like to improve code, style, or add features <contributing_code>`
+- :ref:`I can help answer questions and solve issues <solve_issues>`
+- :ref:`I have a suggestion to improve or complete documentation <contribute_documentation>`
+- `I want to reference you in my work <https://github.com/reservoirpy/reservoirpy#cite>`_
+- `I use the project and add a star <https://github.com/reservoirpy/reservoirpy>`_
 
 **All of the above are equally important contributions to us.**
 
@@ -17,9 +17,9 @@ If you have any question about this document and contribution in general, do not
 paul.bernard<@>inria.fr, main developer, or xavier.hinaut<@>inria.fr, head of the project.
 
 This document is based on and inspired by the `scikit-learn project contributing guidelines
-<https://scikit-learn.org/dev/developers/contributing.html#submitting-a-bug-report-or-a-feature-request>`
-and `geomstats project contributing guidelines
-<https://github.com/geomstats/geomstats/blob/master/docs/contributing.rst>`
+<https://scikit-learn.org/dev/developers/contributing.html#submitting-a-bug-report-or-a-feature-request>`_
+and `Geomstats project contributing guidelines
+<https://github.com/geomstats/geomstats/blob/main/docs/contributing/index.rst>`_
 
 .. _opening_an_issue:
 
@@ -47,16 +47,16 @@ How to Write a Good Bug Report
 ------------------------------
 
 
-When you submit an issue to `Github
-<https://github.com/reservoirpy/reservoirpy/issues>`__, please do your best to
+When you submit an issue to `GitHub
+<https://github.com/reservoirpy/reservoirpy/issues>`_, please do your best to
 follow these guidelines! This will make it a lot easier to provide you with good
 feedback:
 
 - The ideal bug report contains a **short reproducible code snippet**, this way
   anyone can try to reproduce the bug easily (see `this
-  <https://stackoverflow.com/help/mcve>`_ for more details>`. If your snippet is
+  <https://stackoverflow.com/help/mcve>`_ for more details). If your snippet is
   longer than around 50 lines, please link to a `gist
-  <https://gist.github.com>`_ or a github repo.
+  <https://gist.github.com>`_ or a GitHub repo.
 
 - If not feasible to include a reproducible snippet, please be specific about
   what **nodes and/or functions are involved and the shape of the data**.
