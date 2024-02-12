@@ -90,7 +90,7 @@ Additional dependencies and requirements
 
   In the same manner, you can install scikit-learn with the appropriate version using:
 
-  ..code-block::
+.. code-block::
 
       pip install reservoirpy[sklearn]
 
