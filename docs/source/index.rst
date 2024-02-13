@@ -35,73 +35,91 @@ architectures with a particular focus on Echo State Networks (ESN).
     developer_guide/index
 
 
-.. panels::
-    :card: + intro-card text-center
-    :column: col-lg-6 col-md-6 col-sm-6 col-xs-12 d-flex
+.. grid:: 1 2 2 2
 
-    ---
-    :img-top: _static/getting_started.svg
+    .. grid-item-card::
+        :class-card: intro-card
+        :shadow: md
+        :img-top: _static/getting_started.svg
+        :class-img-top: dark-light
 
-    Getting started
-    ^^^^^^^^^^^^^^^
+        Getting started
+        ^^^^^^^^^^^^^^^
 
-    A quick introduction to ReservoirPy basic concepts, from installation
-    to your first Reservoir Computing models.
+        A quick introduction to ReservoirPy basic concepts, from installation
+        to your first Reservoir Computing models.
 
-    +++
+        +++
 
-    .. link-button:: get_started
-            :type: ref
-            :text: To the getting started guide
-            :classes: btn-block btn-secondary stretched-link
+        .. button-ref:: get_started
+            :color: secondary
+            :click-parent:
+            :expand:
 
-    ---
-    :img-top: _static/user_guide.svg
+            To the getting started guide
 
-    User guide
-    ^^^^^^^^^^
+    .. grid-item-card::
+        :class-card: intro-card
+        :shadow: md
+        :img-top: _static/user_guide.svg
+        :class-img-top: dark-light
 
-    A complete guide to the ReservoirPy project, exploring key concepts through
-    documentation, tutorials and examples.
+        User guide
+        ^^^^^^^^^^
 
-    +++
+        A complete guide to the ReservoirPy project, exploring key concepts through
+        documentation, tutorials and examples.
 
-    .. link-button:: user_guide
-            :type: ref
-            :text: To the user guide
-            :classes: btn-block btn-secondary stretched-link
+        +++
 
-    ---
-    :img-top: _static/api.svg
+        .. button-ref:: user_guide
+            :color: secondary
+            :click-parent:
+            :expand:
 
-    API reference
-    ^^^^^^^^^^^^^
+            To the user guide
 
-    The ReservoirPy API documentation, with detailed descriptions of all
-    its components.
+    .. grid-item-card::
+        :class-card: intro-card
+        :shadow: md
+        :img-top: _static/api.svg
+        :class-img-top: dark-light
 
-    +++
+        API reference
+        ^^^^^^^^^^^^^
 
-    .. link-button:: api
-            :type: ref
-            :text: To the reference guide
-            :classes: btn-block btn-secondary stretched-link
+        The ReservoirPy API documentation, with detailed descriptions of all
+        its components.
 
-    ---
-    :img-top: _static/dev_guide.svg
+        +++
 
-    Developer guide
-    ^^^^^^^^^^^^^^^
+        .. button-ref:: api
+            :color: secondary
+            :click-parent:
+            :expand:
 
-    A guide to help us make ReservoirPy a better project, from correcting typos to
-    creating new tools within the API.
+            To the reference guide
 
-    +++
+    .. grid-item-card::
+        :class-card: intro-card
+        :shadow: md
+        :img-top: _static/dev_guide.svg
+        :class-img-top: dark-light
 
-    .. link-button:: developer_guide
-            :type: ref
-            :text: To the development guide
-            :classes: btn-block btn-secondary stretched-link
+        Developer guide
+        ^^^^^^^^^^^^^^^
+
+        A guide to help us make ReservoirPy a better project, from correcting typos to
+        creating new tools within the API.
+
+        +++
+
+        .. button-ref:: developer_guide
+            :color: secondary
+            :click-parent:
+            :expand:
+
+            To the development guide
 
 
 Indices and tables

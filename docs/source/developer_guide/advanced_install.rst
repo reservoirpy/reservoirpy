@@ -73,91 +73,97 @@ editable mode using `pip` :
 Additional dependencies and requirements
 ========================================
 
-  **Hyperoptimization and visualization tools**
+**Hyperoptimization and visualization tools**
 
-  All basic dependencies of ReservoirPy should be installed when using `pip` as package manager.
+All basic dependencies of ReservoirPy should be installed when using `pip` as package manager.
 
-  Although, to use the hyperoptimization and visualization tools from the :py:mod:`reservoirpy.hyper` module, you will need to install a few
-  more dependencies in your virtual environment, namely `hyperopt`, `matplotlib` and `seaborn`. You can do so using the `hyper` extra dependencies:
-
-  .. code-block::
-
-      pip install reservoirpy[hyper]
-
-  **ScikitLearnNode**
-
-  You can use some of scikit-learn's linear models through the use of the the ScikitLearnNode.
-
-  In the same manner, you can install scikit-learn with the appropriate version using:
+Although, to use the hyperoptimization and visualization tools from the :py:mod:`reservoirpy.hyper` module, you will need to install a few
+more dependencies in your virtual environment, namely `hyperopt`, `matplotlib` and `seaborn`. You can do so using the `hyper` extra dependencies:
 
 .. code-block::
 
-      pip install reservoirpy[sklearn]
+    pip install reservoirpy[hyper]
 
-  **Development tools**
+**ScikitLearnNode**
 
-  ReservoirPy use `pytest` as test framework, and `flake8` as linter.
-  If you want to contribute to ReservoirPy, you should have the following
-  additional dependencies installed:
+You can use some of scikit-learn's linear models through the use of the the ScikitLearnNode.
 
-  .. code-block::
+In the same manner, you can install scikit-learn with the appropriate version using:
 
-      pip install pytest pytest-cov flake8
+.. code-block::
 
-  **All dependencies**
+    pip install reservoirpy[sklearn]
 
-  A summary of all dependencies and their purpose in ReservoirPy
-  can be found in the table below:
+**Development tools**
 
-  .. list-table:: All dependencies
-      :widths: 50 25 50
-      :header-rows: 1
+ReservoirPy use `pytest` as test framework, and `flake8` as linter.
+If you want to contribute to ReservoirPy, you should have the following
+additional dependencies installed:
 
-      * - Dependency
-        - Version
-        - Purpose
-      * - numpy
-        - 1.18.1
-        - build, install
-      * - scipy
-        - 1.4.1
-        - build, install
-      * - joblib
-        - 0.14.1
-        - build, install
-      * - dill
-        - 0.3.1.1
-        - build, install
-      * - tqdm
-        - 4.43.0
-        - build, install
-      * - hyperopt
-        - 0.2.5
-        - reservoirpy.hyper, examples
-      * - matplotlib
-        - 3.3.3
-        - reservoirpy.hyper, examples
-      * - seaborn
-        - 0.11.0
-        - reservoirpy.hyper, examples
-      * - pytest
-        - 6.1.2
-        - tests
-      * - pytest-cov
-        - 2.10.1
-        - tests
-      * - scikit-learn
-        - 0.24.1
-        - tests
-      * - sphinx
-        - 3.3.1
-        - docs
-      * - sphinx-rtd-theme
-        - 0.5.1
-        - docs
-      * - sphinx-copybutton
-        - 0.3.1
-        - docs
-      * - numpydoc
-        - 1.1.0
-        - docs
+.. code-block::
+
+    pip install pytest pytest-cov flake8
+
+**All dependencies**
+
+A summary of all dependencies and their purpose in ReservoirPy
+can be found in the table below:
+
+.. list-table:: All dependencies
+    :widths: 50 25 50
+    :header-rows: 1
+
+    * - Dependency
+      - Version
+      - Purpose
+    * - numpy
+      - 1.18.1
+      - build, install
+    * - scipy
+      - 1.4.1
+      - build, install
+    * - joblib
+      - 0.14.1
+      - build, install
+    * - dill
+      - 0.3.1.1
+      - build, install
+    * - tqdm
+      - 4.43.0
+      - build, install
+    * - hyperopt
+      - 0.2.5
+      - reservoirpy.hyper, examples
+    * - matplotlib
+      - 3.3.3
+      - reservoirpy.hyper, examples
+    * - seaborn
+      - 0.11.0
+      - reservoirpy.hyper, examples
+    * - pytest
+      - 6.1.2
+      - tests
+    * - pytest-cov
+      - 2.10.1
+      - tests
+    * - scikit-learn
+      - 0.24.1
+      - tests
+    * - sphinx
+      - 7.2.6
+      - docs
+    * - pydata-sphinx-theme
+      - 0.13.3
+      - docs
+    * - sphinx-copybutton
+      - 0.5.2
+      - docs
+    * - ipython
+      - 7.31.1
+      - docs
+    * - nbsphinx
+      - 0.8.7
+      - docs
+    * - sphinx-design
+      - 0.5.0
+      - docs
