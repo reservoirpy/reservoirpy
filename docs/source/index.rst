@@ -31,7 +31,7 @@ architectures with a particular focus on Echo State Networks (ESN).
 
     getting_started
     user_guide/index
-    api/index
+    API reference <api/index>
     developer_guide/index
 
 

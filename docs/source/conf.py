@@ -119,6 +119,10 @@ html_sidebars = {"**": ["search-field", "sidebar-nav-bs", "sidebar-ethical-ads"]
 html_theme_options = {
     "external_links": [],
     "github_url": "https://github.com/reservoirpy/reservoirpy",
+    "logo": {
+        "image_light": "_static/rpy_navbar_light.png",
+        "image_dark": "_static/rpy_navbar_dark.png",
+    },
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
