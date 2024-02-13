@@ -12,6 +12,7 @@ on:
     - 'LICENSE'
     - 'CONTRIBUTING.md'
     - '.gitignore'
+    - '.readthedocs.yml'
 
   pull_request:
     types: [opened, synchronize]
