@@ -9,7 +9,7 @@ else:
     from typing import Literal
 
 from functools import partial
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
 
@@ -18,7 +18,7 @@ from ...activationsfunc import get_function, identity
 from ...mat_gen import bernoulli, uniform
 from ...node import Unsupervised, _init_with_sequences
 from ...type import Weights
-from ...utils.random import noise
+from ...utils.random import noise, rand_generator
 from ...utils.validation import is_array
 from .base import forward_external
 from .base import initialize as initialize_base
@@ -107,7 +107,7 @@ class IPReservoir(Unsupervised):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
 
-    Intrinisc Plasticity is applied as described in [1]_ and [2]_.
+    Intrinsic Plasticity is applied as described in [1]_ and [2]_.
 
     Reservoir neurons states, gathered in a vector :math:`\\mathbf{x}`, follow
     the update rule below:
@@ -154,7 +154,7 @@ class IPReservoir(Unsupervised):
     ``Win``            Input weights matrix (:math:`\\mathbf{W}_{in}`).
     ``Wfb``            Feedback weights matrix (:math:`\\mathbf{W}_{fb}`).
     ``bias``           Input bias vector (:math:`\\mathbf{b}_{in}`).
-    ``inernal_state``  Internal state (:math:`\\mathbf{r}`).
+    ``internal_state``  Internal state (:math:`\\mathbf{r}`).
     ``a``              Gain of reservoir activation (:math:`\\mathbf{a}`).
     ``b``              Bias of reservoir activation (:math:`\\mathbf{b}`).
     ================== =================================================================
@@ -186,9 +186,9 @@ class IPReservoir(Unsupervised):
     Parameters
     ----------
     units : int, optional
-        Number of reservoir units. If None, the number of units will be infered from
+        Number of reservoir units. If None, the number of units will be inferred from
         the ``W`` matrix shape.
-    lr : float, default to 1.0
+    lr : float or array-like of shape (units,), default to 1.0
         Neurons leak rate. Must be in :math:`[0, 1]`.
     sr : float, optional
         Spectral radius of recurrent weight matrix.
@@ -211,6 +211,9 @@ class IPReservoir(Unsupervised):
     noise_type : str, default to "normal"
         Distribution of noise. Must be a Numpy random variable generator
         distribution (see :py:class:`numpy.random.Generator`).
+    noise_kwargs : dict, optional
+        Keyword arguments to pass to the noise generator, such as `low` and `high`
+        values of uniform distribution.
     input_scaling : float or array-like of shape (features,), default to 1.0.
         Input gain. An array of the same dimension as the inputs can be used to
         set up different input scaling for each feature.
@@ -227,7 +230,7 @@ class IPReservoir(Unsupervised):
         neurons connected to other reservoir neurons, including themselves.
         Must be in :math:`]0, 1]`.
     fb_connectivity : float, default to 0.1
-        Connectivity of feedback neurons, i.e. ratio of feedabck neurons
+        Connectivity of feedback neurons, i.e. ratio of feedback neurons
         connected to reservoir neurons. Must be in :math:`]0, 1]`.
     Win : callable or array-like of shape (units, features), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
         Input weights matrix or initializer. If a callable (like a function) is
@@ -297,10 +300,10 @@ class IPReservoir(Unsupervised):
 
     >>> from reservoirpy.datasets import narma
     >>> x = narma(1000)
-    >>> reservoir.fit(x, warmup=100)
+    >>> _ = reservoir.fit(x, warmup=100)
     >>> states = reservoir.run(x)
 
-    .. plot:: ./api/generated/intrinsic_plasticity_example.py
+    .. plot:: ./api/intrinsic_plasticity_example.py
 
     """
 
@@ -318,6 +321,7 @@ class IPReservoir(Unsupervised):
         noise_in: float = 0.0,
         noise_fb: float = 0.0,
         noise_type: str = "normal",
+        noise_kwargs: Dict = None,
         input_scaling: Union[float, Sequence] = 1.0,
         bias_scaling: float = 1.0,
         fb_scaling: Union[float, Sequence] = 1.0,
@@ -344,8 +348,11 @@ class IPReservoir(Unsupervised):
         if activation not in ["tanh", "sigmoid"]:
             raise ValueError(
                 f"Activation '{activation}' must be 'tanh' or 'sigmoid' when "
-                "appliying intrinsic plasticity."
+                "applying intrinsic plasticity."
             )
+
+        rng = rand_generator(seed=seed)
+        noise_kwargs = dict() if noise_kwargs is None else noise_kwargs
 
         super(IPReservoir, self).__init__(
             fb_initializer=partial(
@@ -387,7 +394,7 @@ class IPReservoir(Unsupervised):
                 ),
                 "fb_activation": fb_activation,
                 "units": units,
-                "noise_generator": partial(noise, seed=seed),
+                "noise_generator": partial(noise, rng=rng, **noise_kwargs),
             },
             forward=forward_external,
             initializer=partial(
@@ -417,7 +424,7 @@ class IPReservoir(Unsupervised):
 
     def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "Node":
         """Partial offline fitting method of a Node.
-        Can be used to perform batched fitting or to precompute some variables
+        Can be used to perform batched fitting or to pre-compute some variables
         used by the fitting method.
 
         Parameters
@@ -428,7 +435,7 @@ class IPReservoir(Unsupervised):
             A sequence or a batch of sequence of teacher signals.
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
-            discard at the begining of each timeseries before training.
+            discard at the beginning of each timeseries before training.
 
         Returns
         -------

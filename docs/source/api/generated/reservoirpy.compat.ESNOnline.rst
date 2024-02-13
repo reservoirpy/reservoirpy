@@ -5,12 +5,12 @@ reservoirpy.compat.ESNOnline
 
 .. autoclass:: ESNOnline
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~ESNOnline.__init__
       ~ESNOnline.compute_output
       ~ESNOnline.compute_output_from_current_state
@@ -21,8 +21,9 @@ reservoirpy.compat.ESNOnline
       ~ESNOnline.save
       ~ESNOnline.train
       ~ESNOnline.train_from_current_state
+   
+   
 
-
-
-
-
+   
+   
+   

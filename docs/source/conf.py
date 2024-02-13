@@ -20,10 +20,6 @@ sys.path.insert(0, os.path.abspath(".."))
 import reservoirpy
 from reservoirpy import __version__
 
-# sphinx-panels shouldn't add bootstrap css since the pydata-sphinx-theme
-# already loads it
-panels_add_bootstrap_css = False
-
 # The suffix of source filenames.
 source_suffix = [".rst"]
 
@@ -58,7 +54,7 @@ extensions = [
     "sphinx.ext.linkcode",
     "sphinx_copybutton",
     "sphinx.ext.autosummary",
-    "sphinx_panels",
+    "sphinx_design",
     "sphinx.ext.intersphinx",
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
@@ -68,7 +64,7 @@ extensions = [
 
 # Intersphinx links
 intersphinx_mapping = {
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "python": ("https://docs.python.org/3/", None),
     "joblib": ("https://joblib.readthedocs.io/en/latest/", None),
@@ -110,9 +106,12 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_logo = "_static/rpy_navbar.png"
+
+html_favicon = "_static/rpy_logo_small.png"
 
 html_theme = "pydata_sphinx_theme"
+
+html_sidebars = {"**": ["search-field", "sidebar-nav-bs", "sidebar-ethical-ads"]}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -120,6 +119,10 @@ html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "external_links": [],
     "github_url": "https://github.com/reservoirpy/reservoirpy",
+    "logo": {
+        "image_light": "_static/rpy_navbar_light.png",
+        "image_dark": "_static/rpy_navbar_dark.png",
+    },
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

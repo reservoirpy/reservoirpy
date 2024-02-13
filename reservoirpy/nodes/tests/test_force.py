@@ -2,14 +2,15 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
+import pytest
 from numpy.testing import assert_array_almost_equal
 
 from reservoirpy.nodes import FORCE, Reservoir
 
 
 def test_force_init():
-
-    node = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10)
 
     data = np.ones((1, 100))
     res = node(data)
@@ -26,7 +27,8 @@ def test_force_init():
 
 def test_force_train_one_step():
 
-    node = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10)
 
     x = np.ones((5, 2))
     y = np.ones((5, 10))
@@ -46,7 +48,8 @@ def test_force_train_one_step():
 
 def test_force_train():
 
-    node = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10)
 
     X, Y = np.ones((200, 100)), np.ones((200, 10))
 
@@ -58,7 +61,8 @@ def test_force_train():
     assert node.bias.shape == (1, 10)
     assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
 
-    node = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10)
 
     X, Y = np.ones((200, 100)), np.ones((200, 10))
 
@@ -70,7 +74,8 @@ def test_force_train():
     assert node.bias.shape == (1, 10)
     assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
 
-    node = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10)
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
 
@@ -90,7 +95,8 @@ def test_force_train():
 
 def test_force_lms():
 
-    node = FORCE(10, rule="lms")
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10, rule="lms")
 
     X, Y = np.ones((200, 100)), np.ones((200, 10))
 
@@ -104,7 +110,8 @@ def test_force_lms():
         while True:
             yield 1e-6
 
-    node = FORCE(10, rule="lms", alpha=alpha_gen())
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10, rule="lms", alpha=alpha_gen())
 
     X, Y = np.ones((200, 100)), np.ones((200, 10))
 
@@ -114,7 +121,8 @@ def test_force_lms():
     assert node.Wout.shape == (100, 10)
     assert node.bias.shape == (1, 10)
 
-    node = FORCE(10, rule="lms", alpha=alpha_gen())
+    with pytest.warns(DeprecationWarning):
+        node = FORCE(10, rule="lms", alpha=alpha_gen())
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
 
@@ -132,7 +140,8 @@ def test_force_lms():
 
 def test_esn_force():
 
-    readout = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        readout = FORCE(10)
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -152,7 +161,9 @@ def test_esn_force():
 
 
 def test_esn_force_lms():
-    readout = FORCE(10, rule="lms")
+    
+    with pytest.warns(DeprecationWarning):
+        readout = FORCE(10, rule="lms")
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -173,7 +184,8 @@ def test_esn_force_lms():
 
 def test_force_feedback():
 
-    readout = FORCE(10)
+    with pytest.warns(DeprecationWarning):
+        readout = FORCE(10)
     reservoir = Reservoir(100)
 
     esn = reservoir >> readout
@@ -196,9 +208,11 @@ def test_force_feedback():
 
 def test_hierarchical_esn():
 
-    readout1 = FORCE(10, name="r1")
+    with pytest.warns(DeprecationWarning):
+        readout1 = FORCE(10, name="r1")
     reservoir1 = Reservoir(100)
-    readout2 = FORCE(3, name="r2")
+    with pytest.warns(DeprecationWarning):
+        readout2 = FORCE(3, name="r2")
     reservoir2 = Reservoir(100)
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
@@ -222,10 +236,11 @@ def test_hierarchical_esn():
 
 
 def test_dummy_mutual_supervision():
-
-    readout1 = FORCE(1, name="r1")
+    with pytest.warns(DeprecationWarning):
+        readout1 = FORCE(1, name="r1")
     reservoir1 = Reservoir(100)
-    readout2 = FORCE(1, name="r2")
+    with pytest.warns(DeprecationWarning):
+        readout2 = FORCE(1, name="r2")
     reservoir2 = Reservoir(100)
 
     reservoir1 <<= readout1

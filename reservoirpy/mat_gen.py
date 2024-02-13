@@ -5,20 +5,20 @@ Weights initialization (:mod:`reservoirpy.mat_gen`)
 
 Quick tools for weight matrices initialization.
 
-This module provides simples tools for reservoir internal weights
+This module provides simple tools for reservoir internal weights
 and input/feedback weights initialization. Spectral radius of the
 internal weights, input scaling and sparsity are fully parametrizable.
 
-Because most of the architectures developped in Reservoir Computing
-involve sparsely-connected neuronal units, the prefered format for all
+Because most of the architectures developed in Reservoir Computing
+involve sparsely-connected neuronal units, the preferred format for all
 generated matrices is a :py:mod:`scipy.sparse` format (in most cases *csr*).
 Sparse arrays allow fast computations and compact representations of
 weights matrices, and remains easily readable. They can be parsed back to
 simple Numpy arrays just by calling their ``toarray()`` method.
 
-All functions can take as paramater a :py:class:`numpy.random.Generator`
+All functions can take as parameter a :py:class:`numpy.random.Generator`
 instance, or a seed number, to ensure reproducibility. Both distribution
-of weights and distribution of non-zero connections are controled with the
+of weights and distribution of non-zero connections are controlled with the
 seed.
 
 .. autosummary::
@@ -57,6 +57,16 @@ Matrix creation can be delayed...
 
     matrix = random_sparse(100, 100, dist="uniform", sr=0.9, connectivity=0.1)
     print(type(matrix), "\\n", matrix[:5, :5])
+
+Random sparse matrix from Gaussian distribution,
+with mean of 0 and variance of 0.5 and an out-degree of 2:
+
+.. ipython:: python
+
+    from reservoirpy.mat_gen import normal
+
+    matrix = normal(7, 10, degree=2, direction="out", loc=0, scale=0.5)
+    print(type(matrix), "\\n", matrix)
 
 Dense matrix from Gaussian distribution,
 with mean of 0 and variance of 0.5:
@@ -100,6 +110,13 @@ References
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
 """
+import sys
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Literal
+else:
+    from typing import Literal
+
 import copy
 import warnings
 from functools import partial
@@ -130,7 +147,6 @@ _epsilon = 1e-8  # used to avoid division by zero when rescaling spectral radius
 
 
 def _filter_deprecated_kwargs(kwargs):
-
     deprecated = {
         "proba": "connectivity",
         "typefloat": "dtype",
@@ -171,11 +187,11 @@ class Initializer:
         Initializer function. Should have a `shape` argument and return a Numpy array
         or Scipy sparse matrix.
     autorize_sr : bool, default to True
-        Autorize spectral radius rescaling for this initializer.
+        Authorize spectral radius rescaling for this initializer.
     autorize_input_scaling : bool, default to True
-        Autorize input_scaling for this initializer.
+        Authorize input_scaling for this initializer.
     autorize_rescaling : bool, default to True
-        Autorize any kind of rescaling (spectral radius or input scaling) for this
+        Authorize any kind of rescaling (spectral radius or input scaling) for this
         initializer.
 
     Example
@@ -183,8 +199,8 @@ class Initializer:
     >>> from reservoirpy.mat_gen import random_sparse
     >>> init_func = random_sparse(dist="uniform")
     >>> init_func = init_func(connectivity=0.1)
-    >>> init_func(5, 5)  # actually creates the matrix
-    >>> random_sparse(5, 5, dist="uniform", connectivity=0.1)  # also creates the matrix
+    >>> matrix = init_func(5, 5)  # actually creates the matrix
+    >>> matrix = random_sparse(5, 5, dist="uniform", connectivity=0.1)  # also creates the matrix
     """
 
     def __init__(
@@ -385,6 +401,117 @@ def _scale_inputs(w_init, shape, input_scaling, **kwargs):
         return np.multiply(w, input_scaling)
 
 
+def _random_degree(
+    m: int,
+    n: int,
+    degree: int = 10,
+    direction: Literal["in", "out"] = "out",
+    format: str = "coo",
+    dtype: np.dtype = None,
+    random_state: Union[None, int, np.random.Generator, np.random.RandomState] = None,
+    data_rvs=None,
+):
+    """Generate a sparse matrix of the given shape with randomly distributed values.
+    - If `direction=out`, each column has `degree` non-zero values.
+    - If `direction=in`, each line has `degree` non-zero values.
+
+    Parameters
+    ----------
+    m, n : int
+        shape of the matrix
+    degree : int, optional
+        in-degree or out-degree of each node of the corresponding graph of the
+        generated matrix:
+    direction : {"in", "out"}, defaults to "out"
+        Specify the direction of the `degree` value. Allowed values:
+        - "in": `degree` corresponds to in-degrees
+        - "out": `degree` corresponds to out-degrees
+    dtype : dtype, optional
+        type of the returned matrix values.
+    random_state : {None, int, `numpy.random.Generator`,
+                    `numpy.random.RandomState`}, optional
+
+        If `seed` is None (or `np.random`), the `numpy.random.RandomState`
+        singleton is used.
+        If `seed` is an int, a new ``RandomState`` instance is used,
+        seeded with `seed`.
+        If `seed` is already a ``Generator`` or ``RandomState`` instance then
+        that instance is used.
+        This random state will be used
+        for sampling the sparsity structure, but not necessarily for sampling
+        the values of the structurally nonzero entries of the matrix.
+    data_rvs : callable, optional
+        Samples a requested number of random values.
+        This function should take a single argument specifying the length
+        of the ndarray that it will return. The structurally nonzero entries
+        of the sparse random matrix will be taken from the array sampled
+        by this function. By default, uniform [0, 1) random values will be
+        sampled using the same random state as is used for sampling
+        the sparsity structure.
+
+    Returns
+    -------
+    res : sparse matrix
+
+    Notes
+    -----
+    Only float types are supported for now.
+
+    """
+    dtype = np.dtype(dtype)
+
+    if data_rvs is None:  # pragma: no cover
+        if np.issubdtype(dtype, np.complexfloating):
+
+            def data_rvs(n):
+                return random_state.uniform(size=n) + random_state.uniform(size=n) * 1j
+
+        else:
+            data_rvs = partial(random_state.uniform, 0.0, 1.0)
+    mn = m * n
+
+    tp = np.intc
+    if mn > np.iinfo(tp).max:  # pragma: no cover
+        tp = np.int64
+
+    if mn > np.iinfo(tp).max:  # pragma: no cover
+        msg = """\
+Trying to generate a random sparse matrix such as the product of dimensions is
+greater than %d - this is not supported on this machine
+"""
+        raise ValueError(msg % np.iinfo(tp).max)
+
+    # each column has `degree` non-zero values
+    if direction == "out":
+        if not 0 <= degree <= m:
+            raise ValueError(f"'degree'={degree} must be between 0 and m={m}.")
+
+        i = np.zeros((n * degree), dtype=tp)
+        j = np.zeros((n * degree), dtype=tp)
+        for column in range(n):
+            ind = random_state.choice(m, size=degree, replace=False)
+            i[column * degree : (column + 1) * degree] = ind
+            j[column * degree : (column + 1) * degree] = column
+
+    # each line has `degree` non-zero values
+    elif direction == "in":
+        if not 0 <= degree <= n:
+            raise ValueError(f"'degree'={degree} must be between 0 and n={n}.")
+
+        i = np.zeros((m * degree), dtype=tp)
+        j = np.zeros((m * degree), dtype=tp)
+        for line in range(m):
+            ind = random_state.choice(n, size=degree, replace=False)
+            i[line * degree : (line + 1) * degree] = line
+            j[line * degree : (line + 1) * degree] = ind
+
+    else:
+        raise ValueError(f'\'direction\'={direction} must either be "out" or "in".')
+
+    vals = data_rvs(len(i)).astype(dtype, copy=False)
+    return sparse.coo_matrix((vals, (i, j)), shape=(m, n)).asformat(format, copy=False)
+
+
 def _random_sparse(
     *shape: int,
     dist: str,
@@ -392,6 +519,8 @@ def _random_sparse(
     dtype: np.dtype = global_dtype,
     sparsity_type: str = "csr",
     seed: Union[int, np.random.Generator] = None,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
     **kwargs,
 ):
     """Create a random matrix.
@@ -427,6 +556,16 @@ def _random_sparse(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
     **kwargs : optional
         Arguments for the scipy.stats distribution.
 
@@ -434,29 +573,47 @@ def _random_sparse(
     -------
     scipy.sparse array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
-    if 0 < connectivity > 1.0:
-        raise ValueError("'connectivity' must be >0 and <1.")
 
     rg = rand_generator(seed)
     rvs = _get_rvs(dist, **kwargs, random_state=rg)
 
-    if connectivity >= 1.0 or len(shape) != 2:
-        matrix = rvs(size=shape).astype(dtype)
-        if connectivity < 1.0:
-            matrix[rg.random(shape) > connectivity] = 0.0
-    else:
-        matrix = sparse.random(
-            shape[0],
-            shape[1],
-            density=connectivity,
+    if degree is not None:
+        if len(shape) != 2:
+            raise ValueError(
+                f"Matrix shape must have 2 dimensions, got {len(shape)}: {shape}"
+            )
+        m, n = shape
+        matrix = _random_degree(
+            m=m,
+            n=n,
+            degree=degree,
+            direction=direction,
             format=sparsity_type,
+            dtype=dtype,
             random_state=rg,
             data_rvs=rvs,
-            dtype=dtype,
         )
+    else:
+        if 0 < connectivity > 1.0:
+            raise ValueError("'connectivity' must be >0 and <1.")
+
+        if connectivity >= 1.0 or len(shape) != 2:
+            matrix = rvs(size=shape).astype(dtype)
+            if connectivity < 1.0:
+                matrix[rg.random(shape) > connectivity] = 0.0
+        else:
+            matrix = sparse.random(
+                shape[0],
+                shape[1],
+                density=connectivity,
+                format=sparsity_type,
+                random_state=rg,
+                data_rvs=rvs,
+                dtype=dtype,
+            )
 
     # sparse.random may return np.matrix if format="dense".
     # Only ndarray are supported though, hence the explicit cast.
@@ -477,6 +634,8 @@ def _uniform(
     dtype: np.dtype = global_dtype,
     sparsity_type: str = "csr",
     seed: Union[int, np.random.Generator] = None,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
 ):
     """Create an array with uniformly distributed values.
 
@@ -502,13 +661,23 @@ def _uniform(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
 
     Returns
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     if high < low:
         raise ValueError("'high' boundary must be > to 'low' boundary.")
@@ -518,6 +687,8 @@ def _uniform(
         loc=low,
         scale=high - low,
         connectivity=connectivity,
+        degree=degree,
+        direction=direction,
         dtype=dtype,
         sparsity_type=sparsity_type,
         seed=seed,
@@ -535,6 +706,8 @@ def _normal(
     dtype: np.dtype = global_dtype,
     sparsity_type: str = "csr",
     seed: Union[int, np.random.Generator] = None,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
 ):
     """Create an array with values distributed following a Gaussian distribution.
 
@@ -560,13 +733,23 @@ def _normal(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
 
     Returns
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     return _random_sparse(
         *shape,
@@ -574,6 +757,8 @@ def _normal(
         loc=loc,
         scale=scale,
         connectivity=connectivity,
+        degree=degree,
+        direction=direction,
         dtype=dtype,
         sparsity_type=sparsity_type,
         seed=seed,
@@ -590,6 +775,8 @@ def _bernoulli(
     dtype: np.dtype = global_dtype,
     sparsity_type: str = "csr",
     seed: Union[int, np.random.Generator] = None,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
 ):
     """Create an array with values equal to either 1 or -1. Probability of success
     (to obtain 1) is equal to p.
@@ -616,13 +803,23 @@ def _bernoulli(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
 
     Returns
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     if 1 < p < 0:
         raise ValueError("'p' must be <= 1 and >= 0.")
@@ -634,6 +831,8 @@ def _bernoulli(
         dtype=dtype,
         sparsity_type=sparsity_type,
         seed=seed,
+        degree=degree,
+        direction=direction,
     )
 
 
@@ -659,8 +858,8 @@ def _ones(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     return np.ones(shape, dtype=dtype)
 
@@ -685,8 +884,8 @@ def _zeros(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
 
     Note
     ----
@@ -708,6 +907,8 @@ def _fast_spectral_initialization(
     dtype: np.dtype = global_dtype,
     sparsity_type: str = "csr",
     seed: Union[int, np.random.Generator] = None,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
 ):
     """Fast spectral radius (FSI) approach for weights
     initialization [1]_ of square matrices.
@@ -737,13 +938,23 @@ def _fast_spectral_initialization(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
 
     Returns
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
 
     Note
     ----
@@ -778,6 +989,8 @@ def _fast_spectral_initialization(
         dtype=dtype,
         sparsity_type=sparsity_type,
         seed=seed,
+        degree=degree,
+        direction=direction,
     )
 
 
@@ -796,6 +1009,8 @@ def _generate_internal_weights(
     dtype=global_dtype,
     sparsity_type="csr",
     seed=None,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
     **kwargs,
 ):
     """Generate the weight matrix that will be used for the internal connections of a
@@ -837,6 +1052,16 @@ def _generate_internal_weights(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
     **kwargs : optional
         Arguments for the scipy.stats distribution.
 
@@ -844,8 +1069,8 @@ def _generate_internal_weights(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
 
     warnings.warn(
@@ -862,6 +1087,8 @@ def _generate_internal_weights(
         dist=dist,
         sparsity_type=sparsity_type,
         seed=seed,
+        degree=degree,
+        direction=direction,
         **kwargs,
     )
 
@@ -880,6 +1107,8 @@ def _generate_input_weights(
     sparsity_type="csr",
     seed=None,
     input_bias=False,
+    degree: Union[int, None] = None,
+    direction: Literal["in", "out"] = "out",
     **kwargs,
 ):
     """Generate input or feedback weights for a reservoir.
@@ -931,6 +1160,16 @@ def _generate_input_weights(
     seed : optional
         Random generator seed. Default to the global value set with
         :py:func:`reservoirpy.set_seed`.
+    degree: int, default to None
+        If not None, override the `connectivity` argument and corresponds to the number
+        of non-zero values along the axis specified by `direction`
+    direction: {"in", "out"}, default to "out"
+        If `degree` is not None, specifies the axis along which the `degree` non-zero
+        values are distributed.
+        - If `direction` is "in", each line will have `degree` non-zero values. In other
+        words, each node of the corresponding graph will have `degree` in-degrees
+        - If `direction` is "out", each column will have `degree` non-zero values. In
+        other words, each node of the corresponding graph will have `degree` out-degrees
     **kwargs : optional
         Arguments for the scipy.stats distribution.
 
@@ -938,8 +1177,8 @@ def _generate_input_weights(
     -------
     Numpy array or callable
         If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partialy initialized with the given keyword parameters,
-        which can be called with a shape and returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
     """
     warnings.warn(
         "'generate_input_weights' is deprecated since v0.3.1 and will be removed in "
@@ -964,6 +1203,8 @@ def _generate_input_weights(
         dist=dist,
         sparsity_type=sparsity_type,
         seed=seed,
+        degree=degree,
+        direction=direction,
         **kwargs,
     )
 

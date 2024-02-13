@@ -181,7 +181,7 @@ class ESN(_ESNBase):
         """
         states, teachers = check_input_lists(states, self.N, teachers, self.dim_out)
 
-        # switch the regression model used at instanciation if needed.
+        # switch the regression model used at instantiation if needed.
         # WARNING: this change won't be saved by the save function.
         if ridge is not None:
             offline_model = _get_offline_model(ridge, dtype=self.typefloat)

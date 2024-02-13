@@ -72,7 +72,7 @@ def test_ip_model():
     Y = [y[:10], y[:20]]
 
     res = IPReservoir(100, activation="tanh", epochs=2, seed=1234)
-    readout = Ridge()
+    readout = Ridge(ridge=1)
 
     model = res >> readout
 

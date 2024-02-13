@@ -9,20 +9,19 @@ pools of neurons encapsulated in a :py:class:`Node` object, connect them and tra
 add feedback connections, enable parallelization, and more.
 
 Before using :mod:`reservoirpy`, make sure you have correctly installed
-the package and all its dependencies by :ref:`getting_started`.
+the package and all its dependencies by :ref:`get_started`.
 
-To learn how to create an Echo State Networks within a few minutes and get hands on ResevoirPy basic features,
-see :ref:`quick`.
+To learn how to create an Echo State Networks within a few minutes and get hands on ReservoirPy basic features,
+see :doc:`quickstart`.
 
 .. toctree::
     :maxdepth: 1
 
-    getting_started
+    quickstart
     advanced_demo
     node
     model
     learning_rules
-    feedback
     hyper
     create_new_node
     compat

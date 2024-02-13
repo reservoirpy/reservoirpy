@@ -3,3 +3,11 @@ joblib>=0.14.1
 numpy>=1.21.1
 scipy>=1.4.1
 tqdm>=4.43.0
+
+# EXTRA : hyperparameters optimization
+hyperopt
+matplotlib>=2.2.0
+seaborn
+
+# EXTRA : scikit-learn nodes
+scikit-learn>=0.24.2

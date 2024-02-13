@@ -5,40 +5,109 @@
   --pst-color-info: 23, 162, 184;
 }
 
-/* Main index page overview cards */
+:root[data-theme="light"] {
+  /* Pydata Sphinx theme default color */
+  --pst-color-link: #459db9;
+  --pst-color-link-hover: #006e91;
 
-.intro-card {
-  background: #fff;
+  --pst-color-primary: #5b1e1e;
+  --pst-color-h1: var(--pst-color-primary);
+  --pst-color-h2: #3c0d0d;
+  --pst-color-h3: #2f0404;
+
+  /* For the navbar and installation cards*/
+  --pst-color-on-background: #fafafa;
+}
+
+:root[data-theme="dark"] {
+  /* Pydata Sphinx theme default color */
+  --pst-color-link: #2cb4df;
+  --pst-color-link-hover: #96dcf2;
+
+  --pst-color-primary: #791414;
+  --pst-color-h1: #eee;
+  --pst-color-h2: #AAAAAA;
+  --pst-color-h3: #888;
+}
+
+h1 {
+  color: var(--pst-color-h1);
+}
+
+h2 {
+  color: var(--pst-color-h2);
+}
+
+h3 {
+  color: var(--pst-color-h3);
+}
+
+a:visited {
+  /* Lighter color for dark theme */
+  color: #9038DF;
+}
+
+/* Index cards */
+
+.bd-content .intro-card {
   border-radius: 0;
   padding: 30px 10px 20px 10px;
   margin: 10px 0px;
 }
 
-.intro-card p.card-text {
-  margin: 0px;
-}
-
-.intro-card .card-img-top {
-  margin-left: -5px;
-  height: 50px;
-}
-
-.intro-card .card-header {
+.bd-content .intro-card .sd-card-header {
+  text-align: center;
   border: none;
-  background-color:white;
   color: #150458 !important;
   font-size: var(--pst-font-size-h5);
   font-weight: bold;
   padding: 2.5rem 0rem 0.5rem 0rem;
 }
 
-.intro-card .card-footer {
-  border: none;
-  background-color:white;
+.bd-content .intro-card .sd-card-header .sd-card-text {
+  margin: 0px;
 }
 
-.intro-card .card-footer p.card-text{
+.bd-content .intro-card .sd-card-img-top {
+  margin-left: auto;
+  margin-right: auto;
+  height: 50px;
+}
+
+.bd-content .intro-card .sd-card-body {
+  text-align: center;
+}
+
+.bd-content .intro-card .sd-card-footer {
+  border: none;
+}
+
+.bd-content .intro-card .sd-card-footer .sd-card-text{
   max-width: 220px;
   margin-left: auto;
   margin-right: auto;
+}
+
+
+/* Card in the getting start guide */
+
+.bd-content .install-card {
+  margin: 10px 0px;
+}
+
+.bd-content .install-card .sd-card-header, .bd-content .install-card .sd-card-footer {
+  background-color: var(--pst-color-on-background);
+  border-radius: calc(.25rem - 1px) calc(.25rem - 1px) 0 0;
+  padding: .75rem 1.25rem;
+  border-bottom: 1px solid rgba(0,0,0,.125);
+}
+
+/* Avoid item wrapping in sidebar */
+
+.bd-header .navbar-header-items__end {
+  flex-flow: nowrap;
+}
+
+.bd-header .navbar-nav .nav-item {
+  white-space: nowrap;
 }

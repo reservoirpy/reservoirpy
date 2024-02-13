@@ -1,4 +1,4 @@
-.. _getting_started:
+.. _get_started:
 
 ===============
 Getting started
@@ -8,34 +8,39 @@ Getting started
 Python version support
 ======================
 
-For now, full suppport is guaranteed for Python 3.8 and higher. Support is partial for Python 3.6 and 3.7
-(see :ref:`distributed`).
+For now, full support is guaranteed for Python 3.8 and higher. Support is partial for Python 3.7.
+(see :ref:`advanced_install`).
 
 
 Installation
 ============
 
-.. panels::
-    :card: + install-card
-    :column: col-lg-6 col-md-6 col-sm-12 col-xs-12 p-3
+.. grid:: 1 1 2 2
+    :gutter: 3
 
-    Installing stable release (v0.3.0)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    .. grid-item-card::
+        :class-card: install-card
+        :shadow: md
 
-    ReservoirPy can be installed via pip from `PyPI <https://pypi.org/project/reservoirpy>`__.
+        Installing stable release (v0.3.0)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    ++++++++++++++++++++++
+        ReservoirPy can be installed via pip from `PyPI <https://pypi.org/project/reservoirpy>`__.
 
-    .. code-block:: bash
+        ++++++++++++++++++++++
 
-        pip install reservoirpy
+        .. code-block:: bash
 
-    ---
+            pip install reservoirpy
 
-    Installing previous stable release (v0.2.4)
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    .. grid-item-card::
+        :class-card: install-card
+        :shadow: md
 
-    User guide of v0.2.4 can be found at :ref:`compat`.
+        Installing previous stable release (v0.2.4)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        User guide of v0.2.4 can be found at :ref:`compat`.
 
         ++++++++++++++++++++++
 
@@ -43,18 +48,21 @@ Installation
 
             pip install reservoirpy==0.2.4
 
-    ---
-    :column: col-12 p-3
+    .. grid-item-card::
+        :class-card: install-card
+        :columns: 12
+        :shadow: md
 
-    Complete installation guide
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        Complete installation guide
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    A complete walkthrough for beginners and some instructions for developers.
+        A complete walkthrough for beginners and some instructions for developers.
 
-    .. link-button:: ../developer_guide/advanced_install.html
-        :type: url
-        :text: Learn more
-        :classes: btn-secondary stretched-link
+        .. button-ref:: ../developer_guide/advanced_install
+            :color: secondary
+            :click-parent:
+
+            Learn more
 
 
 Project philosophy
@@ -80,6 +88,6 @@ from beginners to experts.
 Learn more
 ==========
 
-You can now start using ReservoirPy ! Learn more about the software and its capabilities in the :ref:`user_guide`.
+You can now start using ReservoirPy! Learn more about the software and its capabilities in the :ref:`user_guide`.
 You can also find tutorials and examples in the `GitHub repository
 <https://github.com/reservoirpy/reservoirpy/tree/master/tutorials>`_.

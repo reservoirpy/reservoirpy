@@ -55,7 +55,7 @@ In general, you will need :
 - Jupyter, to benefits from the power of Jupyter notebooks
 - scikit-learn, to have metrics from scikit-learn
 - Hyperopt, to optimise hyperparameters.
--
+
 Everything is in the requirements file.
 
 ```bash

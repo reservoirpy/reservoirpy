@@ -1,4 +1,4 @@
-"""Choatic timeseries generators.
+"""Chaotic timeseries generators.
 """
 # Author: Nathan Trouvain at 2020 <nathan.trouvain@inria.fr>
 # Licence: MIT License
@@ -23,7 +23,7 @@ memory = Memory(os.path.join(_TEMPDIR, "datasets"), verbose=0)
 
 def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
     """
-    Mackey-Glass time delay diffential equation, at values x(t) and x(t-tau).
+    Mackey-Glass time delay differential equation, at values x(t) and x(t-tau).
     """
     return -b * xt + a * xtau / (1 + xtau**n)
 
@@ -45,6 +45,7 @@ def henon_map(
     a: float = 1.4,
     b: float = 0.3,
     x0: Union[list, np.ndarray] = [0.0, 0.0],
+    **kwargs,
 ) -> np.ndarray:
     """Hénon map discrete timeseries [2]_ [3]_.
 
@@ -75,7 +76,7 @@ def henon_map(
            attractor’, Comm. Math. Phys., vol. 50, no. 1, pp. 69–77, 1976.
 
     .. [3] `Hénon map <https://en.wikipedia.org/wiki/H%C3%A9non_map>`_
-           on Wikipédia
+           on Wikipedia
 
     """
     states = np.zeros((n_timesteps, 2))
@@ -88,7 +89,9 @@ def henon_map(
     return states
 
 
-def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5) -> np.ndarray:
+def logistic_map(
+    n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs
+) -> np.ndarray:
     """Logistic map discrete timeseries [4]_ [5]_.
 
     .. math::
@@ -116,7 +119,7 @@ def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5) -> np.ndarra
            Art. no. 5560, Jun. 1976, doi: 10.1038/261459a0.
 
     .. [5] `Logistic map <https://en.wikipedia.org/wiki/Logistic_map>`_
-           on Wikipédia
+           on Wikipedia
     """
     if r > 0 and 0 < x0 < 1:
         X = np.zeros(n_timesteps)
@@ -187,11 +190,11 @@ def lorenz(
         x, y, z = state
         return sigma * (y - x), x * (rho - z) - y, x * y - beta * z
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
 
-    sol = solve_ivp(
-        lorenz_diff, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
-    )
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
+
+    sol = solve_ivp(lorenz_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -205,6 +208,7 @@ def mackey_glass(
     x0: float = 1.2,
     h: float = 1.0,
     seed: Union[int, RandomState, Generator] = None,
+    **kwargs,
 ) -> np.ndarray:
     """Mackey-Glass timeseries [8]_ [9]_, computed from the Mackey-Glass
     delayed differential equation.
@@ -220,7 +224,7 @@ def mackey_glass(
     tau : int, default to 17
         Time delay :math:`\\tau` of Mackey-Glass equation.
         By defaults, equals to 17. Other values can
-        change the choatic behaviour of the timeseries.
+        change the chaotic behaviour of the timeseries.
     a : float, default to 0.2
         :math:`a` parameter of the equation.
     b : float, default to 0.1
@@ -291,7 +295,7 @@ def mackey_glass(
             xtau = history.popleft()
             history.append(xt)
 
-        xth = _mg_rk4(xt, xtau, a=a, b=b, n=n)
+        xth = _mg_rk4(xt, xtau, a=a, b=b, n=n, h=h)
 
         xt = xth
 
@@ -305,6 +309,7 @@ def multiscroll(
     c: float = 28.0,
     x0: Union[list, np.ndarray] = [-0.1, 0.5, -0.6],
     h: float = 0.01,
+    **kwargs,
 ) -> np.ndarray:
     """Double scroll attractor timeseries [10]_ [11]_,
     a particular case of multiscroll attractor timeseries.
@@ -355,13 +360,15 @@ def multiscroll(
         dz = x * y - b * z
         return dx, dy, dz
 
-    t = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        multiscroll_diff, y0=x0, t_span=(0.0, n_timesteps * h), dense_output=True
+        multiscroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
-    return sol.sol(t).T
+    return sol.y.T
 
 
 def doublescroll(
@@ -423,7 +430,7 @@ def doublescroll(
            on Wikipedia.
     """
 
-    def doublescroll(t, state):
+    def doublescroll_diff(t, state):
         V1, V2, i = state
 
         dV = V1 - V2
@@ -434,10 +441,12 @@ def doublescroll(
 
         return dV1, dV2, dI
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        doublescroll, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
+        doublescroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
@@ -500,14 +509,12 @@ def rabinovich_fabrikant(
         dz = -2 * z * (alpha + x * y)
         return dx, dy, dz
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
+
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
 
     sol = solve_ivp(
-        rabinovich_fabrikant_diff,
-        y0=x0,
-        t_span=(0.0, n_timesteps * h),
-        t_eval=t_eval,
-        **kwargs,
+        rabinovich_fabrikant_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
     )
 
     return sol.y.T
@@ -522,6 +529,7 @@ def narma(
     c: float = 0.001,
     x0: Union[list, np.ndarray] = [0.0],
     seed: Union[int, RandomState] = None,
+    u: np.ndarray = None,
 ) -> np.ndarray:
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
     as first defined in [14]_, and as used in [15]_.
@@ -535,6 +543,15 @@ def narma(
 
     where :math:`u[t]` are sampled following a uniform distribution in
     :math:`[0, 0.5]`.
+
+    Note
+    ----
+    In most reservoir computing benchmarks, $u$ is given as an input. If you want
+    access to its value, you should create the `u` array and pass it as an argument
+    to the function as shown below.
+    This choice is made to avoid breaking changes. In future ReservoirPy versions, `u`
+    will be returned with `y`.
+    See `related discussion <https://github.com/reservoirpy/reservoirpy/issues/142>`_.
 
     Parameters
     ----------
@@ -554,11 +571,25 @@ def narma(
         Initial conditions of the system.
     seed : int or :py:class:`numpy.random.Generator`, optional
         Random state seed for reproducibility.
+    u : array of shape (`n_timesteps` + `order`, 1), default to None.
+        Input timeseries (usually uniformly distributed). See above note.
 
     Returns
     -------
     array of shape (n_timesteps, 1)
         NARMA timeseries.
+
+    Example
+    -------
+    >>> import numpy as np
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> from reservoirpy.datasets import narma
+    >>> model = Reservoir(100) >> Ridge()
+    >>> n_timesteps, order = 2000, 30
+    >>> rng = np.random.default_rng(seed=2341)
+    >>> u = rng.uniform(0, 0.5, size=(n_timesteps + order, 1))
+    >>> y = narma(n_timesteps=n_timesteps, order=order, u=u)
+    >>> model = model.fit(u[order:], y)
 
     References
     ----------
@@ -583,12 +614,14 @@ def narma(
     x0 = check_vector(np.atleast_2d(np.asarray(x0)))
     y[: x0.shape[0], :] = x0
 
-    noise = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
+    if u is None:
+        u = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
+
     for t in range(order, n_timesteps + order - 1):
         y[t + 1] = (
             a1 * y[t]
             + a2 * y[t] * np.sum(y[t - order : t])
-            + b * noise[t - order] * noise[t]
+            + b * u[t - order] * u[t]
             + c
         )
     return y[order:, :]
@@ -618,14 +651,14 @@ def lorenz96(
     n_timesteps : int
         Number of timesteps to generate.
     warmup : int, default to 0
-        Number of timesteps to discard at the begining of the signal, to remove
+        Number of timesteps to discard at the beginning of the signal, to remove
         transient states.
     N: int, default to 36
         Dimension of the system.
     F : float, default to F
         :math:`F` parameter of the system.
     dF : float, default to 0.01
-        Pertubation applied to initial condition if x0 is None.
+        Perturbation applied to initial condition if x0 is None.
     h : float, default to 0.01
         Time delta between two discrete timesteps.
     x0 : array-like of shape (N,), default to None
@@ -665,12 +698,14 @@ def lorenz96(
             ds[i] = (state[(i + 1) % N] - state[i - 2]) * state[i - 1] - state[i] + F
         return ds
 
-    t_eval = np.arange(0.0, (warmup + n_timesteps) * h, h)
+    t_max = (warmup + n_timesteps) * h
+
+    t_eval = np.linspace(0.0, t_max * h, n_timesteps)
 
     sol = solve_ivp(
         lorenz96_diff,
         y0=x0,
-        t_span=(0.0, (warmup + n_timesteps) * h),
+        t_span=(0.0, t_max * h),
         t_eval=t_eval,
         **kwargs,
     )
@@ -737,11 +772,11 @@ def rossler(
         dz = b + z * (x - c)
         return dx, dy, dz
 
-    t_eval = np.arange(0.0, n_timesteps * h, h)
+    t_max = n_timesteps * h
 
-    sol = solve_ivp(
-        rossler_diff, y0=x0, t_span=(0.0, n_timesteps * h), t_eval=t_eval, **kwargs
-    )
+    t_eval = np.linspace(0.0, t_max, n_timesteps)
+
+    sol = solve_ivp(rossler_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -827,12 +862,12 @@ def kuramoto_sivashinsky(
     n_timesteps : int
         Number of timesteps to generate.
     warmup : int, default to 0
-        Number of timesteps to discard at the begining of the signal, to remove
+        Number of timesteps to discard at the beginning of the signal, to remove
         transient states.
     N : int, default to 128
         Dimension of the system.
     M : float, default to 0.2
-        Number of points for complex means. Modify beahviour of the resulting
+        Number of points for complex means. Modify behaviour of the resulting
         multivariate timeseries.
     x0 : array-like of shape (N,), default to None.
         Initial conditions of the system. If None, x0 is equal to

@@ -5,12 +5,12 @@ reservoirpy.nodes.Identity
 
 .. autoclass:: Identity
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~Identity.__init__
       ~Identity.call
       ~Identity.clean_buffers
@@ -40,15 +40,15 @@ reservoirpy.nodes.Identity
       ~Identity.with_state
       ~Identity.zero_feedback
       ~Identity.zero_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~Identity.dtype
       ~Identity.feedback_dim
       ~Identity.fitted
@@ -64,4 +64,5 @@ reservoirpy.nodes.Identity
       ~Identity.output_dim
       ~Identity.params
       ~Identity.unsupervised
-
+   
+   

@@ -11,7 +11,7 @@ future releases.
 .. warning::
 
     All features in the experimental module may still be under heavy
-    developement. You can still report any bug by opening an issue
+    development. You can still report any bug by opening an issue
     as explained in :ref:`opening_an_issue`.
 
 Nodes
@@ -33,3 +33,10 @@ from .add import Add
 from .batchforce import BatchFORCE
 from .norm import AsabukiNorm
 from .randomchoice import RandomChoice
+
+__all__ = [
+    "Add",
+    "BatchFORCE",
+    "AsabukiNorm",
+    "RandomChoice",
+]

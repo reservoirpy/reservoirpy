@@ -12,8 +12,8 @@ with open(version_file) as f:
 AUTHOR = "Xavier Hinaut"
 AUTHOR_EMAIL = "xavier.hinaut@inria.fr"
 
-MAINTAINERS = "Xavier Hinaut, Nathan Trouvain"
-MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, nathan.trouvain@inria.fr"
+MAINTAINERS = "Xavier Hinaut, Paul Bernard"
+MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, paul.bernard@inria.fr"
 
 DESCRIPTION = (
     "A simple and flexible code for Reservoir "
@@ -27,22 +27,23 @@ URL = "https://github.com/reservoirpy/reservoirpy"
 DOWNLOAD_URL = f"{URL}/v{__version__}.tar.gz"
 
 INSTALL_REQUIRES = [
-    "tqdm>=4.43.0",
-    "joblib>=0.12",
-    "dill>=0.3.0",
+    "dill>=0.3.1.1",
+    "joblib>=0.14.1",
     "numpy>=1.21.1",
-    "scipy>=1.0.0,<=1.7.3",
-    "joblib>=0.12",
+    "scipy>=1.4.1",
+    "tqdm>=4.43.0",
 ]
 
 EXTRA_REQUIRES = {
-    "hyper": ["matplotlib>=2.2.0", "hyperopt", "seaborn"],
+    "hyper": ["hyperopt", "matplotlib>=2.2.0", "seaborn"],
+    "sklearn": ["scikit-learn>=0.24.2"],
 }
 
 PROJECT_URLS = {
     "Bug Tracker": "https://github.com/reservoirpy/reservoirpy/issues",
     "Documentation": "https://reservoirpy.readthedocs.io/en/latest/index.html",
     "Source Code": URL,
+    "Release notes": "https://github.com/reservoirpy/reservoirpy/releases",
 }
 
 if __name__ == "__main__":
@@ -73,13 +74,14 @@ if __name__ == "__main__":
             "Operating System :: MacOS",
             "Operating System :: OS Independent",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.6",
-            "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9",
+            "Programming Language :: Python :: 3.10",
+            "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
             "Programming Language :: Python :: Implementation :: PyPy",
         ],
-        python_requires=">=3.6",
+        python_requires=">=3.7",
         install_requires=INSTALL_REQUIRES,
         extras_require=EXTRA_REQUIRES,
     )

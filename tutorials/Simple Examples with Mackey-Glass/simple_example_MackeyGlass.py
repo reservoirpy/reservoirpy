@@ -1,8 +1,8 @@
-"""Echo State Network demo with ReservoirPy on a chaotic timeseries prediciton
+"""Echo State Network demo with ReservoirPy on a chaotic timeseries prediction
 task.
 
 This script provides some Reservoir Computing and ReservoirPy basics, applying
-them on a benchamrking classic: the Mackey-Glass timeseries prediction task.
+them on a benchmarking classic: the Mackey-Glass timeseries prediction task.
 
 To go further, we encourage you to follow the "Introduction to Reservoir
 Computing" notebook that can be found in the eponym repertory,
@@ -25,10 +25,10 @@ import numpy as np
 
 import reservoirpy as rpy
 from reservoirpy.datasets import mackey_glass
-from reservoirpy.nodes import Input, Reservoir, Ridge
+from reservoirpy.nodes import Reservoir, Ridge
 
 # Set a particular seed for the random generator (for example seed = 42)
-# NB: reservoir performances should be averaged accross at least 30 random
+# NB: reservoir performances should be averaged across at least 30 random
 # instances (with the same set of parameters)
 # If None, then a random seed will be used.
 SEED = 42
@@ -70,8 +70,8 @@ if __name__ == "__main__":
 
     # Input dimension
     input_bias = True  # add a constant input to 1
-    n_inputs = 1  # input dimension (optional, can be infered at runtime)
-    n_outputs = 1  # output dimension (optional, can be infered at runtime)
+    n_inputs = 1  # input dimension (optional, can be inferred at runtime)
+    n_outputs = 1  # output dimension (optional, can be inferred at runtime)
 
     # Reservoir parameter
     units = 300  # number of recurrent units
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
     from reservoirpy.observables import spectral_radius
 
-    # Spectral radius is the maximum absolute norm of the eignevectors of W.
+    # Spectral radius is the maximum absolute norm of the eigenvectors of W.
     # original_spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
     original_spectral_radius = spectral_radius(W)
 
@@ -222,7 +222,7 @@ if __name__ == "__main__":
         name="custom-reservoir",
     )
 
-    # create a readout layer equiped with an offline learning rule
+    # create a readout layer equipped with an offline learning rule
     readout = Ridge(ridge=regularization_coef, name="readout")
 
     if feedback:

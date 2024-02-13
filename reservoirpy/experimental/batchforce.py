@@ -1,18 +1,12 @@
 # Author: Nathan Trouvain at 06/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-# Author: Nathan Trouvain at 24/09/2021 <nathan.trouvain@inria.fr>
-# Licence: MIT License
-# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-# Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
-# Licence: MIT License
-# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import partial
 
 import numpy as np
 
 from ..node import Node
-from ..nodes.utils import (
+from ..nodes.readouts.base import (
     _initialize_readout,
     _prepare_inputs_for_learning,
     readout_forward,

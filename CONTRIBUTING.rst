@@ -4,27 +4,28 @@ Contributing
 If you are reading this, **thank you very much for considering contributing**, and welcome to ReservoirPy project!
 **Wether you feel like a developer or not is not important. There are many ways to help:**
 
-- `I would like to submit a bug report or suggest a new feature <opening_an_issue>`
-- `I would like to improve code, style, or add features <contributing_code>`
-- `I can help answer questions and solve issues <solve_issues>`
-- `I have a suggestion to improve or complete documentation <contribute_documentation>`
-- `I want to reference you in my work <https://github.com/reservoirpy/reservoirpy#cite>`
-- `I use the project and add a star <https://github.com/reservoirpy/reservoirpy>`
+- :ref:`I would like to submit a bug report or suggest a new feature <opening_an_issue>`
+- :ref:`I would like to improve code, style, or add features <contributing_code>`
+- :ref:`I can help answer questions and solve issues <solve_issues>`
+- :ref:`I have a suggestion to improve or complete documentation <contribute_documentation>`
+- `I want to reference you in my work <https://github.com/reservoirpy/reservoirpy#cite>`_
+- `I use the project and add a star <https://github.com/reservoirpy/reservoirpy>`_
 
 **All of the above are equally important contributions to us.**
 
 If you have any question about this document and contribution in general, do not hesitate to contact
-nathan.trouvain<@>inria.fr, main developer, or xavier.hinaut<@>inria.fr, head of the project.
+paul.bernard<@>inria.fr, main developer, or xavier.hinaut<@>inria.fr, head of the project.
 
 This document is based on and inspired by the `scikit-learn project contributing guidelines
-<https://scikit-learn.org/dev/developers/contributing.html#submitting-a-bug-report-or-a-feature-request>`
-and `geomstats project contributing guidelines
-<https://github.com/geomstats/geomstats/blob/master/docs/contributing.rst>`
+<https://scikit-learn.org/dev/developers/contributing.html#submitting-a-bug-report-or-a-feature-request>`_
+and `Geomstats project contributing guidelines
+<https://github.com/geomstats/geomstats/blob/main/docs/contributing/index.rst>`_
+
+.. _opening_an_issue:
 
 Submitting a bug report or a feature request
 ============================================
 
-.. _opening_an_issue:
 
 We use GitHub issues to track all bugs and feature requests; feel free to `open
 an issue <https://github.com/reservoirpy/reservoirpy/issues>`_ if you have found a
@@ -38,23 +39,24 @@ following rules before submitting:
    or `pull requests <https://github.com/reservoirpy/reservoirpy/pulls?q=>`_.
 
 -  If you are submitting a bug report, we strongly encourage you to
-   follow the guidelines in :ref:`_submiting_a_bug_report`.
+   follow the guidelines in :ref:`submitting_a_bug_report`.
+
+.. _submitting_a_bug_report:
 
 How to Write a Good Bug Report
 ------------------------------
 
-.. _submiting_a_bug_report:
 
-When you submit an issue to `Github
-<https://github.com/reservoirpy/reservoirpy/issues>`__, please do your best to
+When you submit an issue to `GitHub
+<https://github.com/reservoirpy/reservoirpy/issues>`_, please do your best to
 follow these guidelines! This will make it a lot easier to provide you with good
 feedback:
 
 - The ideal bug report contains a **short reproducible code snippet**, this way
   anyone can try to reproduce the bug easily (see `this
-  <https://stackoverflow.com/help/mcve>`_ for more details>`. If your snippet is
+  <https://stackoverflow.com/help/mcve>`_ for more details). If your snippet is
   longer than around 50 lines, please link to a `gist
-  <https://gist.github.com>`_ or a github repo.
+  <https://gist.github.com>`_ or a GitHub repo.
 
 - If not feasible to include a reproducible snippet, please be specific about
   what **nodes and/or functions are involved and the shape of the data**.
@@ -288,7 +290,7 @@ on the GitHub issue).
   right direction.
 
 Stalled Pull Requests
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 As contributing a feature can be a lengthy process, some
 pull requests appear inactive but unfinished. In such a case, taking
@@ -381,7 +383,7 @@ Writing Docstrings
 ==================
 
 Intro to Docstrings
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 A docstring is a well-formatted description of your function/class/module which includes
 its purpose, usage, and other information.
@@ -400,7 +402,7 @@ Try this out with the np.array class and the np.mean function to see good exampl
     >>> print(np.mean.__doc__)
 
 The Anatomy of a Docstring
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 These are some of the most common elements for functions (and ones we’d like you to add where appropriate):
 
@@ -442,7 +444,7 @@ N.B. Within Notes, you can
 .. _docstring_examples:
 
 Docstring Examples
-^^^^^^^^^^^^^^^^^^
+------------------
 
 Here's a generic docstring template::
 
@@ -581,7 +583,7 @@ guidelines:
    objects living in several namespaces which creates confusion, see
    `<https://docs.python.org/2/howto/doanddont.html#language-constructs-you-should-not-use>`_.
    Keeping the original namespace ensures naming consistency in the codebase
-   and speeds up the code reviews: co-developpers and maintainers do not have
+   and speeds up the code reviews: co-developers and maintainers do not have
    to check if you are using the original module's method or if you have
    overwritten it.
 

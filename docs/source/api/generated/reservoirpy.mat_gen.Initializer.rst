@@ -5,15 +5,16 @@ reservoirpy.mat\_gen.Initializer
 
 .. autoclass:: Initializer
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~Initializer.__init__
+   
+   
 
-
-
-
-
+   
+   
+   

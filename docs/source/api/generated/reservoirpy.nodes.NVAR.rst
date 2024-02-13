@@ -5,12 +5,12 @@ reservoirpy.nodes.NVAR
 
 .. autoclass:: NVAR
 
-
-
+   
+   
    .. rubric:: Methods
 
    .. autosummary::
-
+   
       ~NVAR.__init__
       ~NVAR.call
       ~NVAR.clean_buffers
@@ -40,15 +40,15 @@ reservoirpy.nodes.NVAR
       ~NVAR.with_state
       ~NVAR.zero_feedback
       ~NVAR.zero_state
+   
+   
 
-
-
-
-
+   
+   
    .. rubric:: Attributes
 
    .. autosummary::
-
+   
       ~NVAR.dtype
       ~NVAR.feedback_dim
       ~NVAR.fitted
@@ -64,4 +64,5 @@ reservoirpy.nodes.NVAR
       ~NVAR.output_dim
       ~NVAR.params
       ~NVAR.unsupervised
-
+   
+   

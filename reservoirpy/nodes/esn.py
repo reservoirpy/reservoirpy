@@ -1,6 +1,7 @@
 # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from copy import deepcopy
 from multiprocessing import Manager
 
 import numpy as np
@@ -20,6 +21,48 @@ from .reservoirs import NVAR, Reservoir
 _LEARNING_METHODS = {"ridge": Ridge}
 
 _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
+
+
+def _run_partial_fit_fn(esn, x, y, lock, warmup):
+    # the 'loky' and 'multiprocessing' backends already deep-copies the ESN. See
+    # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+    _esn = deepcopy(esn)
+    _esn.reservoir.reset()
+
+    seq_len = len(x[list(x)[0]])
+    states = np.zeros((seq_len, esn.reservoir.output_dim))
+
+    for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
+        with _esn.readout.with_feedback(forced_feedback[esn.readout.name]):
+            states[i, :] = call(_esn.reservoir, x[esn.reservoir.name])
+
+    esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
+
+
+def _run_fn(
+    esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
+):
+    _esn = deepcopy(esn)
+    X = {_esn.reservoir.name: x[esn.reservoir.name]}
+
+    states = _allocate_returned_states(_esn, X, return_states)
+
+    with _esn.with_state(from_state, stateful=stateful, reset=reset):
+        for i, (x_step, forced_feedback, _) in enumerate(
+            dispatch(X, forced_fb, shift_fb=shift_fb)
+        ):
+            _esn._load_proxys()
+            with _esn.readout.with_feedback(forced_feedback):
+                state = _esn._call(x_step, return_states=return_states)
+
+            if is_mapping(state):
+                for name, value in state.items():
+                    states[name][i, :] = value
+            else:
+                states["readout"][i, :] = state
+
+    _esn._clean_proxys()
+    return idx, states
 
 
 def _allocate_returned_states(model, inputs, return_states=None):
@@ -132,7 +175,9 @@ class ESN(FrozenModel):
 
     Example
     -------
-
+    >>> from reservoirpy.nodes import Reservoir, Ridge, ESN
+    >>> reservoir, readout = Reservoir(100, sr=0.9), Ridge(ridge=1e-6)
+    >>> model = ESN(reservoir=reservoir, readout=readout, workers=-1)
     """
 
     def __init__(
@@ -270,28 +315,6 @@ class ESN(FrozenModel):
 
         self._initialize_on_sequence(X[0], forced_feedbacks[0])
 
-        def run_fn(idx, x, forced_fb):
-
-            states = _allocate_returned_states(self, x, return_states)
-
-            with self.with_state(from_state, stateful=stateful, reset=reset):
-                for i, (x, forced_feedback, _) in enumerate(
-                    dispatch(x, forced_fb, shift_fb=shift_fb)
-                ):
-                    self._load_proxys()
-                    with self.with_feedback(forced_feedback):
-                        state = self._call(x, return_states=return_states)
-
-                    if is_mapping(state):
-                        for name, value in state.items():
-                            states[name][i, :] = value
-                    else:
-                        states["readout"][i, :] = state
-
-            self._clean_proxys()
-
-            return idx, states
-
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
         seq = progress(X, f"Running {self.name}")
@@ -299,53 +322,45 @@ class ESN(FrozenModel):
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 states = parallel(
-                    delayed(run_fn)(idx, x, y)
+                    delayed(_run_fn)(
+                        self,
+                        idx,
+                        x,
+                        y,
+                        return_states,
+                        from_state,
+                        stateful,
+                        reset,
+                        shift_fb,
+                    )
                     for idx, (x, y) in enumerate(zip(seq, forced_feedbacks))
                 )
 
         return _sort_and_unpack(states, return_states=return_states)
 
-    def fit(self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False):
+    def fit(
+        self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False
+    ):
 
         X, Y = to_data_mapping(self, X, Y)
         self._initialize_on_sequence(X[0], Y[0])
 
         self.initialize_buffers()
 
-        if (self.workers > 1 or self.workers < 0) and self.backend not in (
-            "sequential",
-            "threading",
-        ):
+        if (self.workers > 1 or self.workers < 0) and self.backend != "sequential":
             lock = Manager().Lock()
         else:
             lock = None
-
-        def run_partial_fit_fn(x, y):
-            seq_len = len(x[list(x)[0]])
-            states = np.zeros((seq_len, self.reservoir.output_dim))
-
-            for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-                self._load_proxys()
-
-                with self.readout.with_feedback(forced_feedback[self.readout.name]):
-                    states[i, :] = call(self.reservoir, x[self.reservoir.name])
-
-            self._clean_proxys()
-
-            # Avoid any problem related to multiple
-            # writes from multiple processes
-            # if lock is not None:
-            # with lock:  # pragma: no cover
-            self.readout.partial_fit(states, y[self.readout.name], warmup=warmup, lock=lock)
-            # else:
-            #     self.readout.partial_fit(states, y[self.readout.name])
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
         seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-                parallel(delayed(run_partial_fit_fn)(x, y) for x, y in zip(seq, Y))
+                parallel(
+                    delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
+                    for x, y in zip(seq, Y)
+                )
 
             if verbosity():  # pragma: no cover
                 print(f"Fitting node {self.name}...")

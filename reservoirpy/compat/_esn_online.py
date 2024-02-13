@@ -46,8 +46,8 @@ class ESNOnline:
     Wout: np.ndarray
         Readout weights matrix
     alpha_coef : float, optional
-        Coefficient to scale the inversed state correlation matrix
-        used for FORCE learning. By defautl, equal to
+        Coefficient to scale the inverted state correlation matrix
+        used for FORCE learning. By default, equal to
         :math:`1e^{-6}`.
     use_raw_input : bool, optional
         If True, input is used directly when computing output.
@@ -131,7 +131,7 @@ class ESNOnline:
                 fbfunc must be a callable object, not {self.fbfunc}."
             )
 
-        # coef used to init state_corr_inv matrix
+        # coefficient used to init state_corr_inv matrix
         self.alpha_coef = alpha_coef
 
         # Init internal state vector and state_corr_inv matrix
@@ -499,7 +499,7 @@ def _new_correlation_matrix_inverse(new_data, old_corr_mat_inv):
     """
     If old_corr_mat_inv is an approximation for the correlation
     matrix inverse of a dataset (p1, ..., pn), then the function
-    returns an approximatrion for the correlation matrix inverse
+    returns an approximation for the correlation matrix inverse
     of dataset (p1, ..., pn, new_data)
 
     TODO : add forgetting parameter lbda

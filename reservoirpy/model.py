@@ -32,7 +32,6 @@ a :py:class:`Model`.
       ~Model.get_node
       ~Model.initialize
       ~Model.initialize_buffers
-      ~Model.link
       ~Model.reset
       ~Model.run
       ~Model.train
@@ -195,7 +194,7 @@ def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
     be the forward function of a first node, and let :math:`g` be the forward
     function of a second node. If first node is connected to second node in a
     model, then the model forward function :math:`h` will compute, at each
-    timestep :math:`t` of a timeserie :math:`X`:
+    timestep :math:`t` of a timeseries :math:`X`:
 
     .. math::
 
@@ -207,7 +206,7 @@ def forward(model: "Model", x: MappedData) -> List[np.ndarray]:
         A :py:class:`Model` instance.
     x : dict or array-like of shape ([n_inputs], 1, input_dim)
         A vector corresponding to a timestep of data, or
-        a dictionnary mapping node names to input vectors.
+        a dictionary mapping node names to input vectors.
 
     Returns
     -------
@@ -250,11 +249,11 @@ def initializer(model: "Model", x: MappedData, y: Optional[MappedData] = None):
         A :py:class:`Model` instance.
     x : numpy.ndarray or dict of numpy.ndarray
         A vector of shape `(1, ndim)` corresponding to a timestep of data, or
-        a dictionnary mapping node names to vector of shapes
+        a dictionary mapping node names to vector of shapes
         `(1, ndim of corresponding node)`.
     y : numpy.ndarray or dict of numpy.ndarray
         A vector of shape `(1, ndim)` corresponding to a timestep of target
-        data or feedback, or a dictionnary mapping node names to vector of
+        data or feedback, or a dictionary mapping node names to vector of
         shapes `(1, ndim of corresponding node)`.
     """
     data = model.data_dispatcher.load(x, y)
@@ -558,7 +557,7 @@ class Model(_Node):
 
     @property
     def output_dim(self):
-        """Ouptut dimension of the Model;
+        """Output dimension of the Model;
         output dimensions of all output Nodes."""
         if self.is_initialized:
             dims = [n.output_dim for n in self.output_nodes]
@@ -588,7 +587,7 @@ class Model(_Node):
 
     @property
     def feedback_nodes(self):
-        """Returns all Nodes equiped with a feedback connection
+        """Returns all Nodes equipped with a feedback connection
         in the Model."""
         return [n for n in self.nodes if n.has_feedback]
 
@@ -851,7 +850,7 @@ class Model(_Node):
             # graph call.
             self._load_proxys(keep=True)
 
-            # maybe load forced feedbacks in proxys ?
+            # maybe load forced feedbacks in proxys?
             with self.with_feedback(forced_feedback, stateful=stateful, reset=reset):
                 state = self._call(x, return_states)
 
@@ -882,7 +881,7 @@ class Model(_Node):
             A sequence of input data.
             If dict, then pairs of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        forced_feedbacks: dict of array-like of shape ([n_feedbacks], timesteps, feedabck_dim)
+        forced_feedbacks: dict of array-like of shape ([n_feedbacks], timesteps, feedback_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are sequences of feedback vectors to force into the nodes.
         from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
@@ -956,7 +955,7 @@ class Model(_Node):
         force_teachers : bool, default to True
             If True, this Model will broadcast the available ground truth
             signal
-            to all online nodes sending feedabck to other nodes. Otherwise,
+            to all online nodes sending feedback to other nodes. Otherwise,
             the real state of these nodes will be sent to the feedback
             receivers
             during training.
@@ -1057,7 +1056,7 @@ class Model(_Node):
             nodes names and values are sequence of target data.
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
-            discard at the begining of each timeseries before training.
+            discard at the beginning of each timeseries before training.
         force_teachers : bool, default to True
             If True, this Model will broadcast the available ground truth
             signal

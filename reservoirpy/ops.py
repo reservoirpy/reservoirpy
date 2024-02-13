@@ -85,7 +85,7 @@ def _link_1to1(node1: _Node, node2: _Node):
         if isinstance(node, Model) and not isinstance(node, FrozenModel):
             all_edges += node.edges
 
-    # create edges between output no  des of the
+    # create edges between output nodes of the
     # subgraph 1 and input nodes of the subgraph 2.
     senders = []
     if isinstance(node1, Model) and not isinstance(node, FrozenModel):
@@ -101,7 +101,7 @@ def _link_1to1(node1: _Node, node2: _Node):
 
     new_edges = list(product(senders, receivers))
 
-    # maybe nodes are already initialized ?
+    # maybe nodes are already initialized?
     # check if connected dimensions are ok
     for sender, receiver in new_edges:
         if (
@@ -163,7 +163,7 @@ def link(
         model = [node1, node2, ..., node] >> node_out
         # one-to-many
         model = node_in >> [node1, node2, ..., node]
-        # ! many-to-many requires to use the `link` method explicitely !
+        # ! many-to-many requires to use the `link` method explicitly!
         model = link([node1, node2, ..., node], [node1, node2, ..., node])
 
     Parameters
@@ -188,7 +188,7 @@ def link(
     Notes
     -----
 
-        Be carefull to how you link the different nodes: `reservoirpy` does not
+        Be careful to how you link the different nodes: `reservoirpy` does not
         allow to have circular dependencies between them::
 
             model = node1 >> node2  # fine
@@ -242,7 +242,7 @@ def link_feedback(
     Feedbacks nodes will be called at runtime using data from the previous
     call.
 
-    This is not an inplace operation by default. This function will copy `node`
+    This is not an in-place operation by default. This function will copy `node`
     and then sets the copy `_feedback` attribute as a reference to `feedback`
     node. If `inplace` is set to `True`, then `node` is not copied and the
     feedback is directly connected to `node`. If `feedback` is a list of nodes
@@ -274,7 +274,7 @@ def link_feedback(
     Parameters
     ----------
     node : Node
-        Node reciving feedback.
+        Node receiving feedback.
     feedback : _Node
         Node or Model sending feedback
     inplace : bool, defaults to False
@@ -323,7 +323,7 @@ def link_feedback(
         return node
     else:
         # first copy the node, then give it feedback
-        # original node is not conencted to any feedback then
+        # original node is not connected to any feedback then
         new_node = node.copy(name=name)
         new_node._feedback = DistantFeedback(all_fb, new_node)
         return new_node
@@ -347,7 +347,7 @@ def merge(
 
         model = merge((node1 >> node2), (node1 >> node3))
 
-    The inplace operator can also be used::
+    The in-place operator can also be used::
 
         model &= other_model
 
@@ -363,7 +363,7 @@ def merge(
     *models : Model or Node
         All models to merge.
     inplace: bool, default to False
-        If `True`, then will update Model `model` inplace. If `model` is not
+        If `True`, then will update Model `model` in-place. If `model` is not
         a Model instance, this parameter will causes the function to raise
         a `ValueError`.
     name: str, optional
@@ -378,7 +378,7 @@ def merge(
     ------
     ValueError
         If `inplace` is `True` but `model` is not a Model instance, then the
-        operation is impossible. Inplace merging can only take place on a
+        operation is impossible. In-place merging can only take place on a
         Model instance.
     """
     msg = "Impossible to merge models: object {} is not a Model instance."
@@ -397,7 +397,7 @@ def merge(
         if inplace:
             if not isinstance(model, Model) or isinstance(model, FrozenModel):
                 raise ValueError(
-                    f"Impossible to merge models inplace: "
+                    f"Impossible to merge models in-place: "
                     f"{model} is not a Model instance."
                 )
             return model.update_graph(all_nodes, all_edges)

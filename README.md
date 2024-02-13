@@ -8,8 +8,9 @@
 [![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
 [![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/reservoirpy)](https://pypistats.org/packages/reservoirpy)
 
-# ReservoirPy (v0.3.6) 🌀🧠
+# ReservoirPy (v0.3.11) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reservoirpy/reservoirpy/HEAD)
@@ -153,11 +154,11 @@ Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-
     python simple_example_MackeyGlass.py
     ```
 
-If you have some issues testing some examples, have a look at the [extended packages requirements in readthedocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
+If you have some issues testing some examples, have a look at the [extended packages requirements in ReadTheDocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
 
-## More installation options 
+## More installation options
 
-To install it, use one of the following command:
+To install it, use one of the following commands:
 
 ```bash
 pip install reservoirpy
@@ -165,7 +166,7 @@ pip install reservoirpy
 or
 
 ```bash
-pip install reservoirpy==0.3.5
+pip install reservoirpy==0.3.11
 ```
 
 If you want to run the Python Notebooks of the _tutorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
@@ -200,7 +201,7 @@ A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt
 
 Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
 
-[Turorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
+[Tutorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
 
 More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
@@ -242,6 +243,6 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 </div>
 
 
-This package is developped and supported by Inria at Bordeaux, France in [Mnemosyne](https://team.inria.fr/mnemosyne/) group. [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
+This package is developed and supported by Inria at Bordeaux, France in [Mnemosyne](https://team.inria.fr/mnemosyne/) group. [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
 
 

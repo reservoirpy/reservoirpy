@@ -14,7 +14,7 @@ Reservoirs
 
    Reservoir - Recurrent pool of leaky integrator neurons
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
-   IPReservoir - Reservoir with intrinsic plasticy learning rule
+   IPReservoir - Reservoir with intrinsic plasticity learning rule
 
 Offline readouts
 ================
@@ -24,6 +24,7 @@ Offline readouts
    :template: autosummary/class.rst
 
    Ridge - Layer of neurons connected through offline linear regression.
+   ScikitLearnNode - Interface for linear models from the scikit-learn library.
 
 Online readouts
 ===============
@@ -77,15 +78,17 @@ Operators
    :template: autosummary/class.rst
 
    Concat - Concatenate vector of data along feature axis.
+   Delay - Adds a discrete delay between input and output.
 """
 # Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .concat import Concat
+from .delay import Delay
 from .esn import ESN
 from .io import Input, Output
-from .readouts import FORCE, LMS, RLS, Ridge
+from .readouts import FORCE, LMS, RLS, Ridge, ScikitLearnNode
 from .reservoirs import NVAR, IPReservoir, Reservoir
 
 __all__ = [
@@ -105,5 +108,7 @@ __all__ = [
     "NVAR",
     "ESN",
     "Concat",
+    "Delay",
     "IPReservoir",
+    "ScikitLearnNode",
 ]

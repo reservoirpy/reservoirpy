@@ -8,7 +8,7 @@ Reservoir Computing techniques allow the use of a great variety of learning mech
 In ReservoirPy, these learning rules are sorted in two categories: **offline** learning rules
 and **online** learning rules.
 
-Nodes can be equiped with such learning rules, and learning can be triggered by using their,
+Nodes can be equipped with such learning rules, and learning can be triggered by using their,
 :py:meth:`~.Node.fit` (offline learning) and :py:meth:`~.Node.train` (online learning) methods.
 
 Offline learning rules - Linear regression
@@ -23,7 +23,7 @@ given all available samples of data and all available samples of target values. 
 be updated without training the model on the whole dataset another time. Training and data gathering happen in two
 separate phases.
 
-Linear regression is implemented in ReservoirPy through the :py:class:`~.Ridge` node. Ridge node is equiped with a
+Linear regression is implemented in ReservoirPy through the :py:class:`~.Ridge` node. Ridge node is equipped with a
 regularized linear regression learning rule, of the form :eq:`ridge`:
 
 .. math::
@@ -34,7 +34,7 @@ regularized linear regression learning rule, of the form :eq:`ridge`:
 Where :math:`X` is a series of inputs, and :math:`Y` is a series of target values that the network must learn to
 predict. :math:`\lambda` is a regularization
 parameter used to avoid overfitting. In most cases, as the :py:class:`~.Ridge` node will be used within an Echo State
-Network (ESN), :math:`X` wil represent the series of activations of a :py:class:`~.Reservoir` node over a timeseries.
+Network (ESN), :math:`X` will represent the series of activations of a :py:class:`~.Reservoir` node over a timeseries.
 The algorithm will therefore compute a matrix of neuronal weights :math:`W_{out}` (and a bias term)
 such as predictions can be computed using equation :eq:`ridgeforward`.
 :math:`W_{out}` (and bias) is stored in the node :py:attr:`Node.params` attribute.
@@ -92,7 +92,7 @@ as soon as all input data is available. If input data for an offline node B come
 then the model will fit A on all available data, then run it, and finally resume training B.
 
 As an example, we will train the readout layer of an ESN using linear regression. We first create some toy dataset: the
-task we need the ESN to perform is to predict the cosinus form of a wave given its sinus form.
+task we need the ESN to perform is to predict the cosine form of a wave given its sine form.
 
 .. ipython:: python
 
@@ -160,7 +160,7 @@ Online learning with :py:meth:`~.Node.train`
 --------------------------------------------
 
 Online learning can be performed using the :py:meth:`~.Node.train` method.
-In the following example, we will use the :py:class:`~.FORCE` node, a single layer of neurons equiped with
+In the following example, we will use the :py:class:`~.FORCE` node, a single layer of neurons equipped with
 an online learning rule called FORCE algorithm.
 
 We start by creating some input data ``X`` and some target data ``Y`` that the model has to predict.
@@ -198,7 +198,7 @@ by the node.
     force = FORCE()
     S = force.train(X, Y)
 
-As the parameters are updated incrementaly, we can see convergence of the model throughout training, as opposed
+As the parameters are updated incrementally, we can see convergence of the model throughout training, as opposed
 to offline learning where parameters can only be updated once, and evaluated at the end of the training phase.
 We can see that convergence is really fast. Only the first timesteps of output display visible errors:
 
@@ -232,11 +232,11 @@ Online learning with :py:meth:`~.Model.train`
 Models also have a :py:meth:`~.Model.train` method, working similarly to the one of the Node class presented above.
 The :py:meth:`~.Model.train` method can only be used if all nodes in the model are online nodes, or are not trainable.
 If all nodes are online, then the :py:meth:`~.Node.train` methods of all online nodes in the model will be called in the
-topological order of the graph defined by the model. At each timesteps, onlines nodes are trained, called, and their
+topological order of the graph defined by the model. At each timesteps, online nodes are trained, called, and their
 updated states are given to the next nodes in the graph.
 
 As an example, we will train the readout layer of an ESN using FORCE learning. We first create some toy dataset: the
-task we need the ESN to perform is to predict the cosinus form of a wave given its sinus form.
+task we need the ESN to perform is to predict the cosine form of a wave given its sine form.
 
 .. ipython:: python
 

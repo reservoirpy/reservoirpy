@@ -34,6 +34,10 @@ from reservoirpy.mat_gen import (
         ((50, 50), "foo", 0.1, {}, "raise"),
         ((50, 50), "uniform", 5.0, {}, "raise"),
         ((50, 50), "uniform", 0.1, {"p": 0.9}, "raise"),
+        ((50, 5), "uniform", 0.1, {"degree": 23, "direction": "out"}, "sparse"),
+        ((50, 5), "uniform", 0.1, {"degree": 3, "direction": "in"}, "sparse"),
+        ((50, 5), "uniform", 0.1, {"degree": 6, "direction": "in"}, "raise"),
+        ((50, 5), "uniform", 0.1, {"degree": -1000, "direction": "out"}, "raise"),
     ],
 )
 def test_random_sparse(shape, dist, connectivity, kwargs, expects):
@@ -45,10 +49,8 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
             *shape, dist=dist, connectivity=connectivity, seed=42, **kwargs
         )
 
-        assert_array_equal(w1.toarray(), w0.toarray())
-        assert_allclose(
-            np.count_nonzero(w0.toarray()) / w0.toarray().size, connectivity, atol=1e-2
-        )
+        w0 = w0.toarray()
+        w1 = w1.toarray()
 
     if expects == "dense":
         init = random_sparse(dist=dist, connectivity=connectivity, seed=42, **kwargs)
@@ -57,17 +59,25 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
             *shape, dist=dist, connectivity=connectivity, seed=42, **kwargs
         )
 
-        assert_array_equal(w1, w0)
-        assert_allclose(np.count_nonzero(w0) / w0.size, connectivity, atol=1e-2)
-
     if expects == "raise":
         with pytest.raises(Exception):
             init = random_sparse(
                 dist=dist, connectivity=connectivity, seed=42, **kwargs
             )
-            w0 = init(5, 5)
+            w0 = init(*shape)
+        with pytest.raises(Exception):
             w1 = random_sparse(
-                5, 5, dist="uniform", connectivity=0.2, seed=42, **kwargs
+                *shape, dist=dist, connectivity=connectivity, seed=42, **kwargs
+            )
+    else:
+        assert_array_equal(w1, w0)
+        if kwargs.get("degree") is None:
+            assert_allclose(np.count_nonzero(w0) / w0.size, connectivity, atol=1e-2)
+        else:
+            dim_length = {"in": shape[0], "out": shape[1]}
+            assert (
+                np.count_nonzero(w0)
+                == kwargs["degree"] * dim_length[kwargs["direction"]]
             )
 
 
@@ -482,3 +492,16 @@ def test_reproducibility_fsi():
 
     assert_array_almost_equal(W0, W1)
     assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
+
+
+def test_sanity_checks():
+    with pytest.raises(ValueError):
+        _ = uniform(20, 20, degree=10, direction="all")
+    with pytest.raises(ValueError):
+        _ = uniform(30, degree=5, direction="in")
+    with pytest.raises(ValueError):
+        _ = uniform(30, 100, 10, degree=5, direction="in")
+    with pytest.raises(ValueError):
+        _ = bernoulli(30, 100, p=1.1)
+    with pytest.raises(ValueError):
+        _ = uniform(30, 100, low=1, high=0)

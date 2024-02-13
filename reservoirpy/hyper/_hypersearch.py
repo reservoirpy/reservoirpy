@@ -29,11 +29,11 @@ def _parse_config(config):
     required_args = ["exp", "hp_max_evals", "hp_method", "hp_space"]
     for arg in required_args:
         if config.get(arg) is None:
-            raise ValueError(f"No {arg} argument found in config file.")
+            raise ValueError(f"No {arg} argument found in configuration file.")
 
     if config["hp_method"] not in ["tpe", "random"]:
         raise ValueError(
-            f"Unknow hyperopt algorithm: {config['hp_method']}. "
+            f"Unknown hyperopt algorithm: {config['hp_method']}. "
             "Available algorithms: 'random', 'tpe'."
         )
     else:

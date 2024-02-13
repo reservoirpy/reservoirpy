@@ -2,7 +2,7 @@
 """
 A minimalistic Echo State Networks demo with Mackey-Glass (delay 17) data
 in "plain" scientific Python.
-by Mantas LukoÅ¡eviÄ?ius 2012
+by Mantas Lukosevicius 2012
 http://minds.jacobs-university.de/mantas
 ---
 Modified by Xavier Hinaut: 2015-2016
@@ -39,13 +39,18 @@ def set_seed(seed=None):
     return seed
 
 
-## Set a particular seed for the random generator (for example seed = 42), or use a "random" one (seed = None)
-# NB: reservoir performances should be averaged accross at least 30 random instances (with the same set of parameters)
+# Set a particular seed for the random generator (for example seed = 42),
+# or use a "random" one (seed = None)
+# NB: reservoir performances should be averaged across at least 30 random instances
+# (with the same set of parameters)
 seed = 42  # None #42
 
-## load the data and select which parts are used for 'warming', 'training' and 'testing' the reservoir
-# 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size (resSize) = 300
-initLen = 100  # number of time steps during which internal activations are washed-out during training
+# load the data and select which parts are used for 'warming', 'training' and 'testing'
+# the reservoir. 30 seems to be enough for initLen with leak_rate=0.3 and reservoir size
+# (resSize) = 300
+
+# number of timesteps during which internal activations are washed-out when training
+initLen = 100
 trainLen = 2000  # number of time steps during which we train the network
 testLen = 2000  # number of time steps during which we test/run the network
 
@@ -64,11 +69,15 @@ resSize = 300  # reservoir size (for prediction)  #TODO: try to change the value
 a = 0.3  # leaking rate  #TODO: try to change the value
 spectral_radius = 1.25  # TODO: try to change the value
 input_scaling = 1.0  # TODO: try to change the value
-reg = 1e-6  # None # regularization coefficient, if None, pseudo-inverse is use instead of ridge regression
+reg = 1e-6  # None # regularization coefficient. If None, pseudo-inverse is used.
 
 # TODO: Try different modes:
-mode = "prediction"  # receives the real input at each time steps and tries to predict the next input
-# mode = 'generative' # the read-out output is feedback to the input INSTEAD of the real input. Thus the reservoir is in 'free run' mode, it does not receive real input anymore after training phase.
+# receives the real input at each time steps and tries to predict the next input
+mode = "prediction"
+# the read-out output is feedback to the input INSTEAD of the real input.
+# Thus the reservoir is in 'free run' mode, it does not receive real input
+# anymore after training phase.
+# mode = 'generative'
 
 # Show complementary information
 verbose = False
@@ -115,8 +124,9 @@ if reg is not None:
     Wout = np.dot(
         np.dot(Yt, X_T), linalg.inv(np.dot(X, X_T) + reg * np.eye(1 + inSize + resSize))
     )
-    ### Just if you want to try the difference between scipy.linalg and numpy.linalg which does not give the same results
-    ### For more info, see https://www.scipy.org/scipylib/faq.html#why-both-numpy-linalg-and-scipy-linalg-what-s-the-difference
+# If you want to try the difference between scipy.linalg and numpy.linalg:
+# For more info, see
+# https://www.scipy.org/scipylib/faq.html#why-both-numpy-linalg-and-scipy-linalg-what-s-the-difference
 #    np_Wout = np.dot(np.dot(Yt,X_T), np.linalg.inv(np.dot(X,X_T) + \
 #        reg*np.eye(1+inSize+resSize) ) )
 #    print( "Difference between scipy and numpy .inv() method:\n\tscipy_mean_Wout="+\
@@ -137,7 +147,7 @@ for t in range(testLen):
         # generative mode:
         u = y
     elif mode == "prediction":
-        ## predictive mode:
+        # predictive mode:
         u = data[trainLen + t + 1]
     else:
         raise Exception("ERROR: 'mode' was not set correctly.")
@@ -162,8 +172,8 @@ elif mode == "prediction":
 
 # plt.figure(2).clear()
 # #plot( X[0:20,0:200].T )
-# plt.plot( X[0:2,0:2000].T ) #xav
-# plt.legend(["biais", "input"])
+# plt.plot( X[0:2,0:2000].T )
+# plt.legend(["bias", "input"])
 # plt.ylim([-1.1,1.1])
 # plt.title('Input $\mathbf{u}(n)$ and bias for 2000 time steps')
 
@@ -178,14 +188,14 @@ plt.title(
 # plt.figure(4).clear()
 # plt.plot( X[2:12,:].T )
 # plt.ylim([-1.1,1.1])
-# plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 9 for all time steps')
+# plt.title('Activations $\mathbf{x}(n)$ from Reservoir Neurons ID 0 to 9 for all timesteps')
 #
 # plt.figure(5).clear()
 # plt.plot( X[2:,0:200].T )
 # plt.ylim([-1.1,1.1])
 # plt.title('All reservoir activations $\mathbf{x}(n)$ for 200 time steps')
 
-## Bug, I don't know why
+# Bug, I don't know why
 # plt.figure(6).clear()
 # plt.bar( range(1+inSize+resSize), Wout.T )
 # plt.title('Output weights $\mathbf{W}^{out}$')
