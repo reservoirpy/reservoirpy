@@ -40,7 +40,7 @@ def _check_arrays(y_true, y_pred):
     if not y_true_array.shape == y_pred_array.shape:
         raise ValueError(
             f"Shape mismatch between y_true and y_pred: "
-            "{y_true_array.shape} != {y_pred_array.shape}"
+            f"{y_true_array.shape} != {y_pred_array.shape}"
         )
 
     return y_true_array, y_pred_array
