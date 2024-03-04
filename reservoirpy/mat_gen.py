@@ -972,7 +972,7 @@ def _fast_spectral_initialization(
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
     """
-    if 0 > connectivity < 1.0:
+    if 0 > connectivity > 1.0:
         raise ValueError("'connectivity' must be >0 and <1.")
 
     if sr is None or connectivity <= 0.0:
