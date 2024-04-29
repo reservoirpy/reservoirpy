@@ -10,7 +10,6 @@ from reservoirpy.nodes import ESN, Reservoir, Ridge
 
 
 def test_esn_init():
-
     esn = ESN(units=100, output_dim=1, lr=0.8, sr=0.4, ridge=1e-5, Win_bias=False)
 
     data = np.ones((1, 10))
@@ -34,7 +33,6 @@ def test_esn_init():
 
 
 def test_esn_init_from_obj():
-
     res = Reservoir(100, lr=0.8, sr=0.4, input_bias=False)
     read = Ridge(1, ridge=1e-5)
 
@@ -81,11 +79,11 @@ def test_esn_states():
 
 
 def test_esn_feedback():
-
     esn = ESN(units=100, output_dim=5, lr=0.8, sr=0.4, ridge=1e-5, feedback=True)
 
-    data = np.ones((1, 10))
-    res = esn(data)
+    x = np.ones((1, 10))
+    y = np.ones((1, 5))
+    res = esn(x)
 
     assert esn.reservoir.W.shape == (100, 100)
     assert esn.reservoir.Win.shape == (100, 10)
@@ -93,6 +91,8 @@ def test_esn_feedback():
     assert res.shape == (1, 5)
     assert esn.reservoir.Wfb is not None
     assert esn.reservoir.Wfb.shape == (100, 5)
+
+    esn.fit(x, y).run(x, forced_feedbacks=y)
 
 
 def test_esn_parallel_fit_reproducibility():
@@ -118,7 +118,6 @@ def test_esn_parallel_fit_reproducibility():
     )
 
     for backend in ("loky", "multiprocessing", "threading", "sequential"):
-
         set_seed(seed)
         esn = ESN(
             units=100,
@@ -161,7 +160,6 @@ def test_esn_parallel_run_reproducibility():
     base_y_out = esn.run(X[0])
 
     for backend in ("loky", "multiprocessing", "threading", "sequential"):
-
         set_seed(seed)
         esn = ESN(
             units=100,
@@ -175,7 +173,6 @@ def test_esn_parallel_run_reproducibility():
 
 
 def test_hierarchical_esn_forbidden():
-
     esn1 = ESN(
         units=100,
         lr=0.8,
