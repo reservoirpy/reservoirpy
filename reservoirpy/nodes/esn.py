@@ -52,7 +52,7 @@ def _run_fn(
             dispatch(X, forced_fb, shift_fb=shift_fb)
         ):
             _esn._load_proxys()
-            with _esn.readout.with_feedback(forced_feedback):
+            with _esn.with_feedback(forced_feedback):
                 state = _esn._call(x_step, return_states=return_states)
 
             if is_mapping(state):
@@ -195,7 +195,6 @@ class ESN(FrozenModel):
         use_raw_inputs=False,
         **kwargs,
     ):
-
         msg = "'{}' is not a valid method. Available methods for {} are {}."
 
         if reservoir is None:
@@ -270,7 +269,6 @@ class ESN(FrozenModel):
         return False
 
     def _call(self, x=None, return_states=None, *args, **kwargs):
-
         data = x[self.reservoir.name]
 
         state = call(self.reservoir, data)
@@ -310,7 +308,6 @@ class ESN(FrozenModel):
         shift_fb=True,
         return_states=None,
     ):
-
         X, forced_feedbacks = to_data_mapping(self, X, forced_feedbacks)
 
         self._initialize_on_sequence(X[0], forced_feedbacks[0])
@@ -341,7 +338,6 @@ class ESN(FrozenModel):
     def fit(
         self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False
     ):
-
         X, Y = to_data_mapping(self, X, Y)
         self._initialize_on_sequence(X[0], Y[0])
 
