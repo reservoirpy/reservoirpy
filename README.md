@@ -209,6 +209,7 @@ More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
 If you want your paper to appear here, please contact us (see contact link below).
 
+- Leger et al. (2024) Evolving Reservoirs for Meta Reinforcement Learning. EvoAPPS 2024 [HAL](https://inria.hal.science/hal-04354303) [PDF](https://arxiv.org/pdf/2312.06695) [Code](https://github.com/corentinlger/ER-MRL)
 - Chaix-Eichel et al. (2022) From implicit learning to explicit representations. arXiv preprint arXiv:2204.02484. [arXiv](https://arxiv.org/abs/2204.02484) [PDF](https://arxiv.org/pdf/2204.02484)
 - Trouvain & Hinaut (2021) Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) [HAL](https://hal.inria.fr/hal-03203374) [PDF](https://hal.inria.fr/hal-03203374/document)
 - Pagliarini et al. (2021) Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator. ICDL 2021. [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF)
