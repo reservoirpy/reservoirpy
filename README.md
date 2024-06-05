@@ -54,7 +54,7 @@ See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.i
 to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
 
 ## Quick example of how to code a deep reservoir
-![Image](deep-reservoir.gif)
+![GIF: Writing of a deep-ESN architecture using ReservoirPy](./static/deep-reservoir.gif)
 
 ## Installation
 
@@ -67,7 +67,7 @@ pip install reservoirpy
 
 ## Quick try ⚡
 
-### An example on Chaotic timeseries prediction (MackeyGlass)
+### An example on Chaotic timeseries prediction (Mackey-Glass)
 
 **Step 1: Load the dataset**
 
