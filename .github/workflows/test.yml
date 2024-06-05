@@ -4,24 +4,28 @@ on:
   push:
     branches: [master, v0.3.0-maintainance]
     paths-ignore:
-    - 'docs/**'
-    - 'examples/**'
-    - 'tutorials/**'
-    - 'static/**'
-    - 'README.md'
-    - 'LICENSE'
-    - 'CONTRIBUTING.md'
-    - '.gitignore'
-    - '.readthedocs.yml'
+      - 'docs/**'
+      - 'examples/**'
+      - 'tutorials/**'
+      - 'static/**'
+      - 'README.md'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
+      - '.gitignore'
+      - '.readthedocs.yml'
 
   pull_request:
     types: [opened, synchronize]
     paths-ignore:
       - 'docs/**'
+      - 'examples/**'
+      - 'tutorials/**'
       - 'static/**'
+      - 'README.md'
       - 'LICENSE'
       - 'CONTRIBUTING.md'
       - '.gitignore'
+      - '.readthedocs.yml'
 
 jobs:
   build:
