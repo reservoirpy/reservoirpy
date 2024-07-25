@@ -10,7 +10,7 @@ from reservoirpy.nodes import IPReservoir
 
 steps = 1000
 X = narma(steps)
-X = (X - X.min()) / (X.ptp())
+X = (X - X.min()) / np.ptp(X)
 sigma = 0.1
 
 reservoir = IPReservoir(100, mu=0.0, sigma=sigma, sr=0.95, activation="tanh", epochs=10)

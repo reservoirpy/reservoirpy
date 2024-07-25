@@ -20,7 +20,7 @@ if __name__ == "__main__":
     bspl = make_interp_spline(t, X, k=5, axis=0)
 
     XX = np.array([*bspl(tt)])
-    XX = ((XX - XX.min()) / XX.ptp()) * 2 - 1.0
+    XX = ((XX - XX.min()) / np.ptp(XX)) * 2 - 1.0
     XX[:, 0] = XX[:, 0]
     XX[:, 1] = XX[:, 1]
     XX[:, 2] = XX[:, 2]
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     dds = []
     for i in range(NN - 1):
         x, y, z = XX[i : i + 2, 0], XX[i : i + 2, 1], XX[i : i + 2, 2]
-        d = (sigmoid(w * np.sqrt(x[0] ** 2) + b) - D.min()) / D.ptp()
+        d = (sigmoid(w * np.sqrt(x[0] ** 2) + b) - D.min()) / np.ptp(D)
         dds.append(d)
         ax.plot(x, y, z, color=plt.cm.YlOrRd(int(255 * d)), lw=1)
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     dds = []
     for i in range(NN - 1):
         x, y, z = XX[i : i + 2, 0], XX[i : i + 2, 1], XX[i : i + 2, 2]
-        d = (sigmoid(1.0 * np.sqrt(x[0] ** 2) + 3.0) - D.min()) / D.ptp()
+        d = (sigmoid(1.0 * np.sqrt(x[0] ** 2) + 3.0) - D.min()) / np.ptp(D)
         dds.append(d)
     plt.plot(np.array(dds)[:10000])
 

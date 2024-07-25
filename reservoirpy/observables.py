@@ -233,7 +233,7 @@ def nrmse(
 
     else:
         norms = {
-            "minmax": lambda y: y.ptp(),
+            "minmax": lambda y: np.ptp(y),
             "var": lambda y: y.var(),
             "mean": lambda y: y.mean(),
             "q1q3": lambda y: np.quantile(y, 0.75) - np.quantile(y, 0.25),
