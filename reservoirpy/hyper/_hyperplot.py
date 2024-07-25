@@ -47,7 +47,7 @@ def _logscale_plot(ax, xrange, yrange, base=10):
 
 
 def _scale(x):
-    return (x - x.min()) / (x.ptp())
+    return (x - x.min()) / np.ptp(x)
 
 
 def _cross_parameter_plot(
