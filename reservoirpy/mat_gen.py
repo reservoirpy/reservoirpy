@@ -120,7 +120,7 @@ else:
 import copy
 import warnings
 from functools import partial
-from typing import Callable, Iterable, Union
+from typing import Callable, Iterable, Optional, Union
 
 import numpy as np
 from numpy.random import Generator
@@ -369,9 +369,9 @@ def _scale_spectral_radius(w_init, shape, sr, **kwargs):
             convergence = True
         except ArpackNoConvergence:  # pragma: no cover
             if seed is None:
-                seed = rg.integers(1, 9999)
+                seed = rg.integers(1 << 16)
             else:
-                seed = rg.integers(1, seed + 1)  # never stuck at 1
+                seed += 1
             w = w_init(*shape, seed=seed, **kwargs)
 
     return w
@@ -528,7 +528,7 @@ def _random_sparse(
     Parameters
     ----------
     *shape : int, int, ..., optional
-        Shape (row, columns, ...) the matrix.
+        Shape (row, columns, ...) of the matrix.
     dist: str
         A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
         "uniform". Parameters like `loc` and `scale` can be passed to the distribution
@@ -1210,3 +1210,118 @@ def _generate_input_weights(
 
 
 generate_input_weights = Initializer(_generate_input_weights, autorize_sr=False)
+
+
+def _ring(
+    *shape: int,
+    weights: Optional[np.ndarray] = None,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    **kwargs,
+):
+    """Create a lower cyclic shift matrix.
+
+    This is used for ring reservoirs, which has a circular topology
+    (each node `n` is connected to the node `n+1 % units`).
+
+    Note that the `connectivity` and `seed` parameters have no effect.
+
+    Parameters
+    ----------
+    *shape : (int, int), optional
+        Shape (row, columns) of the array. Must be a square matrix, i.e. row == columns.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    weights : array of shape (units, ), optional
+        If defined, corresponds to the weights of each connection.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        Format of the output matrix. "csr" and "csc" corresponds to the Scipy sparse
+        matrix formats, and "dense" corresponds to a regular Numpy array.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    **kwargs : optional
+        This argument is kept for compatibility reasons. This is not used.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
+    """
+
+    if len(shape) != 2 or shape[0] != shape[1]:
+        raise ValueError(
+            f"Shape of the ring matrix must be (units, units), got {shape}."
+        )
+    units = shape[0]
+
+    if weights is None:
+        weights = np.ones((units,), dtype=dtype)
+    row = np.roll(np.arange(units, dtype=np.int32), shift=-1)
+    col = np.arange(units, dtype=np.int32)
+
+    matrix = sparse.coo_matrix((weights, (row, col)), shape=(units, units)).asformat(
+        sparsity_type, copy=False
+    )
+
+    if type(matrix) is np.matrix:
+        matrix = np.asarray(matrix)
+
+    return matrix
+
+
+ring = Initializer(_ring)
+
+
+def _orthogonal(
+    *shape: int,
+    dtype: np.dtype = global_dtype,
+    seed: Union[int, np.random.Generator] = None,
+    **kwargs,
+):
+    """Create a random orthogonal matrix, drawn from the O(N) Haar distribution (the only uniform distribution on O(N)).
+
+    Note that the `connectivity` parameter in the Reservoir node has no effect with an orthogonal matrix initializer.
+
+    Parameters
+    ----------
+    *shape : (int, int), optional
+        Shape (row, columns) of the array. Must be a square matrix, i.e. row == columns.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+    **kwargs : optional
+        This argument is kept for compatibility reasons. This is not used.
+
+    Returns
+    -------
+    numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
+    """
+
+    if len(shape) != 2 or shape[0] != shape[1]:
+        raise ValueError(
+            f"Shape of the ring matrix must be (units, units), got {shape}."
+        )
+    units = shape[0]
+    rg = rand_generator(seed)
+
+    matrix = stats.ortho_group(dim=units, seed=rg).rvs()
+
+    return matrix
+
+
+orthogonal = Initializer(_orthogonal)
