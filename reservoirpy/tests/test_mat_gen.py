@@ -16,7 +16,9 @@ from reservoirpy.mat_gen import (
     generate_internal_weights,
     normal,
     ones,
+    orthogonal,
     random_sparse,
+    ring,
     uniform,
     zeros,
 )
@@ -505,3 +507,29 @@ def test_sanity_checks():
         _ = bernoulli(30, 100, p=1.1)
     with pytest.raises(ValueError):
         _ = uniform(30, 100, low=1, high=0)
+
+
+def test_ring_matrix():
+    _ = ring(10, 10, weights=np.arange(1.0, 11.0), sr=1.0)
+    W = ring(10, 10, input_scaling=2.0)
+
+    assert W[1, 0] == 2.0 and W[0, -1] == 2.0
+
+    # 1 on the 1st neuron, 0 elsewhere
+    x0 = np.zeros((10, 1))
+    x0[0, 0] = 1.0
+    x = x0
+    # loop all over the ring
+    for i in range(10):
+        x = W * x
+
+    assert np.all(x == 2**10 * x0)
+
+
+def test_orthogonal_matrix():
+    W1 = orthogonal(10, 10, seed=1)
+    W2 = orthogonal(10, 10, seed=1)
+
+    assert np.all(np.isclose(W1, W2))
+
+    assert np.all(np.isclose(W1 @ W1.T, np.eye(10)))
