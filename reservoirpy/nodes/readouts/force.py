@@ -48,6 +48,8 @@ class FORCE(Node):
                        default).
     ``input_bias``     If True, learn a bias term (True by default).
     ``rule``           One of RLS or LMS rule ("rls" by default).
+     ``forgetting``    Forgetting factor, only used with RLS (:math:`\\forgetting`) 
+                       (:math:`1` by default).
     ================== =================================================================
 
     Parameters
@@ -75,6 +77,8 @@ class FORCE(Node):
         the returned weight matrix.
     input_bias : bool, default to True
         If True, then a bias parameter will be learned along with output weights.
+    forgetting : float, default to 1.0
+        Forgetting factor for the RLS rule. Ignored if rule is "lms".
     name : str, optional
         Node name.
 
@@ -99,6 +103,7 @@ class FORCE(Node):
         Wout=zeros,
         bias=zeros,
         input_bias=True,
+        forgetting=1.0,
         name=None,
     ):
 
@@ -138,15 +143,24 @@ class FORCE(Node):
             raise TypeError(
                 "'alpha' parameter should be a float or an iterable yielding floats."
             )
+        
+        hypers = {
+            "alpha": alpha,
+            "_alpha_gen": alpha_gen,
+            "input_bias": input_bias,
+            "rule": rule,
+        }
+
+        if rule == "rls":
+            if not isinstance(forgetting, Number):
+                raise TypeError(
+                    "'forgetting' parameter should be a float."
+                )
+            hypers["forgetting"] = forgetting
 
         super(FORCE, self).__init__(
             params=params,
-            hypers={
-                "alpha": alpha,
-                "_alpha_gen": alpha_gen,
-                "input_bias": input_bias,
-                "rule": rule,
-            },
+            hypers=hypers,
             forward=readout_forward,
             train=train,
             initializer=partial(

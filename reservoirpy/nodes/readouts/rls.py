@@ -17,14 +17,16 @@ from .base import (
 )
 
 
-def _rls(P, r, e):
-    """Recursive Least Squares learning rule."""
+def _rls(P, r, e, f):
+    """Recursive Least Squares learning rule with forgetting factor."""
+    f = float(f)    
     k = np.dot(P, r)
     rPr = np.dot(r.T, k).squeeze()
-    c = float(1.0 / (1.0 + rPr))
-    P = P - c * np.outer(k, k)
-
-    dw = -c * np.outer(e, k)
+    c0 = float(1.0 / (1.0 + rPr))
+    c1 = float(1.0 / (f*(f + rPr)))
+    c2 = float(1.0 / f)
+    P = c2*P - c1 * np.outer(k, k)
+    dw = -c0*np.outer(e, k)
 
     return dw, P
 
@@ -36,7 +38,7 @@ def train(node: "RLS", x, y=None):
     error, r = _compute_error(node, x, y)
 
     P = node.P
-    dw, P = _rls(P, r, error)
+    dw, P = _rls(P, r, error, node.forgetting)
     wo = _assemble_wout(node.Wout, node.bias, node.input_bias)
     wo = wo + dw.T
 
@@ -67,6 +69,7 @@ class RLS(Node):
     algorithm.
 
     The learning rules is well described in [1]_.
+    The forgetting factor version of the RLS algorithm used here is described in [2]_.
 
     :py:attr:`RLS.params` **list**
 
@@ -81,6 +84,7 @@ class RLS(Node):
     ================== =================================================================
     ``alpha``          Diagonal value of matrix P (:math:`\\alpha`) (:math:`1\\cdot 10^{-6}` by default).
     ``input_bias``     If True, learn a bias term (True by default).
+    ``forgetting``     Forgetting factor (:math:`\\lambda`) (:math:`1` by default).  
     ================== =================================================================
 
     Parameters
@@ -101,6 +105,9 @@ class RLS(Node):
         the returned weight matrix.
     input_bias : bool, default to True
         If True, then a bias parameter will be learned along with output weights.
+    forgetting : float, default to 1.0
+        The forgetting factor controls the weight given to past observations in the RLS update.
+        A value less than 1.0 gives more weight to recent observations.
     name : str, optional
         Node name.
 
@@ -110,6 +117,10 @@ class RLS(Node):
     .. [1] Sussillo, D., & Abbott, L. F. (2009). Generating Coherent Patterns of
            Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557.
            https://doi.org/10.1016/j.neuron.2009.07.018
+
+    .. [2] Waegeman, T., Wyffels, F., & Schrauwen, B. (2012). Feedback Control by Online
+           Learning an Inverse Model. IEEE Transactions on Neural Networks and Learning
+           Systems, 23(10), 1637–1648. https://doi.org/10.1109/TNNLS.2012.2208655
     """
 
     def __init__(
@@ -119,6 +130,7 @@ class RLS(Node):
         Wout=zeros,
         bias=zeros,
         input_bias=True,
+        forgetting=1.0,
         name=None,
     ):
         super(RLS, self).__init__(
@@ -126,6 +138,7 @@ class RLS(Node):
             hypers={
                 "alpha": alpha,
                 "input_bias": input_bias,
+                "forgetting": forgetting,
             },
             forward=readout_forward,
             train=train,
