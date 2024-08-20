@@ -24,4 +24,3 @@ see :doc:`quickstart`.
     learning_rules
     hyper
     create_new_node
-    compat

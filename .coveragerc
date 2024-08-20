@@ -9,7 +9,6 @@ omit =
     */tests/*
     */examples/*
     */experimental/*
-    */compat/*
     */hyper/*
     */type.py
 

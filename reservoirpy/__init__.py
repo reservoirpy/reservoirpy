@@ -2,10 +2,8 @@ import logging
 import os
 import tempfile
 
-from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, type
+from . import activationsfunc, hyper, mat_gen, nodes, observables, type
 from ._version import __version__
-from .compat import load_compat
-from .compat.utils.save import load
 from .model import Model
 from .node import Node
 from .ops import link, link_feedback, merge
@@ -36,5 +34,4 @@ __all__ = [
     "merge",
     "set_seed",
     "verbosity",
-    "load_compat",
 ]

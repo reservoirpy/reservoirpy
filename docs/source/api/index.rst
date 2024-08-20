@@ -88,5 +88,4 @@ All modules
    reservoirpy.experimental
    reservoirpy.node
    reservoirpy.model
-   reservoirpy.compat
    reservoirpy.ops

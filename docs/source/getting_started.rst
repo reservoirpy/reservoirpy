@@ -37,22 +37,6 @@ Installation
         :class-card: install-card
         :shadow: md
 
-        Installing previous stable release (v0.2.4)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-        User guide of v0.2.4 can be found at :ref:`compat`.
-
-        ++++++++++++++++++++++
-
-        .. code-block:: bash
-
-            pip install reservoirpy==0.2.4
-
-    .. grid-item-card::
-        :class-card: install-card
-        :columns: 12
-        :shadow: md
-
         Complete installation guide
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
