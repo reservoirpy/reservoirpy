@@ -14,6 +14,7 @@ Metrics and observables for Reservoir Computing:
     nrmse
     rsquare
 """
+
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -80,6 +81,14 @@ def spectral_radius(W: Weights, maxiter: int = None) -> float:
         parameter to an higher value. Be warned that
         this may drastically increase the computation
         time.
+
+    Examples
+    --------
+    >>> from reservoirpy.observables import spectral_radius
+    >>> from reservoirpy.mat_gen import normal
+    >>> W = normal(1000, 1000, degree=8)
+    >>> print(spectral_radius(W))
+    2.8758915077733564
     """
     if issparse(W):
         if maxiter is None:
@@ -119,6 +128,17 @@ def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     float
         Mean squared error.
+
+    Examples
+    --------
+    >>> from reservoirpy.nodes import ESN
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
+    >>> y_pred = ESN(units=100, sr=1).fit(x_train, y_train).run(x_test)
+
+    >>> from reservoirpy.observables import mse
+    >>> print(mse(y_true=y_test, y_pred=y_pred))
+    0.03962918253990291
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
     return float(np.mean((y_true_array - y_pred_array) ** 2))
@@ -142,6 +162,19 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     float
         Root mean squared error.
+
+    Examples
+    --------
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> model = Reservoir(units=100, sr=1) >> Ridge(ridge=1e-8)
+
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
+    >>> y_pred = model.fit(x_train, y_train).run(x_test)
+
+    >>> from reservoirpy.observables import rmse
+    >>> print(rmse(y_true=y_test, y_pred=y_pred))
+    0.00034475744480521534
     """
     return np.sqrt(mse(y_true, y_pred))
 
@@ -180,6 +213,19 @@ def nrmse(
     -------
     float
         Normalized mean squared error.
+
+    Examples
+    --------
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> model = Reservoir(units=100, sr=1) >> Ridge(ridge=1e-8)
+
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
+    >>> y_pred = model.fit(x_train, y_train).run(x_test)
+
+    >>> from reservoirpy.observables import nrmse
+    >>> print(nrmse(y_true=y_test, y_pred=y_pred, norm="var"))
+    0.007854318015438394
     """
     error = rmse(y_true, y_pred)
     if norm_value is not None:
@@ -223,6 +269,19 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     float
         Coefficient of determination.
+
+    Examples
+    --------
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> model = Reservoir(units=100, sr=1) >> Ridge(ridge=1e-8)
+
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
+    >>> y_pred = model.fit(x_train, y_train).run(x_test)
+
+    >>> from reservoirpy.observables import rsquare
+    >>> print(rsquare(y_true=y_test, y_pred=y_pred))
+    0.9999972921653904
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 

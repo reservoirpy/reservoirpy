@@ -68,7 +68,6 @@ def backward(readout: Node, *args, **kwargs):
 
 
 def initialize(readout: Node, x=None, y=None, bias_init=None, Wout_init=None):
-
     _initialize_readout(
         readout, x, y, bias=readout.input_bias, init_func=Wout_init, bias_init=bias_init
     )
@@ -150,6 +149,20 @@ class Ridge(Node):
         If True, then a bias parameter will be learned along with output weights.
     name : str, optional
         Node name.
+
+    Example
+    -------
+
+    >>> x = np.random.normal(size=(100, 3))
+    >>> noise = np.random.normal(scale=0.1, size=(100, 1))
+    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+    >>>
+    >>> from reservoirpy.nodes import Ridge
+    >>> ridge_regressor = Ridge(ridge=0.001)
+    >>>
+    >>> ridge_regressor.fit(x, y)
+    >>> ridge_regressor.Wout, ridge_regressor.bias
+    array([[ 9.992, -0.205,  6.989]]).T, array([[12.011]])
     """
 
     def __init__(
