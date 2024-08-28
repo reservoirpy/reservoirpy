@@ -15,6 +15,11 @@
 
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reservoirpy/reservoirpy/HEAD)
 
+🎉 Exciting News! We just launched a new beta tool based on a Large Language Model! 
+🚀 You can chat with our "ReservoirChat" and ask anything about Reservoir Computing or coding reservoirs! 🤖💡
+Don’t miss out, it’s available for a limited time! ⏳
+https://chat.reservoirpy.inria.fr
+
 ```python
 from reservoirpy.nodes import Reservoir, Ridge, Input
 
