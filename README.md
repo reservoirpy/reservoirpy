@@ -9,6 +9,7 @@
 [![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/reservoirpy)](https://pypistats.org/packages/reservoirpy)
+[![Downloads](https://static.pepy.tech/badge/reservoirpy)](https://pepy.tech/project/reservoirpy)
 
 # ReservoirPy (v0.3.11) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
