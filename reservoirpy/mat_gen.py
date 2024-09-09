@@ -110,6 +110,7 @@ References
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
 """
+
 import sys
 
 if sys.version_info < (3, 8):
@@ -1221,7 +1222,7 @@ def _ring(
 ):
     """Create a lower cyclic shift matrix.
 
-    This is used for ring reservoirs, which has a circular topology
+    This is used for ring reservoirs, which have a circular topology
     (each node `n` is connected to the node `n+1 % units`).
 
     Note that the `connectivity` and `seed` parameters have no effect.
@@ -1275,6 +1276,71 @@ def _ring(
 
 
 ring = Initializer(_ring)
+
+
+def _line(
+    *shape: int,
+    weights: Optional[np.ndarray] = None,
+    dtype: np.dtype = global_dtype,
+    sparsity_type: str = "csr",
+    **kwargs,
+):
+    """Create a lower shift matrix.
+
+    This is used for line reservoirs, which have a linear topology
+    (each node `n` is connected to the node `n+1`, the last node has no successor).
+
+    Note that the `connectivity` and `seed` parameters have no effect.
+
+    Parameters
+    ----------
+    *shape : (int, int), optional
+        Shape (row, columns) of the array. Must be a square matrix, i.e. row == columns.
+    sr : float, optional
+        If defined, then will rescale the spectral radius of the matrix to this value.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients.
+    weights : array of shape (units-1, ), optional
+        If defined, corresponds to the weights of each connection.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        Format of the output matrix. "csr" and "csc" corresponds to the Scipy sparse
+        matrix formats, and "dense" corresponds to a regular Numpy array.
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    **kwargs : optional
+        This argument is kept for compatibility reasons. This is not used.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
+    """
+
+    if len(shape) != 2 or shape[0] != shape[1]:
+        raise ValueError(
+            f"Shape of the ring matrix must be (units, units), got {shape}."
+        )
+    units = shape[0]
+
+    if weights is None:
+        weights = np.ones((units - 1,), dtype=dtype)
+    row = np.arange(1, units, dtype=np.int32)
+    col = np.arange(units - 1, dtype=np.int32)
+
+    matrix = sparse.coo_matrix((weights, (row, col)), shape=(units, units)).asformat(
+        sparsity_type, copy=False
+    )
+
+    if type(matrix) is np.matrix:
+        matrix = np.asarray(matrix)
+
+    return matrix
+
+
+line = Initializer(_line)
 
 
 def _orthogonal(
