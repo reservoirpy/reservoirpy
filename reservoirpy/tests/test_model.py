@@ -5,15 +5,15 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from reservoirpy.nodes.io import Input
+from reservoirpy.nodes.io import Input, Output
 
 from ..model import Model
+from ..node import Node
 from ..ops import merge
 from .dummy_nodes import *
 
 
 def test_node_link(plus_node, minus_node):
-
     clean_registry(Model)
 
     model1 = plus_node >> minus_node
@@ -43,13 +43,33 @@ def test_node_link(plus_node, minus_node):
         plus_node >> plus_node
 
 
+def test_complex_node_link():
+    clean_registry(Model)
+
+    A = Node(name="A")
+    B = Node(name="B")
+    C = Node(name="C")
+    D = Node(name="D")
+    E = Node(name="E")
+    F = Node(name="F")
+    In = Input(name="In")
+    Out = Output(name="Out")
+
+    path1, path2 = A >> F, B >> E
+    path3 = In >> [A, B, C]
+    path4 = A >> B >> C >> D >> E >> F >> Out
+    model = path1 & path2 & path3 & path4
+
+    assert len(model.nodes) == 12  # 8 user-defined + 4 concat nodes
+    assert len(model.edges) == 15  # 11 user-defined + 4 created connections
+
+
 def test_empty_model_init():
     model = Model()
     assert model.is_empty
 
 
 def test_model_call(plus_node, minus_node):
-
     model = plus_node >> minus_node
 
     data = np.zeros((1, 5))
@@ -107,7 +127,6 @@ def test_model_call(plus_node, minus_node):
 
 
 def test_model_with_state(plus_node, minus_node):
-
     model = plus_node >> minus_node
 
     data = np.zeros((1, 5))
@@ -132,7 +151,6 @@ def test_model_with_state(plus_node, minus_node):
 
 
 def test_model_run(plus_node, minus_node):
-
     input_node = Input()
     branch1 = input_node >> plus_node
     branch2 = input_node >> minus_node
@@ -215,7 +233,6 @@ def test_model_run_on_sequences(plus_node, minus_node):
 
 
 def test_model_feedback(plus_node, minus_node, feedback_node):
-
     model = plus_node >> feedback_node >> minus_node
     feedback_node <<= minus_node
 
@@ -231,7 +248,6 @@ def test_model_feedback(plus_node, minus_node, feedback_node):
 
 
 def test_model_feedback_run(plus_node, minus_node, feedback_node):
-
     model = plus_node >> feedback_node >> minus_node
     feedback_node <<= minus_node
 
@@ -245,7 +261,6 @@ def test_model_feedback_run(plus_node, minus_node, feedback_node):
 
 
 def test_model_feedback_forcing_sender(plus_node, minus_node, feedback_node):
-
     model = plus_node >> feedback_node >> minus_node
     feedback_node <<= minus_node
 
@@ -258,7 +273,6 @@ def test_model_feedback_forcing_sender(plus_node, minus_node, feedback_node):
 
 
 def test_model_feedback_forcing_receiver(plus_node, minus_node, feedback_node):
-
     model = plus_node >> feedback_node >> minus_node
     feedback_node <<= minus_node
 
@@ -271,7 +285,6 @@ def test_model_feedback_forcing_receiver(plus_node, minus_node, feedback_node):
 
 
 def test_model_feedback_from_previous_node(plus_node, minus_node, feedback_node):
-
     model = plus_node >> feedback_node >> minus_node
     feedback_node <<= plus_node  # feedback in time, not in space anymore
 
@@ -285,7 +298,6 @@ def test_model_feedback_from_previous_node(plus_node, minus_node, feedback_node)
 
 
 def test_model_feedback_from_outsider(plus_node, feedback_node, inverter_node):
-
     model = plus_node >> feedback_node
     feedback_node <<= plus_node >> inverter_node
 
@@ -305,7 +317,6 @@ def test_model_feedback_from_outsider(plus_node, feedback_node, inverter_node):
 def test_model_feedback_from_outsider_complex(
     plus_node, feedback_node, inverter_node, minus_node
 ):
-
     model = plus_node >> feedback_node
     fb_model = plus_node >> inverter_node >> minus_node
     feedback_node <<= fb_model
@@ -325,7 +336,6 @@ def test_model_feedback_from_outsider_complex(
 
 
 def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_node):
-
     model = plus_node >> offline_node
 
     X = np.ones((5, 5)) * 0.5
@@ -356,7 +366,6 @@ def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_
 def test_offline_fit_simple_model_fb(
     basic_offline_node, offline_node2, plus_node, minus_node, feedback_node
 ):
-
     model = plus_node >> feedback_node >> basic_offline_node
     feedback_node <<= basic_offline_node
 
@@ -399,7 +408,6 @@ def test_offline_fit_simple_model_fb(
 def test_offline_fit_complex(
     basic_offline_node, offline_node2, plus_node, minus_node, feedback_node
 ):
-
     model = [plus_node >> basic_offline_node, plus_node] >> minus_node >> offline_node2
 
     X = np.ones((5, 5, 5)) * 0.5
@@ -414,7 +422,6 @@ def test_offline_fit_complex(
 
 
 def test_online_train_simple(online_node, plus_node):
-
     model = plus_node >> online_node
 
     X = np.ones((5, 5)) * 0.5
@@ -430,7 +437,6 @@ def test_online_train_simple(online_node, plus_node):
 
 
 def test_online_train_fb_forced(online_node, plus_node, feedback_node):
-
     model = plus_node >> feedback_node >> online_node
 
     feedback_node <<= online_node
@@ -448,7 +454,6 @@ def test_online_train_fb_forced(online_node, plus_node, feedback_node):
 
 
 def test_online_train_fb_no_forced(online_node, plus_node, feedback_node):
-
     model = plus_node >> feedback_node >> online_node
 
     feedback_node <<= online_node
@@ -466,7 +471,6 @@ def test_online_train_fb_no_forced(online_node, plus_node, feedback_node):
 
 
 def test_online_train_teacher_nodes(online_node, plus_node, minus_node):
-
     X = np.ones((5, 5)) * 0.5
     model = plus_node >> online_node
 
@@ -517,9 +521,15 @@ def test_multiinputs():
 
     from reservoirpy.nodes import Input, Reservoir
 
-    source1, source2 = Input(name="s1", input_dim=5,), Input(
-        name="s2",
-        input_dim=3,
+    source1, source2 = (
+        Input(
+            name="s1",
+            input_dim=5,
+        ),
+        Input(
+            name="s2",
+            input_dim=3,
+        ),
     )
     res1, res2 = Reservoir(100), Reservoir(100)
     # model = source1 >> [res1, res2] & source2 >> [res1, res2]
