@@ -1,6 +1,5 @@
-"""*Hyperopt* wrapper tools for hyperparameters optimization.
+"""*Hyperopt* wrapper tools for hyperparameters optimization."""
 
-"""
 import json
 import os
 import time
@@ -23,7 +22,6 @@ def _get_conf_from_json(confpath):
 
 
 def _parse_config(config):
-
     import hyperopt as hopt
 
     required_args = ["exp", "hp_max_evals", "hp_method", "hp_space"]
@@ -52,7 +50,6 @@ def _parse_config(config):
 
 
 def _parse_hyperopt_searchspace(arg, specs):
-
     import hyperopt as hopt
 
     if specs[0] == "choice":
@@ -78,7 +75,6 @@ def _parse_hyperopt_searchspace(arg, specs):
 
 
 def _get_report_path(exp_name, base_path=None):
-
     base_path = "." if base_path is None else base_path
 
     report_path = path.join(base_path, exp_name, "results")
@@ -132,7 +128,6 @@ def research(objective, dataset, config_path, report_path=None):
     report_path = _get_report_path(config["exp"], report_path)
 
     def objective_wrapper(kwargs):
-
         try:
             start = time.time()
 
@@ -160,6 +155,9 @@ def research(objective, dataset, config_path, report_path=None):
             save_file = f"ERR{start}_hyperopt_results"
 
         try:
+            for key in kwargs:
+                if isinstance(kwargs[key], np.integer):
+                    kwargs[key] = int(kwargs[key])
             json_dict = {"returned_dict": returned_dict, "current_params": kwargs}
             save_file = path.join(report_path, save_file)
             nb_save_file_with_same_loss = len(glob(f"{save_file}*"))
