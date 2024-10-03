@@ -21,9 +21,9 @@ Metrics and observables for Reservoir Computing:
 import sys
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Literal
+    from typing_extensions import Literal, Optional
 else:
-    from typing import Literal
+    from typing import Literal, Optional
 
 import numpy as np
 from scipy import linalg
@@ -46,7 +46,7 @@ def _check_arrays(y_true, y_pred):
     return y_true_array, y_pred_array
 
 
-def spectral_radius(W: Weights, maxiter: int = None) -> float:
+def spectral_radius(W: Weights, maxiter: Optional[int] = None) -> float:
     """Compute the spectral radius of a matrix `W`.
 
     Spectral radius is defined as the maximum absolute
@@ -110,7 +110,7 @@ def spectral_radius(W: Weights, maxiter: int = None) -> float:
     return max(abs(linalg.eig(W)[0]))
 
 
-def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def mse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
     """Mean squared error metric:
 
     .. math::
@@ -123,11 +123,14 @@ def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         Ground truth values.
     y_pred : array-like of shape (N, features)
         Predicted values.
+    dimensionwise: boolean, optional
+        If True, return a mean squared error for each dimension of the timeseries
 
     Returns
     -------
     float
         Mean squared error.
+    If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
 
     Examples
     --------
@@ -141,10 +144,18 @@ def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     0.03962918253990291
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
-    return float(np.mean((y_true_array - y_pred_array) ** 2))
+
+    if dimensionwise:
+        if len(y_true_array.shape) == 3:
+            axis = (0, 1)
+        else:
+            axis = 0
+    else:
+        axis = None
+    return np.mean((y_true_array - y_pred_array) ** 2, axis=axis)
 
 
-def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def rmse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
     """Root mean squared error metric:
 
     .. math::
@@ -157,11 +168,14 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         Ground truth values.
     y_pred : array-like of shape (N, features)
         Predicted values.
+    dimensionwise: boolean, optional
+        If True, return a mean squared error for each dimension of the timeseries
 
     Returns
     -------
     float
         Root mean squared error.
+    If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
 
     Examples
     --------
@@ -176,14 +190,15 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     >>> print(rmse(y_true=y_test, y_pred=y_pred))
     0.00034475744480521534
     """
-    return np.sqrt(mse(y_true, y_pred))
+    return np.sqrt(mse(y_true, y_pred, dimensionwise=dimensionwise))
 
 
 def nrmse(
     y_true: np.ndarray,
     y_pred: np.ndarray,
     norm: Literal["minmax", "var", "mean", "q1q3"] = "minmax",
-    norm_value: float = None,
+    norm_value: Optional[float] = None,
+    dimensionwise: bool = False,
 ) -> float:
     """Normalized mean squared error metric:
 
@@ -208,11 +223,14 @@ def nrmse(
         Normalization method.
     norm_value : float, optional
         A normalization factor. If set, will override the ``norm`` parameter.
+    dimensionwise: boolean, optional
+        If True, return a mean squared error for each dimension of the timeseries
 
     Returns
     -------
     float
         Normalized mean squared error.
+    If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
 
     Examples
     --------
@@ -227,16 +245,27 @@ def nrmse(
     >>> print(nrmse(y_true=y_test, y_pred=y_pred, norm="var"))
     0.007854318015438394
     """
-    error = rmse(y_true, y_pred)
+    error = rmse(y_true, y_pred, dimensionwise=dimensionwise)
     if norm_value is not None:
         return error / norm_value
 
     else:
+        y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
+
+        if dimensionwise:
+            if len(y_true_array.shape) == 3:
+                axis = (0, 1)
+            else:
+                axis = 0
+        else:
+            axis = None
+
         norms = {
-            "minmax": lambda y: np.ptp(y),
-            "var": lambda y: y.var(),
-            "mean": lambda y: y.mean(),
-            "q1q3": lambda y: np.quantile(y, 0.75) - np.quantile(y, 0.25),
+            "minmax": lambda y: np.ptp(y, axis=axis),
+            "var": lambda y: y.var(axis=axis),
+            "mean": lambda y: y.mean(axis=axis),
+            "q1q3": lambda y: np.quantile(y, 0.75, axis=axis)
+            - np.quantile(y, 0.25, axis=axis),
         }
 
         if norms.get(norm) is None:
@@ -245,10 +274,12 @@ def nrmse(
                 f"Available methods are {list(norms.keys())}."
             )
         else:
-            return error / norms[norm](np.asarray(y_true))
+            return error / norms[norm](y_true_array)
 
 
-def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def rsquare(
+    y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False
+) -> float:
     """Coefficient of determination :math:`R^2`:
 
     .. math::
@@ -264,11 +295,14 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         Ground truth values.
     y_pred : array-like of shape (N, features)
         Predicted values.
+    dimensionwise: boolean, optional
+        If True, return a mean squared error for each dimension of the timeseries
 
     Returns
     -------
     float
         Coefficient of determination.
+    If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
 
     Examples
     --------
@@ -285,6 +319,14 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 
+    if dimensionwise:
+        if len(y_true_array.shape) == 3:
+            axis = (0, 1)
+        else:
+            axis = 0
+    else:
+        axis = None
+
     d = (y_true_array - y_pred_array) ** 2
-    D = (y_true_array - y_true_array.mean()) ** 2
-    return 1 - np.sum(d) / np.sum(D)
+    D = (y_true_array - y_true_array.mean(axis=axis)) ** 2
+    return 1 - np.sum(d, axis=axis) / np.sum(D, axis=axis)
