@@ -55,3 +55,18 @@ def test_spectral_radius():
     with pytest.raises(ValueError):  # not a square matrix
         w = rng.uniform(size=(5, 100))
         rho = spectral_radius(w)
+
+
+def test_dimensionwise():
+    rng = np.random.default_rng(1234)
+    y1 = rng.uniform(size=(100, 2))
+    noise = rng.uniform(size=(100, 2))
+    y2 = y1 + noise
+
+    for observable in [mse, rmse, nrmse, rsquare]:
+        total_score = observable(y_true=y1, y_pred=y2)
+        dimensionwise_score = observable(y_true=y1, y_pred=y2, dimensionwise=True)
+
+        assert isinstance(total_score, float)
+        assert isinstance(dimensionwise_score, np.ndarray)
+        assert dimensionwise_score.shape == (2,)
