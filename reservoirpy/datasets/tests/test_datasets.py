@@ -32,6 +32,8 @@ def no_cache():
         datasets.lorenz96,
         datasets.rossler,
         datasets.kuramoto_sivashinsky,
+        datasets.mso2,
+        datasets.mso8,
     ],
 )
 def test_generation(dataset_func):
@@ -65,10 +67,12 @@ def test_generation(dataset_func):
             {"x0": np.random.normal(size=128), "N": 128},
             None,
         ),
+        (datasets.mso, {"freqs": [0.1, 0.2, 0.3]}, None),
+        (datasets.mso, {"freqs": []}, None),
+        (datasets.mso2, {"normalize": False}, None),
     ],
 )
 def test_kwargs(dataset_func, kwargs, expected):
-
     if expected is None:
         timesteps = 2000
         X = dataset_func(timesteps, **kwargs)
@@ -91,7 +95,6 @@ def test_seed(dataset_func):
 
 @pytest.mark.parametrize("dataset_func", [datasets.mackey_glass])
 def test_reseed(dataset_func):
-
     s = datasets.get_seed()
     assert s == datasets._seed._DEFAULT_SEED
 
@@ -130,7 +133,6 @@ def test_to_forecasting_with_test(dataset_func):
 
 
 def test_japanese_vowels():
-
     X, Y, X_test, Y_test = datasets.japanese_vowels(reload=True)
 
     assert len(X) == 270 == len(Y)
