@@ -2,7 +2,16 @@ import numpy as np
 import pytest
 from scipy.sparse import csr_matrix
 
-from ..observables import mse, nrmse, rmse, rsquare, spectral_radius
+from ..nodes import Reservoir, Ridge
+from ..observables import (
+    effective_spectral_radius,
+    memory_capacity,
+    mse,
+    nrmse,
+    rmse,
+    rsquare,
+    spectral_radius,
+)
 
 
 @pytest.mark.parametrize(
@@ -70,3 +79,11 @@ def test_dimensionwise(observable):
     assert isinstance(total_score, float)
     assert isinstance(dimensionwise_score, np.ndarray)
     assert dimensionwise_score.shape == (2,)
+
+
+def test_effective_spectral_radius():
+    reservoir = Reservoir(200, sr=1.0, lr=0.3)
+    reservoir.initialize(np.ones((1, 1)))
+
+    esr = effective_spectral_radius(W=reservoir.W, lr=reservoir.lr)
+    assert isinstance(esr, float)
