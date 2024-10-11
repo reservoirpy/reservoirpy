@@ -13,6 +13,7 @@ Metrics and observables for Reservoir Computing:
     rmse
     nrmse
     rsquare
+    memory_capacity
     effective_spectral_radius
 """
 
@@ -335,6 +336,120 @@ def rsquare(
     d = (y_true_array - y_pred_array) ** 2
     D = (y_true_array - y_true_array.mean(axis=axis)) ** 2
     return 1 - np.sum(d, axis=axis) / np.sum(D, axis=axis)
+
+
+def memory_capacity(
+    model: Model,
+    k_max: int,
+    as_list: bool = False,
+    series: Optional[np.ndarray] = None,
+    test_size: int | float = 0.2,
+    seed: Optional[Union[int, np.random.RandomState, np.random.Generator]] = None,
+):
+    """Memory Capacity of a model
+
+    The Memory Capacity [1]_ (MC) measure is defined as:
+
+    .. math::
+        MC = \\sum_{k=1}^{k_{max}} MC_k
+
+    where:
+
+    .. math::
+        MC_k = \\rho^2(u(t-k), y_k(t)) = {cov^2[u(t-k), y_k(t)] \\over var(u(t-k)) \\cdot var(y_k(t))}
+
+    This measure is commonly used in reservoir computing to evaluate the ability of a network to
+    recall the previous timesteps. By default, the timeseries :math:`u` is an i.i.d. uniform signal in [-0.8, 0.8].
+
+    Parameters
+    ----------
+    model : :class:`reservoirpy.Model`
+        A ReservoirPy model on which the memory capacity is tested.
+        Must have only one input and output node.
+    k_max : int
+        Maximum time lag between input and output.
+        A common rule of thumb is to choose `k_max = 2*reservoir.units`.
+    as_list: bool, optional, defaults to False
+        If True, returns an array in which `out[k]` :math:`= MC_{k+1}`
+    series: array of shape (timesteps, 1), optional
+        If specified, is used as the timeseries :math:`u`.
+    test_size : int or float
+        Number of timesteps for the training phase. Can also be specified
+        as a float ratio.
+    seed : int or :py:class:`numpy.random.Generator`, optional
+        Random state seed for reproducibility.
+
+    Returns
+    -------
+    float, between 0 and `k_max`.
+    If `as_list` is set to True, returns an array of shape `(k_max, )`.
+
+    Examples
+    --------
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> from reservoirpy.observables import memory_capacity
+    >>> model = Reservoir(100, sr=1, seed=1) >> Ridge(ridge=1e-4)
+    >>> mcs = memory_capacity(model, k_max=50, as_list=True, seed=1)
+    >>> print(f"Memory capacity of {model.name}: {np.sum(mcs):.4}")
+    Memory capacity of Model-0: 12.77
+
+    .. plot::
+
+        from reservoirpy.nodes import Reservoir, Ridge
+        from reservoirpy.observables import memory_capacity
+        model = Reservoir(100, sr=1, seed=1) >> Ridge(ridge=1e-4)
+        mcs = memory_capacity(model, k_max=50, as_list=True, seed=1)
+        plt.figure(figsize=(8, 4))
+        plt.plot(mcs)
+        plt.grid(); plt.xlabel("Time lag (timestep)"); plt.ylabel("$MC_k$")
+        plt.show()
+
+    References
+    ----------
+    .. [1] Jaeger, H. (2001). Short term memory in echo state networks.
+    """
+    from numpy.lib.stride_tricks import sliding_window_view
+
+    # Task definition
+    if series is None:
+        rng = rand_generator(seed)
+        series = rng.uniform(low=-0.8, high=0.8, size=(10 * k_max, 1))
+
+    if isinstance(test_size, float) and test_size < 1 and test_size >= 0:
+        test_len = round(series.shape[0] * test_size)
+    elif isinstance(test_size, int):
+        test_len = test_size
+    else:
+        raise ValueError(
+            "invalid test_size argument: "
+            "test_size can be an integer or a float "
+            f"in [0, 1[, but is {test_size}."
+        )
+
+    # sliding_window_view creates a matrix of the same
+    # timeseries with an incremental shift on each column
+    dataset = sliding_window_view(series[:, 0], k_max)[:, ::-1]
+    X_train = dataset[:-test_len, :1]
+    X_test = dataset[-test_len:, :1]
+    Y_train = dataset[:-test_len, 1:]
+    Y_test = dataset[-test_len:, 1:]
+    # Model
+    model_clone = deepcopy(model)
+    model_clone.fit(X_train, Y_train, warmup=k_max)
+    Y_pred = model_clone.run(X_test)
+
+    # u[t-k] - z_k[t] square correlation
+    capacities = np.square(
+        [
+            np.corrcoef(y_pred, y_test, rowvar=False)[1, 0]
+            for y_pred, y_test in zip(Y_pred.T, Y_test.T)
+        ]
+    )
+
+    if as_list:
+        return capacities
+    else:
+        return np.sum(capacities)
 
 
 def effective_spectral_radius(

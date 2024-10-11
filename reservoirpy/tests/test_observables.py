@@ -81,6 +81,28 @@ def test_dimensionwise(observable):
     assert dimensionwise_score.shape == (2,)
 
 
+def test_memory_capacity():
+    N = 100
+    k_max = 2 * N
+    model = Reservoir(N, seed=1) >> Ridge(ridge=1e-4)
+    mc = memory_capacity(model, k_max=k_max, seed=1)
+    mcs = memory_capacity(model, k_max=k_max, as_list=True, seed=1)
+
+    assert isinstance(mc, float)
+    assert 0 < mc < k_max
+    assert isinstance(mcs, np.ndarray)
+    assert mcs.shape == (k_max - 1,)
+    assert np.abs(mc - np.sum(mcs)) < 1e-10
+    for mc_k in mcs:
+        assert 0 < mc_k < 1
+
+    _ = memory_capacity(model, k_max=300, test_size=200)
+
+    # longer lag than the series length
+    with pytest.raises(ValueError):
+        _ = memory_capacity(model, k_max=300, series=np.ones((100, 1)))
+
+
 def test_effective_spectral_radius():
     reservoir = Reservoir(200, sr=1.0, lr=0.3)
     reservoir.initialize(np.ones((1, 1)))
