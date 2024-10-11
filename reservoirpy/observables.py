@@ -13,6 +13,7 @@ Metrics and observables for Reservoir Computing:
     rmse
     nrmse
     rsquare
+    effective_spectral_radius
 """
 
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
@@ -21,16 +22,20 @@ Metrics and observables for Reservoir Computing:
 import sys
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Literal, Optional
+    from typing_extensions import Literal, Optional, Union
 else:
-    from typing import Literal, Optional
+    from typing import Literal, Optional, Union
+
+from copy import deepcopy
 
 import numpy as np
 from scipy import linalg
 from scipy.sparse import issparse
 from scipy.sparse.linalg import eigs
 
+from .model import Model
 from .type import Weights
+from .utils.random import rand_generator
 
 
 def _check_arrays(y_true, y_pred):
@@ -330,3 +335,63 @@ def rsquare(
     d = (y_true_array - y_pred_array) ** 2
     D = (y_true_array - y_true_array.mean(axis=axis)) ** 2
     return 1 - np.sum(d, axis=axis) / np.sum(D, axis=axis)
+
+
+def effective_spectral_radius(
+    W: np.ndarray, lr: float = 1.0, maxiter: Optional[int] = None
+):
+    """Effective spectral radius
+
+    The effective spectral radius is defined as the maximal singular value of the matrix
+    :math:`lr \cdot W + (1-lr) \cdot I_{n}`.
+
+    This concept was first introduced by Jaeger & al. [1]_, with an important result on leaky echo
+    state networks:
+
+    Supposing:
+
+    #. The activation function is `tanh`
+    #. There is no added noise inside the reservoir (`noise_rc = noise_in = 0.0`)
+    #. There is no feedback
+    #. There is no bias inside the reservoir (`bias = 0`)
+
+    Then, if the effective spectral radius exceeds 1, the ESN does not have the echo state property.
+
+    Parameters
+    ----------
+    W : array of shape `(units, units)`
+        Adjacency matrix of a reservoir
+    lr : float
+        Leak rate
+    maxiter : int, optional
+        Maximum number of Arnoldi update iterations allowed.
+        By default, is equal to `W.shape[0] * 20`.
+        See `Scipy documentation <https://docs.scipy.org/
+        doc/scipy/reference/generated/scipy.sparse.linalg.eigs.html>`_
+        for more informations.
+
+    Returns
+    -------
+    float
+        Spectral radius of :math:`lr \cdot W + (1-lr) \cdot I_{n}`.
+
+    Raises
+    ------
+    ArpackNoConvergence
+        When computing spectral radius on large
+        sparse matrices, it is possible that the
+        Fortran ARPACK algorithm used to compute
+        eigenvalues don't converge towards precise
+        values. To avoid this problem, set the `maxiter`
+        parameter to an higher value. Be warned that
+        this may drastically increase the computation
+        time.
+
+    References
+    ----------
+    .. [1] Jaeger, H., Lukoševičius, M., Popovici, D., & Siewert, U. (2007).
+        Optimization and applications of echo state networks with leaky-integrator
+        neurons. Neural networks, 20(3), 335-352.
+    """
+    units = W.shape[0]
+    return spectral_radius(W=lr * W + (1 - lr) * np.eye(units), maxiter=maxiter)
