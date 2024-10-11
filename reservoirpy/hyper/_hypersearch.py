@@ -163,7 +163,7 @@ def research(objective, dataset, config_path, report_path=None):
             nb_save_file_with_same_loss = len(glob(f"{save_file}*"))
             save_file = f"{save_file}_{nb_save_file_with_same_loss+1}call.json"
             with open(save_file, "w+") as f:
-                json.dump(json_dict, f)
+                json.dump(json_dict, f, indent=2)
         except Exception as e:
             warnings.warn(
                 "Results of current simulation were NOT saved "
