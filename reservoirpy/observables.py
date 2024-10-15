@@ -206,7 +206,7 @@ def nrmse(
     norm_value: Optional[float] = None,
     dimensionwise: bool = False,
 ) -> float:
-    """Normalized mean squared error metric:
+    """Normalized root mean squared error metric:
 
     .. math::
 
@@ -235,7 +235,7 @@ def nrmse(
     Returns
     -------
     float
-        Normalized mean squared error.
+        Normalized root mean squared error.
     If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
 
     Examples
