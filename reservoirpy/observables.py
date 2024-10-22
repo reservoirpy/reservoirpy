@@ -400,7 +400,7 @@ def memory_capacity(
         model = Reservoir(100, sr=1, seed=1) >> Ridge(ridge=1e-4)
         mcs = memory_capacity(model, k_max=50, as_list=True, seed=1)
         plt.figure(figsize=(8, 4))
-        plt.plot(mcs)
+        plt.plot(np.arange(1, 51), mcs)
         plt.grid(); plt.xlabel("Time lag (timestep)"); plt.ylabel("$MC_k$")
         plt.show()
 
@@ -428,7 +428,7 @@ def memory_capacity(
 
     # sliding_window_view creates a matrix of the same
     # timeseries with an incremental shift on each column
-    dataset = sliding_window_view(series[:, 0], k_max)[:, ::-1]
+    dataset = sliding_window_view(series[:, 0], k_max + 1)[:, ::-1]
     X_train = dataset[:-test_len, :1]
     X_test = dataset[-test_len:, :1]
     Y_train = dataset[:-test_len, 1:]
