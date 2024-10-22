@@ -91,7 +91,7 @@ def test_memory_capacity():
     assert isinstance(mc, float)
     assert 0 < mc < k_max
     assert isinstance(mcs, np.ndarray)
-    assert mcs.shape == (k_max - 1,)
+    assert mcs.shape == (k_max,)
     assert np.abs(mc - np.sum(mcs)) < 1e-10
     for mc_k in mcs:
         assert 0 < mc_k < 1
