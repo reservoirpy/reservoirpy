@@ -152,9 +152,12 @@ class ESN(FrozenModel):
         A Node instance to use as a readout,
         such as a :py:class:`~reservoirpy.nodes.Ridge` node
         (only this one is supported).
-    feedback : bool, default to False
-        If True, the reservoir is connected to the readout through
+    feedback : bool, defaults to False
+        If True, the readout is connected to the reservoir through
         a feedback connection.
+    use_raw_inputs : bool, defaults to False
+        If True, the input is directly fed to the readout. See
+        :ref:`/user_guide/advanced_demo.ipynb#Input-to-readout-connections`.
     Win_bias : bool, default to True
         If True, add an input bias to the reservoir.
     Wout_bias : bool, default to True
