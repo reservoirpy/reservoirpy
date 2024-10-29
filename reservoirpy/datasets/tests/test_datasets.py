@@ -7,7 +7,6 @@ from joblib import Memory
 from numpy.testing import assert_allclose
 
 from reservoirpy import _TEMPDIR, datasets
-from reservoirpy.datasets import to_forecasting
 
 
 @contextmanager
@@ -113,7 +112,7 @@ def test_reseed(dataset_func):
 def test_to_forecasting(dataset_func):
     x = dataset_func(200)
 
-    x, y = to_forecasting(x, forecast=5)
+    x, y = datasets.to_forecasting(x, forecast=5)
 
     assert x.shape[0] == 200 - 5
     assert y.shape[0] == 200 - 5
@@ -124,7 +123,7 @@ def test_to_forecasting(dataset_func):
 def test_to_forecasting_with_test(dataset_func):
     x = dataset_func(200)
 
-    x, xt, y, yt = to_forecasting(x, forecast=5, test_size=10)
+    x, xt, y, yt = datasets.to_forecasting(x, forecast=5, test_size=10)
 
     assert x.shape[0] == 200 - 5 - 10
     assert y.shape[0] == 200 - 5 - 10
@@ -147,3 +146,26 @@ def test_japanese_vowels():
     X, Y, X_test, Y_test = datasets.japanese_vowels(one_hot_encode=False)
 
     assert Y[0].shape == (1, 1)
+
+
+def test_from_aeon_classification():
+    n_timeseries = 10
+    n_timesteps = 100
+    n_dimensions = 3
+    X_aeon = np.zeros((n_timeseries, n_dimensions, n_timesteps))
+    X_aeon[0, 1, 2] = np.pi
+
+    X_rpy = datasets.from_aeon_classification(X_aeon)
+
+    assert X_rpy.shape == (n_timeseries, n_timesteps, n_dimensions)
+    assert X_rpy[0, 2, 1] == np.pi
+
+    # variable length collections
+    X_aeon_list = [np.zeros((n_dimensions, 10 + i)) for i in range(10)]
+    X_aeon_list[0][1, 2] = np.pi
+
+    X_rpy_list = datasets.from_aeon_classification(X_aeon_list)
+
+    assert len(X_rpy_list) == len(X_aeon_list)
+    assert X_rpy_list[-1].shape == X_aeon_list[-1].shape[::-1]
+    assert X_rpy[0][2, 1] == np.pi
