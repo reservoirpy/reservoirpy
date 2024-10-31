@@ -21,6 +21,74 @@ def _get_data_folder(folder_path=None):
     return folder_path
 
 
+def one_hot_encode(y: np.ndarray | List):
+    """Encode categorical features as a one-hot numeric array.
+
+    This functions creates a trailing column for each class from the dataset. This function also supports inputs as
+    lists of numpy arrays to stay compatible with the ReservoirPy format.
+
+    Accepted inputs and corresponding outputs:
+
+    - array of shape (n, ) or (n, 1) or list of length n -> array of shape (n, n_classes)
+    - array of shape (n, m) or (n, m, 1) -> array of shape (n, m, n_classes)
+    - list of arrays with shape (m, ) or (m, 1) -> list of arrays with shape (n, n_classes)
+
+    Parameters
+    ----------
+    X: array or list of categorical values, or list of array of categorical values
+        The data to determine the categories of each features.
+
+    Returns
+    -------
+    array or list. See above for details.
+        One-hot encoded dataset
+
+    Example
+    -------
+    >>> from reservoirpy.datasets import one_hot_encode
+    >>> X = np.random.normal(size=(10, 100, 1))  # 10 series, 100 timesteps
+    >>> y = np.mean(X, axis=(1,2)) > 0. # a boolean for each series
+    >>> print(y)
+    [ True False False False  True False  True  True  True False]
+    >>> y_encoded, classes = one_hot_encode(y)
+    >>> y_encoded
+    array([ [0., 1.],
+            [1., 0.],
+            [1., 0.],
+            [1., 0.],
+            [0., 1.],
+            [1., 0.],
+            [0., 1.],
+            [0., 1.],
+            [0., 1.],
+            [1., 0.]])
+    >>> classes
+    array([False,  True]))
+
+    """
+    if isinstance(y, list) and isinstance(y[0], np.ndarray):  # multi-sequence
+        # treat it as one long timeseries before re-separating them
+        series_lengths = [series.shape[0] for series in y]
+        series_split_indices = np.cumsum(series_lengths)[:-1]
+        concatenated_series = np.concatenate(y)
+        concatenated_encoded, classes = one_hot_encode(concatenated_series)
+        print(concatenated_encoded.shape, len(series_lengths))
+        encoded = np.split(concatenated_encoded, series_split_indices)
+        return encoded, classes
+
+    y = np.array(y)
+
+    if y.shape[-1] == 1:
+        y = y.reshape(y.shape[:-1])
+
+    classes, y_class_indices = np.unique(y, return_inverse=True)
+    y_class_indices = y_class_indices.reshape(y.shape)
+    nb_classes = len(classes)
+    encoder = np.eye(nb_classes)
+    y_encoded = encoder[y_class_indices]
+    return y_encoded, classes
+
+
 def from_aeon_classification(
     X: np.ndarray | List[np.ndarray],
 ):

@@ -65,6 +65,7 @@ Miscellaneous
     :toctree: generated/
 
     to_forecasting - Timeseries splitting utility
+    one_hot_encode - One-hot encoding utility
     from_aeon_classification - Conversion from Aeon's format
     set_seed - Change random seed for dataset generation
     get_seed - Return random seed used for dataset generation
@@ -164,7 +165,7 @@ from ._chaos import (
 )
 from ._japanese_vowels import japanese_vowels
 from ._seed import get_seed, set_seed
-from ._utils import from_aeon_classification
+from ._utils import from_aeon_classification, one_hot_encode
 
 __all__ = [
     "henon_map",
@@ -186,6 +187,7 @@ __all__ = [
     "mso2",
     "mso8",
     "from_aeon_classification",
+    "one_hot_encode",
 ]
 
 

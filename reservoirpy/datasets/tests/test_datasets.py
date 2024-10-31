@@ -148,6 +148,53 @@ def test_japanese_vowels():
     assert Y[0].shape == (1, 1)
 
 
+def test_one_hot_encode():
+    classes = ["green", "blue", "black", "white", "purple"]
+    n = 82
+    m = 113
+    rng = np.random.default_rng(seed=1)
+    n_classes = len(classes)
+
+    y = rng.choice(classes, size=(n,), replace=True)
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, np.ndarray) and y_encoded.shape == (n, n_classes)
+
+    y = rng.choice(classes, size=(n, 1), replace=True)
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, np.ndarray) and y_encoded.shape == (n, n_classes)
+
+    y = list(rng.choice(classes, size=(n,), replace=True))
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, np.ndarray) and y_encoded.shape == (n, n_classes)
+
+    y = rng.choice(classes, size=(n, m), replace=True)
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, np.ndarray) and y_encoded.shape == (n, m, n_classes)
+
+    y = rng.choice(classes, size=(n, m, 1), replace=True)
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, np.ndarray) and y_encoded.shape == (n, m, n_classes)
+
+    y = list([rng.choice(classes, size=(m + i, 1), replace=True) for i in range(n)])
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, list)
+    assert len(y_encoded) == n
+    assert y_encoded[-1].shape == (m + n - 1, n_classes)
+
+    y = list([rng.choice(classes, size=(m + i,), replace=True) for i in range(n)])
+    y_encoded, classes = datasets.one_hot_encode(y)
+    assert len(classes) == n_classes
+    assert isinstance(y_encoded, list)
+    assert len(y_encoded) == n
+    assert y_encoded[-1].shape == (m + n - 1, n_classes)
+
+
 def test_from_aeon_classification():
     n_timeseries = 10
     n_timesteps = 100
