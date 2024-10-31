@@ -1,6 +1,8 @@
 # Author: Nathan Trouvain at 15/03/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import warnings
+
 import numpy as np
 
 try:
@@ -29,6 +31,12 @@ def initialize(estimator, x, y=None):
 
 class from_sklearn(Node):
     def __init__(self, estimator):
+        warnings.warn(
+            "This experimental node is deprecated and should not be used. "
+            "Please consider using the reservoirpy.nodes.ScikitLearnNode instead.",
+            DeprecationWarning,
+        )
+
         if hasattr(estimator, "predict"):
             forward = forward_predict
         elif hasattr(estimator, "transform"):
