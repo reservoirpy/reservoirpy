@@ -25,6 +25,11 @@ def santafe_laser():
         plt.xlabel("Time (a.u.)"); plt.xticks([])
         plt.show()
 
+    Returns
+    -------
+    X
+        Array of shape (10_093, 1).
+
     References
     ----------
     .. [25] Weigend, A. S. (2018). Time series prediction: forecasting the
