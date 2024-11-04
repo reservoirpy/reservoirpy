@@ -64,6 +64,7 @@ Miscellaneous
 .. autosummary::
     :toctree: generated/
 
+    santafe_laser - Santa-Fe laser dataset
     to_forecasting - Timeseries splitting utility
     one_hot_encode - One-hot encoding utility
     from_aeon_classification - Conversion from Aeon's format
@@ -133,17 +134,19 @@ References
     .. [19] Kuramoto, Y. (1978). Diffusion-Induced Chaos in Reaction Systems.
             Progress of Theoretical Physics Supplement, 64, 346–367.
             https://doi.org/10.1143/PTPS.64.346
-    .. [20] Sivashinsky, G. I. (1977). Nonlinear analysis of hydrodynamic instability
-            in laminar flames—I. Derivation of basic equations.
+    .. [20] Sivashinsky, G. I. (1977). Nonlinear analysis of hydrodynamic
+            instability in laminar flames—I. Derivation of basic equations.
             Acta Astronautica, 4(11), 1177–1206.
             https://doi.org/10.1016/0094-5765(77)90096-0
     .. [21] Sivashinsky, G. I. (1980). On Flame Propagation Under Conditions
             of Stoichiometry. SIAM Journal on Applied Mathematics, 39(1), 67–82.
             https://doi.org/10.1137/0139007
-    .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available http://www.faculty.
-            iu-bremen.de/hjaeger/courses/SeminarSpring04/ESNStandardSlides.pdf.
-    .. [24] Roeschies, B., & Igel, C. (2010). Structure optimization of reservoir networks.
-            Logic Journal of IGPL, 18(5), 635-669.
+    .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available
+            http://www.faculty.iu-bremen.de/hjaeger/courses/SeminarSpring04/ESNStandardSlides.pdf.
+    .. [24] Roeschies, B., & Igel, C. (2010). Structure optimization of
+            reservoir networks. Logic Journal of IGPL, 18(5), 635-669.
+    .. [25] Weigend, A. S. (2018). Time series prediction: forecasting the
+            future and understanding the past. Routledge.
 """
 
 from typing import Optional, Union
@@ -164,6 +167,7 @@ from ._chaos import (
     rossler,
 )
 from ._japanese_vowels import japanese_vowels
+from ._santafe_laser import santafe_laser
 from ._seed import get_seed, set_seed
 from ._utils import from_aeon_classification, one_hot_encode
 
@@ -188,6 +192,7 @@ __all__ = [
     "mso8",
     "from_aeon_classification",
     "one_hot_encode",
+    "santafe_laser",
 ]
 
 

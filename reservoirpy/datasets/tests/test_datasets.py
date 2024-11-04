@@ -148,6 +148,12 @@ def test_japanese_vowels():
     assert Y[0].shape == (1, 1)
 
 
+def test_santafe_laser():
+    timeseries = datasets.santafe_laser()
+
+    assert timeseries.shape == (10_093, 1)
+
+
 def test_one_hot_encode():
     classes = ["green", "blue", "black", "white", "purple"]
     n = 82
