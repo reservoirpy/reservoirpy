@@ -1,8 +1,13 @@
 # Author: Nathan Trouvain at 07/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import sys
 from pathlib import Path
-from typing import List
+
+if sys.version_info < (3, 8):
+    from typing_extensions import List, Union
+else:
+    from typing import Union, List
 
 import numpy as np
 
@@ -21,7 +26,7 @@ def _get_data_folder(folder_path=None):
     return folder_path
 
 
-def one_hot_encode(y: np.ndarray | List):
+def one_hot_encode(y: Union[np.ndarray, List]):
     """Encode categorical features as a one-hot numeric array.
 
     This functions creates a trailing column for each class from the dataset. This function also supports inputs as
@@ -90,7 +95,7 @@ def one_hot_encode(y: np.ndarray | List):
 
 
 def from_aeon_classification(
-    X: np.ndarray | List[np.ndarray],
+    X: Union[np.ndarray, List[np.ndarray]],
 ):
     """Converts a dataset in the `Aeon <https://aeon-toolkit.org/>`_ classification format into a ReservoirPy-compatible format.
 

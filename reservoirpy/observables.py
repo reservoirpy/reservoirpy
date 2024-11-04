@@ -343,7 +343,7 @@ def memory_capacity(
     k_max: int,
     as_list: bool = False,
     series: Optional[np.ndarray] = None,
-    test_size: int | float = 0.2,
+    test_size: Union[int, float] = 0.2,
     seed: Optional[Union[int, np.random.RandomState, np.random.Generator]] = None,
 ):
     """Memory Capacity of a model
