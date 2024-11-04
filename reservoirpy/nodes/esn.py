@@ -38,6 +38,8 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
 
     esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
 
+    return states[-1]
+
 
 def _run_fn(
     esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
@@ -356,7 +358,7 @@ class ESN(FrozenModel):
         seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-                parallel(
+                last_states = parallel(
                     delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
                     for x, y in zip(seq, Y)
                 )
@@ -364,6 +366,8 @@ class ESN(FrozenModel):
             if verbosity():  # pragma: no cover
                 print(f"Fitting node {self.name}...")
 
+            # setting the reservoir state from the last timeseries
+            self.reservoir._state = last_states[-1]
             self.readout.fit()
 
         return self
