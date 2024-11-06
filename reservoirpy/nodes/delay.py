@@ -62,13 +62,11 @@ class Delay(Node):
     Examples
     --------
     >>> x = np.arange(10.).reshape(-1, 1)
-    >>>
     >>> from reservoirpy.nodes import Delay
     >>> delay_node = Delay(
-    >>>     delay=3,
-    >>>     initial_values=np.array([[-3.0], [-2.0], [-1.0]])
-    >>> )
-    >>>
+    ...     delay=3,
+    ...     initial_values=np.array([[-3.0], [-2.0], [-1.0]])
+    ... )
     >>> out = delay_node.run(x)
     >>> print(out.T)
     [[-1. -2. -3.  0.  1.  2.  3.  4.  5.  6.]]
