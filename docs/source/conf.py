@@ -182,6 +182,18 @@ autodoc_default_options = {
 }
 autodoc_typehints = "none"
 
+# -----------------------------------------------------------------------------
+# Doctest
+# -----------------------------------------------------------------------------
+
+doctest_global_setup = """
+import numpy as np
+x = np.ones((10, 1))
+y = np.ones((10, 1))
+x1 = np.ones((10, 1))
+x2 = np.ones((10, 1))
+"""
+
 
 # from pandas conf.py (https://github.com/pandas-dev/pandas/blob/master/doc/source/conf.py)
 def rstjinja(app, docname, source):

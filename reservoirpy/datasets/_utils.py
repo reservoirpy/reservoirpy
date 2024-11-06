@@ -68,7 +68,7 @@ def one_hot_encode(y: Union[np.ndarray, List]):
             [0., 1.],
             [1., 0.]])
     >>> classes
-    array([False,  True]))
+    array([False,  True])
 
     """
     if isinstance(y, list) and isinstance(y[0], np.ndarray):  # multi-sequence
