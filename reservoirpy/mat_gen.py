@@ -1385,7 +1385,7 @@ def _orthogonal(
     units = shape[0]
     rg = rand_generator(seed)
 
-    matrix = stats.ortho_group(dim=units, seed=rg).rvs()
+    matrix = stats.ortho_group.rvs(dim=units, random_state=rg)
 
     return matrix
 
