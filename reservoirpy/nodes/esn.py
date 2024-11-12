@@ -29,14 +29,25 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     _esn = deepcopy(esn)
     _esn.reservoir.reset()
 
+    original_readout_name = (
+        esn.readout.name[:-7]
+        if esn.readout.name.endswith("-(copy)")
+        else esn.readout.name
+    )
+    original_reservoir_name = (
+        esn.reservoir.name[:-7]
+        if esn.reservoir.name.endswith("-(copy)")
+        else esn.reservoir.name
+    )
+
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
     for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-        with _esn.readout.with_feedback(forced_feedback[esn.readout.name]):
-            states[i, :] = call(_esn.reservoir, x[esn.reservoir.name])
+        with _esn.readout.with_feedback(forced_feedback[original_readout_name]):
+            states[i, :] = call(_esn.reservoir, x[original_reservoir_name])
 
-    esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
+    esn.readout.partial_fit(states, y[original_readout_name], warmup=warmup, lock=lock)
 
     return states[-1]
 
@@ -45,7 +56,14 @@ def _run_fn(
     esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
 ):
     _esn = deepcopy(esn)
-    X = {_esn.reservoir.name: x[esn.reservoir.name]}
+
+    original_reservoir_name = (
+        esn.reservoir.name[:-7]
+        if esn.reservoir.name.endswith("-(copy)")
+        else esn.reservoir.name
+    )
+
+    X = {_esn.reservoir.name: x[original_reservoir_name]}
 
     states = _allocate_returned_states(_esn, X, return_states)
 

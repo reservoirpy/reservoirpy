@@ -822,7 +822,7 @@ def _bernoulli(
         Else, returns a function partially initialized with the given keyword
         parameters, which can be called with a shape and returns a matrix.
     """
-    if 1 < p < 0:
+    if 1 < p or p < 0:
         raise ValueError("'p' must be <= 1 and >= 0.")
     return _random_sparse(
         *shape,
@@ -973,7 +973,7 @@ def _fast_spectral_initialization(
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
     """
-    if 0 > connectivity > 1.0:
+    if connectivity < 0.0 or connectivity > 1.0:
         raise ValueError("'connectivity' must be >0 and <1.")
 
     if sr is None or connectivity <= 0.0:

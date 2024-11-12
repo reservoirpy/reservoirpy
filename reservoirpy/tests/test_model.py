@@ -19,12 +19,20 @@ def test_node_link(plus_node, minus_node):
     model1 = plus_node >> minus_node
     model2 = minus_node >> plus_node
 
+    model1._hypers["hyper1"] = "hyper1"
+    model1._params["param1"] = "param1"
     assert model1.name == "Model-0"
+    model1.name = "Model-1000"
+    assert model1.name == "Model-1000"
     assert model1.params["PlusNode-0"]["c"] is None
     assert model1.hypers["PlusNode-0"]["h"] == 1
+    assert model1.hyper1 == "hyper1"
+    assert model1.param1 == "param1"
     assert model1["PlusNode-0"].input_dim is None
 
     assert model2.name == "Model-1"
+    with pytest.raises(NameError):  # already taken
+        model2.name = "Model-1000"
     assert model2.params["PlusNode-0"]["c"] is None
     assert model2.hypers["PlusNode-0"]["h"] == 1
     assert model2["PlusNode-0"].input_dim is None
@@ -35,6 +43,9 @@ def test_node_link(plus_node, minus_node):
 
     with pytest.raises(RuntimeError):
         model1 & model2
+
+    with pytest.raises(NameError):
+        _ = model1.get_param("fake_parameter")
 
     with pytest.raises(RuntimeError):
         plus_node >> minus_node >> plus_node

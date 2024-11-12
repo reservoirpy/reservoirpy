@@ -38,7 +38,7 @@ def santafe_laser():
             http://web.cecs.pdx.edu/mcnames/DataSets/index.html
 
     """
-    if sys.version_info < (3, 9):
+    if sys.version_info < (3, 9):  # pragma: no cover
         binary_data = importlib.resources.open_binary(__package__, FILENAME)
     else:
         binary_data = (
