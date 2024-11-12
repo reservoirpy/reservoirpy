@@ -11,12 +11,12 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/reservoirpy)](https://pypistats.org/packages/reservoirpy)
 [![Downloads](https://static.pepy.tech/badge/reservoirpy)](https://pepy.tech/project/reservoirpy)
 
-# ReservoirPy (v0.3.11) 🌀🧠
+# ReservoirPy (v0.3.12) 🌀🧠
 **Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reservoirpy/reservoirpy/HEAD)
 
-🎉 Exciting News! We just launched a new beta tool based on a Large Language Model! 
+🎉 Exciting News! We just launched a new beta tool based on a Large Language Model!
 🚀 You can chat with our "ReservoirChat" and ask anything about Reservoir Computing or coding reservoirs! 🤖💡
 Don’t miss out, it’s available for a limited time! ⏳
 https://chat.reservoirpy.inria.fr
@@ -172,7 +172,7 @@ pip install reservoirpy
 or
 
 ```bash
-pip install reservoirpy==0.3.11
+pip install reservoirpy==0.3.12
 ```
 
 If you want to run the Python Notebooks of the _tutorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
