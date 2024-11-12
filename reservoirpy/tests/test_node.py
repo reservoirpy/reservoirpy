@@ -1,6 +1,8 @@
 # Author: Nathan Trouvain at 08/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+import pickle
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
@@ -20,6 +22,14 @@ def test_node_creation(plus_node):
     assert plus_node.state() is None
 
 
+def test_pickling(plus_node):
+    pickled_node = pickle.dumps(plus_node)
+    unpickled_node = pickle.loads(pickled_node)
+
+    assert unpickled_node.name == plus_node.name + "-(copy)"
+    assert unpickled_node.get_param("h") == plus_node.get_param("h")
+
+
 def test_node_attr(plus_node):
     assert plus_node.get_param("c") is None
     assert plus_node.get_param("h") == 1
@@ -35,11 +45,15 @@ def test_node_attr(plus_node):
         plus_node.set_param("foo", 1)
 
     plus_node.params["a"] = 2
-
     assert plus_node.get_param("a") == 2
+
     plus_node.set_param("a", 3)
     assert plus_node.get_param("a") == 3
     assert plus_node.a == 3
+
+    plus_node.a = 4
+    assert plus_node.get_param("a") == 4
+
     assert plus_node.c == 1
     assert plus_node.h == 1
 
@@ -48,7 +62,6 @@ def test_node_attr(plus_node):
 
 
 def test_node_init(plus_node):
-
     data = np.zeros((1, 5))
 
     res = plus_node(data)
@@ -71,7 +84,6 @@ def test_node_init(plus_node):
 
 
 def test_node_init_empty(plus_node):
-
     plus_noinit = PlusNode(input_dim=5)
     plus_noinit.initialize()
 
@@ -312,6 +324,14 @@ def test_train(online_node):
         online_node.train(X, Y)
 
 
+def test_train_raise(online_node):
+    X = [np.ones((10, 5)) * 2.0] * 3
+    Y = [np.ones((10, 5)) * 2.0] * 3
+
+    with pytest.raises(TypeError):
+        online_node.train(X, Y)
+
+
 def test_train_learn_every(online_node):
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
@@ -330,7 +350,6 @@ def test_train_learn_every(online_node):
 
 
 def test_train_supervised_by_teacher_node(online_node, plus_node):
-
     X = np.ones((1, 5))
 
     # using not initialized node
@@ -345,7 +364,6 @@ def test_train_supervised_by_teacher_node(online_node, plus_node):
 
 
 def test_node_bad_learning_method(online_node, plus_node, offline_node):
-
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -366,7 +384,6 @@ def test_node_bad_learning_method(online_node, plus_node, offline_node):
 
 
 def test_offline_node_bad_warmup(offline_node):
-
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -375,7 +392,6 @@ def test_offline_node_bad_warmup(offline_node):
 
 
 def test_offline_node_default_partial(basic_offline_node):
-
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -384,7 +400,6 @@ def test_offline_node_default_partial(basic_offline_node):
 
 
 def test_multi_input(multiinput):
-
     multi_noinit = MultiInput(input_dim=(5, 2))
     multi_noinit.initialize()
 
@@ -407,7 +422,6 @@ def test_multi_input(multiinput):
 
 
 def test_feedback_noinit(feedback_node):
-
     with pytest.raises(RuntimeError):
         feedback_node.feedback()
 
@@ -473,7 +487,6 @@ def test_feedback_init_distant_model(feedback_node, plus_node, inverter_node):
 def test_feedback_init_deep_distant_model(
     feedback_node, plus_node, minus_node, inverter_node
 ):
-
     feedback_node <<= plus_node >> minus_node >> inverter_node
 
     with pytest.raises(RuntimeError):

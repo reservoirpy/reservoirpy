@@ -185,7 +185,7 @@ def check_n_sequences(
                         caller=caller,
                     )
                 else:
-                    raise ValueError("No lists, only arrays.")
+                    raise TypeError("No lists, only arrays.")
         else:
             x_new = check_one_sequence(
                 x, allow_timespans=allow_timespans, caller=caller
@@ -596,10 +596,10 @@ class _Node(ABC):
         return f"'{self.name}': {klas}(" + ", ".join(all_params) + ")"
 
     def __setstate__(self, state):
-        curr_name = state.get("name")
+        curr_name = state.get("_name")
         if curr_name in type(self)._registry:
             new_name = curr_name + "-(copy)"
-            state["name"] = new_name
+            state["_name"] = new_name
         self.__dict__ = state
 
     def __del__(self):

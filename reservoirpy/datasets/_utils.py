@@ -132,10 +132,9 @@ def from_aeon_classification(
         return X_out
 
     if not isinstance(X, np.ndarray):
-        try:
-            X = np.array(X)
-        except TypeError:
-            raise TypeError(f"X must be numpy array or a list, got {type(X)}")
+        if np.array(X).shape == ():
+            raise TypeError(f"X must be numpy array-like or a list, got {type(X)}")
+        X = np.array(X)
 
     if not len(X.shape) == 3:
         raise ValueError(

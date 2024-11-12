@@ -69,8 +69,21 @@ def test_spectral_radius():
 @pytest.mark.parametrize("observable", [mse, rmse, nrmse, rsquare])
 def test_dimensionwise(observable):
     rng = np.random.default_rng(1234)
+    # single series
     y1 = rng.uniform(size=(100, 2))
     noise = rng.uniform(size=(100, 2))
+    y2 = y1 + noise
+
+    total_score = observable(y_true=y1, y_pred=y2)
+    dimensionwise_score = observable(y_true=y1, y_pred=y2, dimensionwise=True)
+
+    assert isinstance(total_score, float)
+    assert isinstance(dimensionwise_score, np.ndarray)
+    assert dimensionwise_score.shape == (2,)
+
+    # multi-series
+    y1 = rng.uniform(size=(3, 100, 2))
+    noise = rng.uniform(size=(3, 100, 2))
     y2 = y1 + noise
 
     total_score = observable(y_true=y1, y_pred=y2)
@@ -101,6 +114,11 @@ def test_memory_capacity():
     # longer lag than the series length
     with pytest.raises(ValueError):
         _ = memory_capacity(model, k_max=300, series=np.ones((100, 1)))
+    # invalid test_size argument
+    with pytest.raises(ValueError):
+        _ = memory_capacity(model, k_max=300, test_size=23.41)
+    with pytest.raises(ValueError):
+        _ = memory_capacity(model, k_max=300, test_size=None)
 
 
 def test_effective_spectral_radius():

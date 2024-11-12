@@ -222,3 +222,11 @@ def test_from_aeon_classification():
     assert len(X_rpy_list) == len(X_aeon_list)
     assert X_rpy_list[-1].shape == X_aeon_list[-1].shape[::-1]
     assert X_rpy[0][2, 1] == np.pi
+
+    X_aeon_invalid = True
+    with pytest.raises(TypeError):
+        datasets.from_aeon_classification(X_aeon_invalid)
+
+    X_aeon_array_like = range(10)
+    with pytest.raises(ValueError):
+        datasets.from_aeon_classification(X_aeon_array_like)

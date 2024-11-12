@@ -516,6 +516,12 @@ def test_ring_matrix():
 
     assert np.all(x == 2**10 * x0)
 
+    W_dense = ring(10, 10, input_scaling=2.0, sparsity_type="dense")
+    assert_array_equal(W_dense, W.toarray())
+
+    with pytest.raises(ValueError):
+        _ = ring(10, 2, seed=1)
+
 
 def test_line_matrix():
     _ = line(10, 10, weights=np.arange(1.0, 10.0), sr=1.0)
@@ -533,6 +539,12 @@ def test_line_matrix():
 
     assert np.all(x == 0.0)
 
+    W_dense = line(10, 10, input_scaling=2.0, sparsity_type="dense")
+    assert_array_equal(W_dense, W.toarray())
+
+    with pytest.raises(ValueError):
+        _ = line(10, 2, seed=1)
+
 
 def test_orthogonal_matrix():
     W1 = orthogonal(10, 10, seed=1)
@@ -541,3 +553,9 @@ def test_orthogonal_matrix():
     assert np.all(np.isclose(W1, W2))
 
     assert np.all(np.isclose(W1 @ W1.T, np.eye(10)))
+
+    with pytest.raises(ValueError):
+        _ = orthogonal(10, 2, seed=1)
+
+    with pytest.raises(ValueError):
+        _ = orthogonal(10, 10, 10, seed=1)
