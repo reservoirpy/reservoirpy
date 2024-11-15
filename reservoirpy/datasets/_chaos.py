@@ -206,6 +206,7 @@ def mackey_glass(
     b: float = 0.1,
     n: int = 10,
     x0: float = 1.2,
+    history: Union[None, np.ndarray] = None,
     h: float = 1.0,
     seed: Union[int, RandomState, Generator] = None,
     **kwargs,
@@ -233,6 +234,7 @@ def mackey_glass(
         :math:`n` parameter of the equation.
     x0 : float, optional, default to 1.2
         Initial condition of the timeseries.
+    history: array of shape (tau//h + 1,) default to None  
     h : float, default to 1.0
         Time delta between two discrete timesteps.
     seed : int or :py:class:`numpy.random.Generator`, optional
@@ -268,20 +270,28 @@ def mackey_glass(
             on Wikipedia.
 
     """
-    # a random state is needed as the method used to discretize
-    # the timeseries needs to use randomly generated initial steps
-    # based on the initial condition passed as parameter.
-    if seed is None:
-        seed = get_seed()
+    
+    if history is None:
+	    # a random state is needed as the method used to discretize
+	    # the timeseries needs to use randomly generated initial steps
+	    # based on the initial condition passed as parameter.
+        if seed is None:
+            seed = get_seed()
 
-    rs = rand_generator(seed)
+            rs = rand_generator(seed)
 
-    # generate random first step based on the value
-    # of the initial condition
-    history_length = int(np.floor(tau / h))
-    history = collections.deque(
-        x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5)
-    )
+            # generate random first step based on the value
+            # of the initial condition
+            history_length = int(np.floor(tau / h))
+            history = collections.deque(
+            x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5)
+            )
+    else:
+        assert int(round(tau / h)) <= len(history), \
+                f'The given history has length of {len(history)} < tau/h with tau={tau} and h={h}.'
+        # use the most recent elements of the provided history        
+        history = collections.deque(history[-int(round(tau / h)):])
+
     xt = x0
 
     X = np.zeros(n_timesteps)
