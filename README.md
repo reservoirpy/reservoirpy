@@ -1,75 +1,77 @@
 <div align="center">
-  <!-- <img src="https://github.com/reservoirpy/reservoirpy/raw/master/static/rpy_banner_bw.png"><br> !-->
-  <img src="./static/rpy_banner_bw_small-size.jpg"><br>
+  <img src="static/rpy_banner_light.png#gh-light-mode-only">
+  <img src="static/rpy_banner_dark.png#gh-dark-mode-only">
+
+  **Simple and flexible library for Reservoir Computing architectures like Echo State Networks (ESN).**
+
+  [![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
+  [![HAL](https://img.shields.io/badge/HAL-02595026-white?style=flat&logo=HAL&logoColor=white&labelColor=B03532&color=grey)](https://inria.hal.science/hal-02595026)
+  ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/reservoirpy)
+  <br/>
+  [![Downloads](https://static.pepy.tech/badge/reservoirpy)](https://pepy.tech/project/reservoirpy)
+  [![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
+  [![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
+  [![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
 </div>
 
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/reservoirpy)
-[![PyPI version](https://badge.fury.io/py/reservoirpy.svg)](https://badge.fury.io/py/reservoirpy)
-[![Documentation Status](https://readthedocs.org/projects/reservoirpy/badge/?version=latest)](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
-[![Testing](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/reservoirpy/reservoirpy/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/reservoirpy/reservoirpy/branch/master/graph/badge.svg?token=JC8R1PB5EO)](https://codecov.io/gh/reservoirpy/reservoirpy)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/reservoirpy)](https://pypistats.org/packages/reservoirpy)
-[![Downloads](https://static.pepy.tech/badge/reservoirpy)](https://pepy.tech/project/reservoirpy)
 
-# ReservoirPy (v0.3.12) 🌀🧠
-**Simple and flexible code for Reservoir Computing architectures like Echo State Networks (ESN).**
 
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/reservoirpy/reservoirpy/HEAD)
+---
 
-🎉 Exciting News! We just launched a new beta tool based on a Large Language Model!
-🚀 You can chat with our "ReservoirChat" and ask anything about Reservoir Computing or coding reservoirs! 🤖💡
-Don’t miss out, it’s available for a limited time! ⏳
-https://chat.reservoirpy.inria.fr
 
-```python
-from reservoirpy.nodes import Reservoir, Ridge, Input
+<p> <img src="static/googlecolab.svg" alt="Google Colab icon" width=32 height=32 align="left"><b>Tutorials:</b> <a href="https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/1-Getting_Started.ipynb">Open in Colab</a> </p>
+<!--<p><img src="static/changelog.svg" alt="2" width =32 height=32 align="left"><b>Changelog:</b> https://github.com/reservoirpy/reservoirpy/releases</p>-->
+<p> <img src="static/documentation.svg" alt="Open book icon" width=32 height=32 align="left"><b>Documentation:</b> https://reservoirpy.readthedocs.io/</p>
+<!--<p> <img src="static/user_guide.svg" width=32 height=32 align="left"><b>User Guide:</b> https://reservoirpy.readthedocs.io/en/latest/user_guide/</a></p>-->
 
-data = Input(input_dim=1)
-reservoir = Reservoir(100, lr=0.3, sr=1.1)
-readout = Ridge(ridge=1e-6)
+---
 
-esn = data >> reservoir >> readout
+> [!TIP]
+> 🎉 Exciting News! We just launched a new beta tool based on a Large Language Model!
+> 🚀 You can chat with **ReservoirChat** and ask anything about Reservoir Computing and ReservoirPy! 🤖💡
+> Don’t miss out, it’s available for a limited time! ⏳
+> 
+> https://chat.reservoirpy.inria.fr
 
-forecast = esn.fit(X, y).run(timeseries)
-```
+<br />
 
 ReservoirPy is a simple user-friendly library based on Python scientific modules.
 It provides a **flexible interface to implement efficient Reservoir Computing** (RC)
 architectures with a particular focus on *Echo State Networks* (ESN).
-Advanced features of ReservoirPy allow to improve computation time efficiency
-on a simple laptop compared to basic Python implementation, with datasets of
-any size.
 
-Some of its features are: **offline and online training**, **parallel implementation**,
-**sparse matrix computation**, fast spectral initialization, **advanced learning rules**
-(e.g. *Intrinsic Plasticity*) etc. It also makes possible
-to **easily create complex architectures with multiple reservoirs** (e.g. *deep reservoirs*),
+It allows to **easily create complex architectures with multiple reservoirs** (e.g. *deep reservoirs*),
 readouts, and **complex feedback loops**.
+
+Some of its features are:
+- **offline and online training**
+- **parallel implementation**
+- **sparse matrix computation**
+- deep architectures
+- **advanced learning rules** (e.g. *Intrinsic Plasticity* or *NVAR*)
+- interfacing with **scikit-learn** models [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_scikit--learn_node-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/6-Interfacing_with_scikit-learn.ipynb)
+- and many more! [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Advanced_features-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/2-Advanced_Features.ipynb)
+
 Moreover, graphical tools are included to **easily explore hyperparameters**
 with the help of the *hyperopt* library.
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Hyperparameter_search-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
+
 Finally, it includes several tutorials exploring exotic architectures
-and examples of scientific papers reproduction.
+and [examples of scientific papers reproduction](examples/).
 
-This library works for **Python 3.8** and higher.
-
-[Follow @reservoirpy](https://twitter.com/reservoirpy) updates and new releases on Twitter.
-
-## Official documentation 📖
-
-See [the official ReservoirPy's documentation](https://reservoirpy.readthedocs.io/en/latest/?badge=latest)
-to learn more about the main features of ReservoirPy, its API and the installation process. Or you can access directly the [User Guide with tutorials](https://reservoirpy.readthedocs.io/en/latest/user_guide/index.html#user-guide).
-
-## Quick example of how to code a deep reservoir
-![GIF: Writing of a deep-ESN architecture using ReservoirPy](./static/deep-reservoir.gif)
-
-## Installation
+#### Quick installation
 
 ```bash
 pip install reservoirpy
 ```
 
-(See below for more advanced installation options)
+#### Minimal example
+```python
+from reservoirpy.nodes import ESN
 
+model = ESN(units=100, lr=0.3, sr=1.1, ridge=1e-6)
+
+forecast = esn.fit(X, y).run(timeseries)
+```
 
 ## Quick try ⚡
 
@@ -153,45 +155,7 @@ from reservoirpy.observables import rmse, rsquare
 print("RMSE:", rmse(X[502:], predictions), "R^2 score:", rsquare(X[502:], predictions))
 ```
 
-Run and analyse this simple file (in the "tutorials/Simple Examples with Mackey-Glass" folder) to see a complete example of timeseries prediction with ESNs:
-- simple_example_MackeyGlass.py (using the ESN class)
-
-    ```bash
-    python simple_example_MackeyGlass.py
-    ```
-
 If you have some issues testing some examples, have a look at the [extended packages requirements in ReadTheDocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
-
-## More installation options
-
-To install it, use one of the following commands:
-
-```bash
-pip install reservoirpy
-```
-or
-
-```bash
-pip install reservoirpy==0.3.12
-```
-
-If you want to run the Python Notebooks of the _tutorials_ folder, install the packages in requirements file (warning: this may downgrade the version of hyperopt installed):
-```bash
-pip install -r tutorials/requirements.txt
-```
-
-If you want to use the previous version 0.2.4, you can install ReservoirPy using:
-
-```bash
-pip install reservoirpy==0.2.4
-```
-
-If you want to enable the `hyper` package and its hyperparameter optimization helpers using
-[hyperopt](http://hyperopt.github.io/hyperopt/), use:
-
-```bash
-pip install reservoirpy[hyper]
-```
 
 ## More examples and tutorials 🎓
 
@@ -199,31 +163,28 @@ pip install reservoirpy[hyper]
 
 [Go to the examples folder](./examples/) for examples and papers with codes, also in Jupyter Notebooks.
 
-## Paper with tutorials
-Tutorial for ReservoirPy (v0.2) can be found in this [Paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
-
 ## Explore Hyper-Parameters with Hyperopt
 A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
 
-Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our [recent paper: (Hinaut et al 2021)](https://hal.inria.fr/hal-03203318/) [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
+Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our paper (Hinaut et al 2021): [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
 
 [Tutorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
-
-More info on hyperopt: [Official website](http://hyperopt.github.io/hyperopt/)
 
 ## Papers and projects using ReservoirPy
 
 If you want your paper to appear here, please contact us (see contact link below).
 
-- Leger et al. (2024) Evolving Reservoirs for Meta Reinforcement Learning. EvoAPPS 2024 [HAL](https://inria.hal.science/hal-04354303) [PDF](https://arxiv.org/pdf/2312.06695) [Code](https://github.com/corentinlger/ER-MRL)
-- Chaix-Eichel et al. (2022) From implicit learning to explicit representations. arXiv preprint arXiv:2204.02484. [arXiv](https://arxiv.org/abs/2204.02484) [PDF](https://arxiv.org/pdf/2204.02484)
-- Trouvain & Hinaut (2021) Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) [HAL](https://hal.inria.fr/hal-03203374) [PDF](https://hal.inria.fr/hal-03203374/document)
-- Pagliarini et al. (2021) Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator. ICDL 2021. [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF)
-- Pagliarini et al. (2021) What does the Canary Say? Low-Dimensional GAN Applied to Birdsong. HAL preprint. [HAL](https://hal.inria.fr/hal-03244723/) [PDF](https://hal.inria.fr/hal-03244723/document)
-- Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters. ICANN 2021 [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318) [PDF](https://hal.inria.fr/hal-03203318)
+- Leger et al. (2024) *Evolving Reservoirs for Meta Reinforcement Learning.* EvoAPPS 2024 ( [HAL](https://inria.hal.science/hal-04354303) | [PDF](https://arxiv.org/pdf/2312.06695) | [Code](https://github.com/corentinlger/ER-MRL) )
+- Chaix-Eichel et al. (2022) *From implicit learning to explicit representations.* arXiv preprint arXiv:2204.02484. ( [arXiv](https://arxiv.org/abs/2204.02484) | [PDF](https://arxiv.org/pdf/2204.02484) )
+- Trouvain & Hinaut (2021) *Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs.* ICANN 2021 ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) | [HAL](https://hal.inria.fr/hal-03203374) | [PDF](https://hal.inria.fr/hal-03203374/document) )
+- Pagliarini et al. (2021) *Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator.* ICDL 2021. ( [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF) )
+- Pagliarini et al. (2021) *What does the Canary Say? Low-Dimensional GAN Applied to Birdsong.* HAL preprint. ( [HAL](https://hal.inria.fr/hal-03244723/) | [PDF](https://hal.inria.fr/hal-03244723/document) )
+- Hinaut & Trouvain (2021) *Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters.* ICANN 2021 ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) | [HAL](https://hal.inria.fr/hal-03203318) | [PDF](https://hal.inria.fr/hal-03203318) )
 
 ## Contact
-If you have a question regarding the library, please open an Issue. If you have more general question or feedback you can [contact us on twitter](https://twitter.com/reservoirpy) or by email to xavier dot hinaut the-famous-home-symbol inria dot fr.
+If you have a question regarding the library, please open an issue.
+
+If you have more general question or feedback you can contact us by email to xavier dot hinaut the-famous-home-symbol inria dot fr.
 
 ## Citing ReservoirPy
 
@@ -232,7 +193,6 @@ Trouvain, N., Pedrelli, L., Dinh, T. T., Hinaut, X. (2020) Reservoirpy: an effic
 If you're using ReservoirPy in your work, please cite our package using the following bibtex entry:
 
 ```
-
 @incollection{Trouvain2020,
   doi = {10.1007/978-3-030-61616-8_40},
   url = {https://doi.org/10.1007/978-3-030-61616-8_40},
@@ -246,10 +206,8 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 ```
 
 <div align="left">
-  <img src="./static/inr_logo_rouge.jpg" width=300><br>
+  <img src="./static/inria_red.jpg" width=300><br>
 </div>
 
 
 This package is developed and supported by Inria at Bordeaux, France in [Mnemosyne](https://team.inria.fr/mnemosyne/) group. [Inria](https://www.inria.fr/en) is a French Research Institute in Digital Sciences (Computer Science, Mathematics, Robotics, ...).
-
-
