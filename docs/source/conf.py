@@ -107,7 +107,8 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 
-html_favicon = "_static/rpy_logo_small.png"
+# html_favicon = "_static/rpy_logo_small.png"
+html_favicon = "_static/favicon.png"
 
 html_theme = "pydata_sphinx_theme"
 
