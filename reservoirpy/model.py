@@ -67,6 +67,7 @@ a :py:class:`Model`.
 .. autoclass:: FrozenModel
 
 """
+
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -90,7 +91,7 @@ from .utils.graphflow import (
 )
 from .utils.model_utils import (
     allocate_returned_states,
-    build_forward_sumodels,
+    build_forward_submodels,
     dist_states_to_next_subgraph,
     fold_mapping,
     to_data_mapping,
@@ -163,7 +164,6 @@ def run_submodel(
     shift_fb=True,
     return_states: Sequence[str] = None,
 ) -> MappedData:
-
     X_, forced_feedbacks_ = to_data_mapping(submodel, X, forced_feedbacks)
 
     submodel._initialize_on_sequence(X_[0], forced_feedbacks_[0])
@@ -296,7 +296,6 @@ class Model(_Node):
         edges: Sequence[Tuple[_Node, _Node]] = None,
         name: str = None,
     ):
-
         if nodes is None:
             nodes = tuple()
         if edges is None:
@@ -390,7 +389,6 @@ class Model(_Node):
             self.initialize(x_init, y_init)
 
     def _call(self, x=None, return_states=None, submodel=None, *args, **kwargs):
-
         if submodel is None:
             submodel = self
 
@@ -440,7 +438,6 @@ class Model(_Node):
             # impact on feedback
             self._load_proxys(keep=True)
             for i, (x, forced_fb, _) in enumerate(seq):
-
                 with self.with_feedback(forced_fb):
                     state = submodel._call(x, return_states=return_states)
 
@@ -1001,7 +998,6 @@ class Model(_Node):
             # impact on feedback
             self._load_proxys(keep=True)
             for i, (x, forced_feedback, y) in enumerate(dispatched_data):
-
                 if not force_teachers:
                     forced_feedback = None
 
@@ -1096,7 +1092,7 @@ class Model(_Node):
 
         with self.with_state(from_state, reset=reset, stateful=stateful):
             for i, ((nodes, edges), relations) in enumerate(subgraphs):
-                submodel, offlines = build_forward_sumodels(nodes, edges, trained)
+                submodel, offlines = build_forward_submodels(nodes, edges, trained)
 
                 if next_X is not None:
                     for j in range(len(X)):

@@ -11,7 +11,7 @@ from .._base import check_xy
 from .validation import is_mapping, is_sequence_set
 
 
-def build_forward_sumodels(nodes, edges, already_trained):
+def build_forward_submodels(nodes, edges, already_trained):
     """Separate unfitted offline nodes from fitted nodes and gather all fitted
     nodes in submodels."""
     from ..model import Model
