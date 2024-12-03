@@ -191,11 +191,11 @@ class Initializer:
     func : callable
         Initializer function. Should have a `shape` argument and return a Numpy array
         or Scipy sparse matrix.
-    autorize_sr : bool, default to True
+    allow_sr : bool, default to True
         Authorize spectral radius rescaling for this initializer.
-    autorize_input_scaling : bool, default to True
+    allow_input_scaling : bool, default to True
         Authorize input_scaling for this initializer.
-    autorize_rescaling : bool, default to True
+    allow_rescaling : bool, default to True
         Authorize any kind of rescaling (spectral radius or input scaling) for this
         initializer.
 
@@ -211,21 +211,21 @@ class Initializer:
     def __init__(
         self,
         func,
-        autorize_sr=True,
-        autorize_input_scaling=True,
-        autorize_rescaling=True,
+        allow_sr=True,
+        allow_input_scaling=True,
+        allow_rescaling=True,
     ):
         self._func = func
         self._kwargs = dict()
-        self._autorize_sr = autorize_sr
-        self._autorize_input_scaling = autorize_input_scaling
-        self._autorize_rescaling = autorize_rescaling
+        self._allow_sr = allow_sr
+        self._allow_input_scaling = allow_input_scaling
+        self._allow_rescaling = allow_rescaling
 
         self.__doc__ = func.__doc__
         self.__annotations__ = func.__annotations__
-        if self._autorize_sr:
+        if self._allow_sr:
             self.__annotations__.update({"sr": float})
-        if self._autorize_input_scaling:
+        if self._allow_input_scaling:
             self.__annotations__.update(
                 {"input_scaling": Union[float, Iterable[float]]}
             )
@@ -235,12 +235,12 @@ class Initializer:
         return split[0] + f" ({self._func.__name__}) " + " ".join(split[1:])
 
     def __call__(self, *shape, **kwargs):
-        if "sr" in kwargs and not self._autorize_sr:
+        if "sr" in kwargs and not self._allow_sr:
             raise ValueError(
                 "Spectral radius rescaling is not supported by this initializer."
             )
 
-        if "input_scaling" in kwargs and not self._autorize_input_scaling:
+        if "input_scaling" in kwargs and not self._allow_input_scaling:
             raise ValueError("Input scaling is not supported by this initializer.")
 
         new_shape, kwargs = _filter_deprecated_kwargs(kwargs)
@@ -254,7 +254,7 @@ class Initializer:
         init._kwargs.update(kwargs)
 
         if len(shape) > 0:
-            if init._autorize_rescaling:
+            if init._allow_rescaling:
                 return init._func_post_process(*shape, **init._kwargs)
             else:
                 return init._func(*shape, **init._kwargs)
@@ -901,7 +901,7 @@ def _zeros(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
     return np.zeros(shape, dtype=dtype)
 
 
-zeros = Initializer(_zeros, autorize_sr=False)
+zeros = Initializer(_zeros, allow_sr=False)
 
 
 def _fast_spectral_initialization(
@@ -1001,8 +1001,8 @@ def _fast_spectral_initialization(
 
 fast_spectral_initialization = Initializer(
     _fast_spectral_initialization,
-    autorize_input_scaling=False,
-    autorize_rescaling=False,
+    allow_input_scaling=False,
+    allow_rescaling=False,
 )
 
 
@@ -1099,7 +1099,7 @@ def _generate_internal_weights(
 
 
 generate_internal_weights = Initializer(
-    _generate_internal_weights, autorize_input_scaling=False
+    _generate_internal_weights, allow_input_scaling=False
 )
 
 
@@ -1214,7 +1214,7 @@ def _generate_input_weights(
     )
 
 
-generate_input_weights = Initializer(_generate_input_weights, autorize_sr=False)
+generate_input_weights = Initializer(_generate_input_weights, allow_sr=False)
 
 
 def _ring(
