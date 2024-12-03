@@ -7,7 +7,7 @@ from typing import Iterable
 
 from tqdm import tqdm
 
-VERBOSITY = 1
+VERBOSITY = 0
 
 
 def verbosity(level=None):
