@@ -131,10 +131,10 @@ class Ridge(Node):
 
     Parameters
     ----------
-    output_dim : int, optional
-        Number of units in the readout, can be inferred at first call.
     ridge: float, default to 0.0
         L2 regularization parameter.
+    output_dim : int, optional
+        Number of units in the readout, can be inferred at first call.
     Wout : callable or array-like of shape (units, targets), default to :py:func:`~reservoirpy.mat_gen.zeros`
         Output weights matrix or initializer. If a callable (like a function) is
         used, then this function should accept any keywords
@@ -167,8 +167,8 @@ class Ridge(Node):
 
     def __init__(
         self,
-        output_dim=None,
         ridge=0.0,
+        output_dim=None,
         Wout=zeros,
         bias=zeros,
         input_bias=True,
