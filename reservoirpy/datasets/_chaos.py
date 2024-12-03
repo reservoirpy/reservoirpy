@@ -1,5 +1,5 @@
-"""Chaotic timeseries generators.
-"""
+"""Chaotic timeseries generators."""
+
 # Author: Nathan Trouvain at 2020 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -686,15 +686,6 @@ def narma(
     where :math:`u[t]` are sampled following a uniform distribution in
     :math:`[0, 0.5]`.
 
-    Note
-    ----
-    In most reservoir computing benchmarks, $u$ is given as an input. If you want
-    access to its value, you should create the `u` array and pass it as an argument
-    to the function as shown below.
-    This choice is made to avoid breaking changes. In future ReservoirPy versions, `u`
-    will be returned with `y`.
-    See `related discussion <https://github.com/reservoirpy/reservoirpy/issues/142>`_.
-
     Parameters
     ----------
     n_timesteps : int
@@ -718,8 +709,8 @@ def narma(
 
     Returns
     -------
-    array of shape (n_timesteps, 1)
-        NARMA timeseries.
+    tuple of arrays of shape (`n_timesteps` + `order`, 1) and (n_timesteps, 1)
+        Input timeseries u and output NARMA timeseries.
 
     Example
     -------
@@ -774,7 +765,7 @@ def narma(
             + b * u[t - order] * u[t]
             + c
         )
-    return y[order:, :]
+    return u, y[order:, :]
 
 
 def lorenz96(
