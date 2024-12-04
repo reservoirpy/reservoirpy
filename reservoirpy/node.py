@@ -843,6 +843,10 @@ class Node(_Node):
         """A null state vector."""
         if self.output_dim is not None:
             return np.zeros((1, self.output_dim), dtype=self.dtype)
+        else:
+            raise Exception(
+                f"Cannot return a null state vector from {self.name} as it has no output dimension."
+            )
 
     def zero_feedback(self) -> Optional[Union[List[np.ndarray], np.ndarray]]:
         """A null feedback vector. Returns None if the Node receives
