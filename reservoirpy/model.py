@@ -775,16 +775,12 @@ class Model(_Node):
         self._is_initialized = True
         return self
 
-    def initialize_buffers(self) -> "Model":
+    def initialize_buffers(self):
         """Call all Nodes buffer initializers. Buffer initializers will create
         buffer arrays on demand to store transient values of the parameters,
         typically during training.
-
-        Returns
-        -------
-        Model
-            Initialized Model.
         """
+
         for node in self.nodes:
             if node._buffers_initializer is not None:
                 node.initialize_buffers()
