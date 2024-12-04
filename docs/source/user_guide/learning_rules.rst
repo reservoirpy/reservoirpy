@@ -160,8 +160,8 @@ Online learning with :py:meth:`~.Node.train`
 --------------------------------------------
 
 Online learning can be performed using the :py:meth:`~.Node.train` method.
-In the following example, we will use the :py:class:`~.FORCE` node, a single layer of neurons equipped with
-an online learning rule called FORCE algorithm.
+In the following example, we will use the :py:class:`~.RLS` node, a single layer of neurons equipped with
+an online learning rule called the Recursive Least Square (RLS) algorithm.
 
 We start by creating some input data ``X`` and some target data ``Y`` that the model has to predict.
 
@@ -170,24 +170,24 @@ We start by creating some input data ``X`` and some target data ``Y`` that the m
     X = np.arange(100)[:, np.newaxis]
     Y = np.arange(100)[:, np.newaxis]
 
-Then, we create a :py:class:`~.FORCE` node. Notice that it is not necessary to indicate the number of neurons in that
+Then, we create an :py:class:`~.RLS` node. Notice that it is not necessary to indicate the number of neurons in that
 node. ReservoirPy will infer it from the shape of the target data.
 
 .. ipython:: python
 
-    from reservoirpy.nodes import FORCE
+    from reservoirpy.nodes import RLS
 
-    force = FORCE()
+    rls = RLS()
 
 The :py:meth:`~.Node.train` method can be used as the call method of a Node. Every time the method is called, it updates
 the parameter of the node along with its internal state, and return the state.
 
 .. ipython:: python
 
-    s_t1 = force.train(X[0], Y[0])
-    print("Parameters after first update:", force.Wout, force.bias)
-    s_t1 = force.train(X[1], Y[1])
-    print("Parameters after second update:", force.Wout, force.bias)
+    s_t1 = rls.train(X[0], Y[0])
+    print("Parameters after first update:", rls.Wout, rls.bias)
+    s_t1 = rls.train(X[1], Y[1])
+    print("Parameters after second update:", rls.Wout, rls.bias)
 
 The :py:meth:`~.Node.train` method can also be called on a timeseries of variables and targets, in a similar way to
 what can be done with the :py:meth:`~.Node.run` function. All states computed during the training will be returned
@@ -195,8 +195,8 @@ by the node.
 
 .. ipython:: python
 
-    force = FORCE()
-    S = force.train(X, Y)
+    rls = RLS()
+    S = rls.train(X, Y)
 
 As the parameters are updated incrementally, we can see convergence of the model throughout training, as opposed
 to offline learning where parameters can only be updated once, and evaluated at the end of the training phase.
@@ -204,14 +204,14 @@ We can see that convergence is really fast. Only the first timesteps of output d
 
 .. plot::
 
-    from reservoirpy.nodes import FORCE
+    from reservoirpy.nodes import RLS
     X = np.arange(100)[:, np.newaxis]
     Y = np.arange(100)[:, np.newaxis]
-    force = FORCE()
-    S = force.train(X, Y)
+    rls = RLS()
+    S = rls.train(X, Y)
     plt.plot(S, label="Predicted")
     plt.plot(Y, label="Training targets")
-    plt.title("Activation of FORCE readout during training")
+    plt.title("Activation of RLS readout during training")
     plt.xlabel("Timestep $t$")
     plt.legend()
     plt.show()
@@ -221,7 +221,7 @@ We can access the learned parameters looking at the ``Wout`` and ``bias`` parame
 
 .. ipython:: python
 
-    print(force.Wout, force.bias)
+    print(rls.Wout, rls.bias)
 
 As ``X`` and ``Y`` where the same timeseries, we can see learning was successful: the node has learned the identity
 function, with a weight of 1 and a bias close to 0.
@@ -235,7 +235,7 @@ If all nodes are online, then the :py:meth:`~.Node.train` methods of all online 
 topological order of the graph defined by the model. At each timesteps, online nodes are trained, called, and their
 updated states are given to the next nodes in the graph.
 
-As an example, we will train the readout layer of an ESN using FORCE learning. We first create some toy dataset: the
+As an example, we will train the readout layer of an ESN using RLS learning. We first create some toy dataset: the
 task we need the ESN to perform is to predict the cosine form of a wave given its sine form.
 
 .. ipython:: python
@@ -243,16 +243,16 @@ task we need the ESN to perform is to predict the cosine form of a wave given it
     X = np.sin(np.linspace(0, 20, 100))[:, np.newaxis]
     Y = np.cos(np.linspace(0, 20, 100))[:, np.newaxis]
 
-Then, we create an ESN model by linking a :py:class:`~.Reservoir` node with a :py:class:`~.FORCE` node. The
-:py:class:`~.FORCE` node will be used as readout and trained to learn a mapping between reservoir states
+Then, we create an ESN model by linking a :py:class:`~.Reservoir` node with an :py:class:`~.RLS` node. The
+:py:class:`~.RLS` node will be used as readout and trained to learn a mapping between reservoir states
 and targeted outputs. We will tune some of the reservoir hyperparameters to obtain better results.
 We can then train the model using :py:meth:`~.Model.train`.
 
 .. ipython:: python
 
-    from reservoirpy.nodes import Reservoir, FORCE
+    from reservoirpy.nodes import Reservoir, RLS
 
-    reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), FORCE()
+    reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), RLS()
     esn = reservoir >> readout
     predictions = esn.train(X, Y)
 
@@ -263,13 +263,13 @@ the outputs produced by the model during training to evaluate convergence:
 
     X = np.sin(np.linspace(0, 20, 100))[:, np.newaxis]
     Y = np.cos(np.linspace(0, 20, 100))[:, np.newaxis]
-    from reservoirpy.nodes import Reservoir, FORCE
-    reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), FORCE()
+    from reservoirpy.nodes import Reservoir, RLS
+    reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), RLS()
     esn = reservoir >> readout
     S = esn.train(X, Y)
     plt.plot(S, label="Predicted")
     plt.plot(Y, label="Training targets")
-    plt.title("Activation of FORCE readout during training")
+    plt.title("Activation of RLS readout during training")
     plt.xlabel("Timestep $t$")
     plt.legend()
     plt.show()
@@ -283,8 +283,8 @@ We can then run the model to evaluate its predictions:
 
 .. plot::
 
-    from reservoirpy.nodes import Reservoir, FORCE
-    reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), FORCE()
+    from reservoirpy.nodes import Reservoir, RLS
+    reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), RLS()
     esn = reservoir >> readout
     X = np.sin(np.linspace(0, 20, 100))[:, np.newaxis]
     Y = np.cos(np.linspace(0, 20, 100))[:, np.newaxis]
@@ -311,8 +311,8 @@ node.
 
 Two ReservoirPy nodes currently supports this feature: :py:class:`~.Ridge` and :py:class:`~.IPReservoir`.
 
-As an example, we will train the readout layer of an ESN using FORCE learning. We first create some toy dataset: the
-task we need the ESN to perform is to predict the cosine form of a wave given its sine form.
+As an example, we will gradually fit the readout layer of an ESN. We first create some toy dataset: the
+task we need the ESN to perform is classification on the Japanese vowels dataset.
 
 .. ipython:: python
 

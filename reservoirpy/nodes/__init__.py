@@ -36,7 +36,6 @@ Online readouts
 
    LMS - Layer of neurons connected through least mean squares learning rule.
    RLS - Layer of neurons connected through recursive least squares learning rule.
-   FORCE - Layer of neurons connected through online learning rules.
 
 Optimized ESN
 =============
@@ -81,6 +80,7 @@ Operators
    Concat - Concatenate vector of data along feature axis.
    Delay - Adds a discrete delay between input and output.
 """
+
 # Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -89,15 +89,14 @@ from .concat import Concat
 from .delay import Delay
 from .esn import ESN
 from .io import Input, Output
-from .readouts import FORCE, LMS, RLS, Ridge, ScikitLearnNode
 from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir, Reservoir
+from .readouts import LMS, RLS, Ridge, ScikitLearnNode
 
 __all__ = [
     "Reservoir",
     "Input",
     "Output",
     "Ridge",
-    "FORCE",
     "LMS",
     "RLS",
     "Tanh",
