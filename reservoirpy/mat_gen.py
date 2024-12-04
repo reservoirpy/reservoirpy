@@ -35,8 +35,6 @@ seed.
     small_world
     zeros
     ones
-    generate_internal_weights
-    generate_input_weights
     fast_spectral_initialization
     Initializer
 
@@ -138,8 +136,6 @@ from .utils.random import rand_generator
 
 __all__ = [
     "fast_spectral_initialization",
-    "generate_internal_weights",
-    "generate_input_weights",
     "random_sparse",
     "uniform",
     "normal",
@@ -149,36 +145,6 @@ __all__ = [
 ]
 
 _epsilon = 1e-8  # used to avoid division by zero when rescaling spectral radius
-
-
-def _filter_deprecated_kwargs(kwargs):
-    deprecated = {
-        "proba": "connectivity",
-        "typefloat": "dtype",
-        "N": None,
-        "dim_input": None,
-    }
-
-    new_kwargs = {}
-    args = [None, None]
-    args_order = ["N", "dim_input"]
-    for depr, repl in deprecated.items():
-        if depr in kwargs:
-            depr_argument = kwargs.pop(depr)
-
-            msg = f"'{depr}' parameter is deprecated since v0.3.1."
-            if repl is not None:
-                msg += f" Consider using '{repl}' instead."
-                new_kwargs[repl] = depr_argument
-            else:
-                args[args_order.index(depr)] = depr_argument
-
-            warnings.warn(msg, DeprecationWarning)
-
-    args = [a for a in args if a is not None]
-    kwargs.update(new_kwargs)
-
-    return args, kwargs
 
 
 class Initializer:
@@ -242,13 +208,6 @@ class Initializer:
 
         if "input_scaling" in kwargs and not self._allow_input_scaling:
             raise ValueError("Input scaling is not supported by this initializer.")
-
-        new_shape, kwargs = _filter_deprecated_kwargs(kwargs)
-
-        if len(new_shape) > 1:
-            shape = new_shape
-        elif len(new_shape) > 0:
-            shape = (new_shape[0], new_shape[0])
 
         init = copy.deepcopy(self)
         init._kwargs.update(kwargs)
@@ -1004,217 +963,6 @@ fast_spectral_initialization = Initializer(
     allow_input_scaling=False,
     allow_rescaling=False,
 )
-
-
-def _generate_internal_weights(
-    N: int,
-    *args,
-    dist="norm",
-    connectivity=0.1,
-    dtype=global_dtype,
-    sparsity_type="csr",
-    seed=None,
-    degree: Union[int, None] = None,
-    direction: Literal["in", "out"] = "out",
-    **kwargs,
-):
-    """Generate the weight matrix that will be used for the internal connections of a
-     reservoir.
-
-    Warning
-    -------
-
-    This function is deprecated since version v0.3.1 and will be removed in future
-    versions. Please consider using :py:func:`normal`, :py:func:`uniform` or
-    :py:func:`random_sparse` instead.
-
-    Parameters
-    ----------
-    N : int, optional
-        Shape :math:`N \\times N` of the array.
-        This function only builds square matrices.
-    dist: str, default to "norm"
-        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
-        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
-        functions as keyword arguments to this function. Usual distributions for
-        internal weights are :py:class:`scipy.stats.norm` with parameters `loc` and
-        `scale` to obtain weights following the standard normal distribution,
-        or :py:class:`scipy.stats.uniform` with parameters `loc=-1` and `scale=2`
-        to obtain weights uniformly distributed between -1 and 1.
-        Can also have the value "custom_bernoulli". In that case, weights will be drawn
-        from a Bernoulli discrete random variable alternating between -1 and 1 and
-        drawing 1 with a probability `p` (default `p` parameter to 0.5).
-    connectivity: float, default to 0.1
-        Also called density of the sparse matrix.
-    sr : float, optional
-        If defined, then will rescale the spectral radius of the matrix to this value.
-    dtype : numpy.dtype, default to numpy.float64
-        A Numpy numerical type.
-    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
-        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
-        Else, a Numpy array ("dense") will be used.
-    seed : optional
-        Random generator seed. Default to the global value set with
-        :py:func:`reservoirpy.set_seed`.
-    degree: int, default to None
-        If not None, override the `connectivity` argument and corresponds to the number
-        of non-zero values along the axis specified by `direction`
-    direction: {"in", "out"}, default to "out"
-        If `degree` is not None, specifies the axis along which the `degree` non-zero
-        values are distributed.
-        - If `direction` is "in", each line will have `degree` non-zero values. In other
-        words, each node of the corresponding graph will have `degree` in-degrees
-        - If `direction` is "out", each column will have `degree` non-zero values. In
-        other words, each node of the corresponding graph will have `degree` out-degrees
-    **kwargs : optional
-        Arguments for the scipy.stats distribution.
-
-    Returns
-    -------
-    Numpy array or callable
-        If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partially initialized with the given keyword
-        parameters, which can be called with a shape and returns a matrix.
-    """
-
-    warnings.warn(
-        "'generate_internal_weights' is deprecated since v0.3.1 and will be removed in "
-        "future versions. Consider using 'bernoulli' or 'random_sparse'.",
-        DeprecationWarning,
-    )
-
-    return _random_sparse(
-        N,
-        N,
-        connectivity=connectivity,
-        dtype=dtype,
-        dist=dist,
-        sparsity_type=sparsity_type,
-        seed=seed,
-        degree=degree,
-        direction=direction,
-        **kwargs,
-    )
-
-
-generate_internal_weights = Initializer(
-    _generate_internal_weights, allow_input_scaling=False
-)
-
-
-def _generate_input_weights(
-    N,
-    dim_input,
-    dist="custom_bernoulli",
-    connectivity=1.0,
-    dtype=global_dtype,
-    sparsity_type="csr",
-    seed=None,
-    input_bias=False,
-    degree: Union[int, None] = None,
-    direction: Literal["in", "out"] = "out",
-    **kwargs,
-):
-    """Generate input or feedback weights for a reservoir.
-
-    Weights are drawn by default from a discrete Bernoulli random variable,
-    i.e. are always equal to 1 or -1. Then, they can be rescaled to a specific constant
-    using the `input_scaling` parameter.
-
-    Warning
-    -------
-
-    This function is deprecated since version v0.3.1 and will be removed in future
-    versions. Please consider using :py:func:`bernoulli` or :py:func:`random_sparse`
-    instead.
-
-    Parameters
-    ----------
-    N: int
-        Number of units in the connected reservoir.
-    dim_input: int
-        Dimension of the inputs connected to the reservoir.
-    dist: str, default to "norm"
-        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
-        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
-        functions as keyword arguments to this function. Usual distributions for
-        internal weights are :py:class:`scipy.stats.norm` with parameters `loc` and
-        `scale` to obtain weights following the standard normal distribution,
-        or :py:class:`scipy.stats.uniform` with parameters `loc=-1` and `scale=2`
-        to obtain weights uniformly distributed between -1 and 1.
-        Can also have the value "custom_bernoulli". In that case, weights will be drawn
-        from a Bernoulli discrete random variable alternating between -1 and 1 and
-        drawing 1 with a probability `p` (default `p` parameter to 0.5).
-    connectivity: float, default to 0.1
-        Also called density of the sparse matrix.
-    input_scaling: float or array, optional
-        If defined, then will rescale the matrix using this coefficient or array
-        of coefficients.
-    input_bias: bool, optional
-        'input_bias' parameter is deprecated. Bias should be initialized
-        separately from the input matrix.
-        If True, will add a row to the matrix to take into
-        account a constant bias added to the input.
-    dtype : numpy.dtype, default to numpy.float64
-        A Numpy numerical type.
-    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
-        If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
-        Else, a Numpy array ("dense") will be used.
-    seed : optional
-        Random generator seed. Default to the global value set with
-        :py:func:`reservoirpy.set_seed`.
-    degree: int, default to None
-        If not None, override the `connectivity` argument and corresponds to the number
-        of non-zero values along the axis specified by `direction`
-    direction: {"in", "out"}, default to "out"
-        If `degree` is not None, specifies the axis along which the `degree` non-zero
-        values are distributed.
-        - If `direction` is "in", each line will have `degree` non-zero values. In other
-        words, each node of the corresponding graph will have `degree` in-degrees
-        - If `direction` is "out", each column will have `degree` non-zero values. In
-        other words, each node of the corresponding graph will have `degree` out-degrees
-    **kwargs : optional
-        Arguments for the scipy.stats distribution.
-
-    Returns
-    -------
-    Numpy array or callable
-        If a shape is given to the initializer, then returns a matrix.
-        Else, returns a function partially initialized with the given keyword
-        parameters, which can be called with a shape and returns a matrix.
-    """
-    warnings.warn(
-        "'generate_input_weights' is deprecated since v0.3.1 and will be removed in "
-        "future versions. Consider using 'normal', 'uniform' or 'random_sparse'.",
-        DeprecationWarning,
-    )
-
-    if input_bias:
-        warnings.warn(
-            "'input_bias' parameter is deprecated. Bias should be initialized "
-            "separately from the input matrix.",
-            DeprecationWarning,
-        )
-
-        dim_input += 1
-
-    return _random_sparse(
-        N,
-        dim_input,
-        connectivity=connectivity,
-        dtype=dtype,
-        dist=dist,
-        sparsity_type=sparsity_type,
-        seed=seed,
-        degree=degree,
-        direction=direction,
-        **kwargs,
-    )
-
-
-generate_input_weights = Initializer(_generate_input_weights, allow_sr=False)
 
 
 def _ring(

@@ -13,8 +13,6 @@ from reservoirpy.mat_gen import (
     bernoulli,
     cluster,
     fast_spectral_initialization,
-    generate_input_weights,
-    generate_internal_weights,
     line,
     normal,
     ones,
@@ -251,128 +249,6 @@ def test_zeros():
 
 
 @pytest.mark.parametrize(
-    "N,dim_input,input_bias,expected",
-    [
-        (100, 20, False, (100, 20)),
-        (100, 20, True, (100, 21)),
-        (20, 100, True, (20, 101)),
-    ],
-)
-def test_generate_inputs_shape(N, dim_input, input_bias, expected):
-    with pytest.warns(DeprecationWarning):
-        Win = generate_input_weights(N, dim_input, input_bias=input_bias)
-
-    assert Win.shape == expected
-
-
-@pytest.mark.parametrize(
-    "N,dim_input,input_bias",
-    [
-        (-1, 10, True),
-        (100, -5, False),
-    ],
-)
-def test_generate_inputs_shape_exception(N, dim_input, input_bias):
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(ValueError):
-            generate_input_weights(N, dim_input, input_bias=input_bias)
-
-
-@pytest.mark.parametrize("proba,iss", [(0.1, 0.1), (1.0, 0.5), (0.5, 2.0)])
-def test_generate_inputs_features(proba, iss):
-    with pytest.warns(DeprecationWarning):
-        Win = generate_input_weights(100, 20, input_scaling=iss, proba=proba, seed=1234)
-
-        with pytest.warns(DeprecationWarning):
-            Win_noiss = generate_input_weights(
-                100, 20, input_scaling=1.0, proba=proba, seed=1234
-            )
-
-            if sparse.issparse(Win):
-                result_proba = np.count_nonzero(Win.toarray()) / Win.toarray().size
-            else:
-                result_proba = np.count_nonzero(Win) / Win.size
-
-            assert_allclose(result_proba, proba, rtol=1e-2)
-
-            if sparse.issparse(Win):
-                assert_allclose(Win.toarray() / iss, Win_noiss.toarray(), rtol=1e-4)
-            else:
-                assert_allclose(Win / iss, Win_noiss, rtol=1e-4)
-
-
-@pytest.mark.parametrize("proba,iss", [(-1, "foo"), (5, 1.0)])
-def test_generate_inputs_features_exception(proba, iss):
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(Exception):
-            generate_input_weights(100, 20, input_scaling=iss, proba=proba)
-
-
-@pytest.mark.parametrize(
-    "N,expected", [(100, (100, 100)), (-1, Exception), ("foo", Exception)]
-)
-def test_generate_internal_shape(N, expected):
-    if expected is Exception:
-        with pytest.raises(expected):
-            with pytest.warns(DeprecationWarning):
-                generate_internal_weights(N)
-    else:
-        with pytest.warns(DeprecationWarning):
-            W = generate_internal_weights(N)
-        assert W.shape == expected
-
-
-@pytest.mark.parametrize(
-    "sr,proba",
-    [
-        (0.5, 0.1),
-        (2.0, 1.0),
-    ],
-)
-def test_generate_internal_features(sr, proba):
-    with pytest.warns(DeprecationWarning):
-        W = generate_internal_weights(
-            100, sr=sr, proba=proba, seed=1234, sparsity_type="dense"
-        )
-
-        assert_allclose(max(abs(linalg.eig(W)[0])), sr)
-        assert_allclose(np.sum(W != 0.0) / W.size, proba)
-
-
-@pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (2.0, 1.0)])
-def test_generate_internal_sparse(sr, proba):
-    with pytest.warns(DeprecationWarning):
-        W = generate_internal_weights(
-            100, sr=sr, proba=proba, sparsity_type="csr", seed=42
-        )
-
-        rho = max(
-            abs(
-                sparse.linalg.eigs(
-                    W,
-                    k=1,
-                    which="LM",
-                    maxiter=20 * W.shape[0],
-                    return_eigenvectors=False,
-                )
-            )
-        )
-        assert_allclose(rho, sr)
-
-        if sparse.issparse(W):
-            assert_allclose(np.sum(W.toarray() != 0.0) / W.toarray().size, proba)
-        else:
-            assert_allclose(np.sum(W != 0.0) / W.size, proba)
-
-
-@pytest.mark.parametrize("sr,proba", [(1, -0.5), (1, 12), ("foo", 0.1)])
-def test_generate_internal_features_exception(sr, proba):
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(Exception):
-            generate_internal_weights(100, sr=sr, proba=proba)
-
-
-@pytest.mark.parametrize(
     "N,expected", [(100, (100, 100)), (-1, Exception), ("foo", Exception)]
 )
 def test_fast_spectral_shape(N, expected):
@@ -425,48 +301,6 @@ def test_fast_spectral_features_exception(sr, proba):
 
     with pytest.raises(ValueError):
         fast_spectral_initialization(100, input_scaling=10.0, connectivity=proba)
-
-
-def test_reproducibility_W():
-    seed0 = default_rng(78946312)
-    with pytest.warns(DeprecationWarning):
-        W0 = generate_internal_weights(
-            N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed0
-        ).toarray()
-
-    seed1 = default_rng(78946312)
-    with pytest.warns(DeprecationWarning):
-        W1 = generate_internal_weights(
-            N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed1
-        ).toarray()
-
-    seed2 = default_rng(6135435)
-    with pytest.warns(DeprecationWarning):
-        W2 = generate_internal_weights(
-            N=100, sr=1.2, proba=0.4, dist="uniform", loc=-1, scale=2, seed=seed2
-        ).toarray()
-
-    assert_array_almost_equal(W0, W1)
-    assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
-
-
-def test_reproducibility_Win():
-    seed0 = default_rng(78946312)
-    with pytest.warns(DeprecationWarning):
-        W0 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed0)
-
-    seed1 = default_rng(78946312)
-    with pytest.warns(DeprecationWarning):
-        W1 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed1)
-
-    seed2 = default_rng(6135435)
-    with pytest.warns(DeprecationWarning):
-        W2 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed2)
-
-    assert_allclose(W0.toarray(), W1.toarray())
-
-    with pytest.raises(AssertionError):
-        assert_allclose(W0.toarray(), W2.toarray())
 
 
 def test_reproducibility_fsi():

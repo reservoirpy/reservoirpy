@@ -35,7 +35,6 @@ from .add import Add
 from .batchforce import BatchFORCE
 from .norm import AsabukiNorm
 from .randomchoice import RandomChoice
-from .sklearn import from_sklearn
 from .spiking.lif import LIF
 
 __all__ = [
@@ -43,6 +42,5 @@ __all__ = [
     "BatchFORCE",
     "AsabukiNorm",
     "RandomChoice",
-    "from_sklearn",
     "LIF",
 ]
