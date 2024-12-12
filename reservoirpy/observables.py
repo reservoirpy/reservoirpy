@@ -17,17 +17,12 @@ Metrics and observables for Reservoir Computing:
     effective_spectral_radius
 """
 
+from copy import deepcopy
+
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal, Optional, Union
-else:
-    from typing import Literal, Optional, Union
-
-from copy import deepcopy
+from typing import Literal, Optional, Union
 
 import numpy as np
 from scipy import linalg

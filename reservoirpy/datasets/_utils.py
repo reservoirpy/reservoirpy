@@ -3,11 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import sys
 from pathlib import Path
-
-if sys.version_info < (3, 8):
-    from typing_extensions import List, Union
-else:
-    from typing import Union, List
+from typing import List, Union
 
 import numpy as np
 

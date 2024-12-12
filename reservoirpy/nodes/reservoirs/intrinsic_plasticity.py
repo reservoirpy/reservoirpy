@@ -2,14 +2,8 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import sys
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
-
 from functools import partial
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Callable, Dict, Literal, Optional, Sequence, Union
 
 import numpy as np
 
@@ -93,7 +87,6 @@ def backward(reservoir: "IPReservoir", X=None, *args, **kwargs):
 
 
 def initialize(reservoir, *args, **kwargs):
-
     initialize_base(reservoir, *args, **kwargs)
 
     a = np.ones((reservoir.output_dim, 1))

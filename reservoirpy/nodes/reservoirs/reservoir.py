@@ -1,15 +1,9 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
 
 from functools import partial
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Callable, Dict, Literal, Optional, Sequence, Union
 
 from ...activationsfunc import get_function, identity, tanh
 from ...mat_gen import bernoulli, normal

@@ -27,7 +27,6 @@ def no_cache():
         datasets.multiscroll,
         datasets.doublescroll,
         datasets.rabinovich_fabrikant,
-        datasets.narma,
         datasets.lorenz96,
         datasets.rossler,
         datasets.kuramoto_sivashinsky,
@@ -44,17 +43,28 @@ def test_generation(dataset_func):
     assert len(X) == timesteps
 
 
+def test_generation_narma():
+    with no_cache():
+        timesteps = 2000
+        X = datasets.narma(timesteps)
+
+    assert isinstance(X[0], np.ndarray)
+    assert isinstance(X[1], np.ndarray)
+    assert len(X[1]) == timesteps
+
+
 @pytest.mark.parametrize(
     "dataset_func,kwargs,expected",
     [
         (datasets.logistic_map, {"r": -1}, ValueError),
         (datasets.logistic_map, {"x0": 1}, ValueError),
-        (datasets.mackey_glass, {"seed": 1234}, None),
-        (datasets.mackey_glass, {"seed": None}, None),
-        (datasets.mackey_glass, {"tau": 0}, None),
-        (datasets.mackey_glass, {"history": np.ones((20,))}, None),
+        (datasets.mackey_glass, {"history": np.ones((20,))}, np.ndarray),
         (datasets.mackey_glass, {"history": np.ones((10,))}, ValueError),
-        (datasets.narma, {"seed": 1234}, None),
+        (datasets.narma, {"seed": 1234}, np.ndarray),
+        (datasets.mackey_glass, {"seed": 1234}, np.ndarray),
+        (datasets.mackey_glass, {"seed": None}, np.ndarray),
+        (datasets.mackey_glass, {"tau": 0}, np.ndarray),
+        (datasets.narma, {"seed": 1234}, tuple),
         (datasets.lorenz96, {"N": 1}, ValueError),
         (datasets.lorenz96, {"x0": [0.1, 0.2, 0.3, 0.4, 0.5], "N": 4}, ValueError),
         (datasets.rossler, {"x0": [0.1, 0.2]}, ValueError),
@@ -66,23 +76,25 @@ def test_generation(dataset_func):
         (
             datasets.kuramoto_sivashinsky,
             {"x0": np.random.normal(size=128), "N": 128},
-            None,
+            np.ndarray,
         ),
-        (datasets.mso, {"freqs": [0.1, 0.2, 0.3]}, None),
-        (datasets.mso, {"freqs": []}, None),
-        (datasets.mso2, {"normalize": False}, None),
+        (datasets.mso, {"freqs": [0.1, 0.2, 0.3]}, np.ndarray),
+        (datasets.mso, {"freqs": []}, np.ndarray),
+        (datasets.mso2, {"normalize": False}, np.ndarray),
     ],
 )
 def test_kwargs(dataset_func, kwargs, expected):
-    if expected is None:
-        timesteps = 2000
-        X = dataset_func(timesteps, **kwargs)
+    timesteps = 2000
 
-        assert isinstance(X, np.ndarray)
-        assert len(X) == timesteps
+    if not issubclass(expected, Exception):
+        X = dataset_func(timesteps, **kwargs)
+        assert isinstance(X, expected)
+        if expected is np.ndarray:
+            assert X.shape[-2] == timesteps
+        if expected is tuple:
+            assert X[1].shape[-2] == timesteps
     else:
         with pytest.raises(expected):
-            timesteps = 2000
             dataset_func(timesteps, **kwargs)
 
 

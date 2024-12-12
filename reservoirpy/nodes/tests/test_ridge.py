@@ -16,7 +16,6 @@ from reservoirpy.nodes import Reservoir, Ridge
 
 
 def test_ridge_init():
-
     node = Ridge(10, ridge=1e-8)
 
     data = np.ones((1, 100))
@@ -33,7 +32,6 @@ def test_ridge_init():
 
 
 def test_ridge_partial_fit():
-
     node = Ridge(10, ridge=1e-8)
 
     X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
@@ -65,7 +63,6 @@ def test_ridge_partial_fit():
 
 
 def test_esn():
-
     readout = Ridge(10, ridge=1e-8)
     reservoir = Reservoir(100)
 
@@ -84,7 +81,6 @@ def test_esn():
 
 
 def test_ridge_feedback():
-
     readout = Ridge(10, ridge=1e-8)
     reservoir = Reservoir(100)
 
@@ -106,7 +102,6 @@ def test_ridge_feedback():
 
 
 def test_hierarchical_esn():
-
     reservoir1 = Reservoir(100, input_dim=5, name="h1")
     readout1 = Ridge(ridge=1e-8, name="r1")
 
@@ -115,10 +110,13 @@ def test_hierarchical_esn():
 
     esn = reservoir1 >> readout1 >> reservoir2 >> readout2
 
-    X, Y = np.ones((1, 200, 5)), {
-        "r1": np.ones((1, 200, 10)),
-        "r2": np.ones((1, 200, 3)),
-    }
+    X, Y = (
+        np.ones((1, 200, 5)),
+        {
+            "r1": np.ones((1, 200, 10)),
+            "r2": np.ones((1, 200, 3)),
+        },
+    )
 
     res = esn.fit(X, Y)
 
@@ -138,11 +136,6 @@ def test_hierarchical_esn():
 
 
 def test_parallel():
-    if sys.platform in ["win32", "cygwin"] and sys.version_info < (3, 8):
-        # joblib>=1.3.0 & Windows & Python<3.8 & loky combined are incompatible
-        # see https://github.com/joblib/loky/issues/411
-        return
-
     process_count = 4 * os.cpu_count()
 
     rng = np.random.default_rng(seed=42)

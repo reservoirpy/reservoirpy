@@ -113,17 +113,11 @@ References
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
 """
-import sys
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Literal
-else:
-    from typing import Literal
 
 import copy
 import warnings
 from functools import partial
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Literal, Optional, Union
 
 import numpy as np
 from numpy.random import Generator

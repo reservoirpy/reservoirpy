@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 22/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
 from typing import (
     Any,
     Callable,
@@ -9,16 +8,12 @@ from typing import (
     Iterable,
     Iterator,
     Optional,
+    Protocol,
     Sequence,
     Tuple,
     TypeVar,
     Union,
 )
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
-else:
-    from typing import Protocol
 
 import numpy as np
 from scipy.sparse import coo_matrix, csc_matrix, csr_matrix

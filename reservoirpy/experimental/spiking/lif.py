@@ -1,10 +1,5 @@
-import sys
 from functools import partial
-
-if sys.version_info < (3, 8):
-    from typing_extensions import Callable, Optional, Sequence, Union
-else:
-    from typing import Optional, Union, Sequence, Callable
+from typing import Callable, Optional, Sequence, Union
 
 from ...mat_gen import uniform
 from ...node import Node

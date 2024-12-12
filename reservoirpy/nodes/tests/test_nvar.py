@@ -2,11 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import sys
-
-if sys.version_info < (3, 8):
-    from scipy.special import comb
-else:
-    from math import comb
+from math import comb
 
 import numpy as np
 
@@ -20,7 +16,6 @@ def _get_output_dim(input_dim, delay, order):
 
 
 def test_nvar_init():
-
     node = NVAR(3, 2)
 
     data = np.ones((1, 10))
@@ -38,7 +33,6 @@ def test_nvar_init():
 
 
 def test_nvar_chain():
-
     node1 = NVAR(3, 1)
     node2 = NVAR(3, 2, strides=2)
 

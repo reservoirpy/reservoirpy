@@ -3,11 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import itertools as it
 import sys
-
-if sys.version_info < (3, 8):
-    from scipy.special import comb
-else:
-    from math import comb
+from math import comb
 
 import numpy as np
 
