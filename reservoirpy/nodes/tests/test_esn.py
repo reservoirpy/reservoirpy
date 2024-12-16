@@ -35,7 +35,7 @@ def test_esn_init():
 
 def test_esn_init_from_obj():
     res = Reservoir(100, lr=0.8, sr=0.4, input_bias=False)
-    read = Ridge(1, ridge=1e-5)
+    read = Ridge(ridge=1e-5, output_dim=1)
 
     esn = ESN(reservoir=res, readout=read)
 
@@ -55,7 +55,7 @@ def test_esn_init_from_obj():
 
 def test_esn_states():
     res = Reservoir(100, lr=0.8, sr=0.4, input_bias=False)
-    read = Ridge(1, ridge=1e-5)
+    read = Ridge(ridge=1e-5, output_dim=1)
 
     esn = ESN(reservoir=res, readout=read)
 
