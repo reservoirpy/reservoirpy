@@ -10,9 +10,7 @@ from ...utils.validation import add_bias, check_vector
 def _initialize_readout(
     readout, x=None, y=None, init_func=None, bias_init=None, bias=True
 ):
-
     if x is not None:
-
         in_dim = x.shape[1]
 
         if readout.output_dim is not None:
@@ -26,8 +24,8 @@ def _initialize_readout(
                 f"creation, and no teacher vector was given."
             )
 
-        readout.set_input_dim(in_dim)
-        readout.set_output_dim(out_dim)
+        readout.input_dim = in_dim
+        readout.output_dim = out_dim
 
         if callable(init_func):
             W = init_func(in_dim, out_dim, dtype=readout.dtype)
@@ -70,7 +68,6 @@ def _initialize_readout(
 
 def _prepare_inputs_for_learning(X=None, Y=None, bias=True, allow_reshape=False):
     if X is not None:
-
         if bias:
             X = add_bias(X)
         if not isinstance(X, np.ndarray):
@@ -79,7 +76,6 @@ def _prepare_inputs_for_learning(X=None, Y=None, bias=True, allow_reshape=False)
         X = check_vector(X, allow_reshape=allow_reshape)
 
     if Y is not None:
-
         if not isinstance(Y, np.ndarray):
             Y = np.vstack(Y)
 

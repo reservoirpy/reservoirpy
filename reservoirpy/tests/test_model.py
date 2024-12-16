@@ -490,7 +490,7 @@ def test_online_train_teacher_nodes(online_node, plus_node, minus_node):
 
     model = plus_node >> [minus_node, online_node]
 
-    minus_node.set_output_dim(5)
+    minus_node.output_dim = 5
 
     model.train(X, minus_node)
 

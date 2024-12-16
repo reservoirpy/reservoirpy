@@ -293,8 +293,8 @@ class Node(_Node):
     _hypers: Dict[str, Any]
     _buffers: Dict[str, Any]
 
-    _input_dim: int
-    _output_dim: int
+    input_dim: int
+    output_dim: int
     _feedback_dim: int
 
     _forward: ForwardFn
@@ -382,11 +382,6 @@ class Node(_Node):
 
     def _unregister_teacher(self):
         self._teacher = None
-
-    @property
-    def input_dim(self):
-        """Node input dimension."""
-        return self._input_dim
 
     @property
     def output_dim(self):
@@ -513,38 +508,6 @@ class Node(_Node):
                 self._state_proxy = value
             else:
                 raise RuntimeError(f"{self.name} is not initialized yet.")
-
-    def set_input_dim(self, value: int):
-        """Set the input dimension of the Node. Can only be called once,
-        during Node initialization."""
-        if not self._is_initialized:
-            if self._input_dim is not None and value != self._input_dim:
-                raise ValueError(
-                    f"Impossible to use {self.name} with input "
-                    f"data of dimension {value}. Node has input "
-                    f"dimension {self._input_dim}."
-                )
-            self._input_dim = value
-        else:
-            raise TypeError(
-                f"Input dimension of {self.name} is immutable after initialization."
-            )
-
-    def set_output_dim(self, value: int):
-        """Set the output dimension of the Node. Can only be called once,
-        during Node initialization."""
-        if not self._is_initialized:
-            if self._output_dim is not None and value != self._output_dim:
-                raise ValueError(
-                    f"Impossible to use {self.name} with target "
-                    f"data of dimension {value}. Node has output "
-                    f"dimension {self._output_dim}."
-                )
-            self._output_dim = value
-        else:
-            raise TypeError(
-                f"Output dimension of {self.name} is immutable after initialization."
-            )
 
     def set_feedback_dim(self, value: int):
         """Set the feedback dimension of the Node. Can only be called once,

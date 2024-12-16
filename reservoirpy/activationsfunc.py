@@ -17,6 +17,7 @@ Activation functions for reservoir, feedback and output.
     softplus
 
 """
+
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -205,5 +206,5 @@ def relu(x: np.ndarray) -> np.ndarray:
         Activated vector.
     """
     if x < 0:
-        return 0.0
+        return np.zeros(x.shape)
     return x

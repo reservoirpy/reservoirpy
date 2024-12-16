@@ -12,8 +12,8 @@ def plus_forward(node: Node, x: np.ndarray):
 
 
 def plus_initialize(node: Node, x=None, **kwargs):
-    node.set_input_dim(x.shape[1])
-    node.set_output_dim(x.shape[1])
+    node.input_dim = x.shape[1]
+    node.output_dim = x.shape[1]
     node.set_param("c", 1)
 
 
@@ -33,8 +33,8 @@ def minus_forward(node: Node, x):
 
 
 def minus_initialize(node: Node, x=None, **kwargs):
-    node.set_input_dim(x.shape[1])
-    node.set_output_dim(x.shape[1])
+    node.input_dim = x.shape[1]
+    node.output_dim = x.shape[1]
     node.set_param("c", 1)
 
 
@@ -54,8 +54,8 @@ def fb_forward(node: Node, x):
 
 
 def fb_initialize(node: Node, x=None, **kwargs):
-    node.set_input_dim(x.shape[1])
-    node.set_output_dim(x.shape[1])
+    node.input_dim = x.shape[1]
+    node.output_dim = x.shape[1]
 
 
 def fb_initialize_fb(node: Node, fb=None):
@@ -78,8 +78,8 @@ def inv_forward(node: Node, x):
 
 def inv_initialize(node: Node, x=None, **kwargs):
     if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.output_dim = x.shape[1]
 
 
 class Inverter(Node):
@@ -106,8 +106,8 @@ def off_backward(node: Node, X=None, Y=None):
 
 def off_initialize(node: Node, x=None, y=None):
     if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.output_dim = x.shape[1]
 
 
 def off_initialize_buffers(node: Node):
@@ -159,8 +159,8 @@ def off2_backward(node: Node, X=None, Y=None):
 
 def off2_initialize(node: Node, x=None, y=None):
     if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.output_dim = x.shape[1]
 
 
 def off2_initialize_buffers(node: Node):
@@ -190,8 +190,8 @@ def sum_initialize(node: Node, x=None, **kwargs):
     if x is not None:
         if isinstance(x, list):
             x = np.concatenate(x, axis=0)
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.output_dim = x.shape[1]
 
 
 class Sum(Node):
@@ -217,8 +217,8 @@ def unsupervised_backward(node: Node, X=None, Y=None):
 
 def unsupervised_initialize(node: Node, x=None, y=None):
     if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.output_dim = x.shape[1]
 
 
 def unsupervised_initialize_buffers(node: Node):
@@ -251,8 +251,8 @@ def on_train(node: Node, x, y=None):
 
 def on_initialize(node: Node, x=None, y=None):
     if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.output_dim = x.shape[1]
 
 
 class OnlineNode(Node):
@@ -273,15 +273,15 @@ def multi_forward(node, data):
 def multi_init(node, x=None, **kwargs):
     if x is not None:
         if isinstance(x, np.ndarray):
-            node.set_input_dim(x.shape[1])
-            node.set_output_dim(x.shape[1])
+            node.input_dim = x.shape[1]
+            node.output_dim = x.shape[1]
         elif hasattr(x, "__iter__"):
             result = multi_forward(node, x)
-            node.set_input_dim(tuple([u.shape[1] for u in x]))
+            node.input_dim = tuple([u.shape[1] for u in x])
             if result.shape[0] > 1:
-                node.set_output_dim(result.shape)
+                node.output_dim = result.shape
             else:
-                node.set_output_dim(result.shape[1])
+                node.output_dim = result.shape[1]
 
 
 class MultiInput(Node):

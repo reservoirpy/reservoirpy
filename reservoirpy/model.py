@@ -539,20 +539,6 @@ class Model(_Node):
         return self._edges
 
     @property
-    def input_dim(self):
-        """Input dimension of the Model;
-        input dimensions of all input Nodes."""
-        if self.is_initialized:
-            dims = [n.input_dim for n in self.input_nodes]
-            if len(dims) == 0:
-                return 0
-            elif len(dims) < 2:
-                return dims[0]
-            return dims
-        else:
-            return None
-
-    @property
     def output_dim(self):
         """Output dimension of the Model;
         output dimensions of all output Nodes."""

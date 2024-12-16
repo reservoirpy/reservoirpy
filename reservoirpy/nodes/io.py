@@ -7,8 +7,8 @@ from ..node import Node
 def _io_initialize(io_node: "Node", x=None, **kwargs):
     if x is not None:
         if io_node.input_dim is None:
-            io_node.set_input_dim(x.shape[1])
-            io_node.set_output_dim(x.shape[1])
+            io_node.input_dim = x.shape[1]
+            io_node.output_dim = x.shape[1]
 
 
 def _input_forward(inp_node: "Input", x):

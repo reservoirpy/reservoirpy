@@ -5,7 +5,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import collections
 import os
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 from joblib import Memory
@@ -672,7 +672,7 @@ def narma(
     x0: Union[list, np.ndarray] = [0.0],
     seed: Union[int, RandomState] = None,
     u: np.ndarray = None,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray]:
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
     as first defined in [14]_, and as used in [15]_.
 

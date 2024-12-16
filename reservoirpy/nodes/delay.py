@@ -22,8 +22,8 @@ def initialize(node: Node, x=None, y=None, initial_values=None, *args, **kwargs)
     else:
         dim = x.shape[1]
 
-    node.set_input_dim(dim)
-    node.set_output_dim(dim)
+    node.input_dim = dim
+    node.output_dim = dim
 
     if initial_values is None:
         initial_values = np.zeros((node.delay, node.input_dim), dtype=node.dtype)

@@ -113,7 +113,7 @@ def initialize(
     seed=None,
 ):
     if x is not None:
-        reservoir.set_input_dim(x.shape[1])
+        reservoir = x.shape[1]
 
         dtype = reservoir.dtype
         dtype_msg = (

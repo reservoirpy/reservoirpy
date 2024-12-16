@@ -23,15 +23,15 @@ def concat_forward(concat: Node, data):
 def concat_initialize(concat: Node, x=None, **kwargs):
     if x is not None:
         if isinstance(x, np.ndarray):
-            concat.set_input_dim(x.shape[1])
-            concat.set_output_dim(x.shape[1])
+            concat.input_dim = x.shape[1]
+            concat.output_dim = x.shape[1]
         elif isinstance(x, Sequence):
             result = concat_forward(concat, x)
-            concat.set_input_dim(tuple([u.shape[1] for u in x]))
+            concat.input_dim = tuple([u.shape[1] for u in x])
             if result.shape[0] > 1:
-                concat.set_output_dim(result.shape)
+                concat.output_dim = result.shape
             else:
-                concat.set_output_dim(result.shape[1])
+                concat.output_dim = result.shape[1]
 
 
 class Concat(Node):

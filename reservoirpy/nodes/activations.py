@@ -13,8 +13,8 @@ def forward(node: Node, x, **kwargs):
 
 def initialize(node: Node, x=None, *args, **kwargs):
     if x is not None:
-        node.set_input_dim(x.shape[1])
-        node.set_output_dim(x.shape[1])
+        node.input_dim = x.shape[1]
+        node.input_dim = x.shape[1]
 
 
 class Softmax(Node):

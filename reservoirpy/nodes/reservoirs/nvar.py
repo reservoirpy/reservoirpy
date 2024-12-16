@@ -50,8 +50,8 @@ def initialize(node, x=None, *args, **kwargs):
 
         output_dim = int(linear_dim + nonlinear_dim)
 
-        node.set_output_dim(output_dim)
-        node.set_input_dim(input_dim)
+        node.input_dim = input_dim
+        node.output_dim = output_dim
 
         # for each monomial created in the non linear part, indices
         # of the n components involved, n being the order of the

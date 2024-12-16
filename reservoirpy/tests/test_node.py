@@ -81,9 +81,9 @@ def test_node_init(plus_node):
         plus_node(data)
 
     with pytest.raises(TypeError):
-        plus_node.set_input_dim(9)
+        plus_node.input_dim = 9
     with pytest.raises(TypeError):
-        plus_node.set_output_dim(45)
+        plus_node.output_dim = 45
 
 
 def test_node_init_empty(plus_node):
@@ -105,7 +105,7 @@ def test_node_init_empty(plus_node):
 
     data = np.zeros((1, 5))
 
-    plus_node.set_input_dim(5)
+    plus_node.input_dim = 5
 
     plus_node.initialize()
 
@@ -120,9 +120,9 @@ def test_node_init_empty(plus_node):
         plus_node(data)
 
     with pytest.raises(TypeError):
-        plus_node.set_input_dim(9)
+        plus_node.input_dim = 9
     with pytest.raises(TypeError):
-        plus_node.set_output_dim(45)
+        plus_node.output_dim = 45
 
 
 def test_node_call(plus_node):

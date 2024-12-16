@@ -53,8 +53,8 @@ def initialize(readout: Node, x=None, y=None, model_hypers=None):
                 f"creation, and no teacher vector was given."
             )
 
-        readout.set_input_dim(in_dim)
-        readout.set_output_dim(out_dim)
+        readout.input_dim = in_dim
+        readout.output_dim = out_dim
 
         first_instance = readout.model(**deepcopy(model_hypers))
         # If there are multiple output but the specified model doesn't support
@@ -143,7 +143,6 @@ class ScikitLearnNode(Node):
             model_hypers.get("random_state") is None
             and "random_state" in model.__init__.__kwdefaults__
         ):
-
             generator = rand_generator()
             model_hypers.update(
                 {
