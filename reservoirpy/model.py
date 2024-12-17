@@ -36,7 +36,6 @@ a :py:class:`Model`.
       ~Model.run
       ~Model.train
       ~Model.update_graph
-      ~Model.with_feedback
       ~Model.with_state
 
 
@@ -46,7 +45,6 @@ a :py:class:`Model`.
 
       ~Model.data_dispatcher
       ~Model.edges
-      ~Model.feedback_nodes
       ~Model.fitted
       ~Model.hypers
       ~Model.input_dim
@@ -157,26 +155,22 @@ def run_submodel(
     model,
     submodel,
     X: MappedData,
-    forced_feedbacks: Dict[str, np.ndarray] = None,
     from_state: Dict[str, np.ndarray] = None,
     stateful=True,
     reset=False,
-    shift_fb=True,
     return_states: Sequence[str] = None,
 ) -> MappedData:
-    X_, forced_feedbacks_ = to_data_mapping(submodel, X, forced_feedbacks)
+    (X_,) = to_data_mapping(submodel, X)
 
-    submodel._initialize_on_sequence(X_[0], forced_feedbacks_[0])
+    submodel._initialize_on_sequence(X_[0])
 
     states = []
-    for X_seq, fb_seq in zip(X_, forced_feedbacks_):
+    for X_seq in X_:
         with model.with_state(reset=reset, stateful=stateful):
             states_seq = model._run(
                 X_seq,
-                fb_seq,
                 from_state=from_state,
                 stateful=stateful,
-                shift_fb=shift_fb,
                 return_states=return_states,
                 submodel=submodel,
             )
@@ -253,7 +247,7 @@ def initializer(model: "Model", x: MappedData, y: Optional[MappedData] = None):
         `(1, ndim of corresponding node)`.
     y : numpy.ndarray or dict of numpy.ndarray
         A vector of shape `(1, ndim)` corresponding to a timestep of target
-        data or feedback, or a dictionary mapping node names to vector of
+        data, or a dictionary mapping node names to vector of
         shapes `(1, ndim of corresponding node)`.
     """
     data = model.data_dispatcher.load(x, y)
@@ -262,11 +256,6 @@ def initializer(model: "Model", x: MappedData, y: Optional[MappedData] = None):
     # (no real call, only zero states)
     for node in model.nodes:
         node.initialize(x=data[node].x, y=data[node].y)
-
-    # second, probe feedback demanding nodes to
-    # init feedback flow
-    for fb_node in model.feedback_nodes:
-        fb_node.initialize_feedback()
 
 
 class Model(_Node):
@@ -358,18 +347,6 @@ class Model(_Node):
                 f"offline nodes."
             )
 
-    def _load_proxys(self, keep=False):
-        """Save states of all nodes into their state_proxy"""
-        for node in self._nodes:
-            if keep and node._state_proxy is not None:
-                continue
-            node._state_proxy = node.state()
-
-    def _clean_proxys(self):
-        """Destroy state_proxy of all nodes"""
-        for node in self._nodes:
-            node._state_proxy = None
-
     def _initialize_on_sequence(self, X=None, Y=None):
         if not self._is_initialized:
             x_init = None
@@ -415,10 +392,8 @@ class Model(_Node):
     def _run(
         self,
         X,
-        feedback,
         from_state=None,
         stateful=True,
-        shift_fb=True,
         return_states=None,
         submodel=None,
     ):
@@ -428,28 +403,20 @@ class Model(_Node):
         states = allocate_returned_states(submodel, X, return_states)
 
         seq = progress(
-            dispatch(X, feedback, shift_fb=shift_fb),
+            dispatch(X),
             f"Running {self.name}",
             total=len(X),
         )
 
         with self.with_state(from_state, stateful=stateful):
-            # load proxys after state update to make it have an
-            # impact on feedback
-            self._load_proxys(keep=True)
-            for i, (x, forced_fb, _) in enumerate(seq):
-                with self.with_feedback(forced_fb):
-                    state = submodel._call(x, return_states=return_states)
+            for i, (x, _) in enumerate(seq):
+                state = submodel._call(x, return_states=return_states)
 
                 if is_mapping(state):
                     for name, value in state.items():
                         states[name][i, :] = value
                 else:
                     states[submodel.output_nodes[0].name][i, :] = state
-
-                self._load_proxys()
-
-        self._clean_proxys()
 
         return states
 
@@ -569,12 +536,6 @@ class Model(_Node):
         return [n for n in self.nodes if n.is_trainable]
 
     @property
-    def feedback_nodes(self):
-        """Returns all Nodes equipped with a feedback connection
-        in the Model."""
-        return [n for n in self.nodes if n.has_feedback]
-
-    @property
     def data_dispatcher(self):
         """DataDispatcher object of the Model. Used to
         distribute data to Nodes when
@@ -666,59 +627,6 @@ class Model(_Node):
                     )
                 yield self
 
-    @contextmanager
-    def with_feedback(
-        self, feedback: Dict[str, np.ndarray] = None, stateful=False, reset=False
-    ) -> "Model":
-        """Modify the feedback received or sent by Nodes in the Model using
-        a context manager.
-        The modification will have effect only within the context defined,
-        before the feedbacks return to their previous states.
-
-        If the Nodes are receiving feedback, then this function will alter the
-        states of the Nodes connected to it through feedback connections.
-
-        If the Nodes are sending feedback, then this function will alter the
-        states (or state proxies, see :py:meth:`Node.state_proxy`) of the
-        Nodes.
-
-        Parameters
-        ----------
-        feedback : dict of arrays of shape (1, output_dim), optional
-            Pairs of keys and values, where keys are Model nodes names and
-            value are new ndarray feedback vectors.
-        stateful : bool, default to False
-            If set to True, then all modifications made in the context manager
-            will remain after leaving the context.
-        reset : bool, default to False
-            If True, all feedbacks  will be reset to zero.
-
-        Returns
-        -------
-        Model
-            Modified Model.
-        """
-
-        if feedback is None and not reset:
-            yield self
-            return
-
-        elif feedback is not None:
-            with ExitStack() as stack:
-                for node in self.nodes:
-                    value = feedback.get(node.name)
-                    # maybe node does not send feedback but receives it?
-                    if value is None and node.has_feedback:
-                        value = feedback.get(node._feedback.name)
-                    stack.enter_context(
-                        node.with_feedback(value, stateful=stateful, reset=reset)
-                    )
-
-                yield self
-        else:
-            yield self
-            return
-
     def reset(self, to_state: Dict[str, np.ndarray] = None):
         """Reset the last state saved to zero for all Nodes in
         the Model or to other state values.
@@ -774,7 +682,6 @@ class Model(_Node):
     def call(
         self,
         x: MappedData,
-        forced_feedback: MappedData = None,
         from_state: Dict[str, np.ndarray] = None,
         stateful=True,
         reset=False,
@@ -792,9 +699,6 @@ class Model(_Node):
             One single step of input data. If dict, then
             pairs of keys and values, where keys are Model input
             nodes names and values are single steps of input data.
-        forced_feedback: dict of arrays of shape ([n_feedbacks], 1, feedback_dim), optional
-            Pairs of keys and values, where keys are Model nodes names and
-            value are feedback vectors to force into the nodes.
         from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim), optional
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
@@ -824,28 +728,16 @@ class Model(_Node):
             self.initialize(x)
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            # load current states in proxys interfaces accessible
-            # through feedback. These proxys are not updated during the
-            # graph call.
-            self._load_proxys(keep=True)
-
-            # maybe load forced feedbacks in proxys?
-            with self.with_feedback(forced_feedback, stateful=stateful, reset=reset):
-                state = self._call(x, return_states)
-
-        # wash states proxys
-        self._clean_proxys()
+            state = self._call(x, return_states)
 
         return state
 
     def run(
         self,
         X: MappedData,
-        forced_feedbacks: Dict[str, np.ndarray] = None,
         from_state: Dict[str, np.ndarray] = None,
         stateful=True,
         reset=False,
-        shift_fb=True,
         return_states: Sequence[str] = None,
     ) -> MappedData:
         """Run the Model forward function on a sequence of data.
@@ -860,9 +752,6 @@ class Model(_Node):
             A sequence of input data.
             If dict, then pairs of keys and values, where keys are Model input
             nodes names and values are sequence of input data.
-        forced_feedbacks: dict of array-like of shape ([n_feedbacks], timesteps, feedback_dim)
-            Pairs of keys and values, where keys are Model nodes names and
-            value are sequences of feedback vectors to force into the nodes.
         from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.
@@ -870,11 +759,6 @@ class Model(_Node):
             If True, Node state will be updated by this operation.
         reset : bool, default to False
             If True, Nodes states will be reset to zero before this operation.
-        shift_fb: bool, defaults to True
-            If True, then forced feedbacks are fed to nodes with a
-            one timestep delay. If forced feedbacks are a sequence
-            of target vectors matching the sequence of input
-            vectors, then this parameter should be set to True.
         return_states: list of str, optional
             Names of Nodes from which to return states as output.
 
@@ -885,19 +769,17 @@ class Model(_Node):
             where keys are output nodes names and values
             are corresponding sequences of output vectors.
         """
-        X_, forced_feedbacks_ = to_data_mapping(self, X, forced_feedbacks)
+        X_ = to_data_mapping(self, X)
 
-        self._initialize_on_sequence(X_[0], forced_feedbacks_[0])
+        self._initialize_on_sequence(X_[0])
 
         states = []
-        for X_seq, fb_seq in zip(X_, forced_feedbacks_):
+        for X_seq in X_:
             with self.with_state(reset=reset, stateful=stateful):
                 states_seq = self._run(
                     X_seq,
-                    fb_seq,
                     from_state=from_state,
                     stateful=stateful,
-                    shift_fb=shift_fb,
                     return_states=return_states,
                 )
 
@@ -929,15 +811,7 @@ class Model(_Node):
             Target sequence of data.
             If dict, then pairs of keys and values, where keys are Model
             online trainable nodes names values are sequences
-            of target data. If None, the Nodes will search a feedback
-            signal, or train in an unsupervised way, if possible.
-        force_teachers : bool, default to True
-            If True, this Model will broadcast the available ground truth
-            signal
-            to all online nodes sending feedback to other nodes. Otherwise,
-            the real state of these nodes will be sent to the feedback
-            receivers
-            during training.
+            of target data. If None, the Nodes will train in an unsupervised way, if possible.
         learn_every : int, default to 1
             Time interval at which training must occur, when dealing with a
             sequence of input data. By default, the training method is called
@@ -976,19 +850,8 @@ class Model(_Node):
         )
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
-            # load proxys after state update to make it have an
-            # impact on feedback
-            self._load_proxys(keep=True)
-            for i, (x, forced_feedback, y) in enumerate(dispatched_data):
-                if not force_teachers:
-                    forced_feedback = None
-
-                with self.with_feedback(forced_feedback):
-                    state = self._call(x, return_states=return_states)
-
-                # reload feedbacks from training. Some nodes may need
-                # updated feedback signals to train.
-                self._load_proxys()
+            for i, (x, y) in enumerate(dispatched_data):
+                state = self._call(x, return_states=return_states)
 
                 if i % learn_every == 0 or len(X) == 1:
                     self._train(self, x=x, y=y, force_teachers=force_teachers)
@@ -999,7 +862,6 @@ class Model(_Node):
                 else:
                     states[self.output_nodes[0].name][i, :] = state
 
-        self._clean_proxys()
         self._unregister_teachers()
 
         # dicts are only relevant if model has several outputs (len > 1) or
@@ -1035,13 +897,6 @@ class Model(_Node):
         warmup : int, default to 0
             Number of timesteps to consider as warmup and
             discard at the beginning of each timeseries before training.
-        force_teachers : bool, default to True
-            If True, this Model will broadcast the available ground truth
-            signal
-            to all online nodes sending feedback to other nodes. Otherwise,
-            the real state of these nodes will be sent to the feedback
-            receivers
-            during training.
         from_state : dict of arrays of shape ([nodes], 1, nodes.output_dim)
             Pairs of keys and values, where keys are Model nodes names and
             value are new ndarray state vectors.

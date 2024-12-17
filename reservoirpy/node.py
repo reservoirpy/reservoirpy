@@ -28,10 +28,7 @@ The Node API is composed of a base :py:class:`Node` class that can be described
 as a stateful recurrent operator able to manipulate streams of data. A
 :py:class:`Node` applies a `forward` function on some data, and then stores the
 result in its `state` attribute. The `forward` operation can be a function
-depending on the data, on the current `state` vector of the Node, and
-optionally on data coming from other distant nodes `states` though feedback
-connections (distant nodes can be reached using the `feedback` attribute of the
-node they are connected to).
+depending on the data, on the current `state` vector of the Node.
 
 Nodes can also be connected together to form a :py:class:`Model`. Models hold
 references to the connected nodes and make data flow from one node to
@@ -58,41 +55,30 @@ See the following guides to:
       ~Node.clean_buffers
       ~Node.copy
       ~Node.create_buffer
-      ~Node.feedback
       ~Node.fit
       ~Node.get_buffer
       ~Node.get_param
       ~Node.initialize
       ~Node.initialize_buffers
-      ~Node.initialize_feedback
-      ~Node.link_feedback
       ~Node.partial_fit
       ~Node.reset
       ~Node.run
       ~Node.set_buffer
-      ~Node.set_feedback_dim
       ~Node.set_input_dim
       ~Node.set_output_dim
       ~Node.set_param
-      ~Node.set_state_proxy
       ~Node.state
-      ~Node.state_proxy
       ~Node.train
-      ~Node.with_feedback
       ~Node.with_state
-      ~Node.zero_feedback
       ~Node.zero_state
 
    .. rubric:: Attributes
 
    .. autosummary::
 
-      ~Node.feedback_dim
       ~Node.fitted
-      ~Node.has_feedback
       ~Node.hypers
       ~Node.input_dim
-      ~Node.is_fb_initialized
       ~Node.is_initialized
       ~Node.is_trainable
       ~Node.is_trained_offline
@@ -124,8 +110,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 from scipy.sparse import issparse
 
-from ._base import DistantFeedback, _Node, call, check_one_sequence, check_xy, train
-from .model import Model
+from ._base import _Node, call, check_one_sequence, check_xy, train
 from .type import (
     BackwardFn,
     Data,
@@ -204,32 +189,6 @@ def _partial_backward_default(node, X_batch, Y_batch=None):
     return
 
 
-def _initialize_feedback_default(node, fb):
-    """Void feedback initializer. Works in any case."""
-    fb_dim = None
-    if isinstance(fb, list):
-        fb_dim = tuple([fb.shape[1] for fb in fb])
-    elif isinstance(fb, np.ndarray):
-        fb_dim = fb.shape[1]
-
-    node.set_feedback_dim(fb_dim)
-
-
-def _filter_where_na_target(x, y):
-
-    if x.ndim == 1 and y.ndim == 1:
-        is_na = np.isnan(y)
-    elif x.ndim == 2 and y.ndim == 2:
-        is_na = np.any(np.isnan(y), axis=-1)
-    else:
-        raise ValueError(
-            "The dimensions of X_batch and Y_batch do not fit the expected cases."
-        )
-
-    is_kept = np.logical_not(is_na)
-    return x[is_kept], y[is_kept]
-
-
 class Node(_Node):
     """Node base class.
 
@@ -258,10 +217,6 @@ class Node(_Node):
         A function called at first run of the Node, defining the dimensions and
         values of its parameters based on the dimension of input data and its
         hyperparameters.
-    fb_initializer : callable, optional
-        A function called at first run of the Node, defining the dimensions and
-        values of its parameters based on the dimension of data received as
-        a feedback from another Node.
     buffers_initializer : callable, optional
         A function called at the beginning of an offline training session to
         create buffers used to store intermediate results, for batch or
@@ -270,8 +225,6 @@ class Node(_Node):
         Input dimension of the Node.
     output_dim : int
         Output dimension of the Node. Dimension of its state.
-    feedback_dim :
-        Dimension of the feedback signal received by the Node.
     name : str
         Name of the Node. It must be a unique identifier.
 
@@ -285,9 +238,6 @@ class Node(_Node):
     _name: str
 
     _state: Optional[np.ndarray]
-    _state_proxy: Optional[np.ndarray]
-    _feedback: Optional[DistantFeedback]
-    _teacher: Optional[DistantFeedback]
 
     _params: Dict[str, Any]
     _hypers: Dict[str, Any]
@@ -295,7 +245,6 @@ class Node(_Node):
 
     input_dim: int
     output_dim: int
-    _feedback_dim: int
 
     _forward: ForwardFn
     _backward: BackwardFn
@@ -304,7 +253,6 @@ class Node(_Node):
 
     _initializer: ForwardInitFn
     _buffers_initializer: EmptyInitFn
-    _feedback_initializer: ForwardInitFn
 
     _trainable: bool
     _fitted: bool
@@ -321,11 +269,9 @@ class Node(_Node):
         partial_backward: PartialBackFn = _partial_backward_default,
         train: PartialBackFn = None,
         initializer: ForwardInitFn = None,
-        fb_initializer: ForwardInitFn = _initialize_feedback_default,
         buffers_initializer: EmptyInitFn = None,
         input_dim: int = None,
         output_dim: int = None,
-        feedback_dim: int = None,
         name: str = None,
         dtype: np.dtype = global_dtype,
     ):
@@ -343,22 +289,16 @@ class Node(_Node):
         self._train = train
 
         self._initializer = initializer
-        self._feedback_initializer = fb_initializer
         self._buffers_initializer = buffers_initializer
 
-        self._input_dim = input_dim
-        self._output_dim = output_dim
-        self._feedback_dim = feedback_dim
+        self.input_dim = input_dim
+        self.output_dim = output_dim
 
         self._name = self._get_name(name)
         self._dtype = dtype
 
         self._is_initialized = False
-        self._is_fb_initialized = False
-        self._state_proxy = None
-        self._feedback = None
         self._teacher = None
-        self._fb_flag = True  # flag is used to trigger distant feedback model update
 
         self._trainable = self._backward is not None or self._train is not None
 
@@ -366,42 +306,15 @@ class Node(_Node):
 
         self._X, self._Y = [], []
 
-    def __lshift__(self, other) -> "_Node":
-        return self.link_feedback(other)
-
-    def __ilshift__(self, other) -> "_Node":
-        return self.link_feedback(other, inplace=True)
-
     def __iand__(self, other):
         raise TypeError(
             f"Impossible to merge nodes in-place: {self} is not a Model instance."
         )
 
-    def _flag_feedback(self):
-        self._fb_flag = not self._fb_flag
-
-    def _unregister_teacher(self):
-        self._teacher = None
-
-    @property
-    def output_dim(self):
-        """Node output and internal state dimension."""
-        return self._output_dim
-
-    @property
-    def feedback_dim(self):
-        """Node feedback signal dimension."""
-        return self._feedback_dim
-
     @property
     def is_initialized(self):
         """Returns if the Node is initialized or not."""
         return self._is_initialized
-
-    @property
-    def has_feedback(self):
-        """Returns if the Node receives feedback or not."""
-        return self._feedback is not None
 
     @property
     def is_trained_offline(self):
@@ -435,11 +348,6 @@ class Node(_Node):
         return self._fitted
 
     @property
-    def is_fb_initialized(self):
-        """Returns if the Node feedback initializer has been called already."""
-        return self._is_fb_initialized
-
-    @property
     def dtype(self):
         """Numpy numerical type of node parameters."""
         return self._dtype
@@ -459,65 +367,6 @@ class Node(_Node):
         if not self.is_initialized:
             return None
         return self._state
-
-    def state_proxy(self) -> Optional[np.ndarray]:
-        """Returns the internal state frozen to be sent to other Nodes,
-        connected through a feedback connection. This prevents any change
-        occurring on the Node before feedback have reached the other Node to
-        propagate to the other Node to early.
-
-        Returns
-        -------
-        array of shape (1, output_dim), optional
-            Internal state of the Node.
-        """
-        if self._state_proxy is None:
-            return self._state
-        return self._state_proxy
-
-    def feedback(self) -> np.ndarray:
-        """State of the Nodes connected to this Node through feedback
-        connections.
-
-        Returns
-        -------
-        array-like of shape ([n_feedbacks], 1, feedback_dim), optional
-            State of the feedback Nodes, i.e. the feedback signal.
-        """
-        if self.has_feedback:
-            return self._feedback()
-        else:
-            raise RuntimeError(
-                f"Node {self} is not connected to any feedback Node or Model."
-            )
-
-    def set_state_proxy(self, value: np.ndarray = None):
-        """Change the frozen state of the Node. Used internally to send
-        the current state to feedback receiver Nodes during the next call.
-
-        Parameters
-        ----------
-        value : array of shape (1, output_dim)
-            State to freeze, waiting to be sent to feedback receivers.
-        """
-        if value is not None:
-            if self.is_initialized:
-                value = check_one_sequence(
-                    value, self.output_dim, allow_timespans=False, caller=self
-                ).astype(self.dtype)
-                self._state_proxy = value
-            else:
-                raise RuntimeError(f"{self.name} is not initialized yet.")
-
-    def set_feedback_dim(self, value: int):
-        """Set the feedback dimension of the Node. Can only be called once,
-        during Node initialization."""
-        if not self.is_fb_initialized:
-            self._feedback_dim = value
-        else:
-            raise TypeError(
-                f"Output dimension of {self.name} is immutable after initialization."
-            )
 
     def get_param(self, name: str):
         """Get one of the parameters or hyperparameters given its name."""
@@ -636,27 +485,6 @@ class Node(_Node):
             self._is_initialized = True
         return self
 
-    def initialize_feedback(self) -> "Node":
-        """Call the Node feedback initializer. The feedback initializer will
-        determine feedback dimension given some feedback signal, and initialize
-        all parameters related to the feedback connection.
-
-        Feedback sender Node must be initialized, as the feedback initializer
-        will probably call the :py:meth:`Node.feedback` method to get
-        a sample of feedback signal.
-
-        Returns
-        -------
-        Node
-            Initialized Node.
-        """
-        if self.has_feedback:
-            if not self.is_fb_initialized:
-                self._feedback.initialize()
-                self._feedback_initializer(self, self.zero_feedback())
-                self._is_fb_initialized = True
-        return self
-
     def initialize_buffers(self) -> "Node":
         """Call the Node buffer initializer. The buffer initializer will create
         buffer array on demand to store transient values of the parameters,
@@ -748,60 +576,6 @@ class Node(_Node):
         if not stateful:
             self._state = current_state
 
-    @contextmanager
-    def with_feedback(
-        self, feedback: np.ndarray = None, stateful=False, reset=False
-    ) -> "Node":
-        """Modify the feedback received or sent by the Node using
-        a context manager.
-        The modification will have effect only within the context defined,
-        before the feedback returns to its previous state.
-
-        If the Node is receiving feedback, then this function will alter the
-        state of the Node connected to it through feedback connections.
-
-        If the Node is sending feedback, then this function will alter the
-        state (or state proxy, see :py:meth:`Node.state_proxy`) of the Node.
-
-        Parameters
-        ----------
-        feedback : array of shape (1, feedback_dim), optional
-            New feedback signal.
-        stateful : bool, default to False
-            If set to True, then all modifications made in the context manager
-            will remain after leaving the context.
-        reset : bool, default to False
-            If True, the feedback  will be reset to zero.
-
-        Returns
-        -------
-        Node
-            Modified Node.
-        """
-        if self.has_feedback:
-            if reset:
-                feedback = self.zero_feedback()
-            if feedback is not None:
-                self._feedback.clamp(feedback)
-
-            yield self
-
-        else:  # maybe a feedback sender then?
-            current_state_proxy = self._state_proxy
-
-            if feedback is None:
-                if reset:
-                    feedback = self.zero_state()
-                else:
-                    feedback = current_state_proxy
-
-            self.set_state_proxy(feedback)
-
-            yield self
-
-            if not stateful:
-                self._state_proxy = current_state_proxy
-
     def zero_state(self) -> np.ndarray:
         """A null state vector."""
         if self.output_dim is not None:
@@ -810,39 +584,6 @@ class Node(_Node):
             raise Exception(
                 f"Cannot return a null state vector from {self.name} as it has no output dimension."
             )
-
-    def zero_feedback(self) -> Optional[Union[List[np.ndarray], np.ndarray]]:
-        """A null feedback vector. Returns None if the Node receives
-        no feedback."""
-        if self._feedback is not None:
-            return self._feedback.zero_feedback()
-        return None
-
-    def link_feedback(
-        self, node: _Node, inplace: bool = False, name: str = None
-    ) -> "_Node":
-        """Create a feedback connection between the Node and another Node or
-        Model.
-
-        Parameters
-        ----------
-        node : Node or Model
-            Feedback sender Node or Model.
-        inplace : bool, default to False
-            If False, then this function returns a copy of the current Node
-            with feedback enabled. If True, feedback is directly added to the
-            current Node.
-        name : str, optional
-            Name of the node copy, if `inplace` is False.
-
-        Returns
-        -------
-        Node
-            A Node with a feedback connection.
-        """
-        from .ops import link_feedback
-
-        return link_feedback(self, node, inplace=inplace, name=name)
 
     def call(
         self,
@@ -951,12 +692,8 @@ class Node(_Node):
         X : array-like of shape ([n_inputs], timesteps, input_dim)
             Input sequence of data.
         Y : array-like of shape (timesteps, output_dim), optional.
-            Target sequence of data. If None, the Node will search a feedback
-            signal, or train in an unsupervised way, if possible.
-        force_teachers : bool, default to True
-            If True, this Node will broadcast the available ground truth signal
-            to all Nodes using this Node as a feedback sender. Otherwise,
-            the real state of this Node will be sent to the feedback receivers.
+            Target sequence of data. If None, the Node will train in an
+            unsupervised way, if possible.
         call : bool, default to True
             It True, call the Node and update its state before applying the
             learning rule. Otherwise, use the train method
@@ -1118,17 +855,13 @@ class Node(_Node):
 
         return self
 
-    def copy(
-        self, name: str = None, copy_feedback: bool = False, shallow: bool = False
-    ):
+    def copy(self, name: str = None, shallow: bool = False):
         """Returns a copy of the Node.
 
         Parameters
         ----------
         name : str
             Name of the Node copy.
-        copy_feedback : bool, default to False
-            If True, also copy the Node feedback senders.
         shallow : bool, default to False
             If False, performs a deep copy of the Node.
 
@@ -1140,25 +873,7 @@ class Node(_Node):
         if shallow:
             new_obj = copy(self)
         else:
-            if self.has_feedback:
-                # store feedback node
-                fb = self._feedback
-                # temporarily remove it
-                self._feedback = None
-
-                # copy and restore feedback, deep copy of feedback depends
-                # on the copy_feedback parameter only
-                new_obj = deepcopy(self)
-                new_obj._feedback = fb
-                self._feedback = fb
-
-            else:
-                new_obj = deepcopy(self)
-
-        if copy_feedback:
-            if self.has_feedback:
-                fb_copy = deepcopy(self._feedback)
-                new_obj._feedback = fb_copy
+            new_obj = deepcopy(self)
 
         n = self._get_name(name)
         new_obj._name = n

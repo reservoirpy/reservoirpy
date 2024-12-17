@@ -93,7 +93,6 @@ def test_ridge_feedback():
 
     assert readout.Wout.shape == (100, 10)
     assert readout.bias.shape == (1, 10)
-    assert reservoir.Wfb.shape == (100, 10)
 
     data = np.ones((100, 100))
     res = esn.run(data)

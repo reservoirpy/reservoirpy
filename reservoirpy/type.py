@@ -73,11 +73,6 @@ class NodeType(Protocol):
     ) -> Iterator["NodeType"]:
         ...
 
-    def with_feedback(
-        self, feedback=None, stateful=False, reset=False
-    ) -> Iterator["NodeType"]:
-        ...
-
 
 Activation = Callable[[np.ndarray], np.ndarray]
 ForwardFn = Callable[[NodeType, Data], np.ndarray]

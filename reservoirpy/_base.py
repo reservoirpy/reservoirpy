@@ -13,34 +13,6 @@ from .utils import progress
 from .utils.validation import check_vector, is_mapping
 
 
-def _distant_model_inputs(model):
-    """Get inputs for distant Nodes in a Model used as feedback or teacher.
-    These inputs should be already computed by other Nodes."""
-    input_data = {}
-    for p, c in model.edges:
-        if p in model.input_nodes:
-            input_data[c.name] = p.state_proxy()
-    return input_data
-
-
-def _remove_input_for_feedback(node) -> Union["Node", "Model"]:
-    """Remove inputs nodes from feedback Model and gather remaining nodes
-    into a new Model. Allow getting inputs for feedback model from its input
-    nodes states."""
-    from .model import Model
-
-    all_nodes = set(node.nodes)
-    input_nodes = set(node.input_nodes)
-    filtered_nodes = list(all_nodes - input_nodes)
-    filtered_edges = [edge for edge in node.edges if edge[0] not in input_nodes]
-
-    # return a single Node if Model - Inputs = Node
-    # else return Model - Inputs = Reduced Model
-    if len(filtered_nodes) == 1:
-        return list(filtered_nodes)[0]
-    return Model(filtered_nodes, filtered_edges, name=str(uuid4()))
-
-
 def check_one_sequence(
     x: Union[np.ndarray, Sequence[np.ndarray]],
     expected_dim=None,
@@ -294,23 +266,6 @@ def _check_node_io(
     return x_new
 
 
-def register_teacher(caller, teacher, expected_dim=None):
-    target_dim = None
-    if teacher.is_initialized:
-        target_dim = teacher.output_dim
-
-    if (
-        expected_dim is not None
-        and target_dim is not None
-        and expected_dim != target_dim
-    ):
-        raise ValueError()
-
-    caller._teacher = DistantFeedback(
-        sender=teacher, receiver=caller, callback_type="teacher"
-    )
-
-
 def check_xy(
     caller,
     x,
@@ -398,135 +353,11 @@ def check_xy(
     return x_new, y_new
 
 
-class DistantFeedback:
-    def __init__(self, sender, receiver, callback_type="feedback"):
-        self._sender = sender
-        self._receiver = receiver
-        self._callback_type = callback_type
-
-        # used to store a reduced version of the feedback if needed
-        # when feedback is a Model (inputs of the feedback Model are suppressed
-        # in the reduced version, as we do not need then to re-run them
-        # because we assume they have already run during the forward call)
-        self._reduced_sender = None
-
-        self._clamped = False
-        self._clamped_value = None
-
-    def __call__(self):
-        if not self.is_initialized:
-            self.initialize()
-        return self.call_distant_node()
-
-    @property
-    def is_initialized(self):
-        return self._sender.is_initialized
-
-    @property
-    def output_dim(self):
-        return self._sender.output_dim
-
-    @property
-    def name(self):
-        return self._sender.name
-
-    def call_distant_node(self):
-        """Call a distant Model for feedback or teaching
-        (no need to run the input nodes again)"""
-        if self._clamped:
-            self._clamped = False
-            return self._clamped_value
-
-        if self._reduced_sender is not None:
-            if len(np.unique([n._fb_flag for n in self._sender.nodes])) > 1:
-                input_data = _distant_model_inputs(self._sender)
-
-                if hasattr(self._reduced_sender, "nodes"):
-                    return self._reduced_sender.call(input_data)
-                else:
-                    reduced_name = self._reduced_sender.name
-                    return self._reduced_sender.call(input_data[reduced_name])
-            else:
-                fb_outputs = [n.state() for n in self._sender.output_nodes]
-                if len(fb_outputs) > 1:
-                    return fb_outputs
-                else:
-                    return fb_outputs[0]
-        else:
-            return self._sender.state_proxy()
-
-    def initialize(self):
-        """Initialize a distant Model or Node (used as feedback sender or teacher)."""
-        msg = f"Impossible to get {self._callback_type} "
-        msg += "from {} for {}: {} is not initialized or has no input/output_dim"
-
-        reduced_model = None
-        if hasattr(self._sender, "input_nodes"):
-            for n in self._sender.input_nodes:
-                if not n.is_initialized:
-                    try:
-                        n.initialize()
-                    except RuntimeError:
-                        raise RuntimeError(
-                            msg.format(
-                                self._sender.name,
-                                self._receiver.name,
-                                self._sender.name,
-                            )
-                        )
-
-            input_data = _distant_model_inputs(self._sender)
-            reduced_model = _remove_input_for_feedback(self._sender)
-
-            if not reduced_model.is_initialized:
-                if hasattr(reduced_model, "nodes"):
-                    reduced_model.initialize(x=input_data)
-                else:
-                    reduced_name = reduced_model.name
-                    reduced_model.initialize(x=input_data[reduced_name])
-                self._sender._is_initialized = True
-        else:
-            try:
-                self._sender.initialize()
-            except RuntimeError:  # raise more specific error
-                raise RuntimeError(
-                    msg.format(
-                        self._sender.name, self._receiver.name, self._sender.name
-                    )
-                )
-
-        self._reduced_sender = reduced_model
-
-    def zero_feedback(self):
-        """A null feedback vector. Returns None if the Node receives
-        no feedback."""
-        if hasattr(self._sender, "output_nodes"):
-            zeros = []
-            for output in self._sender.output_nodes:
-                zeros.append(output.zero_state())
-            if len(zeros) == 1:
-                return zeros[0]
-            else:
-                return zeros
-        else:
-            return self._sender.zero_state()
-
-    def clamp(self, value):
-        self._clamped_value = check_n_sequences(
-            value,
-            expected_dim=self._sender.output_dim,
-            caller=self._sender,
-            allow_n_sequences=False,
-        )
-        self._clamped = True
-
-
 def call(node, x, from_state=None, stateful=True, reset=False):
     """One-step call, without input check."""
     with node.with_state(from_state, stateful=stateful, reset=reset):
         state = node._forward(node, x)
         node._state = state.astype(node.dtype)
-        node._flag_feedback()
 
     return state
 
@@ -564,9 +395,6 @@ def train(
                 s = call(node, x)
             else:
                 s = node.state()
-
-            if force_teachers:
-                node.set_state_proxy(y)
 
             if i % learn_every == 0 or seq_len == 1:
                 node._train(node, x=x, y=y)
@@ -728,9 +556,7 @@ class _Node(ABC):
             raise NameError(f"No parameter named '{name}' found in node {self}")
 
     @abstractmethod
-    def copy(
-        self, name: str = None, copy_feedback: bool = False, shallow: bool = False
-    ) -> "_Node":
+    def copy(self, name: str = None, shallow: bool = False) -> "_Node":
         raise NotImplementedError()
 
     @abstractmethod
@@ -744,11 +570,4 @@ class _Node(ABC):
     @contextmanager
     @abstractmethod
     def with_state(self, state=None, stateful=False, reset=False) -> Iterator["_Node"]:
-        raise NotImplementedError()
-
-    @contextmanager
-    @abstractmethod
-    def with_feedback(
-        self, feedback=None, stateful=False, reset=False
-    ) -> Iterator["_Node"]:
         raise NotImplementedError()

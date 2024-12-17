@@ -49,29 +49,6 @@ class MinusNode(Node):
         )
 
 
-def fb_forward(node: Node, x):
-    return node.feedback() + x + 1
-
-
-def fb_initialize(node: Node, x=None, **kwargs):
-    node.input_dim = x.shape[1]
-    node.output_dim = x.shape[1]
-
-
-def fb_initialize_fb(node: Node, fb=None):
-    node.set_feedback_dim(fb.shape[1])
-
-
-class FBNode(Node):
-    def __init__(self, **kwargs):
-        super().__init__(
-            initializer=fb_initialize,
-            fb_initializer=fb_initialize_fb,
-            forward=fb_forward,
-            **kwargs,
-        )
-
-
 def inv_forward(node: Node, x):
     return -x
 
@@ -306,12 +283,6 @@ def plus_node():
 def minus_node():
     clean_registry(MinusNode)
     return MinusNode()
-
-
-@pytest.fixture(scope="function")
-def feedback_node():
-    clean_registry(FBNode)
-    return FBNode()
 
 
 @pytest.fixture(scope="function")

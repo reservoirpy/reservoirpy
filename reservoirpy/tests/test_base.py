@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_equal
 
-from .._base import DistantFeedback, check_n_sequences, check_one_sequence, check_xy
-from .dummy_nodes import *
+from .._base import check_n_sequences, check_one_sequence, check_xy
+from .dummy_nodes import MinusNode, Offline, OnlineNode, PlusNode
 
 
 def idfn(val):
@@ -283,42 +283,3 @@ def test_check_xy(caller, x, y, kwargs, expects):
     else:
         with pytest.raises(expects):
             x = check_xy(caller, x, y, **kwargs)
-
-
-def test_distant_feedback(plus_node, feedback_node):
-
-    sender = PlusNode(input_dim=5, output_dim=5)
-    fb = DistantFeedback(sender, feedback_node)
-
-    fb.initialize()
-
-    assert sender.is_initialized
-    assert_equal(sender.state_proxy(), fb())
-
-    fb = DistantFeedback(plus_node, feedback_node)
-
-    with pytest.raises(RuntimeError):
-        fb.initialize()
-
-    plus = PlusNode(input_dim=5, output_dim=5) >> Inverter()
-    minus = MinusNode(output_dim=5)
-    sender = plus >> minus
-    fb = DistantFeedback(sender, feedback_node)
-
-    fb.initialize()
-
-    assert sender.is_initialized
-    assert_equal(minus.state_proxy(), fb())
-
-    fb = DistantFeedback(plus_node, feedback_node)
-
-    with pytest.raises(RuntimeError):
-        fb.initialize()
-
-    plus = PlusNode()
-    minus = MinusNode()
-    sender = plus >> minus
-    fb = DistantFeedback(sender, feedback_node)
-
-    with pytest.raises(RuntimeError):
-        fb.initialize()

@@ -12,7 +12,6 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
    :template: autosummary/class.rst
 
    link - Link Nodes into a Model.
-   link_feedback - Link Nodes through feedback connections.
    merge - Merge Models.
 """
 
@@ -21,9 +20,8 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from itertools import product
 from typing import Iterable, Sequence, Union
-from uuid import uuid4
 
-from ._base import DistantFeedback, _Node
+from ._base import _Node
 from .model import FrozenModel, Model
 from .nodes.concat import Concat
 from .utils.graphflow import find_parents_and_children
@@ -227,103 +225,6 @@ def link(
             edges |= set(new_edges)
 
     return Model(nodes=list(nodes), edges=list(edges), name=name)
-
-
-def link_feedback(
-    node: _Node,
-    feedback: Union[_Node, Sequence[_Node]],
-    inplace: bool = False,
-    name: str = None,
-) -> _Node:
-    """Create a feedback connection between the `feedback` node and `node`.
-    Feedbacks nodes will be called at runtime using data from the previous
-    call.
-
-    This is not an in-place operation by default. This function will copy `node`
-    and then sets the copy `_feedback` attribute as a reference to `feedback`
-    node. If `inplace` is set to `True`, then `node` is not copied and the
-    feedback is directly connected to `node`. If `feedback` is a list of nodes
-    or models, then all nodes in the list are first connected to a
-    :py:class:`~.Concat` node to create a model gathering all data from all nodes
-    in a single feedback vector.
-
-     You can also perform this operation using the ``<<`` operator::
-
-        node1 = node1 << node2
-        # with feedback from a Model
-        node1 = node1 << (fbnode1 >> fbnode2)
-        # with feedback from a list of nodes or models
-        node1 = node1 << [fbnode1, fbnode2, ...]
-
-    Which means that a feedback connection is now created between `node1` and
-    `node2`. In other words, the forward function of `node1` depends on the
-    previous output of `node2`:
-
-    .. math::
-        \\mathrm{node1}(x_t) = \\mathrm{node1}(x_t, \\mathrm{node2}(x_{t - 1}))
-
-    You can also use this function to define feedback::
-
-        node1 = link_feedback(node1, node2)
-        # without copy (node1 is the same object throughout)
-        node1 = link_feedback(node1, node2, inplace=True, name="n1_copy")
-
-    Parameters
-    ----------
-    node : Node
-        Node receiving feedback.
-    feedback : _Node
-        Node or Model sending feedback
-    inplace : bool, defaults to False
-        If `True`, then the function returns a copy of `node`.
-    name : str, optional
-        Name of the copy of `node` if `inplace` is `True`.
-
-    Returns
-    -------
-        Node
-            A node instance taking feedback from `feedback`.
-
-    Raises
-    ------
-        TypeError
-            - If `node` is a :py:class:`~.Model`.
-            Models can not receive feedback.
-
-            - If any of the feedback nodes are not :py:class:`~._Node`
-            instances.
-    """
-
-    if isinstance(node, Model):
-        raise TypeError(f"{node} is not a Node. Models can't receive feedback.")
-
-    msg = (
-        "Impossible to receive feedback from {}: "
-        "it is not a Node or a Model instance."
-    )
-
-    if isinstance(feedback, Sequence):
-        for fb in feedback:
-            if not isinstance(fb, _Node):
-                raise TypeError(msg.format(fb))
-
-        all_fb = link(feedback, Concat())
-
-    elif isinstance(feedback, _Node):
-        all_fb = feedback
-
-    else:
-        raise TypeError(msg.format(feedback))
-
-    if inplace:
-        node._feedback = DistantFeedback(all_fb, node)
-        return node
-    else:
-        # first copy the node, then give it feedback
-        # original node is not connected to any feedback then
-        new_node = node.copy(name=name)
-        new_node._feedback = DistantFeedback(all_fb, new_node)
-        return new_node
 
 
 def merge(

@@ -7,10 +7,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from reservoirpy.node import _filter_where_na_target
-
-from ..nodes import Reservoir
-from .dummy_nodes import *
+from .dummy_nodes import Inverter, PlusNode
 
 
 def test_node_creation(plus_node):

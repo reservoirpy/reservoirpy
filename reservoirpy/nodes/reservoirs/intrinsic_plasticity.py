@@ -16,7 +16,6 @@ from ...utils.random import noise, rand_generator
 from ...utils.validation import is_array
 from .base import forward_external
 from .base import initialize as initialize_base
-from .base import initialize_feedback
 
 
 def gaussian_gradients(x, y, a, mu, sigma, eta):
@@ -111,7 +110,7 @@ class IPReservoir(Unsupervised):
         \\mathbf{r}[t+1] = (1 - \\mathrm{lr}) * \\mathbf{r}[t] + \\mathrm{lr}
         * (\\mathbf{W}_{in} \\cdot (\\mathbf{u}[t+1]+c_{in}*\\xi)
          + \\mathbf{W} \\cdot \\mathbf{x}[t]
-        + \\mathbf{W}_{fb} \\cdot (g(\\mathbf{y}[t])+c_{fb}*\\xi) + \\mathbf{b}_{in})
+        + \\mathbf{b}_{in})
 
     .. math::
 
@@ -136,7 +135,6 @@ class IPReservoir(Unsupervised):
         - :math:`\\mathbf{x}` is the output activation vector of the reservoir;
         - :math:`\\mathbf{r}` is the internal activation vector of the reservoir;
         - :math:`\\mathbf{u}` is the input timeseries;
-        - :math:`\\mathbf{y}` is a feedback vector;
         - :math:`\\xi` is a random noise;
         - :math:`f` and :math:`g` are activation functions.
 
@@ -145,7 +143,6 @@ class IPReservoir(Unsupervised):
     ================== =================================================================
     ``W``              Recurrent weights matrix (:math:`\\mathbf{W}`).
     ``Win``            Input weights matrix (:math:`\\mathbf{W}_{in}`).
-    ``Wfb``            Feedback weights matrix (:math:`\\mathbf{W}_{fb}`).
     ``bias``           Input bias vector (:math:`\\mathbf{b}_{in}`).
     ``internal_state``  Internal state (:math:`\\mathbf{r}`).
     ``a``              Gain of reservoir activation (:math:`\\mathbf{a}`).
@@ -162,16 +159,12 @@ class IPReservoir(Unsupervised):
     ``learning_rate``       Learning rate (5e-4 by default).
     ``epochs``              Number of epochs for training (1 by default).
     ``input_scaling``       Input scaling (float or array) (1.0 by default).
-    ``fb_scaling``          Feedback scaling (float or array) (1.0 by default).
     ``rc_connectivity``     Connectivity (or density) of ``W`` (0.1 by default).
     ``input_connectivity``  Connectivity (or density) of ``Win`` (0.1 by default).
-    ``fb_connectivity``     Connectivity (or density) of ``Wfb`` (0.1 by default).
     ``noise_in``            Input noise gain (0 by default) (:math:`c_{in} * \\xi`).
     ``noise_rc``            Reservoir state noise gain (0 by default) (:math:`c*\\xi`).
-    ``noise_fb``            Feedback noise gain (0 by default) (:math:`c_{fb}*\\xi`).
     ``noise_type``          Distribution of noise (normal by default) (:math:`\\xi\\sim\\mathrm{Noise~type}`).
     ``activation``          Activation of the reservoir units (tanh by default) (:math:`f`).
-    ``fb_activation``       Activation of the feedback units (identity by default) (:math:`g`).
     ``units``               Number of neuronal units in the reservoir.
     ``noise_generator``     A random state generator.
     ======================= ========================================================
@@ -199,8 +192,6 @@ class IPReservoir(Unsupervised):
         Gain of noise applied to reservoir activations.
     noise_in : float, default to 0.0
         Gain of noise applied to input inputs.
-    noise_fb : float, default to 0.0
-        Gain of noise applied to feedback signal.
     noise_type : str, default to "normal"
         Distribution of noise. Must be a Numpy random variable generator
         distribution (see :py:class:`numpy.random.Generator`).
@@ -212,9 +203,6 @@ class IPReservoir(Unsupervised):
         set up different input scaling for each feature.
     bias_scaling: float, default to 1.0
         Bias gain.
-    fb_scaling : float or array-like of shape (features,), default to 1.0
-        Feedback gain. An array of the same dimension as the feedback can be used to
-        set up different feedback scaling for each feature.
     input_connectivity : float, default to 0.1
         Connectivity of input neurons, i.e. ratio of input neurons connected
         to reservoir neurons. Must be in :math:`]0, 1]`.
@@ -222,9 +210,6 @@ class IPReservoir(Unsupervised):
         Connectivity of recurrent weight matrix, i.e. ratio of reservoir
         neurons connected to other reservoir neurons, including themselves.
         Must be in :math:`]0, 1]`.
-    fb_connectivity : float, default to 0.1
-        Connectivity of feedback neurons, i.e. ratio of feedback neurons
-        connected to reservoir neurons. Must be in :math:`]0, 1]`.
     Win : callable or array-like of shape (units, features), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
         Input weights matrix or initializer. If a callable (like a function) is
         used,
@@ -244,21 +229,8 @@ class IPReservoir(Unsupervised):
         parameters and at least two parameters that will be used to define the
         shape of
         the returned weight matrix.
-    Wfb : callable or array-like of shape (units, feedback), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
-        Feedback weights matrix or initializer. If a callable (like a function) is
-        used, then this function should accept any keywords
-        parameters and at least two parameters that will be used to define the
-        shape of
-        the returned weight matrix.
-    fb_activation : str or callable, default to :py:func:`~reservoirpy.activationsfunc.identity`
-        Feedback activation function.
-        - If a str, should be a :py:mod:`~reservoirpy.activationsfunc`
-        function name.
-        - If a callable, should be an element-wise operator on arrays.
     activation : {"tanh", "sigmoid"}, default to "tanh"
         Reservoir units activation function.
-    feedback_dim : int, optional
-        Feedback dimension. Can be inferred at first call.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
     name : str, optional
@@ -312,21 +284,15 @@ class IPReservoir(Unsupervised):
         input_bias: bool = True,
         noise_rc: float = 0.0,
         noise_in: float = 0.0,
-        noise_fb: float = 0.0,
         noise_type: str = "normal",
         noise_kwargs: Dict = None,
         input_scaling: Union[float, Sequence] = 1.0,
         bias_scaling: float = 1.0,
-        fb_scaling: Union[float, Sequence] = 1.0,
         input_connectivity: Optional[float] = 0.1,
         rc_connectivity: Optional[float] = 0.1,
-        fb_connectivity: Optional[float] = 0.1,
         Win: Union[Weights, Callable] = bernoulli,
         W: Union[Weights, Callable] = uniform,
-        Wfb: Union[Weights, Callable] = bernoulli,
         bias: Union[Weights, Callable] = bernoulli,
-        feedback_dim: int = None,
-        fb_activation: Union[str, Callable] = identity,
         activation: Literal["tanh", "sigmoid"] = "tanh",
         name=None,
         seed=None,
@@ -348,17 +314,9 @@ class IPReservoir(Unsupervised):
         noise_kwargs = dict() if noise_kwargs is None else noise_kwargs
 
         super(IPReservoir, self).__init__(
-            fb_initializer=partial(
-                initialize_feedback,
-                Wfb_init=Wfb,
-                fb_scaling=fb_scaling,
-                fb_connectivity=fb_connectivity,
-                seed=seed,
-            ),
             params={
                 "W": None,
                 "Win": None,
-                "Wfb": None,
                 "bias": None,
                 "a": None,
                 "b": None,
@@ -373,19 +331,15 @@ class IPReservoir(Unsupervised):
                 "epochs": epochs,
                 "input_bias": input_bias,
                 "input_scaling": input_scaling,
-                "fb_scaling": fb_scaling,
                 "rc_connectivity": rc_connectivity,
                 "input_connectivity": input_connectivity,
-                "fb_connectivity": fb_connectivity,
                 "noise_in": noise_in,
                 "noise_rc": noise_rc,
-                "noise_out": noise_fb,
                 "noise_type": noise_type,
                 "activation_type": activation,
                 "activation": partial(
                     ip_activation, reservoir=self, f=get_function(activation)
                 ),
-                "fb_activation": fb_activation,
                 "units": units,
                 "noise_generator": partial(noise, rng=rng, **noise_kwargs),
             },
@@ -405,7 +359,6 @@ class IPReservoir(Unsupervised):
             ),
             backward=backward,
             output_dim=units,
-            feedback_dim=feedback_dim,
             name=name,
             **kwargs,
         )

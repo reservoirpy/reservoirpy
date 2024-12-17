@@ -31,9 +31,8 @@ def test_reservoir_init():
     with pytest.raises(ValueError):
         Reservoir(100, equation="foo")
 
-    res = Reservoir(100, activation="relu", fb_activation="relu")
+    res = Reservoir(100, activation="relu")
     assert id(res.activation) == id(relu)
-    assert id(res.fb_activation) == id(relu)
 
 
 def test_reservoir_init_from_lr_is_arrays():
@@ -128,7 +127,6 @@ def test_reservoir_bias():
     assert node.W.shape == (100, 100)
     assert node.Win.shape == (100, 10)
     assert node.bias.shape == (100, 1)
-    assert node.Wfb is None
     assert_array_equal(node.bias, np.zeros((100, 1)))
     assert node.lr == 0.8
     assert node.units == 100
@@ -210,27 +208,22 @@ def test_reservoir_feedback():
 
     assert res.shape == (1, 50)
 
-    assert node1.Wfb is not None
-    assert node1.Wfb.shape == (100, 50)
-
     with pytest.raises(ValueError):
-        Wfb = np.ones((100, 51))
-        node1 = Reservoir(100, lr=0.8, Wfb=Wfb)
+        node1 = Reservoir(100, lr=0.8)
         node2 = Reservoir(50, lr=1.0)
         node1 <<= node2
         data = np.ones((1, 10))
         res = (node1 >> node2)(data)
 
     with pytest.raises(ValueError):
-        Wfb = np.ones((101, 50))
-        node1 = Reservoir(100, lr=0.8, Wfb=Wfb)
+        node1 = Reservoir(100, lr=0.8)
         node2 = Reservoir(50, lr=1.0)
         node1 <<= node2
         data = np.ones((1, 10))
         res = (node1 >> node2)(data)
 
     with pytest.raises(ValueError):
-        node1 = Reservoir(100, lr=0.8, Wfb=1.0)
+        node1 = Reservoir(100, lr=0.8)
         node2 = Reservoir(50, lr=1.0)
         node1 <<= node2
         data = np.ones((1, 10))

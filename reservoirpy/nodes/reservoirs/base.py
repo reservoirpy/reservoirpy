@@ -10,7 +10,7 @@ from ...utils.validation import is_array
 def reservoir_kernel(reservoir, u, r):
     """Reservoir base forward function.
 
-    Computes: s[t+1] = W.r[t] + Win.(u[t] + noise) + Wfb.(y[t] + noise) + bias
+    Computes: s[t+1] = W.r[t] + Win.(u[t] + noise) + bias
     """
     W = reservoir.W
     Win = reservoir.Win
@@ -21,16 +21,6 @@ def reservoir_kernel(reservoir, u, r):
     noise_gen = reservoir.noise_generator
 
     pre_s = W @ r + Win @ (u + noise_gen(dist=dist, shape=u.shape, gain=g_in)) + bias
-
-    if reservoir.has_feedback:
-        Wfb = reservoir.Wfb
-        g_fb = reservoir.noise_out
-        h = reservoir.fb_activation
-
-        y = reservoir.feedback().reshape(-1, 1)
-        y = h(y) + noise_gen(dist=dist, shape=y.shape, gain=g_fb)
-
-        pre_s += Wfb @ y
 
     return np.array(pre_s)
 
@@ -225,55 +215,3 @@ def initialize(
         reservoir.set_param("Win", Win.astype(dtype))
         reservoir.set_param("bias", bias.astype(dtype))
         reservoir.set_param("internal_state", reservoir.zero_state())
-
-
-def initialize_feedback(
-    reservoir,
-    feedback=None,
-    Wfb_init=None,
-    fb_scaling=None,
-    fb_connectivity=None,
-    seed=None,
-):
-    if reservoir.has_feedback:
-        fb_dim = feedback.shape[1]
-        reservoir.set_feedback_dim(fb_dim)
-
-        if is_array(Wfb_init):
-            Wfb = Wfb_init
-            if not fb_dim == Wfb.shape[1]:
-                raise ValueError(
-                    "Dimension mismatch between Wfb and feedback "
-                    f"vector in {reservoir.name}: Wfb is "
-                    f"{Wfb.shape} "
-                    f"and feedback is {(1, fb_dim)} "
-                    f"({fb_dim} != {Wfb.shape[0]})"
-                )
-
-            if not Wfb.shape[0] == reservoir.output_dim:
-                raise ValueError(
-                    f"Dimension mismatch between Wfb and W in "
-                    f"{reservoir.name}: Wfb is {Wfb.shape} and "
-                    f"W is "
-                    f"{reservoir.W.shape} ({Wfb.shape[1]} "
-                    f"!= {reservoir.output_dim})"
-                )
-
-        elif callable(Wfb_init):
-            Wfb = Wfb_init(
-                reservoir.output_dim,
-                fb_dim,
-                input_scaling=fb_scaling,
-                connectivity=fb_connectivity,
-                seed=seed,
-                dtype=reservoir.dtype,
-            )
-        else:
-            raise ValueError(
-                f"Data type {type(Wfb_init)} not understood "
-                f"for matrix initializer 'Wfb_init' in "
-                f"{reservoir.name}. Wfb should be an array "
-                f"or a callable returning an array."
-            )
-
-        reservoir.set_param("Wfb", Wfb)

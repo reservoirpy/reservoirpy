@@ -7,7 +7,6 @@ from .dummy_nodes import *
 
 
 def test_node_link(plus_node, minus_node, offline_node, offline_node2, inverter_node):
-
     model1 = plus_node >> minus_node
     model2 = minus_node >> plus_node
 
@@ -55,7 +54,6 @@ def test_node_link(plus_node, minus_node, offline_node, offline_node2, inverter_
 
 
 def test_node_link_several(plus_node, minus_node, offline_node):
-
     model = [plus_node, minus_node] >> offline_node
 
     assert len(model.nodes) == 4
@@ -67,19 +65,7 @@ def test_node_link_several(plus_node, minus_node, offline_node):
     assert set(model.edges) == {(plus_node, offline_node), (plus_node, minus_node)}
 
 
-def test_node_link_feedback(plus_node, minus_node):
-
-    fb_plus_node = plus_node << minus_node
-
-    assert id(fb_plus_node._feedback._sender) == id(minus_node)
-    assert plus_node._feedback is None
-
-    plus_node <<= minus_node
-    assert id(plus_node._feedback._sender) == id(minus_node)
-
-
 def test_model_merge(plus_node, minus_node, basic_offline_node):
-
     branch1 = plus_node >> minus_node
     branch2 = plus_node >> basic_offline_node
 

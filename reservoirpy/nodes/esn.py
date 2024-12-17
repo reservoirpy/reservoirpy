@@ -7,8 +7,9 @@ from multiprocessing import Manager
 import numpy as np
 from joblib import Parallel, delayed
 
-from .._base import _Node, call
+from .._base import call
 from ..model import FrozenModel
+from ..node import Node
 from ..utils import _obj_from_kwargs, progress, verbosity
 from ..utils.graphflow import dispatch
 from ..utils.model_utils import to_data_mapping
@@ -43,18 +44,15 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
-    for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-        with _esn.readout.with_feedback(forced_feedback[original_readout_name]):
-            states[i, :] = call(_esn.reservoir, x[original_reservoir_name])
+    for i, (x, _) in enumerate(dispatch(x, y)):
+        states[i, :] = call(_esn.reservoir, x[original_reservoir_name])
 
     esn.readout.partial_fit(states, y[original_readout_name], warmup=warmup, lock=lock)
 
     return states[-1]
 
 
-def _run_fn(
-    esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
-):
+def _run_fn(esn, idx, x, return_states, from_state, stateful, reset):
     _esn = deepcopy(esn)
 
     original_reservoir_name = (
@@ -68,12 +66,8 @@ def _run_fn(
     states = _allocate_returned_states(_esn, X, return_states)
 
     with _esn.with_state(from_state, stateful=stateful, reset=reset):
-        for i, (x_step, forced_feedback, _) in enumerate(
-            dispatch(X, forced_fb, shift_fb=shift_fb)
-        ):
-            _esn._load_proxys()
-            with _esn.with_feedback(forced_feedback):
-                state = _esn._call(x_step, return_states=return_states)
+        for i, (x_step, _) in enumerate(dispatch(X)):
+            state = _esn._call(x_step, return_states=return_states)
 
             if is_mapping(state):
                 for name, value in state.items():
@@ -81,7 +75,6 @@ def _run_fn(
             else:
                 states["readout"][i, :] = state
 
-    _esn._clean_proxys()
     return idx, states
 
 
@@ -207,8 +200,8 @@ class ESN(FrozenModel):
         self,
         reservoir_method="reservoir",
         learning_method="ridge",
-        reservoir: _Node = None,
-        readout: _Node = None,
+        reservoir: Node = None,
+        readout: Node = None,
         feedback=False,
         Win_bias=True,
         Wout_bias=True,
@@ -270,7 +263,6 @@ class ESN(FrozenModel):
         self._params.update({"reservoir": reservoir, "readout": readout})
 
         self._trainable = True
-        self._is_fb_initialized = False
 
     @property
     def is_trained_offline(self) -> bool:
@@ -279,10 +271,6 @@ class ESN(FrozenModel):
     @property
     def is_trained_online(self) -> bool:
         return False
-
-    @property
-    def is_fb_initialized(self):
-        return self._is_fb_initialized
 
     @property
     def has_feedback(self):
@@ -328,12 +316,11 @@ class ESN(FrozenModel):
         from_state=None,
         stateful=True,
         reset=False,
-        shift_fb=True,
         return_states=None,
     ):
-        X, forced_feedbacks = to_data_mapping(self, X, forced_feedbacks)
+        X = to_data_mapping(self, X)
 
-        self._initialize_on_sequence(X[0], forced_feedbacks[0])
+        self._initialize_on_sequence(X[0])
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
@@ -346,14 +333,12 @@ class ESN(FrozenModel):
                         self,
                         idx,
                         x,
-                        y,
                         return_states,
                         from_state,
                         stateful,
                         reset,
-                        shift_fb,
                     )
-                    for idx, (x, y) in enumerate(zip(seq, forced_feedbacks))
+                    for idx, x in enumerate(seq)
                 )
 
         return _sort_and_unpack(states, return_states=return_states)

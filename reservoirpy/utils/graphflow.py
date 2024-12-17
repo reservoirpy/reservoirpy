@@ -75,7 +75,6 @@ def get_offline_subgraphs(nodes, edges):
         subnodes, subedges = [], []
         for node in _nodes:
             if node in inputs or all([p in included for p in parents.get(node)]):
-
                 if node.is_trained_offline and node not in trained:
                     trained.add(node)
                     subnodes.append(node)
@@ -150,7 +149,6 @@ def find_entries_and_exits(nodes, edges):
 def dispatch(
     X,
     Y=None,
-    shift_fb=True,
     return_targets=False,
     force_teachers=True,
 ):
@@ -167,28 +165,10 @@ def dispatch(
             y = None
             if return_targets:
                 y = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
-            # if feedbacks vectors are meant to be fed
-            # with a delay in time of one timestep w.r.t. 'X_map'
-            if shift_fb:
-                if i == 0:
-                    if force_teachers:
-                        fb = {
-                            node: np.zeros_like(Y_map[node][np.newaxis, i])
-                            for node in Y_map.keys()
-                        }
-                    else:
-                        fb = {node: None for node in Y_map.keys()}
-                else:
-                    fb = {node: Y_map[node][np.newaxis, i - 1] for node in Y_map.keys()}
-            # else assume that all feedback vectors must be instantaneously
-            # fed to the network. This means that 'Y_map' already contains
-            # data that is delayed by one timestep w.r.t. 'X_map'.
-            else:
-                fb = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
         else:
-            fb = y = None
+            y = None
 
-        yield x, fb, y
+        yield x, y
 
 
 class DataDispatcher:

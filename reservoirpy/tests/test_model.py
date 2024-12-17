@@ -10,7 +10,7 @@ from reservoirpy.nodes.io import Input, Output
 from ..model import Model
 from ..node import Node
 from ..ops import merge
-from .dummy_nodes import *
+from .dummy_nodes import Inverter, MinusNode, Offline, PlusNode
 
 
 def test_node_link(plus_node, minus_node):
@@ -243,109 +243,6 @@ def test_model_run_on_sequences(plus_node, minus_node):
     assert res[plus_node.name][1].shape == (8, 5)
 
 
-def test_model_feedback(plus_node, minus_node, feedback_node):
-    model = plus_node >> feedback_node >> minus_node
-    feedback_node <<= minus_node
-
-    data = np.zeros((1, 5))
-    res = model(data)
-
-    assert_array_equal(res, data + 1)
-    assert_array_equal(feedback_node.state(), data + 3)
-
-    res = model(data)
-    assert_array_equal(res, data + 3)
-    assert_array_equal(feedback_node.state(), data + 6)
-
-
-def test_model_feedback_run(plus_node, minus_node, feedback_node):
-    model = plus_node >> feedback_node >> minus_node
-    feedback_node <<= minus_node
-
-    data = np.zeros((3, 5))
-    res = model.run(data)
-
-    expected = np.array([[1] * 5, [3] * 5, [5] * 5])
-
-    assert_array_equal(res, expected)
-    assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 10)
-
-
-def test_model_feedback_forcing_sender(plus_node, minus_node, feedback_node):
-    model = plus_node >> feedback_node >> minus_node
-    feedback_node <<= minus_node
-
-    data = np.zeros((3, 5))
-    res = model.run(data, forced_feedbacks={"MinusNode-0": data + 1}, shift_fb=False)
-    expected = np.array([[2] * 5, [2] * 5, [4] * 5])
-
-    assert_array_equal(res, expected)
-    assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 8)
-
-
-def test_model_feedback_forcing_receiver(plus_node, minus_node, feedback_node):
-    model = plus_node >> feedback_node >> minus_node
-    feedback_node <<= minus_node
-
-    data = np.zeros((3, 5))
-    res = model.run(data, forced_feedbacks={"FBNode-0": data + 1}, shift_fb=False)
-    expected = np.array([[2] * 5, [2] * 5, [4] * 5])
-
-    assert_array_equal(res, expected)
-    assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 8)
-
-
-def test_model_feedback_from_previous_node(plus_node, minus_node, feedback_node):
-    model = plus_node >> feedback_node >> minus_node
-    feedback_node <<= plus_node  # feedback in time, not in space anymore
-
-    data = np.zeros((3, 5))
-    res = model.run(data)
-
-    expected = np.array([[1] * 5, [4] * 5, [5] * 5])
-
-    assert_array_equal(res, expected)
-    assert_array_equal(feedback_node.state(), data[0][np.newaxis, :] + 11)
-
-
-def test_model_feedback_from_outsider(plus_node, feedback_node, inverter_node):
-    model = plus_node >> feedback_node
-    feedback_node <<= plus_node >> inverter_node
-
-    data = np.zeros((1, 5))
-    res = model(data)
-
-    assert_array_equal(res, data + 3)
-    assert_array_equal(plus_node.state(), data + 2)
-    assert_array_equal(inverter_node.state(), data)
-
-    res = model(data)
-    assert_array_equal(res, data + 3)
-    assert_array_equal(plus_node.state(), data + 4)
-    assert_array_equal(inverter_node.state(), data - 2)
-
-
-def test_model_feedback_from_outsider_complex(
-    plus_node, feedback_node, inverter_node, minus_node
-):
-    model = plus_node >> feedback_node
-    fb_model = plus_node >> inverter_node >> minus_node
-    feedback_node <<= fb_model
-
-    data = np.zeros((1, 5))
-    res = model(data)
-
-    assert_array_equal(res, data + 1)
-    assert_array_equal(plus_node.state(), data + 2)
-    assert_array_equal(minus_node.state(), data - 2)
-
-    res = model(data)
-
-    assert_array_equal(res, data + 3)
-    assert_array_equal(plus_node.state(), data + 4)
-    assert_array_equal(minus_node.state(), data - 2)
-
-
 def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_node):
     model = plus_node >> offline_node
 
@@ -372,48 +269,6 @@ def test_offline_fit_simple_model(offline_node, offline_node2, plus_node, minus_
     exp = np.tile(np.array([22.0, 24.5, 27.0, 29.5, 32.0]), 5).reshape(5, 5).T
 
     assert_array_equal(exp, res)
-
-
-def test_offline_fit_simple_model_fb(
-    basic_offline_node, offline_node2, plus_node, minus_node, feedback_node
-):
-    model = plus_node >> feedback_node >> basic_offline_node
-    feedback_node <<= basic_offline_node
-
-    X = np.ones((5, 5)) * 0.5
-    Y = np.ones((5, 5))
-
-    model.fit(X, Y)
-
-    assert_array_equal(basic_offline_node.b, np.array([9.3]))
-
-    model = plus_node >> feedback_node >> basic_offline_node
-    feedback_node <<= basic_offline_node
-
-    X = np.ones((3, 5, 5)) * 0.5
-    Y = np.ones((3, 5, 5))
-
-    model.fit(X, Y)
-
-    assert_array_equal(basic_offline_node.b, np.array([11.4]))
-
-    model.fit(X, Y, reset=True)
-
-    assert_array_equal(basic_offline_node.b, np.array([5.15]))
-
-    res = model.run(X[0], reset=True)
-
-    exp = np.tile(np.array([8.65, 19.8, 33.45, 49.6, 68.25]), 5).reshape(5, 5).T
-
-    assert_array_equal(exp, res)
-
-    model = plus_node >> feedback_node >> basic_offline_node
-    feedback_node <<= basic_offline_node
-
-    X = np.ones((3, 5, 5)) * 0.5
-    Y = np.ones((3, 5, 5))
-
-    model.fit(X, Y, force_teachers=False)
 
 
 def test_offline_fit_complex(
@@ -445,40 +300,6 @@ def test_online_train_simple(online_node, plus_node):
     model.train(X, Y, reset=True)
 
     assert_array_equal(online_node.b, np.array([85]))
-
-
-def test_online_train_fb_forced(online_node, plus_node, feedback_node):
-    model = plus_node >> feedback_node >> online_node
-
-    feedback_node <<= online_node
-
-    X = np.ones((5, 5)) * 0.5
-    Y = np.ones((5, 5))
-
-    model.train(X, Y)
-
-    assert_array_equal(online_node.b, np.array([51.5]))
-
-    model.train(X, Y, reset=True)
-
-    assert_array_equal(online_node.b, np.array([103.0]))
-
-
-def test_online_train_fb_no_forced(online_node, plus_node, feedback_node):
-    model = plus_node >> feedback_node >> online_node
-
-    feedback_node <<= online_node
-
-    X = np.ones((5, 5)) * 0.5
-    Y = np.ones((5, 5))
-
-    model.train(X, Y, force_teachers=False)
-
-    assert_array_equal(online_node.b, np.array([189.5]))
-
-    model.train(X, Y, reset=True, force_teachers=False)
-
-    assert_array_equal(online_node.b, np.array([3221.5]))
 
 
 def test_online_train_teacher_nodes(online_node, plus_node, minus_node):

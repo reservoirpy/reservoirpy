@@ -90,8 +90,6 @@ def test_esn_feedback():
     assert esn.reservoir.Win.shape == (100, 10)
     assert esn.readout.Wout.shape == (100, 5)
     assert res.shape == (1, 5)
-    assert esn.reservoir.Wfb is not None
-    assert esn.reservoir.Wfb.shape == (100, 5)
 
     esn.fit(x, y).run(x, forced_feedbacks=y)
 
@@ -132,8 +130,6 @@ def test_esn_parallel_fit_reproducibility():
         assert esn.reservoir.Win.shape == (100, 10)
         assert esn.readout.Wout.shape == (100, 5)
 
-        assert esn.reservoir.Wfb is not None
-        assert esn.reservoir.Wfb.shape == (100, 5)
         assert np.abs(np.mean(esn.readout.Wout - base_Wout)) < 1e-14
 
 

@@ -8,7 +8,6 @@ from reservoirpy.nodes import LMS, Reservoir
 
 
 def test_lms_init():
-
     node = LMS(10)
 
     data = np.ones((1, 100))
@@ -25,7 +24,6 @@ def test_lms_init():
 
 
 def test_lms_train_one_step():
-
     node = LMS(10)
 
     x = np.ones((5, 2))
@@ -45,7 +43,6 @@ def test_lms_train_one_step():
 
 
 def test_lms_train():
-
     node = LMS(10)
 
     X, Y = np.ones((200, 100)), np.ones((200, 10))
@@ -83,7 +80,6 @@ def test_lms_train():
 
 
 def test_esn_lms():
-
     readout = LMS(10)
     reservoir = Reservoir(100)
 
@@ -104,7 +100,6 @@ def test_esn_lms():
 
 
 def test_lms_feedback():
-
     readout = LMS(10)
     reservoir = Reservoir(100)
 
@@ -118,7 +113,6 @@ def test_lms_feedback():
 
     assert readout.Wout.shape == (100, 10)
     assert readout.bias.shape == (1, 10)
-    assert reservoir.Wfb.shape == (100, 10)
 
     data = np.ones((1000, 8))
     res = esn.run(data)
@@ -127,7 +121,6 @@ def test_lms_feedback():
 
 
 def test_hierarchical_esn():
-
     readout1 = LMS(10, name="r1")
     reservoir1 = Reservoir(100)
     readout2 = LMS(3, name="r2")
@@ -154,7 +147,6 @@ def test_hierarchical_esn():
 
 
 def test_dummy_mutual_supervision():
-
     readout1 = LMS(1, name="r1")
     reservoir1 = Reservoir(100)
     readout2 = LMS(1, name="r2")
