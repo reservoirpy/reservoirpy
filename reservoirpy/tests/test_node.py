@@ -11,7 +11,6 @@ from .dummy_nodes import Inverter, PlusNode
 
 
 def test_node_creation(plus_node):
-    assert plus_node.name == "PlusNode-0"
     assert plus_node.params["c"] is None
     assert plus_node.hypers["h"] == 1
     assert plus_node.input_dim is None
@@ -26,7 +25,6 @@ def test_pickling(plus_node):
     pickled_node = pickle.dumps(plus_node)
     unpickled_node = pickle.loads(pickled_node)
 
-    assert unpickled_node.name == plus_node.name + "-(copy)"
     assert unpickled_node.get_param("h") == plus_node.get_param("h")
 
 

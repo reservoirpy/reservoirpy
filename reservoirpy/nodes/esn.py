@@ -30,17 +30,6 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     _esn = deepcopy(esn)
     _esn.reservoir.reset()
 
-    original_readout_name = (
-        esn.readout.name[:-7]
-        if esn.readout.name.endswith("-(copy)")
-        else esn.readout.name
-    )
-    original_reservoir_name = (
-        esn.reservoir.name[:-7]
-        if esn.reservoir.name.endswith("-(copy)")
-        else esn.reservoir.name
-    )
-
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
@@ -54,12 +43,6 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
 
 def _run_fn(esn, idx, x, return_states, from_state, stateful, reset):
     _esn = deepcopy(esn)
-
-    original_reservoir_name = (
-        esn.reservoir.name[:-7]
-        if esn.reservoir.name.endswith("-(copy)")
-        else esn.reservoir.name
-    )
 
     X = {_esn.reservoir.name: x[original_reservoir_name]}
 
@@ -304,7 +287,7 @@ class ESN(FrozenModel):
             return self.readout.state()
         else:
             raise ValueError(
-                f"'which' parameter of {self.name} "
+                f"'which' parameter of {type(self).__name__} "
                 f"'state' function must be "
                 f"one of 'reservoir' or 'readout'."
             )
@@ -324,7 +307,7 @@ class ESN(FrozenModel):
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
-        seq = progress(X, f"Running {self.name}")
+        seq = progress(X, f"Running {type(self).__name__}")
 
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
@@ -358,7 +341,7 @@ class ESN(FrozenModel):
 
         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
 
-        seq = progress(X, f"Running {self.name}")
+        seq = progress(X, f"Running {type(self).__name__}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
                 last_states = parallel(
@@ -367,7 +350,7 @@ class ESN(FrozenModel):
                 )
 
             if verbosity():  # pragma: no cover
-                print(f"Fitting node {self.name}...")
+                print(f"Fitting {type(self).__name__}...")
 
             # setting the reservoir state from the last timeseries
             self.reservoir._state = last_states[-1]

@@ -48,7 +48,7 @@ def initialize(readout: Node, x=None, y=None, model_hypers=None):
             out_dim = y.shape[1]
         else:
             raise RuntimeError(
-                f"Impossible to initialize {readout.name}: "
+                f"Impossible to initialize {type(readout).__name__}: "
                 f"output dimension was not specified at "
                 f"creation, and no teacher vector was given."
             )

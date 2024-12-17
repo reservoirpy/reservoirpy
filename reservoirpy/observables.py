@@ -385,7 +385,7 @@ def memory_capacity(
     >>> from reservoirpy.observables import memory_capacity
     >>> model = Reservoir(100, sr=1, seed=1) >> Ridge(ridge=1e-4)
     >>> mcs = memory_capacity(model, k_max=50, as_list=True, seed=1)
-    >>> print(f"Memory capacity of {model.name}: {np.sum(mcs):.4}")
+    >>> print(f"Memory capacity of the model: {np.sum(mcs):.4}")
     Memory capacity of Model-0: 12.77
 
     .. plot::

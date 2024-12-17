@@ -294,8 +294,6 @@ class Model(_Node):
         self._train = train
         self._initializer = initializer
 
-        self._name = self._get_name(name)
-
         nodes, edges = self._concat_multi_inputs(nodes, edges)
 
         self._edges = edges
@@ -968,9 +966,6 @@ class Model(_Node):
                 trained |= set(offlines)
 
         return self
-
-    def copy(self, *args, **kwargs):
-        raise NotImplementedError()
 
 
 class FrozenModel(Model):

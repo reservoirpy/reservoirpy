@@ -134,7 +134,9 @@ def initialize(
                 seed=seed,
             )
         else:
-            raise ValueError(dtype_msg.format(str(type(W_init)), reservoir.name, "W"))
+            raise ValueError(
+                dtype_msg.format(str(type(W_init)), type(reservoir).__name__, "W")
+            )
 
         reservoir.set_param("units", W.shape[0])
         reservoir.set_param("W", W.astype(dtype))
@@ -146,7 +148,7 @@ def initialize(
             Win = Win_init
 
             msg = (
-                f"Dimension mismatch in {reservoir.name}: Win input dimension is "
+                f"Dimension mismatch in {type(reservoir).__name__}: Win input dimension is "
                 f"{Win.shape[1]} but input dimension is {x.shape[1]}."
             )
 
@@ -164,7 +166,7 @@ def initialize(
 
             if Win.shape[0] != out_dim:
                 raise ValueError(
-                    f"Dimension mismatch in {reservoir.name}: Win internal dimension "
+                    f"Dimension mismatch in {type(reservoir).__name__}: Win internal dimension "
                     f"is {Win.shape[0]} but reservoir dimension is {out_dim}"
                 )
 
@@ -179,7 +181,7 @@ def initialize(
             )
         else:
             raise ValueError(
-                dtype_msg.format(str(type(Win_init)), reservoir.name, "Win")
+                dtype_msg.format(str(type(Win_init)), type(reservoir).__name__, "Win")
             )
 
         if input_bias:
@@ -199,12 +201,14 @@ def initialize(
                         bias.ndim > 1 and bias.shape[1] != 1
                     ):
                         raise ValueError(
-                            f"Dimension mismatch in {reservoir.name}: bias shape is "
+                            f"Dimension mismatch in {type(reservoir).__name__}: bias shape is "
                             f"{bias.shape} but should be {(reservoir.output_dim, 1)}"
                         )
                 else:
                     raise ValueError(
-                        dtype_msg.format(str(type(bias_init)), reservoir.name, "bias")
+                        dtype_msg.format(
+                            str(type(bias_init)), type(reservoir).__name__, "bias"
+                        )
                     )
             else:
                 bias = Win[:, :1]

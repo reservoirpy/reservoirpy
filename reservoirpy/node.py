@@ -83,7 +83,6 @@ See the following guides to:
       ~Node.is_trainable
       ~Node.is_trained_offline
       ~Node.is_trained_online
-      ~Node.name
       ~Node.output_dim
       ~Node.params
 
@@ -143,7 +142,7 @@ def _init_with_sequences(node, X, Y=None):
 
 
 def _init_vectors_placeholders(node, x, y):
-    msg = f"Impossible to initialize node {node.name}: "
+    msg = f"Impossible to initialize node {type(node).__name__}: "
     in_msg = (
         msg + "input_dim is unknown and no input data x was given "
         "to call/run the node."
@@ -235,8 +234,6 @@ class Node(_Node):
             graphs.
     """
 
-    _name: str
-
     _state: Optional[np.ndarray]
 
     _params: Dict[str, Any]
@@ -272,7 +269,6 @@ class Node(_Node):
         buffers_initializer: EmptyInitFn = None,
         input_dim: int = None,
         output_dim: int = None,
-        name: str = None,
         dtype: np.dtype = global_dtype,
     ):
         self._params = dict() if params is None else params
@@ -294,7 +290,6 @@ class Node(_Node):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-        self._name = self._get_name(name)
         self._dtype = dtype
 
         self._is_initialized = False
@@ -399,7 +394,7 @@ class Node(_Node):
         else:
             raise KeyError(
                 f"No param named '{name}' "
-                f"in {self.name}. Available params are: "
+                f"in {type(self).__name__}. Available params are: "
                 f"{list(self._params.keys())}."
             )
 
@@ -558,7 +553,7 @@ class Node(_Node):
         """
         if not self._is_initialized:
             raise RuntimeError(
-                f"Impossible to set state of node {self.name}: node"
+                f"Impossible to set state of node {type(self).__name__}: node"
                 f" is not initialized yet."
             )
 
@@ -582,7 +577,7 @@ class Node(_Node):
             return np.zeros((1, self.output_dim), dtype=self.dtype)
         else:
             raise Exception(
-                f"Cannot return a null state vector from {self.name} as it has no output dimension."
+                f"Cannot return a null state vector from {type(self).__name__} as it has no output dimension."
             )
 
     def call(
@@ -662,7 +657,7 @@ class Node(_Node):
 
         with self.with_state(from_state, stateful=stateful, reset=reset):
             states = np.zeros((seq_len, self.output_dim))
-            for i in progress(range(seq_len), f"Running {self.name}: "):
+            for i in progress(range(seq_len), f"Running {type(self).__name__}: "):
                 if isinstance(X_, (list, tuple)):
                     x = [np.atleast_2d(Xi[i]) for Xi in X_]
                 else:
@@ -843,7 +838,7 @@ class Node(_Node):
 
         elif not self._is_initialized:
             raise RuntimeError(
-                f"Impossible to fit node {self.name}: node"
+                f"Impossible to fit node {type(self).__name__}: node"
                 f" is not initialized, and fit was called "
                 f"without input and teacher data."
             )
@@ -854,31 +849,6 @@ class Node(_Node):
         self.clean_buffers()
 
         return self
-
-    def copy(self, name: str = None, shallow: bool = False):
-        """Returns a copy of the Node.
-
-        Parameters
-        ----------
-        name : str
-            Name of the Node copy.
-        shallow : bool, default to False
-            If False, performs a deep copy of the Node.
-
-        Returns
-        -------
-        Node
-            A copy of the Node.
-        """
-        if shallow:
-            new_obj = copy(self)
-        else:
-            new_obj = deepcopy(self)
-
-        n = self._get_name(name)
-        new_obj._name = n
-
-        return new_obj
 
 
 class Unsupervised(Node):

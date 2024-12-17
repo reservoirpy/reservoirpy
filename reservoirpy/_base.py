@@ -19,7 +19,7 @@ def check_one_sequence(
     caller=None,
     allow_timespans=True,
 ):
-    caller_name = caller.name + " is" if caller is not None else ""
+    caller_name = type(caller).__name__ + " is" if caller is not None else ""
 
     if expected_dim is not None and not hasattr(expected_dim, "__iter__"):
         expected_dim = (expected_dim,)
@@ -193,7 +193,9 @@ def _check_node_io(
                 if io_type == "target" and node.fitted:
                     continue
                 else:
-                    raise ValueError(f"Missing {io_type} data for node {node.name}.")
+                    raise ValueError(
+                        f"Missing {io_type} data for node {type(node).__name__}."
+                    )
 
             if (
                 callable(x_new[node.name])
@@ -407,34 +409,12 @@ def train(
 class _Node(ABC):
     """Node base class for type checking and interface inheritance."""
 
-    _factory_id = -1
-    _registry = list()
-    _name: str
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        cls._factory_id = -1
-        cls._registry = list()
-
     def __repr__(self):
         klas = type(self).__name__
         hypers = [(str(k), str(v)) for k, v in self._hypers.items()]
         all_params = ["=".join((k, v)) for k, v in hypers]
         all_params += [f"in={self.input_dim}", f"out={self.output_dim}"]
         return f"'{self.name}': {klas}(" + ", ".join(all_params) + ")"
-
-    def __setstate__(self, state):
-        curr_name = state.get("_name")
-        if curr_name in type(self)._registry:
-            new_name = curr_name + "-(copy)"
-            state["_name"] = new_name
-        self.__dict__ = state
-
-    def __del__(self):
-        try:
-            type(self)._registry.remove(self._name)
-        except (ValueError, AttributeError):
-            pass
 
     def __getattr__(self, item):
         if item in ["_params", "_hypers"]:
@@ -472,32 +452,6 @@ class _Node(ABC):
 
         return merge(self, other)
 
-    def _get_name(self, name=None):
-        if name is None:
-            type(self)._factory_id += 1
-            _id = self._factory_id
-            name = f"{type(self).__name__}-{_id}"
-
-        if name in type(self)._registry:
-            raise NameError(
-                f"Name '{name}' is already taken "
-                f"by another node. Node names should "
-                f"be unique."
-            )
-
-        type(self)._registry.append(name)
-        return name
-
-    @property
-    def name(self) -> str:
-        """Name of the Node or Model."""
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        type(self)._registry.remove(self.name)
-        self._name = self._get_name(value)
-
     @property
     def params(self) -> Dict[str, Any]:
         """Parameters of the Node or Model."""
@@ -511,16 +465,6 @@ class _Node(ABC):
     @property
     def is_initialized(self) -> bool:
         return self._is_initialized
-
-    @property
-    @abstractmethod
-    def input_dim(self) -> Shape:
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def output_dim(self) -> Shape:
-        raise NotImplementedError()
 
     @property
     @abstractmethod
@@ -554,10 +498,6 @@ class _Node(ABC):
             return self._hypers.get(name)
         else:
             raise NameError(f"No parameter named '{name}' found in node {self}")
-
-    @abstractmethod
-    def copy(self, name: str = None, shallow: bool = False) -> "_Node":
-        raise NotImplementedError()
 
     @abstractmethod
     def initialize(self, x: MappedData = None, y: MappedData = None):

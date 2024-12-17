@@ -192,9 +192,9 @@ class DataDispatcher:
     def _check_inputs(self, input_mapping):
         if is_mapping(input_mapping):
             for node in self._inputs:
-                if input_mapping.get(node.name) is None:
+                if input_mapping.get(type(node).__name__) is None:
                     raise KeyError(
-                        f"Node {node.name} not found "
+                        f"Node {type(node).__name__} not found "
                         f"in data mapping. This node requires "
                         f"data to run."
                     )
@@ -208,7 +208,7 @@ class DataDispatcher:
                     and target_mapping.get(node.name) is None
                 ):
                     raise KeyError(
-                        f"Trainable node {node.name} not found "
+                        f"Trainable node {type(node).__name__} not found "
                         f"in target/feedback data mapping. This "
                         f"node requires "
                         f"target values."

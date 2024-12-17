@@ -268,66 +268,51 @@ class MultiInput(Node):
         )
 
 
-def clean_registry(node_class):
-    node_class._registry = []
-    node_class._factory_id = -1
-
-
 @pytest.fixture(scope="function")
 def plus_node():
-    clean_registry(PlusNode)
     return PlusNode()
 
 
 @pytest.fixture(scope="function")
 def minus_node():
-    clean_registry(MinusNode)
     return MinusNode()
 
 
 @pytest.fixture(scope="function")
 def inverter_node():
-    clean_registry(Inverter)
     return Inverter()
 
 
 @pytest.fixture(scope="function")
 def offline_node():
-    clean_registry(Offline)
     return Offline()
 
 
 @pytest.fixture(scope="function")
 def offline_node2():
-    clean_registry(Offline2)
     return Offline2()
 
 
 @pytest.fixture(scope="function")
 def sum_node():
-    clean_registry(Sum)
     return Sum()
 
 
 @pytest.fixture(scope="function")
 def unsupervised_node():
-    clean_registry(Unsupervised)
     return Unsupervised()
 
 
 @pytest.fixture(scope="function")
 def online_node():
-    clean_registry(OnlineNode)
     return OnlineNode()
 
 
 @pytest.fixture(scope="function")
 def basic_offline_node():
-    clean_registry(BasicOffline)
     return BasicOffline()
 
 
 @pytest.fixture(scope="function")
 def multiinput():
-    clean_registry(MultiInput)
     return MultiInput()
