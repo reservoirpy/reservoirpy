@@ -1,16 +1,15 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
 from functools import partial
 from typing import Callable, Dict, Literal, Optional, Sequence, Union
 
 import numpy as np
 
 from ..._base import check_xy
-from ...activationsfunc import get_function, identity
+from ...activationsfunc import get_function
 from ...mat_gen import bernoulli, uniform
-from ...node import Unsupervised, _init_with_sequences
+from ...node import Node, _init_with_sequences
 from ...type import Weights
 from ...utils.random import noise, rand_generator
 from ...utils.validation import is_array
@@ -95,7 +94,7 @@ def initialize(reservoir, *args, **kwargs):
     reservoir.set_param("b", b)
 
 
-class IPReservoir(Unsupervised):
+class IPReservoir(Node):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
 
@@ -363,9 +362,12 @@ class IPReservoir(Unsupervised):
             **kwargs,
         )
 
-    # TODO: handle unsupervised learners with a specific attribute
     @property
     def fitted(self):
+        return True
+
+    @property
+    def unsupervised(self):
         return True
 
     def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "Node":

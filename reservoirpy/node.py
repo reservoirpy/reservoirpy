@@ -849,9 +849,3 @@ class Node(_Node):
         self.clean_buffers()
 
         return self
-
-
-class Unsupervised(Node):
-    @property
-    def unsupervised(self):
-        return True
