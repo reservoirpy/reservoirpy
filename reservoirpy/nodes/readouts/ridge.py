@@ -2,13 +2,15 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import partial
+from typing import Any, Dict, List
 
 import numpy as np
 from scipy import linalg
 
 from ...mat_gen import zeros
 from ...node import Node
-from ...type import global_dtype
+from ...type import Shape, global_dtype
+from ...utils.parallel import clean_tempfile, memmap_buffer
 from .base import _initialize_readout, _prepare_inputs_for_learning, readout_forward
 
 
@@ -66,30 +68,22 @@ def backward(readout: Node, *args, **kwargs):
     else:
         readout.set_param("Wout", Wout_raw)
 
+    readout.clean_buffers()
+
 
 def initialize(readout: Node, x=None, y=None, bias_init=None, Wout_init=None):
     _initialize_readout(
         readout, x, y, bias=readout.input_bias, init_func=Wout_init, bias_init=bias_init
     )
-
-
-def initialize_buffers(readout):
-    """create memmaped buffers for matrices X.X^T and Y.X^T pre-computed
-    in parallel for ridge regression
-    ! only memmap can be used ! Impossible to share Numpy arrays with
-    different processes in r/w mode otherwise (with proper locking)
-    """
-    input_dim = readout.input_dim
-    output_dim = readout.output_dim
-
-    if readout.input_bias:
-        input_dim += 1
-
-    readout.create_buffer("XXT", (input_dim, input_dim))
-    readout.create_buffer("YXT", (output_dim, input_dim))
+    readout.initialize_buffers()
 
 
 class Ridge(Node):
+    _buffers: Dict[str, Any]
+
+    _X: List  # For partial_fit default behavior (store first, then fit)
+    _Y: List
+
     """A single layer of neurons learning with Tikhonov linear regression.
 
     Output weights of the layer are computed following:
@@ -174,6 +168,12 @@ class Ridge(Node):
         input_bias=True,
         name=None,
     ):
+        # buffers are all node state components that should not live
+        # outside the node training loop, like partial computations for
+        # linear regressions. They can also be shared across multiple processes
+        # when needed.
+        self._buffers = dict()
+
         super(Ridge, self).__init__(
             params={"Wout": None, "bias": None},
             hypers={"ridge": ridge, "input_bias": input_bias},
@@ -182,6 +182,85 @@ class Ridge(Node):
             backward=backward,
             output_dim=output_dim,
             initializer=partial(initialize, Wout_init=Wout, bias_init=bias),
-            buffers_initializer=initialize_buffers,
             name=name,
         )
+
+    def initialize_buffers(self):
+        """create memmaped buffers for matrices X.X^T and Y.X^T pre-computed
+        in parallel for ridge regression
+        ! only memmap can be used ! Impossible to share Numpy arrays with
+        different processes in r/w mode otherwise (with proper locking)
+        """
+        if len(self._buffers) == 0:
+            input_dim = self.input_dim
+            output_dim = self.output_dim
+
+            if self.input_bias:
+                input_dim += 1
+
+            self.create_buffer("XXT", (input_dim, input_dim))
+            self.create_buffer("YXT", (output_dim, input_dim))
+
+        return self
+
+    def create_buffer(
+        self, name: str, shape: Shape = None, data: np.ndarray = None, as_memmap=True
+    ):
+        """Create a buffer array on disk, using numpy.memmap. This can be
+        used to store transient variables on disk. Typically, called inside
+        a `buffers_initializer` function.
+
+        Parameters
+        ----------
+        name : str
+            Name of the buffer array.
+        shape : tuple of int, optional
+            Shape of the buffer array.
+        data : array-like
+            Data to store in the buffer array.
+        """
+        if as_memmap:
+            self._buffers[name] = memmap_buffer(self, data=data, shape=shape, name=name)
+        else:
+            if data is not None:
+                self._buffers[name] = data
+            else:
+                self._buffers[name] = np.empty(shape)
+
+    def set_buffer(self, name: str, value: np.ndarray):
+        """Dump data in the buffer array.
+
+        Parameters
+        ----------
+        name : str
+            Name of the buffer array.
+        value : array-like
+            Data to store in the buffer array.
+        """
+        self._buffers[name][:] = value.astype(self.dtype)
+
+    def get_buffer(self, name) -> np.memmap:
+        """Get data from a buffer array.
+
+        Parameters
+        ----------
+        name : str
+            Name of the buffer array.
+
+        Returns
+        -------
+            numpy.memmap
+                Data as Numpy memory map.
+        """
+        if self._buffers.get(name) is None:
+            raise AttributeError(f"No buffer named '{name}' in {self}.")
+        return self._buffers[name]
+
+    def clean_buffers(self):
+        """Clean Node's buffer arrays."""
+        if len(self._buffers) > 0:
+            self._buffers = dict()
+            clean_tempfile(self)
+
+        # Empty possibly stored inputs and targets in default buffer.
+        self._X = self._Y = []

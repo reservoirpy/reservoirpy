@@ -52,18 +52,13 @@ See the following guides to:
    .. autosummary::
 
       ~Node.call
-      ~Node.clean_buffers
       ~Node.copy
-      ~Node.create_buffer
       ~Node.fit
-      ~Node.get_buffer
       ~Node.get_param
       ~Node.initialize
-      ~Node.initialize_buffers
       ~Node.partial_fit
       ~Node.reset
       ~Node.run
-      ~Node.set_buffer
       ~Node.set_input_dim
       ~Node.set_output_dim
       ~Node.set_param
@@ -103,8 +98,7 @@ References
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from contextlib import contextmanager
-from copy import copy, deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 from scipy.sparse import issparse
@@ -113,16 +107,13 @@ from ._base import _Node, call, check_one_sequence, check_xy, train
 from .type import (
     BackwardFn,
     Data,
-    EmptyInitFn,
     ForwardFn,
     ForwardInitFn,
     PartialBackFn,
-    Shape,
     global_dtype,
 )
 from .utils import progress
 from .utils.model_utils import to_ragged_seq_set
-from .utils.parallel import clean_tempfile, memmap_buffer
 from .utils.validation import check_vector
 
 
@@ -204,8 +195,7 @@ class Node(_Node):
         point :math:`x_t`, and that would update the Node internal state from
         :math:`s_t` to :math:`s_{t+1}`.
     backward : callable, optional
-        A function defining an offline learning rule, applied on a whole
-        dataset, or on pre-computed values stored in buffers.
+        A function defining an offline learning rule, applied on a dataset.
     partial_backward : callable, optional
         A function defining an offline learning rule, applied on a single batch
         of data.
@@ -216,10 +206,6 @@ class Node(_Node):
         A function called at first run of the Node, defining the dimensions and
         values of its parameters based on the dimension of input data and its
         hyperparameters.
-    buffers_initializer : callable, optional
-        A function called at the beginning of an offline training session to
-        create buffers used to store intermediate results, for batch or
-        multi-sequence offline learning.
     input_dim : int
         Input dimension of the Node.
     output_dim : int
@@ -238,7 +224,6 @@ class Node(_Node):
 
     _params: Dict[str, Any]
     _hypers: Dict[str, Any]
-    _buffers: Dict[str, Any]
 
     input_dim: int
     output_dim: int
@@ -249,13 +234,9 @@ class Node(_Node):
     _train: PartialBackFn
 
     _initializer: ForwardInitFn
-    _buffers_initializer: EmptyInitFn
 
     _trainable: bool
     _fitted: bool
-
-    _X: List  # For partial_fit default behavior (store first, then fit)
-    _Y: List
 
     def __init__(
         self,
@@ -266,18 +247,12 @@ class Node(_Node):
         partial_backward: PartialBackFn = _partial_backward_default,
         train: PartialBackFn = None,
         initializer: ForwardInitFn = None,
-        buffers_initializer: EmptyInitFn = None,
         input_dim: int = None,
         output_dim: int = None,
         dtype: np.dtype = global_dtype,
     ):
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
-        # buffers are all node state components that should not live
-        # outside the node training loop, like partial computations for
-        # linear regressions. They can also be shared across multiple processes
-        # when needed.
-        self._buffers = dict()
 
         self._forward = forward
         self._backward = backward
@@ -285,7 +260,6 @@ class Node(_Node):
         self._train = train
 
         self._initializer = initializer
-        self._buffers_initializer = buffers_initializer
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -297,7 +271,7 @@ class Node(_Node):
 
         self._trainable = self._backward is not None or self._train is not None
 
-        self._fitted = False if self.is_trainable and self.is_trained_offline else True
+        self._fitted = not (self.is_trainable and self.is_trained_offline)
 
         self._X, self._Y = [], []
 
@@ -398,59 +372,6 @@ class Node(_Node):
                 f"{list(self._params.keys())}."
             )
 
-    def create_buffer(
-        self, name: str, shape: Shape = None, data: np.ndarray = None, as_memmap=True
-    ):
-        """Create a buffer array on disk, using numpy.memmap. This can be
-        used to store transient variables on disk. Typically, called inside
-        a `buffers_initializer` function.
-
-        Parameters
-        ----------
-        name : str
-            Name of the buffer array.
-        shape : tuple of int, optional
-            Shape of the buffer array.
-        data : array-like
-            Data to store in the buffer array.
-        """
-        if as_memmap:
-            self._buffers[name] = memmap_buffer(self, data=data, shape=shape, name=name)
-        else:
-            if data is not None:
-                self._buffers[name] = data
-            else:
-                self._buffers[name] = np.empty(shape)
-
-    def set_buffer(self, name: str, value: np.ndarray):
-        """Dump data in the buffer array.
-
-        Parameters
-        ----------
-        name : str
-            Name of the buffer array.
-        value : array-like
-            Data to store in the buffer array.
-        """
-        self._buffers[name][:] = value.astype(self.dtype)
-
-    def get_buffer(self, name) -> np.memmap:
-        """Get data from a buffer array.
-
-        Parameters
-        ----------
-        name : str
-            Name of the buffer array.
-
-        Returns
-        -------
-            numpy.memmap
-                Data as Numpy memory map.
-        """
-        if self._buffers.get(name) is None:
-            raise AttributeError(f"No buffer named '{name}' in {self}.")
-        return self._buffers[name]
-
     def initialize(self, x: Data = None, y: Data = None) -> "Node":
         """Call the Node initializers on some data points.
         Initializers are functions called at first run of the Node,
@@ -479,31 +400,6 @@ class Node(_Node):
             self.reset()
             self._is_initialized = True
         return self
-
-    def initialize_buffers(self) -> "Node":
-        """Call the Node buffer initializer. The buffer initializer will create
-        buffer array on demand to store transient values of the parameters,
-        typically during training.
-
-        Returns
-        -------
-        Node
-            Initialized Node.
-        """
-        if self._buffers_initializer is not None:
-            if len(self._buffers) == 0:
-                self._buffers_initializer(self)
-
-        return self
-
-    def clean_buffers(self):
-        """Clean Node's buffer arrays."""
-        if len(self._buffers) > 0:
-            self._buffers = dict()
-            clean_tempfile(self)
-
-        # Empty possibly stored inputs and targets in default buffer.
-        self._X = self._Y = []
 
     def reset(self, to_state: np.ndarray = None) -> "Node":
         """Reset the last state saved to zero or to
@@ -728,7 +624,6 @@ class Node(_Node):
                 y_init = np.atleast_2d(Y_[0])
 
             self.initialize(x=x_init, y=y_init)
-            self.initialize_buffers()
 
         states = train(
             self,
@@ -779,13 +674,9 @@ class Node(_Node):
 
         X, Y = _init_with_sequences(self, X, Y)
 
-        self.initialize_buffers()
-
         for i in range(len(X)):
             X_seq = X[i]
-            Y_seq = None
-            if Y is not None:
-                Y_seq = Y[i]
+            Y_seq = None if Y is None else Y[i]
 
             if X_seq.shape[0] <= warmup:
                 raise ValueError(
@@ -846,6 +737,5 @@ class Node(_Node):
         self._backward(self, self._X, self._Y)
 
         self._fitted = True
-        self.clean_buffers()
 
         return self
