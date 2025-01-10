@@ -204,7 +204,7 @@ class Initializer:
             raise ValueError("Input scaling is not supported by this initializer.")
 
         init = copy.deepcopy(self)
-        init._kwargs.update(kwargs)
+        init._kwargs = kwargs | init._kwargs
 
         if len(shape) > 0:
             if init._allow_rescaling:
