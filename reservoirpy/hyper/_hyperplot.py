@@ -8,7 +8,72 @@ import math
 import os
 from os import path
 
+import matplotlib
 import numpy as np
+
+# These values comes from seaborn's 'paper' context (v0.13.0)
+# See https://seaborn.pydata.org/tutorial/aesthetics.html
+# font size have been scaled by 1.5
+PAPER_CONTEXT = {
+    "axes.linewidth": 1.0,
+    "grid.linewidth": 0.8,
+    "lines.linewidth": 1.2,
+    "lines.markersize": 4.8,
+    "patch.linewidth": 0.8,
+    "xtick.major.width": 1.0,
+    "ytick.major.width": 1.0,
+    "xtick.minor.width": 0.8,
+    "ytick.minor.width": 0.8,
+    "xtick.major.size": 4.8,
+    "ytick.major.size": 4.8,
+    "xtick.minor.size": 3.2,
+    "ytick.minor.size": 3.2,
+    "font.size": 14.4,
+    "axes.labelsize": 14.4,
+    "axes.titlesize": 14.4,
+    "xtick.labelsize": 13.2,
+    "ytick.labelsize": 13.2,
+    "legend.fontsize": 13.2,
+    "legend.title_fontsize": 14.4,
+}
+
+# These values comes from seaborn's 'darkgrid' style (v0.13.0)
+# See https://seaborn.pydata.org/tutorial/aesthetics.html
+DARKGRID_STYLE = {
+    "figure.facecolor": "white",
+    "axes.labelcolor": ".15",
+    "xtick.direction": "out",
+    "ytick.direction": "out",
+    "xtick.color": ".15",
+    "ytick.color": ".15",
+    "axes.axisbelow": True,
+    "grid.linestyle": "-",
+    "text.color": ".15",
+    "font.family": ["sans-serif"],
+    "font.sans-serif": [
+        "Arial",
+        "DejaVu Sans",
+        "Liberation Sans",
+        "Bitstream Vera Sans",
+        "sans-serif",
+    ],
+    "lines.solid_capstyle": "round",
+    "patch.edgecolor": "w",
+    "patch.force_edgecolor": True,
+    "image.cmap": "rocket",
+    "xtick.top": False,
+    "ytick.right": False,
+    "axes.grid": True,
+    "axes.facecolor": "#EAEAF2",
+    "axes.edgecolor": "white",
+    "grid.color": "white",
+    "axes.spines.left": True,
+    "axes.spines.bottom": True,
+    "axes.spines.right": True,
+    "axes.spines.top": True,
+    "xtick.bottom": False,
+    "ytick.left": False,
+}
 
 
 def _get_results(exp):
@@ -121,7 +186,7 @@ def _loss_plot(
     sc_s = ax.scatter(X[smaxs], loss[smaxs], scores[smaxs] * 100, c=cmaxs, cmap="YlGn")
     if loss_behaviour == "min":
         sc_m = ax.scatter(
-            X[~(lmaxs)],
+            X[~lmaxs],
             [loss.min()] * np.sum(~lmaxs),
             scores[~(lmaxs)] * 100,
             color="red",
@@ -206,6 +271,7 @@ def _parameter_bar(ax, values, scores, loss, smaxs, cmaxs, p, categories):
     ax.bar(x=categories, height=heights, color="forestgreen", alpha=0.3)
 
 
+@matplotlib.rc_context(PAPER_CONTEXT | DARKGRID_STYLE)
 def plot_hyperopt_report(
     exp,
     params,
@@ -224,7 +290,7 @@ def plot_hyperopt_report(
 
     Note
     ----
-        Installation of Matplotlib and Seaborn packages
+        Installation of matplotlib
         is required to use this tool.
 
     Parameters
@@ -275,9 +341,7 @@ def plot_hyperopt_report(
 
     """
     import matplotlib.pyplot as plt
-    import seaborn as sns
 
-    sns.set(context="paper", style="darkgrid", font_scale=1.5)
     N = len(params)
     not_log = not_log or []
 
@@ -409,11 +473,26 @@ def plot_hyperopt_report(
         ax = fig.add_subplot(gs1[-1, i])
         if p in categorical:
             _parameter_bar(
-                ax, values, scores, loss, smaxs, cmaxs, p, sorted(list(set(values[p])))
+                ax=ax,
+                values=values,
+                scores=scores,
+                loss=loss,
+                smaxs=smaxs,
+                cmaxs=cmaxs,
+                p=p,
+                categories=sorted(list(set(values[p]))),
             )
         else:
             _parameter_violin(
-                ax, values, scores, loss, smaxs, cmaxs, p, not (p in not_log), legend
+                ax=ax,
+                values=values,
+                scores=scores,
+                loss=loss,
+                smaxs=smaxs,
+                cmaxs=cmaxs,
+                p=p,
+                log=not (p in not_log),
+                legend=legend,
             )
             legend = False
         if legend:

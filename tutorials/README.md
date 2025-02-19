@@ -52,7 +52,7 @@ your ReservoirPy architecture, including classification models. It also includes
 Each tutorial may have its own dependencies, and therefore require some installation.
 In general, you will need:
 - ReservoirPy,
-- Matplotlib and Seaborn, for visualization
+- Matplotlib for visualization
 - Pandas, to work with timeseries and high dimensional data
 - Jupyter, to benefits from the power of Jupyter notebooks
 - scikit-learn, to have metrics from scikit-learn
