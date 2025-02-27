@@ -71,7 +71,7 @@ def _parse_hyperopt_searchspace(arg, specs):
     if specs[0] == "lognormal":
         return hopt.hp.lognormal(arg, np.log(specs[1]), np.log(specs[2]))
     if specs[0] == "qlognormal":
-        return hopt.hp.qlognormal(arg, np.log(specs[1]), np.log[specs[2]], specs[3])
+        return hopt.hp.qlognormal(arg, np.log(specs[1]), np.log(specs[2]), specs[3])
 
 
 def _get_report_path(exp_name, base_path=None):
