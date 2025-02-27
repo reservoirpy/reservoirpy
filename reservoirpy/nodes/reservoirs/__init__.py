@@ -4,5 +4,6 @@
 from .intrinsic_plasticity import IPReservoir
 from .nvar import NVAR
 from .reservoir import Reservoir
+from .local_synaptic_plasticity import LocalPlasticityReservoir
 
-__all__ = ["Reservoir", "IPReservoir", "NVAR"]
+__all__ = ["Reservoir", "IPReservoir", "NVAR", "LocalPlasticityReservoir"]

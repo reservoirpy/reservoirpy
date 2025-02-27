@@ -100,7 +100,7 @@ def initialize_synaptic_plasticity(reservoir, *args, **kwargs):
     initialize_base(reservoir, *args, **kwargs)
 
 
-class LocalSynapticPlasticityReservoir(Unsupervised):
+class LocalPlasticityReservoir(Unsupervised):
     """
     A reservoir that learns its recurrent weights W through a local
     learning rule selected by the 'learning_rule' hyperparameter.
@@ -145,7 +145,7 @@ class LocalSynapticPlasticityReservoir(Unsupervised):
 
     Example
     -------
-    >>> reservoir = LocalSynapticPlasticityReservoir(
+    >>> reservoir = LocalPlasticityReservoir(
     ...     units=100, sr=0.9, local_rule="hebbian",
     ...     eta=1e-3, epochs=5, synapse_normalization=True
     ... )
@@ -205,7 +205,7 @@ class LocalSynapticPlasticityReservoir(Unsupervised):
                 f"learning_rule must be one of {valid_rules}, got {local_rule}."
             )
 
-        super(LocalSynapticPlasticityReservoir, self).__init__(
+        super(LocalPlasticityReservoir, self).__init__(
             fb_initializer=partial(
                 initialize_feedback,
                 Wfb_init=Wfb,
@@ -291,7 +291,7 @@ class LocalSynapticPlasticityReservoir(Unsupervised):
         return True
 
 
-    def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "LocalSynapticPlasticityReservoir":
+    def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "LocalPlasticityReservoir":
         """Partial offline fitting method (for batch training)."""
         X, _ = check_xy(self, X_batch, allow_n_inputs=False)
         X, _ = _init_with_sequences(self, X)
