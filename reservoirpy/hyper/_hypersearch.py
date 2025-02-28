@@ -29,16 +29,20 @@ def _parse_config(config):
         if config.get(arg) is None:
             raise ValueError(f"No {arg} argument found in configuration file.")
 
-    if config["hp_method"] not in ["tpe", "random"]:
+    if config["hp_method"] not in ["tpe", "random", "atpe", "anneal"]:
         raise ValueError(
             f"Unknown hyperopt algorithm: {config['hp_method']}. "
-            "Available algorithms: 'random', 'tpe'."
+            "Available algorithms: 'random', 'tpe', 'atpe', 'anneal'."
         )
     else:
         if config["hp_method"] == "random":
             config["hp_method"] = partial(hopt.rand.suggest)
         if config["hp_method"] == "tpe":
             config["hp_method"] = partial(hopt.tpe.suggest)
+        if config["hp_method"] == "atpe":
+            config["hp_method"] = partial(hopt.atpe.suggest)
+        if config["hp_method"] == "anneal":
+            config["hp_method"] = partial(hopt.anneal.suggest)
 
     space = {}
     for arg, specs in config["hp_space"].items():
