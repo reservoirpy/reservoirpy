@@ -221,7 +221,7 @@ class LocalPlasticityReservoir(Unsupervised):
                 "internal_state": None,
             },
             hypers={
-                "learning_rule": local_rule.lower(),
+                "local_rule": local_rule.lower(),
                 "bcm_theta": bcm_theta,
                 "eta": eta,
                 "synapse_normalization": synapse_normalization,
