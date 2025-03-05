@@ -1,8 +1,0 @@
-hyperopt
-jupyter
-matplotlib
-pandas
-requests
-reservoirpy
-scikit-learn
-seaborn
