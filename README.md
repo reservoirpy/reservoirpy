@@ -21,7 +21,7 @@
 
 <p> <img src="static/googlecolab.svg" alt="Google Colab icon" width=32 height=32 align="left"><b>Tutorials:</b> <a href="https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/1-Getting_Started.ipynb">Open in Colab</a> </p>
 <!--<p><img src="static/changelog.svg" alt="2" width =32 height=32 align="left"><b>Changelog:</b> https://github.com/reservoirpy/reservoirpy/releases</p>-->
-<p> <img src="static/documentation.svg" alt="Open book icon" width=32 height=32 align="left"><b>Documentation:</b> https://reservoirpy.readthedocs.io/</p>
+<p> <img src="static/documentation.svg" alt="Open book icon" width=32 height=32 align="left"><b>Documentation:</b> <a href="https://reservoirpy.readthedocs.io/">https://reservoirpy.readthedocs.io/</a></p>
 <!--<p> <img src="static/user_guide.svg" width=32 height=32 align="left"><b>User Guide:</b> https://reservoirpy.readthedocs.io/en/latest/user_guide/</a></p>-->
 
 ---
@@ -58,41 +58,34 @@ with the help of the *hyperopt* library.
 Finally, it includes several tutorials exploring exotic architectures
 and [examples of scientific papers reproduction](examples/).
 
-#### Quick installation
+
+## Quick try ⚡
+
+### Installation
 
 ```bash
 pip install reservoirpy
 ```
 
-#### Minimal example
-```python
-from reservoirpy.nodes import ESN
-
-model = ESN(units=100, lr=0.3, sr=1.1, ridge=1e-6)
-
-forecast = esn.fit(X, y).run(timeseries)
-```
-
-## Quick try ⚡
-
 ### An example on Chaotic timeseries prediction (Mackey-Glass)
 
 **Step 1: Load the dataset**
 
-ReservoirPy comes with some handy data generator able to create synthetic timeseries
-for well-known tasks such as Mackey-Glass timeseries forecasting.
+ReservoirPy provides some handy data generator for well-known tasks such as the
+Mackey-Glass timeseries. It also comes with some useful helper functions to preprocess
+your timeseries.
 
 ```python
-from reservoirpy.datasets import mackey_glass
+from reservoirpy.datasets import mackey_glass, to_forecasting
 
 X = mackey_glass(n_timesteps=2000)
+x_train, x_test, y_train, y_test = to_forecasting(X, test_size=0.2)
 ```
 
 **Step 2: Create an Echo State Network...**
 
 ...or any kind of model you wish to use to solve your task. In this simple
-use case, we will try out Echo State Networks (ESNs), one of the
-most minimal architecture of Reservoir Computing machines.
+use case, we will try out Echo State Networks (ESNs).
 
 An ESN is made of
 a *reservoir*, a random recurrent network used to encode our
@@ -102,25 +95,18 @@ the activations of the reservoir.
 ```python
 from reservoirpy.nodes import Reservoir, Ridge
 
+# 100 neurons reservoir, with a spectral radius of 1.25, and leak rate of 0.3
 reservoir = Reservoir(units=100, lr=0.3, sr=1.25)
+# single feed-forward layer of neurons, learned with regularized linear regression
 readout = Ridge(output_dim=1, ridge=1e-5)
-```
 
-We here obtain a reservoir with 100 neurons, a *spectral radius* of 1.25 and
-a *leak rate* of 0.3 (you can learn more about these hyperparameters going through
-the tutorial
-[Understand and optimize hyperparameters](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)).
-Here, our readout layer is just a single unit, that we will receive connections from (all units of) the reservoir.
-Note that only the readout layer connections are trained.
-This is one of the cornerstone of all Reservoir Computing techniques. In our
-case, we will train these connections using linear regression, with a regularization
-coefficient of 10<sup>-5</sup>.
-
-Now, let's connect everything using the `>>` operator.
-
-```python
+# connect the two nodes using the `>>` operator
 esn = reservoir >> readout
 ```
+
+You can learn more about these hyperparameters going through the tutorial
+[Understand and optimize hyperparameters](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)).
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Hyperparameter_search-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
 
 That's it! Next step: fit the readout weights to perform the task we want.
 We will train the ESN to make one-step-ahead forecasts of our timeseries.
@@ -130,19 +116,13 @@ We will train the ESN to make one-step-ahead forecasts of our timeseries.
 We train our ESN on the first 500 timesteps of the timeseries, with 100 steps used to warm up the reservoir states.
 
 ```python
-esn.fit(X[:500], X[1:501], warmup=100)
+esn.fit(x_train, y_train, warmup=100)
 ```
 
 Our ESN is now trained and ready to use. Let's run it on the remainder of the timeseries:
 
 ```python
-predictions = esn.run(X[501:-1])
-```
-
-As a shortcut, both operations can be performed in just one line!
-
-```python
-predictions = esn.fit(X[:500], X[1:501]).run(X[501:-1])
+predictions = esn.run(x_test)
 ```
 
 Let's now evaluate its performances.
@@ -152,23 +132,35 @@ Let's now evaluate its performances.
 ```python
 from reservoirpy.observables import rmse, rsquare
 
-print("RMSE:", rmse(X[502:], predictions), "R^2 score:", rsquare(X[502:], predictions))
+print(f"RMSE: {rmse(y_test, predictions)}; R^2 score: {rsquare(y_test, predictions)}")
 ```
-
-If you have some issues testing some examples, have a look at the [extended packages requirements in ReadTheDocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html?highlight=requirements#additional-dependencies-and-requirements).
 
 ## More examples and tutorials 🎓
 
-[Go to the tutorial folder](./tutorials/) for tutorials in Jupyter Notebooks.
+#### Tutorials
 
-[Go to the examples folder](./examples/) for examples and papers with codes, also in Jupyter Notebooks.
+- [**1 - Getting started with ReservoirPy**](./tutorials/1-Getting_Started.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Getting_started-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/1-Getting_Started.ipynb)
+- [**2 - Advanced features**](./tutorials/2-Advanced_Features.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Advanced_features-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/2-Advanced_Features.ipynb)
+- [**3 - General introduction to Reservoir Computing**](./tutorials/3-General_Introduction_to_Reservoir_Computing.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Introduction_to_RC-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/3-General_Introduction_to_Reservoir_Computing.ipynb)
+- [**4 - Understand and optimise hyperparameters**](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Hyperparameters-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
+- [**5 - Classification with reservoir computing**](./tutorials/5-Classification-with-RC.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Classification-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/5-Classification-with-RC.ipynb)
+- [**6 - Interfacing ReservoirPy with scikit-learn**](./tutorials/6-Interfacing_with_scikit-learn.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_scikit--learn_interface-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/6-Interfacing_with_scikit-learn.ipynb)
 
-## Explore Hyper-Parameters with Hyperopt
-A quick tutorial on how to explore hyperparameters with ReservoirPy and Hyperopt can be found in this [paper (Trouvain et al. 2020)](https://hal.inria.fr/hal-02595026).
+#### Examples
 
-Take a look at our **advices and our method to explore hyperparameters** for reservoirs in our paper (Hinaut et al 2021): [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) [HAL](https://hal.inria.fr/hal-03203318)
+For advanced users, we also showcase partial reproduction of papers on reservoir computing to demonstrate some features of the library.
 
-[Tutorial and Jupyter Notebook for hyper-parameter exploration](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
+- [**Improving reservoir using Intrinsic Plasticity** (Schrauwen et al., 2008)](/examples/Improving%20reservoirs%20using%20Intrinsic%20Plasticity/Intrinsic_Plasiticity_Schrauwen_et_al_2008.ipynb)
+- [**Interactive reservoir computing for chunking information streams** (Asabuki et al., 2018)](/examples/Interactive%20reservoir%20computing%20for%20chunking%20information%20streams/Chunking_Asabuki_et_al_2018.ipynb)
+- [**Next-Generation reservoir computing** (Gauthier et al., 2021)](/examples/Next%20Generation%20Reservoir%20Computing/NG-RC_Gauthier_et_al_2021.ipynb)
+- [**Edge of stability Echo State Network** (Ceni et al., 2023)](/examples/Edge%20of%20Stability%20Echo%20State%20Network/Edge_of_stability_Ceni_Gallicchio_2023.ipynb)
+
 
 ## Papers and projects using ReservoirPy
 
@@ -181,14 +173,20 @@ If you want your paper to appear here, please contact us (see contact link below
 - Pagliarini et al. (2021) *What does the Canary Say? Low-Dimensional GAN Applied to Birdsong.* HAL preprint. ( [HAL](https://hal.inria.fr/hal-03244723/) | [PDF](https://hal.inria.fr/hal-03244723/document) )
 - Hinaut & Trouvain (2021) *Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters.* ICANN 2021 ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) | [HAL](https://hal.inria.fr/hal-03203318) | [PDF](https://hal.inria.fr/hal-03203318) )
 
+## Awesome Reservoir Computing
+
+We also provide a curated list of tutorials, papers, projects and tools for Reservoir Computing (not necessarily related to ReservoirPy) here!:
+
+**https://github.com/reservoirpy/awesome-reservoir-computing**
+
 ## Contact
 If you have a question regarding the library, please open an issue.
 
-If you have more general question or feedback you can contact us by email to xavier dot hinaut the-famous-home-symbol inria dot fr.
+If you have more general question or feedback you can contact us by email to **xavier dot hinaut the-famous-home-symbol inria dot fr**.
 
 ## Citing ReservoirPy
 
-Trouvain, N., Pedrelli, L., Dinh, T. T., Hinaut, X. (2020) Reservoirpy: an efficient and user-friendly library to design echo state networks. In International Conference on Artificial Neural Networks (pp. 494-505). Springer, Cham. [HTML](https://link.springer.com/chapter/10.1007/978-3-030-61616-8_40) [HAL](https://hal.inria.fr/hal-02595026) [PDF](https://hal.inria.fr/hal-02595026/document)
+Trouvain, N., Pedrelli, L., Dinh, T. T., Hinaut, X. (2020) *Reservoirpy: an efficient and user-friendly library to design echo state networks. In International Conference on Artificial Neural Networks* (pp. 494-505). Springer, Cham. ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-61616-8_40) | [HAL](https://hal.inria.fr/hal-02595026) | [PDF](https://hal.inria.fr/hal-02595026/document) )
 
 If you're using ReservoirPy in your work, please cite our package using the following bibtex entry:
 

@@ -16,14 +16,14 @@ A short notebook to discover the basics of ReservoirPy, for beginners.
 2. **[Advanced features](./2-Advanced_Features.ipynb)**
 
 A notebook presenting more advanced manipulations with ESNs like parallelization,
-feedback connections, deep ESNs, custom weigth matrices... for RC enthusiasts.
+feedback connections, deep ESNs, custom weight matrices... for RC enthusiasts.
 
 3. **[General Introduction to Reservoir Computing](./3-General_Introduction_to_Reservoir_Computing.ipynb)**
 
 An easy way to discover Reservoir Computing in general, with nice visualizations in a Jupyter notebook.
 
 - First part gives a good overview of ReservoirPy main functionnalities, with online and offline learning rules applied to ESNs
-with choatic timeseries.
+with chaotic timeseries.
 
 - Second part is composed of two short demos of ESNs applied to "real life" tasks, one concerning robotics and the other
 concerning audio annotation for birdsongs.
@@ -33,22 +33,24 @@ concerning audio annotation for birdsongs.
 A gentle introduction to some important hyperparameters defining Reservoir Computing architectures,
 followed by a tutorial on how to combine *hyperopt* with ReservoirPy to find the bests parameters for a model.
 
+An introduction to hyper-parameter search using optuna, and parallel search can be found here: **[Hyperparameter search with Optuna](./4.a-Hyperparameter%20search%20with%20Optuna/)**
+
 5. **[Classification with Reservoir Computing](5-Classification-with-RC.ipynb)**
 
 A simple example of classification task using Reservoir Computing: the Japanese vowels dataset.
 The notebook describes two simple model (sequence-to-sequence and sequence-to-vector) able to solve
 this task.
 
-**[Simple example on chaotic timeseries prediction](Simple%20Examples%20with%20Mackey-Glass)**
+6. **[Interfacing with scikit-learn](6-Interfacing_with_scikit-learn.ipynb)**
 
-Example based on Mantas Lukoševičius's minimal example of MackeyGlass prediction and generation.
-The directory includes both the minimal ESN of Mantas (not using ReservoiPy) and the equivalent simple example
-using ReservoirPy. Kept for teaching purpose.
+A guide to use the ScikitLearnNode, an interface to integrate any scikit-learn models to
+your ReservoirPy architecture, including classification models.
+
 
 ## Getting started
 
 Each tutorial may have its own dependencies, and therefore require some installation.
-In general, you will need :
+In general, you will need:
 - ReservoirPy,
 - Matplotlib and Seaborn, for visualization
 - Pandas, to work with timeseries and high dimensional data
@@ -58,8 +60,17 @@ In general, you will need :
 
 Everything is in the requirements file.
 
-```bash
-pip install -r tutorials/requirements.txt
+
+**Dependencies:**
+```txt
+hyperopt
+jupyter
+matplotlib
+pandas
+requests
+reservoirpy
+scikit-learn
+seaborn
 ```
 
 ### Opening the notebook
