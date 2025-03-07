@@ -206,9 +206,9 @@ def mackey_glass(
     b: float = 0.1,
     n: int = 10,
     x0: float = 1.2,
-    history: Union[None, np.ndarray] = None,
     h: float = 1.0,
-    seed: Union[int, RandomState, Generator] = None,
+    seed: Union[None, int, RandomState, Generator] = None,
+    history: Union[None, np.ndarray] = None,
     **kwargs,
 ) -> np.ndarray:
     """Mackey-Glass timeseries [8]_ [9]_, computed from the Mackey-Glass
@@ -234,11 +234,13 @@ def mackey_glass(
         :math:`n` parameter of the equation.
     x0 : float, optional, default to 1.2
         Initial condition of the timeseries.
-    history: array of shape (tau//h + 1,) default to None  
     h : float, default to 1.0
         Time delta between two discrete timesteps.
     seed : int or :py:class:`numpy.random.Generator`, optional
         Random state seed for reproducibility.
+    history: array of shape (T, ), optional
+        Past timesteps used to "warmup" the process.
+        T must be greater than tau//h. If None, a random history is generated.
 
     Returns
     -------
@@ -270,27 +272,32 @@ def mackey_glass(
             on Wikipedia.
 
     """
-    
+
+    history_length = int(np.floor(tau / h))
+
     if history is None:
-	    # a random state is needed as the method used to discretize
-	    # the timeseries needs to use randomly generated initial steps
-	    # based on the initial condition passed as parameter.
+        # a random state is needed as the method used to discretize
+        # the timeseries needs to use randomly generated initial steps
+        # based on the initial condition passed as parameter.
         if seed is None:
             seed = get_seed()
 
-            rs = rand_generator(seed)
+        rs = rand_generator(seed)
 
-            # generate random first step based on the value
-            # of the initial condition
-            history_length = int(np.floor(tau / h))
-            history = collections.deque(
+        # generate random first step based on the value
+        # of the initial condition
+
+        history_ = collections.deque(
             x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5)
-            )
+        )
     else:
-        assert int(round(tau / h)) <= len(history), \
-                f'The given history has length of {len(history)} < tau/h with tau={tau} and h={h}.'
-        # use the most recent elements of the provided history        
-        history = collections.deque(history[-int(round(tau / h)):])
+        if not history_length <= len(history):
+            raise ValueError(
+                f"The given history has length of {len(history)} < tau/h"
+                f" with tau={tau} and h={h}."
+            )
+        # use the most recent elements of the provided history
+        history_ = collections.deque(history[-history_length:])
 
     xt = x0
 
@@ -302,8 +309,8 @@ def mackey_glass(
         if tau == 0:
             xtau = 0.0
         else:
-            xtau = history.popleft()
-            history.append(xt)
+            xtau = history_.popleft()
+            history_.append(xt)
 
         xth = _mg_rk4(xt, xtau, a=a, b=b, n=n, h=h)
 
