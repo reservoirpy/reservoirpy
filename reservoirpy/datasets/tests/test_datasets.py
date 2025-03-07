@@ -52,6 +52,8 @@ def test_generation(dataset_func):
         (datasets.mackey_glass, {"seed": 1234}, None),
         (datasets.mackey_glass, {"seed": None}, None),
         (datasets.mackey_glass, {"tau": 0}, None),
+        (datasets.mackey_glass, {"history": np.ones((20,))}, None),
+        (datasets.mackey_glass, {"history": np.ones((10,))}, ValueError),
         (datasets.narma, {"seed": 1234}, None),
         (datasets.lorenz96, {"N": 1}, ValueError),
         (datasets.lorenz96, {"x0": [0.1, 0.2, 0.3, 0.4, 0.5], "N": 4}, ValueError),
