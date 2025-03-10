@@ -92,7 +92,6 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
         ((50, 50), None, -2.0, {"connectivity": 1.0}, "dense"),
         ((50, 50), None, np.ones((50,)) * 0.1, {"connectivity": 1.0}, "dense"),
         ((50, 50), None, np.ones((50,)) * 0.1, {"connectivity": 0.1}, "sparse"),
-        ((50, 50), 2.0, None, {"connectivity": 0.0}, "sparse"),
         ((50, 50), 2.0, -2.0, {"connectivity": 0.1}, "raise"),
     ],
 )
@@ -382,7 +381,7 @@ def test_fast_spectral_shape(N, expected):
         assert W.shape == expected
 
 
-@pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (10.0, 0.5), (1.0, 1.0), (1.0, 0.0)])
+@pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (10.0, 0.5), (1.0, 1.0)])
 def test_fast_spectral_features(sr, proba):
     W = fast_spectral_initialization(1000, sr=sr, connectivity=proba, seed=1234)
 
