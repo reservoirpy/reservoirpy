@@ -48,7 +48,7 @@ class FORCE(Node):
                        default).
     ``input_bias``     If True, learn a bias term (True by default).
     ``rule``           One of RLS or LMS rule ("rls" by default).
-     ``forgetting``    Forgetting factor, only used with RLS (:math:`\\forgetting`) 
+     ``forgetting``    Forgetting factor, only used with RLS (:math:`\\lambda`) 
                        (:math:`1` by default).
     ================== =================================================================
 
