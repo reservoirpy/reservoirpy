@@ -22,12 +22,11 @@ def _rls(P, r, e, f):
     f = float(f)    
     k = np.dot(P, r)
     rPr = np.dot(r.T, k).squeeze()
-    c0 = float(1.0 / (1.0 + rPr))
     c1 = float(1.0 / (f*(f + rPr)))
     c2 = float(1.0 / f)
     P = c2*P - c1 * np.outer(k, k)
-    dw = -c0*np.outer(e, k)
-
+    dw = -np.outer(e,np.dot(P, r))
+    
     return dw, P
 
 
