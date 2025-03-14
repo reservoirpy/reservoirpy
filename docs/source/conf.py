@@ -111,7 +111,7 @@ html_favicon = "_static/rpy_logo_small.png"
 
 html_theme = "pydata_sphinx_theme"
 
-html_sidebars = {"**": ["search-field", "sidebar-nav-bs", "sidebar-ethical-ads"]}
+html_sidebars = {"**": ["search-field", "sidebar-nav-bs"]}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -181,6 +181,18 @@ autodoc_default_options = {
     "inherited-members": None,
 }
 autodoc_typehints = "none"
+
+# -----------------------------------------------------------------------------
+# Doctest
+# -----------------------------------------------------------------------------
+
+doctest_global_setup = """
+import numpy as np
+x = np.ones((10, 1))
+y = np.ones((10, 1))
+x1 = np.ones((10, 1))
+x2 = np.ones((10, 1))
+"""
 
 
 # from pandas conf.py (https://github.com/pandas-dev/pandas/blob/master/doc/source/conf.py)

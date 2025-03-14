@@ -298,3 +298,35 @@ We can then run the model to evaluate its predictions:
     plt.xlabel("Timestep $t$")
     plt.legend()
     plt.show()
+
+Partial fitting with :py:meth:`~.Node.partial_fit`
+--------------------------------------------------
+
+In cases where the dataset is too large to be stored in memory, or to take advantage of parallel computation,
+some :py:class:`~.Node`s have a :py:meth:`~.Node.partial_fit` method. Training data can be fed in different batches
+or in parallel to a model, and intermediate results of the training phase will be stored in a buffer. When the
+:py:meth:`~.Node.fit` method is called, those intermediate results are used to fit the node. This is automatically used
+under the hood by the :py:class:`~.nodes.ESN` node for parallel computation of multiple timeseries with the :py:class:`~.Ridge`
+node.
+
+Two ReservoirPy nodes currently supports this feature: :py:class:`~.Ridge` and :py:class:`~.IPReservoir`.
+
+As an example, we will train the readout layer of an ESN using FORCE learning. We first create some toy dataset: the
+task we need the ESN to perform is to predict the cosine form of a wave given its sine form.
+
+.. ipython:: python
+
+    from reservoirpy.datasets import japanese_vowels
+
+    X_train, Y_train, X_test, Y_test = japanese_vowels(
+        one_hot_encode=True, repeat_targets=True
+    )
+    reservoir = Reservoir(100, lr=0.8, sr=0.9)
+    readout = Ridge(ridge=1e-6)
+
+    for i in range(len(X_train)):
+        states = reservoir.run(X_train[i])
+        readout.partial_fit(states, Y_train[i])
+    readout.fit()
+
+    model = reservoir >> readout

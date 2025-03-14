@@ -48,6 +48,22 @@ class Concat(Node):
     ============= ======================================================================
     ``axis``      Concatenation axis.
     ============= ======================================================================
+
+    Examples
+    --------
+
+    >>> x1 = np.arange(0., 10.).reshape(10, 1)
+    >>> x2 = np.arange(100., 110.).reshape(10, 1)
+    >>>
+    >>> from reservoirpy.nodes import Concat
+    >>> concat_node = Concat()
+    >>>
+    >>> out = concat_node.run((x1, x2))
+    >>> print(out.T)
+    [[  0.   1.   2.   3.   4.   5.   6.   7.   8.   9.]
+    [100. 101. 102. 103. 104. 105. 106. 107. 108. 109.]]
+    >>> print(out.shape)
+    (10, 2)
     """
 
     def __init__(self, axis=1, name=None):

@@ -58,6 +58,20 @@ class Delay(Node):
         Numerical type for node parameters.
     name : str, optional
         Node name.
+
+    Examples
+    --------
+    >>> x = np.arange(10.).reshape(-1, 1)
+    >>> from reservoirpy.nodes import Delay
+    >>> delay_node = Delay(
+    ...     delay=3,
+    ...     initial_values=np.array([[-3.0], [-2.0], [-1.0]])
+    ... )
+    >>> out = delay_node.run(x)
+    >>> print(out.T)
+    [[-1. -2. -3.  0.  1.  2.  3.  4.  5.  6.]]
+    >>> print(delay_node.buffer)
+    deque([array([[9.]]), array([[8.]]), array([[7.]])], maxlen=4)
     """
 
     def __init__(

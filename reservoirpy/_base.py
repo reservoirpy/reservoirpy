@@ -47,7 +47,6 @@ def check_one_sequence(
     caller=None,
     allow_timespans=True,
 ):
-
     caller_name = caller.name + "is " if caller is not None else ""
 
     if expected_dim is not None and not hasattr(expected_dim, "__iter__"):
@@ -186,7 +185,7 @@ def check_n_sequences(
                         caller=caller,
                     )
                 else:
-                    raise ValueError("No lists, only arrays.")
+                    raise TypeError("No lists, only arrays.")
         else:
             x_new = check_one_sequence(
                 x, allow_timespans=allow_timespans, caller=caller
@@ -205,7 +204,6 @@ def _check_node_io(
     allow_n_inputs=True,
     allow_timespans=True,
 ):
-
     noteacher_msg = f"Nodes can not be used as {io_type}" + " for {}."
     notonline_msg = "{} is not trained online."
 
@@ -297,7 +295,6 @@ def _check_node_io(
 
 
 def register_teacher(caller, teacher, expected_dim=None):
-
     target_dim = None
     if teacher.is_initialized:
         target_dim = teacher.output_dim
@@ -545,7 +542,6 @@ def train(
     stateful=True,
     reset=False,
 ):
-
     seq_len = X.shape[0]
     seq = (
         progress(range(seq_len), f"Training {node.name}")
@@ -600,10 +596,10 @@ class _Node(ABC):
         return f"'{self.name}': {klas}(" + ", ".join(all_params) + ")"
 
     def __setstate__(self, state):
-        curr_name = state.get("name")
+        curr_name = state.get("_name")
         if curr_name in type(self)._registry:
             new_name = curr_name + "-(copy)"
-            state["name"] = new_name
+            state["_name"] = new_name
         self.__dict__ = state
 
     def __del__(self):
@@ -621,6 +617,14 @@ class _Node(ABC):
             return self._hypers.get(item)
         else:
             raise AttributeError(f"'{str(item)}'")
+
+    def __setattr__(self, name, value):
+        if hasattr(self, "_params") and name in self._params:
+            self._params[name] = value
+        elif hasattr(self, "_hypers") and name in self._hypers:
+            self._hypers[name] = value
+        else:
+            super(_Node, self).__setattr__(name, value)
 
     def __call__(self, *args, **kwargs) -> np.ndarray:
         return self.call(*args, **kwargs)

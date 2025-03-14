@@ -15,6 +15,7 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
    link_feedback - Link Nodes through feedback connections.
    merge - Merge Models.
 """
+
 # Author: Nathan Trouvain at 25/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -39,12 +40,8 @@ def concat_multi_inputs(nodes, edges):
     for node in nodes:
         indegree = len(parents[node])
         if indegree > 1 and type(node) not in _MULTI_INPUTS_OPS:
-            # if parents are already concatenated, use the previously created Concat
-            if all([p.name in concatenated for p in parents[node]]):
-                concat = concatenated[parents[node][0].name]
-            else:
-                # add a Concat node
-                concat = Concat()
+            # add a Concat node
+            concat = Concat()
 
             new_nodes |= {concat, node}
             new_edges |= set([(p, concat) for p in parents[node]] + [(concat, node)])

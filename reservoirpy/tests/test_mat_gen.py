@@ -14,9 +14,12 @@ from reservoirpy.mat_gen import (
     fast_spectral_initialization,
     generate_input_weights,
     generate_internal_weights,
+    line,
     normal,
     ones,
+    orthogonal,
     random_sparse,
+    ring,
     uniform,
     zeros,
 )
@@ -41,7 +44,6 @@ from reservoirpy.mat_gen import (
     ],
 )
 def test_random_sparse(shape, dist, connectivity, kwargs, expects):
-
     if expects == "sparse":
         init = random_sparse(dist=dist, connectivity=connectivity, seed=42, **kwargs)
         w0 = init(*shape)
@@ -95,7 +97,6 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
     ],
 )
 def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
-
     if expects == "sparse":
         init = random_sparse(
             dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs
@@ -153,7 +154,6 @@ def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
     ],
 )
 def test_random_sparse_types(shape, dtype, sparsity_type, kwargs, expects):
-
     all_sparse_types = {
         "csr": sparse.isspmatrix_csr,
         "coo": sparse.isspmatrix_coo,
@@ -257,7 +257,6 @@ def test_zeros():
     ],
 )
 def test_generate_inputs_shape(N, dim_input, input_bias, expected):
-
     with pytest.warns(DeprecationWarning):
         Win = generate_input_weights(N, dim_input, input_bias=input_bias)
 
@@ -279,7 +278,6 @@ def test_generate_inputs_shape_exception(N, dim_input, input_bias):
 
 @pytest.mark.parametrize("proba,iss", [(0.1, 0.1), (1.0, 0.5), (0.5, 2.0)])
 def test_generate_inputs_features(proba, iss):
-
     with pytest.warns(DeprecationWarning):
         Win = generate_input_weights(100, 20, input_scaling=iss, proba=proba, seed=1234)
 
@@ -330,7 +328,6 @@ def test_generate_internal_shape(N, expected):
     ],
 )
 def test_generate_internal_features(sr, proba):
-
     with pytest.warns(DeprecationWarning):
         W = generate_internal_weights(
             100, sr=sr, proba=proba, seed=1234, sparsity_type="dense"
@@ -342,7 +339,6 @@ def test_generate_internal_features(sr, proba):
 
 @pytest.mark.parametrize("sr,proba", [(0.5, 0.1), (2.0, 1.0)])
 def test_generate_internal_sparse(sr, proba):
-
     with pytest.warns(DeprecationWarning):
         W = generate_internal_weights(
             100, sr=sr, proba=proba, sparsity_type="csr", seed=42
@@ -430,7 +426,6 @@ def test_fast_spectral_features_exception(sr, proba):
 
 
 def test_reproducibility_W():
-
     seed0 = default_rng(78946312)
     with pytest.warns(DeprecationWarning):
         W0 = generate_internal_weights(
@@ -454,7 +449,6 @@ def test_reproducibility_W():
 
 
 def test_reproducibility_Win():
-
     seed0 = default_rng(78946312)
     with pytest.warns(DeprecationWarning):
         W0 = generate_input_weights(100, 50, input_scaling=1.2, proba=0.4, seed=seed0)
@@ -474,7 +468,6 @@ def test_reproducibility_Win():
 
 
 def test_reproducibility_fsi():
-
     seed0 = default_rng(78946312)
     W0 = fast_spectral_initialization(
         100, sr=1.2, connectivity=0.4, seed=seed0
@@ -505,3 +498,64 @@ def test_sanity_checks():
         _ = bernoulli(30, 100, p=1.1)
     with pytest.raises(ValueError):
         _ = uniform(30, 100, low=1, high=0)
+
+
+def test_ring_matrix():
+    _ = ring(10, 10, weights=np.arange(1.0, 11.0), sr=1.0)
+    W = ring(10, 10, input_scaling=2.0)
+
+    assert W[1, 0] == 2.0 and W[0, -1] == 2.0
+
+    # 1 on the 1st neuron, 0 elsewhere
+    x0 = np.zeros((10, 1))
+    x0[0, 0] = 1.0
+    x = x0
+    # loop all over the ring
+    for i in range(10):
+        x = W * x
+
+    assert np.all(x == 2**10 * x0)
+
+    W_dense = ring(10, 10, input_scaling=2.0, sparsity_type="dense")
+    assert_array_equal(W_dense, W.toarray())
+
+    with pytest.raises(ValueError):
+        _ = ring(10, 2, seed=1)
+
+
+def test_line_matrix():
+    _ = line(10, 10, weights=np.arange(1.0, 10.0), sr=1.0)
+    W = line(10, 10, input_scaling=2.0)
+
+    assert W[1, 0] == 2.0 and W[0, -1] == 0.0
+
+    # 1 on the 1st neuron, 0 elsewhere
+    x0 = np.zeros((10, 1))
+    x0[0, 0] = 1.0
+    x = x0
+    # loop all over the line
+    for i in range(10):
+        x = W * x
+
+    assert np.all(x == 0.0)
+
+    W_dense = line(10, 10, input_scaling=2.0, sparsity_type="dense")
+    assert_array_equal(W_dense, W.toarray())
+
+    with pytest.raises(ValueError):
+        _ = line(10, 2, seed=1)
+
+
+def test_orthogonal_matrix():
+    W1 = orthogonal(10, 10, seed=1)
+    W2 = orthogonal(10, 10, seed=1)
+
+    assert np.all(np.isclose(W1, W2))
+
+    assert np.all(np.isclose(W1 @ W1.T, np.eye(10)))
+
+    with pytest.raises(ValueError):
+        _ = orthogonal(10, 2, seed=1)
+
+    with pytest.raises(ValueError):
+        _ = orthogonal(10, 10, 10, seed=1)

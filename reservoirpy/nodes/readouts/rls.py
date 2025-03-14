@@ -49,7 +49,6 @@ def train(node: "RLS", x, y=None):
 def initialize(
     readout: "RLS", x=None, y=None, init_func=None, bias_init=None, bias=None
 ):
-
     _initialize_readout(readout, x, y, init_func, bias_init, bias)
 
     if x is not None:
@@ -117,9 +116,27 @@ class RLS(Node):
            Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557.
            https://doi.org/10.1016/j.neuron.2009.07.018
 
+
     .. [2] Waegeman, T., Wyffels, F., & Schrauwen, B. (2012). Feedback Control by Online
            Learning an Inverse Model. IEEE Transactions on Neural Networks and Learning
            Systems, 23(10), 1637–1648. https://doi.org/10.1109/TNNLS.2012.2208655
+
+    Examples
+    --------
+    >>> x = np.random.normal(size=(100, 3))
+    >>> noise = np.random.normal(scale=0.1, size=(100, 1))
+    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+
+    >>> from reservoirpy.nodes import RLS
+    >>> rls_node = RLS(alpha=1e-1)
+
+    >>> _ = rls_node.train(x[:5], y[:5])
+    >>> print(rls_node.Wout.T, rls_node.bias)
+    [[ 9.90731641 -0.06884784  6.87944632]] [[12.07802068]]
+    >>> _ = rls_node.train(x[5:], y[5:])
+    >>> print(rls_node.Wout.T, rls_node.bias)
+    [[ 9.99223366 -0.20499636  6.98924066]] [[12.01128622]]
+
     """
 
     def __init__(

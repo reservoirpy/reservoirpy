@@ -27,6 +27,9 @@ or from Scipy :py:func:`scipy.integrate.solve_ivp` tool.
     lorenz96 - Lorenz 1996 attractor.
     rossler - Rossler attractor.
     kuramoto_sivashinsky - Kuramoto-Sivashinsky oscillators.
+    mso - Multiple superimposed oscillators.
+    mso2 - Multiple superimposed oscillators with 2 frequencies.
+    mso8 - Multiple superimposed oscillators with 8 frequencies.
 
 Chaotic timeseries on discrete time
 ===================================
@@ -61,7 +64,10 @@ Miscellaneous
 .. autosummary::
     :toctree: generated/
 
+    santafe_laser - Santa-Fe laser dataset
     to_forecasting - Timeseries splitting utility
+    one_hot_encode - One-hot encoding utility
+    from_aeon_classification - Conversion from Aeon's format
     set_seed - Change random seed for dataset generation
     get_seed - Return random seed used for dataset generation
 
@@ -128,15 +134,22 @@ References
     .. [19] Kuramoto, Y. (1978). Diffusion-Induced Chaos in Reaction Systems.
             Progress of Theoretical Physics Supplement, 64, 346–367.
             https://doi.org/10.1143/PTPS.64.346
-    .. [20] Sivashinsky, G. I. (1977). Nonlinear analysis of hydrodynamic instability
-            in laminar flames—I. Derivation of basic equations.
+    .. [20] Sivashinsky, G. I. (1977). Nonlinear analysis of hydrodynamic
+            instability in laminar flames—I. Derivation of basic equations.
             Acta Astronautica, 4(11), 1177–1206.
             https://doi.org/10.1016/0094-5765(77)90096-0
     .. [21] Sivashinsky, G. I. (1980). On Flame Propagation Under Conditions
             of Stoichiometry. SIAM Journal on Applied Mathematics, 39(1), 67–82.
             https://doi.org/10.1137/0139007
+    .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available
+            http://www.faculty.iu-bremen.de/hjaeger/courses/SeminarSpring04/ESNStandardSlides.pdf.
+    .. [24] Roeschies, B., & Igel, C. (2010). Structure optimization of
+            reservoir networks. Logic Journal of IGPL, 18(5), 635-669.
+    .. [25] Weigend, A. S. (2018). Time series prediction: forecasting the
+            future and understanding the past. Routledge.
 """
-from typing import Union
+
+from typing import Optional, Union
 
 import numpy as np
 
@@ -154,7 +167,9 @@ from ._chaos import (
     rossler,
 )
 from ._japanese_vowels import japanese_vowels
+from ._santafe_laser import santafe_laser
 from ._seed import get_seed, set_seed
+from ._utils import from_aeon_classification, one_hot_encode
 
 __all__ = [
     "henon_map",
@@ -172,14 +187,20 @@ __all__ = [
     "set_seed",
     "get_seed",
     "to_forecasting",
+    "mso",
+    "mso2",
+    "mso8",
+    "from_aeon_classification",
+    "one_hot_encode",
+    "santafe_laser",
 ]
 
 
 def to_forecasting(
     timeseries: np.ndarray,
     forecast: int = 1,
-    axis: Union[int, float] = 0,
-    test_size: int = None,
+    axis: int = 0,
+    test_size: Optional[Union[int, float]] = None,
 ):
     """Split a timeseries for forecasting tasks.
 
@@ -260,3 +281,113 @@ def to_forecasting(
         return X, X_t, y, y_t
 
     return np.moveaxis(X, 0, axis), np.moveaxis(y, 0, axis)
+
+
+def mso(n_timesteps: int, freqs: list, normalize: bool = True):
+    """Multiple superimposed oscillator task [22]_
+
+    This task is usually performed to evaluate a model resistance
+    to perturbations and its asymptotic stability. See, for example: [23]_.
+
+    .. math::
+
+        MSO(t) = \sum_{i} sin(f_i t)
+
+    Parameters
+    ----------
+    n_timesteps : int
+        Number of timesteps to generate
+    freqs : list
+        Frequencies of the sin waves
+    normalize : bool, optional
+        If `True`, scales the range of values in [-1, 1]
+
+    Returns
+    -------
+    array of shape (n_timesteps, 1)
+        Multiple superimposed oscillator timeseries.
+
+    References
+    ----------
+    .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available http://www.faculty.
+            iu-bremen.de/hjaeger/courses/SeminarSpring04/ESNStandardSlides.pdf.
+    .. [23] Jaeger, H., Lukoševičius, M., Popovici, D., & Siewert, U. (2007).
+            Optimization and applications of echo state networks with leaky-integrator
+            neurons. Neural networks, 20(3), 335-352.
+    """
+    t = np.arange(n_timesteps).reshape(n_timesteps, 1)
+    y = np.zeros((n_timesteps, 1))
+
+    for f in freqs:
+        y += np.sin(f * t)
+
+    if normalize:
+        return (2 * y - y.min() - y.max()) / (y.max() - y.min())
+    else:
+        return y
+
+
+def mso2(n_timesteps: int, normalize: bool = True):
+    """Multiple superimposed oscillator task with 2 frequencies [22]_
+
+    This is the $MSO$ task with 2 frequencies: :math:`f_1=0.2` and
+    :math:`f_1=0.311`, as first described in [22]_.
+
+    .. math::
+
+        MSO(t) = sin(0.2 t) + sin(0.311 t)
+
+    Parameters
+    ----------
+    n_timesteps : int
+        Number of timesteps to generate
+    normalize : bool
+        If `True`, scales the range of values in [-1, 1]
+
+    Returns
+    -------
+    array of shape (n_timesteps, 1)
+        Multiple superimposed oscillator timeseries.
+
+    References
+    ----------
+    .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available http://www.faculty.
+            iu-bremen.de/hjaeger/courses/SeminarSpring04/ESNStandardSlides.pdf.
+    """
+    return mso(n_timesteps=n_timesteps, freqs=[0.2, 0.311], normalize=normalize)
+
+
+def mso8(n_timesteps: int, normalize: bool = True):
+    """Multiple superimposed oscillator task with 8 frequencies [22]_ [24]_
+
+    This is the $MSO$ task with 8 frequencies: :math:`0.2, 0.311, 0.42,
+    0.51, 0.63, 0.74, 0.85, 0.97`, as first described in [24]_.
+
+    .. math::
+
+        MSO(t) = \sum_{i=1}^{8} sin(f_i t)
+
+    Parameters
+    ----------
+    n_timesteps : int
+        Number of timesteps to generate
+    normalize : bool
+        If `True`, scales the range of values in [-1, 1]
+
+    Returns
+    -------
+    array of shape (n_timesteps, 1)
+        Multiple superimposed oscillator timeseries.
+
+    References
+    ----------
+    .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available
+            http://www.faculty.iu-bremen.de/hjaeger/courses/SeminarSpring04/ESNStandardSlides.pdf.
+    .. [24] Roeschies, B., & Igel, C. (2010). Structure optimization of reservoir networks.
+            Logic Journal of IGPL, 18(5), 635-669.
+    """
+    return mso(
+        n_timesteps=n_timesteps,
+        freqs=[0.2, 0.311, 0.42, 0.51, 0.63, 0.74, 0.85, 0.97],
+        normalize=normalize,
+    )

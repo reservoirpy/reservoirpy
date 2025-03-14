@@ -29,21 +29,41 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     _esn = deepcopy(esn)
     _esn.reservoir.reset()
 
+    original_readout_name = (
+        esn.readout.name[:-7]
+        if esn.readout.name.endswith("-(copy)")
+        else esn.readout.name
+    )
+    original_reservoir_name = (
+        esn.reservoir.name[:-7]
+        if esn.reservoir.name.endswith("-(copy)")
+        else esn.reservoir.name
+    )
+
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
     for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-        with _esn.readout.with_feedback(forced_feedback[esn.readout.name]):
-            states[i, :] = call(_esn.reservoir, x[esn.reservoir.name])
+        with _esn.readout.with_feedback(forced_feedback[original_readout_name]):
+            states[i, :] = call(_esn.reservoir, x[original_reservoir_name])
 
-    esn.readout.partial_fit(states, y[esn.readout.name], warmup=warmup, lock=lock)
+    esn.readout.partial_fit(states, y[original_readout_name], warmup=warmup, lock=lock)
+
+    return states[-1]
 
 
 def _run_fn(
     esn, idx, x, forced_fb, return_states, from_state, stateful, reset, shift_fb
 ):
     _esn = deepcopy(esn)
-    X = {_esn.reservoir.name: x[esn.reservoir.name]}
+
+    original_reservoir_name = (
+        esn.reservoir.name[:-7]
+        if esn.reservoir.name.endswith("-(copy)")
+        else esn.reservoir.name
+    )
+
+    X = {_esn.reservoir.name: x[original_reservoir_name]}
 
     states = _allocate_returned_states(_esn, X, return_states)
 
@@ -52,7 +72,7 @@ def _run_fn(
             dispatch(X, forced_fb, shift_fb=shift_fb)
         ):
             _esn._load_proxys()
-            with _esn.readout.with_feedback(forced_feedback):
+            with _esn.with_feedback(forced_feedback):
                 state = _esn._call(x_step, return_states=return_states)
 
             if is_mapping(state):
@@ -152,9 +172,12 @@ class ESN(FrozenModel):
         A Node instance to use as a readout,
         such as a :py:class:`~reservoirpy.nodes.Ridge` node
         (only this one is supported).
-    feedback : bool, default to False
-        If True, the reservoir is connected to the readout through
+    feedback : bool, defaults to False
+        If True, the readout is connected to the reservoir through
         a feedback connection.
+    use_raw_inputs : bool, defaults to False
+        If True, the input is directly fed to the readout. See
+        :ref:`/user_guide/advanced_demo.ipynb#Input-to-readout-connections`.
     Win_bias : bool, default to True
         If True, add an input bias to the reservoir.
     Wout_bias : bool, default to True
@@ -195,7 +218,6 @@ class ESN(FrozenModel):
         use_raw_inputs=False,
         **kwargs,
     ):
-
         msg = "'{}' is not a valid method. Available methods for {} are {}."
 
         if reservoir is None:
@@ -270,7 +292,6 @@ class ESN(FrozenModel):
         return False
 
     def _call(self, x=None, return_states=None, *args, **kwargs):
-
         data = x[self.reservoir.name]
 
         state = call(self.reservoir, data)
@@ -310,7 +331,6 @@ class ESN(FrozenModel):
         shift_fb=True,
         return_states=None,
     ):
-
         X, forced_feedbacks = to_data_mapping(self, X, forced_feedbacks)
 
         self._initialize_on_sequence(X[0], forced_feedbacks[0])
@@ -341,7 +361,6 @@ class ESN(FrozenModel):
     def fit(
         self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False
     ):
-
         X, Y = to_data_mapping(self, X, Y)
         self._initialize_on_sequence(X[0], Y[0])
 
@@ -357,7 +376,7 @@ class ESN(FrozenModel):
         seq = progress(X, f"Running {self.name}")
         with self.with_state(from_state, reset=reset, stateful=stateful):
             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-                parallel(
+                last_states = parallel(
                     delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
                     for x, y in zip(seq, Y)
                 )
@@ -365,6 +384,8 @@ class ESN(FrozenModel):
             if verbosity():  # pragma: no cover
                 print(f"Fitting node {self.name}...")
 
+            # setting the reservoir state from the last timeseries
+            self.reservoir._state = last_states[-1]
             self.readout.fit()
 
         return self

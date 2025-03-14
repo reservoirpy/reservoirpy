@@ -7,7 +7,6 @@ ReservoirPy API reference
 .. toctree::
    :maxdepth: 2
 
-   reservoirpy
    reservoirpy.node
    reservoirpy.model
    reservoirpy.nodes
@@ -17,4 +16,5 @@ ReservoirPy API reference
    reservoirpy.datasets
    reservoirpy.hyper
    reservoirpy.compat
+   reservoirpy.ops
    reservoirpy.experimental

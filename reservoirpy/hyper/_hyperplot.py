@@ -2,6 +2,7 @@
 hyperparameters results display and analysis.
 
 """
+
 import json
 import math
 import os
@@ -29,7 +30,6 @@ def _outliers_idx(values, max_deviation):
 
 
 def _logscale_plot(ax, xrange, yrange, base=10):
-
     from matplotlib import ticker
 
     if xrange is not None:
@@ -47,29 +47,27 @@ def _logscale_plot(ax, xrange, yrange, base=10):
 
 
 def _scale(x):
-    return (x - x.min()) / (x.ptp())
+    return (x - x.min()) / np.ptp(x)
 
 
 def _cross_parameter_plot(
     ax, values, scores, loss, smaxs, cmaxs, lmaxs, p1, p2, log1, log2, cat1, cat2
 ):
-
     X = values[p2].copy()
     Y = values[p1].copy()
 
-    to_log = []
-    if log1 and not cat2:
-        to_log.append(X)
+    if log2 and not cat2:
+        xrange = X
     else:
-        to_log.append(None)
+        xrange = None
         if cat2:
             ax.margins(x=0.05)
     if log1 and not cat1:
-        to_log.append(Y)
+        yrange = Y
     else:
-        to_log.append(None)
+        yrange = None
 
-    _logscale_plot(ax, *to_log)
+    _logscale_plot(ax, xrange=xrange, yrange=yrange)
     # if log2 and not cat2:
     #     logscale_plot(ax, None, Y)
 
@@ -103,7 +101,6 @@ def _loss_plot(
     legend,
     loss_behaviour,
 ):
-
     X = values[p].copy()
 
     if log and not (categorical):
@@ -146,7 +143,6 @@ def _loss_plot(
 
 
 def _parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
-
     import matplotlib.pyplot as plt
 
     y = values[p].copy()[smaxs]
@@ -198,7 +194,6 @@ def _parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
 
 
 def _parameter_bar(ax, values, scores, loss, smaxs, cmaxs, p, categories):
-
     y = values[p].copy()[smaxs]
 
     ax.set_xlabel(p)
@@ -353,34 +348,34 @@ def plot_hyperopt_report(
             axes.append(ax)
             if p1 == p2:
                 sc_l, sc_s, sc_m = _loss_plot(
-                    ax,
-                    values,
-                    scores,
-                    loss,
-                    smaxs,
-                    cmaxs,
-                    lmaxs,
-                    p2,
-                    not (p2 in not_log),
-                    p2 in categorical,
-                    (i == 0 and j == 0),
-                    loss_behaviour,
+                    ax=ax,
+                    values=values,
+                    scores=scores,
+                    loss=loss,
+                    smaxs=smaxs,
+                    cmaxs=cmaxs,
+                    lmaxs=lmaxs,
+                    p=p2,
+                    log=p2 not in not_log,
+                    categorical=p2 in categorical,
+                    legend=(i == 0 and j == 0),
+                    loss_behaviour=loss_behaviour,
                 )
             else:
                 sc_l, sc_s, sc_m = _cross_parameter_plot(
-                    ax,
-                    values,
-                    scores,
-                    loss,
-                    smaxs,
-                    cmaxs,
-                    lmaxs,
-                    p1,
-                    p2,
-                    not (p1 in not_log),
-                    not (p2 in not_log),
-                    p1 in categorical,
-                    p2 in categorical,
+                    ax=ax,
+                    values=values,
+                    scores=scores,
+                    loss=loss,
+                    smaxs=smaxs,
+                    cmaxs=cmaxs,
+                    lmaxs=lmaxs,
+                    p1=p1,
+                    p2=p2,
+                    log1=p1 not in not_log,
+                    log2=p2 not in not_log,
+                    cat1=p1 in categorical,
+                    cat2=p2 in categorical,
                 )
 
     # legends

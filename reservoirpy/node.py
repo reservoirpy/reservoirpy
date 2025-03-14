@@ -113,6 +113,7 @@ References
     .. [3] `scikit-learn <https://scikit-learn.org/stable/>`_ website
 
 """
+
 # Author: Nathan Trouvain at 22/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -313,7 +314,6 @@ class Node(_Node):
         name: str = None,
         dtype: np.dtype = global_dtype,
     ):
-
         self._params = dict() if params is None else params
         self._hypers = dict() if hypers is None else hypers
         # buffers are all node state components that should not live
@@ -753,7 +753,7 @@ class Node(_Node):
         if not self._is_initialized:
             raise RuntimeError(
                 f"Impossible to set state of node {self.name}: node"
-                f"is not initialized yet."
+                f" is not initialized yet."
             )
 
         current_state = self._state
@@ -1124,7 +1124,7 @@ class Node(_Node):
         elif not self._is_initialized:
             raise RuntimeError(
                 f"Impossible to fit node {self.name}: node"
-                f"is not initialized, and fit was called "
+                f" is not initialized, and fit was called "
                 f"without input and teacher data."
             )
 
