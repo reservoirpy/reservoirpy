@@ -1,12 +1,11 @@
-import numpy as np
-import scipy.sparse as sp
-from scipy.sparse import coo_matrix
-
 from functools import partial
 from typing import Callable, Dict, Optional, Sequence, Union
 
+import numpy as np
+import scipy.sparse as sp
+
 from ..._base import check_xy
-from ...activationsfunc import get_function, identity
+from ...activationsfunc import get_function, identity, tanh
 from ...mat_gen import bernoulli, uniform
 from ...node import Unsupervised, _init_with_sequences
 from ...type import Weights
@@ -30,9 +29,7 @@ def local_synaptic_plasticity(reservoir, pre_state, post_state):
     """
 
     W = reservoir.W  # Expecting W to be in CSR format.
-    eta = reservoir.eta
-    rule = reservoir.local_rule.lower()
-    bcm_theta = reservoir.bcm_theta
+    increment = reservoir.increment
     do_norm = reservoir.synapse_normalization
 
     # Extract presynaptic and postsynaptic vectors.
@@ -50,31 +47,18 @@ def local_synaptic_plasticity(reservoir, pre_state, post_state):
     data = W.data  # Update in place.
 
     # Vectorized update of nonzero elements based on the chosen rule.
-    if rule == "oja":
-        data += eta * y[rows] * (x[cols] - y[rows] * data)
-    elif rule == "anti-oja":
-        data -= eta * y[rows] * (x[cols] - y[rows] * data)
-    elif rule == "hebbian":
-        data += eta * y[rows] * x[cols]
-    elif rule == "anti-hebbian":
-        data -= eta * y[rows] * x[cols]
-    elif rule == "bcm":
-        data += eta * y[rows] * (y[rows] - bcm_theta) * x[cols]
-    else:
-        raise ValueError(
-            f"Unknown learning rule '{rule}'. Choose from: "
-            "['oja', 'anti-oja', 'hebbian', 'anti-hebbian', 'bcm']."
-        )
+    data += increment(data, x[cols], y[rows])
 
     # Optionally normalize each row.
     if do_norm:
         # Compute the L2 norm per row for the updated data.
-        row_sums = np.bincount(rows, weights=data ** 2, minlength=W.shape[0])
+        row_sums = np.bincount(rows, weights=data**2, minlength=W.shape[0])
         row_norms = np.sqrt(row_sums)
         safe_norms = np.where(row_norms > 0, row_norms, 1)
         data /= safe_norms[rows]
 
     return W
+
 
 def sp_backward(reservoir, X=None, *args, **kwargs):
     """
@@ -91,12 +75,12 @@ def sp_backward(reservoir, X=None, *args, **kwargs):
                 reservoir.set_param("W", W_new)
 
 
-
 def initialize_synaptic_plasticity(reservoir, *args, **kwargs):
     """
     Custom initializer for the LocalRuleReservoir.
     Reuses the ESN-like initialization and sets the reservoir internal state to zeros.
     """
+
     initialize_base(reservoir, *args, **kwargs)
 
 
@@ -157,22 +141,22 @@ class LocalPlasticityReservoir(Unsupervised):
 
     def __init__(
         self,
+        units: Optional[int] = None,
         # local rule choice
         local_rule: str = "oja",
         eta: float = 1e-3,
-        synapse_normalization: bool = False,
         bcm_theta: float = 0.0,
+        synapse_normalization: bool = False,
+        epochs: int = 1,
         # standard reservoir params
-        units: int = None,
         sr: Optional[float] = None,
         lr: float = 1.0,
-        epochs: int = 1,
         input_bias: bool = True,
         noise_rc: float = 0.0,
         noise_in: float = 0.0,
         noise_fb: float = 0.0,
         noise_type: str = "normal",
-        noise_kwargs: Dict = None,
+        noise_kwargs: Optional[Dict] = None,
         input_scaling: Union[float, Sequence] = 1.0,
         bias_scaling: float = 1.0,
         fb_scaling: Union[float, Sequence] = 1.0,
@@ -183,7 +167,7 @@ class LocalPlasticityReservoir(Unsupervised):
         W: Union[Weights, Callable] = uniform,
         Wfb: Union[Weights, Callable] = bernoulli,
         bias: Union[Weights, Callable] = bernoulli,
-        feedback_dim: int = None,
+        feedback_dim: Optional[int] = None,
         fb_activation: Union[str, Callable] = identity,
         activation: Union[str, Callable] = tanh,
         name=None,
@@ -199,11 +183,40 @@ class LocalPlasticityReservoir(Unsupervised):
         noise_kwargs = dict() if noise_kwargs is None else noise_kwargs
 
         # Validate local rule name
-        valid_rules = ["oja", "anti-oja", "hebbian", "anti-hebbian", "bcm"]
-        if local_rule.lower() not in valid_rules:
+        local_rule = local_rule.lower()
+
+        if local_rule == "oja":
+
+            def increment(weights, pre_state, post_state):
+                return eta * post_state * (pre_state - post_state * weights)
+
+        elif local_rule == "anti-oja":
+
+            def increment(weights, pre_state, post_state):
+                return -eta * post_state * (pre_state - post_state * weights)
+
+        elif local_rule == "hebbian":
+
+            def increment(weights, pre_state, post_state):
+                return eta * post_state * pre_state
+
+        elif local_rule == "anti-hebbian":
+
+            def increment(weights, pre_state, post_state):
+                return -eta * post_state * pre_state
+
+        elif local_rule == "bcm":
+
+            def increment(weights, pre_state, post_state):
+                return eta * post_state * (post_state - bcm_theta) * pre_state
+
+        else:
             raise ValueError(
-                f"learning_rule must be one of {valid_rules}, got {local_rule}."
+                f"Unknown learning rule '{local_rule}'. Choose from: "
+                "['oja', 'anti-oja', 'hebbian', 'anti-hebbian', 'bcm']."
             )
+
+        self.increment = increment
 
         super(LocalPlasticityReservoir, self).__init__(
             fb_initializer=partial(
@@ -221,7 +234,7 @@ class LocalPlasticityReservoir(Unsupervised):
                 "internal_state": None,
             },
             hypers={
-                "local_rule": local_rule.lower(),
+                "local_rule": local_rule,
                 "bcm_theta": bcm_theta,
                 "eta": eta,
                 "synapse_normalization": synapse_normalization,
@@ -238,8 +251,12 @@ class LocalPlasticityReservoir(Unsupervised):
                 "noise_rc": noise_rc,
                 "noise_out": noise_fb,
                 "noise_type": noise_type,
-                "activation": get_function(activation) if isinstance(activation, str) else activation,
-                "fb_activation": get_function(fb_activation) if isinstance(fb_activation, str) else fb_activation,
+                "activation": get_function(activation)
+                if isinstance(activation, str)
+                else activation,
+                "fb_activation": get_function(fb_activation)
+                if isinstance(fb_activation, str)
+                else fb_activation,
                 "units": units,
                 "noise_generator": partial(noise, rng=rng, **noise_kwargs),
             },
@@ -290,8 +307,9 @@ class LocalPlasticityReservoir(Unsupervised):
         # we set `fitted = True` after first initialization/training.
         return True
 
-
-    def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "LocalPlasticityReservoir":
+    def partial_fit(
+        self, X_batch, Y_batch=None, warmup=0, **kwargs
+    ) -> "LocalPlasticityReservoir":
         """Partial offline fitting method (for batch training)."""
         X, _ = check_xy(self, X_batch, allow_n_inputs=False)
         X, _ = _init_with_sequences(self, X)
@@ -312,6 +330,5 @@ class LocalPlasticityReservoir(Unsupervised):
                 self.run(X_seq[:warmup])
 
             self._partial_backward(self, X_seq[warmup:])
-
 
         return self
