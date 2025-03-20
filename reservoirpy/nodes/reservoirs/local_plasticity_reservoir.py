@@ -89,43 +89,82 @@ class LocalPlasticityReservoir(Unsupervised):
     A reservoir that learns its recurrent weights W through a local
     learning rule selected by the 'learning_rule' hyperparameter.
 
-    Supported rules:
-      - "oja"
-      - "anti-oja"
-      - "hebbian"
-      - "anti-hebbian"
-      - "bcm"
+    Reservoir states are updated with the external equation:
 
-    By default, "oja".
+    .. math::
 
-    For "bcm", you can set a threshold 'bcm_theta' (default 0.0).
-
-    If `synapse_normalization=True`, then after each local-rule update
-    on a row i of W, the row is rescaled to unit L2 norm.
-
-    Reservoir states are updated with a standard Echo-State style:
-      r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + Win u[t+1] + Wfb fb[t] + bias)
-      x[t+1] = activation(r[t+1])
+        r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + Win u[t+1] + Wfb fb[t] + bias)
+        x[t+1] = activation(r[t+1])
 
     Then the local rule is applied each timestep to update W.
 
+    .. math::
+
+        W_{ij} \\leftarrow W_{ij} + \\Delta W_{ij}
+
+    Supported rules:
+      `oja`:
+        :math:`\\Delta W_{ij} = \\eta y (x - y W_{ij})`
+      `anti-oja` [1]_ [2]_ [3]_ :
+        :math:`\\Delta W_{ij} = - \\eta y (x - y W_{ij})`
+      `hebbian` [4]_ :
+        :math:`\\Delta W_{ij} = \\eta x y`
+      `anti-hebbian`:
+        :math:`\\Delta W_{ij} = - \\eta x y`
+      `bcm` [2]_ :
+        :math:`\\Delta W_{ij} = \\eta x y (y - \\theta_{BCM})`
+
+    Where :math:`x` represents the pre-synaptic state and :math:`y` represents
+    the post-synaptic state of the neuron.
+
+    For "bcm", you can set a threshold 'bcm_theta' (default `0.0`).
+
+    If `synapse_normalization=True`, then after each local-rule update
+    on a row i of W, the row is rescaled to unit L2 norm. [4]_
+
+
+
     Parameters
     ----------
-    local_rule : str, optional
-        One of ["oja", "anti-oja", "hebbian", "anti-hebbian", "bcm"].
-        Default = "oja".
-    bcm_theta : float, optional
-        The threshold used in the "bcm" rule. Default = 0.0.
-    eta : float, optional
-        Local learning rate for the weight update. Default = 1e-3.
-    synapse_normalization : bool, optional
-        If True, L2-normalize each row of W after its update. Default = False.
+    units : int, optional
+        Number of reservoir units. If None, the number of units will be inferred from
+        the ``W`` matrix shape.
+    local_rule : str, default to `oja`
+        One of `"oja"`, `"anti-oja"`, `"hebbian"`, `"anti-hebbian"`, `"bcm"`.
+    bcm_theta : float, default to 0.0
+        The threshold used in the "bcm" rule.
+    eta : float, default to 1e-3.
+        Local learning rate for the weight update.
+    synapse_normalization : bool, default to True
+        If True, L2-normalize each row of W after its update.
 
     Other standard reservoir parameters:
       - units, sr, lr, epochs, ...
       - input_bias, noise_in, noise_rc, ...
       - input_scaling, rc_connectivity, ...
       - W, Win, Wfb initializers, etc.
+
+    References
+    ----------
+
+    .. [1] Babinec, Š., & Pospíchal, J. (2007). Improving the prediction
+           accuracy of echo state neural networks by anti-Oja’s learning.
+           In International Conference on Artificial Neural Networks (pp. 19-28).
+           Berlin, Heidelberg: Springer Berlin Heidelberg.
+           https://doi.org/10.1007/978-3-540-74690-4_3
+
+    .. [2] Yusoff, M. H., Chrol-Cannon, J., & Jin, Y. (2016). Modeling neural
+           plasticity in echo state networks for classification and regression.
+           Information Sciences, 364, 184-196.
+           https://doi.org/10.1016/j.ins.2015.11.017
+
+    .. [3] Morales, G. B., Mirasso, C. R., & Soriano, M. C. (2021). Unveiling
+           the role of plasticity rules in reservoir computing. Neurocomputing,
+           461, 705-715. https://doi.org/10.1016/j.neucom.2020.05.127
+
+    .. [4] Wang, X., Jin, Y., & Hao, K. (2021). Synergies between synaptic and
+           intrinsic plasticity in echo state networks. Neurocomputing,
+           432, 32-43. https://doi.org/10.1016/j.neucom.2020.12.007
 
     Example
     -------
