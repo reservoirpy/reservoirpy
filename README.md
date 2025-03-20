@@ -203,8 +203,11 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 }
 ```
 
+
+## Aknowledgment
+
 <div align="left">
-  <img src="./static/inria_red.jpg" width=300><br>
+  <img src="./static/inria_red.svg" width=300><br>
 </div>
 
 
