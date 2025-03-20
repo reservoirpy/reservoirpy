@@ -2,8 +2,8 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from .intrinsic_plasticity import IPReservoir
+from .local_plasticity_reservoir import LocalPlasticityReservoir
 from .nvar import NVAR
 from .reservoir import Reservoir
-from .local_synaptic_plasticity import LocalPlasticityReservoir
 
 __all__ = ["Reservoir", "IPReservoir", "NVAR", "LocalPlasticityReservoir"]

@@ -15,6 +15,7 @@ Reservoirs
    Reservoir - Recurrent pool of leaky integrator neurons
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
    IPReservoir - Reservoir with intrinsic plasticity learning rule
+   LocalPlasticityReservoir - Reservoir with weight plasticity
 
 Offline readouts
 ================
@@ -89,7 +90,7 @@ from .delay import Delay
 from .esn import ESN
 from .io import Input, Output
 from .readouts import FORCE, LMS, RLS, Ridge, ScikitLearnNode
-from .reservoirs import NVAR, IPReservoir, Reservoir
+from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir, Reservoir
 
 __all__ = [
     "Reservoir",
@@ -111,4 +112,5 @@ __all__ = [
     "Delay",
     "IPReservoir",
     "ScikitLearnNode",
+    "LocalPlasticityReservoir",
 ]
