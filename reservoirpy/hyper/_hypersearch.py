@@ -101,6 +101,9 @@ def research(objective, dataset, config_path, report_path=None):
     objective function passed as argument, on the data stored in the
     dataset argument.
 
+    For more details on hyper-parameter search using ReservoirPy, take a look at
+    :ref:`/user_guide/hyper.ipynb`.
+
     Note
     ----
 
