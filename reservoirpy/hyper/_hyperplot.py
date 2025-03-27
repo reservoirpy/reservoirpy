@@ -219,6 +219,9 @@ def plot_hyperopt_report(
 ):
     """Cross parameter scatter plot of hyperopt trials.
 
+    For more details on hyper-parameter search using ReservoirPy, take a look at
+    :ref:`/user_guide/hyper.ipynb`.
+
     Note
     ----
         Installation of Matplotlib and Seaborn packages
