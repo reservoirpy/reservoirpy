@@ -28,6 +28,9 @@ seed.
     uniform
     normal
     bernoulli
+    ring
+    line
+    orthogonal
     zeros
     ones
     generate_internal_weights
