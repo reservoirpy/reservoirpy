@@ -35,28 +35,21 @@
 
 <br />
 
-ReservoirPy is a simple user-friendly library based on Python scientific modules.
-It provides a **flexible interface to implement efficient Reservoir Computing** (RC)
-architectures with a particular focus on *Echo State Networks* (ESN).
 
-It allows to **easily create complex architectures with multiple reservoirs** (e.g. *deep reservoirs*),
-readouts, and **complex feedback loops**.
-
-Some of its features are:
-- **offline and online training**
-- **parallel implementation**
-- **sparse matrix computation**
-- deep architectures
-- **advanced learning rules** (e.g. *Intrinsic Plasticity* or *NVAR*)
-- interfacing with **scikit-learn** models [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_scikit--learn_node-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/6-Interfacing_with_scikit-learn.ipynb)
+**Feature overview:**
+- easy creation of [complex architectures](https://reservoirpy.readthedocs.io/en/latest/user_guide/model.html) with multiple reservoirs (e.g. *deep reservoirs*),
+readouts
+- [feedback loops](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Feedback-connections)
+- [offline and online training](https://reservoirpy.readthedocs.io/en/latest/user_guide/learning_rules.html)
+- [parallel implementation](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.ESN.html)
+- sparse matrix computation
+- advanced learning rules (e.g. [*Intrinsic Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.IPReservoir.html), [*Local Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.LocalPlasticityReservoir.html) or [*NVAR* (Next-Generation RC)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.NVAR.html))
+- interfacing with [scikit-learn](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.ScikitLearnNode.html) models [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_scikit--learn_node-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/6-Interfacing_with_scikit-learn.ipynb)
 - and many more! [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Advanced_features-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/2-Advanced_Features.ipynb)
 
 Moreover, graphical tools are included to **easily explore hyperparameters**
 with the help of the *hyperopt* library.
 [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Hyperparameter_search-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
-
-Finally, it includes several tutorials exploring exotic architectures
-and [examples of scientific papers reproduction](examples/).
 
 
 ## Quick try ⚡
@@ -67,77 +60,44 @@ and [examples of scientific papers reproduction](examples/).
 pip install reservoirpy
 ```
 
-### An example on Chaotic timeseries prediction (Mackey-Glass)
+### An example on chaotic timeseries prediction (Mackey-Glass)
 
-**Step 1: Load the dataset**
-
-ReservoirPy provides some handy data generator for well-known tasks such as the
-Mackey-Glass timeseries. It also comes with some useful helper functions to preprocess
-your timeseries.
+For a general introduction to reservoir computing and ReservoirPy features, take
+a look at the [tutorials](#tutorials)
 
 ```python
 from reservoirpy.datasets import mackey_glass, to_forecasting
-
-X = mackey_glass(n_timesteps=2000)
-x_train, x_test, y_train, y_test = to_forecasting(X, test_size=0.2)
-```
-
-**Step 2: Create an Echo State Network...**
-
-...or any kind of model you wish to use to solve your task. In this simple
-use case, we will try out Echo State Networks (ESNs).
-
-An ESN is made of
-a *reservoir*, a random recurrent network used to encode our
-inputs in a high-dimensional (non-linear) space, and a *readout*, a simple
-feed-forward layer of neurons in charge with *reading-out* the desired output from
-the activations of the reservoir.
-```python
 from reservoirpy.nodes import Reservoir, Ridge
-
-# 100 neurons reservoir, with a spectral radius of 1.25, and leak rate of 0.3
-reservoir = Reservoir(units=100, lr=0.3, sr=1.25)
-# single feed-forward layer of neurons, learned with regularized linear regression
-readout = Ridge(output_dim=1, ridge=1e-5)
-
-# connect the two nodes using the `>>` operator
-esn = reservoir >> readout
-```
-
-You can learn more about these hyperparameters going through the tutorial
-[Understand and optimize hyperparameters](./tutorials/4-Understand_and_optimize_hyperparameters.ipynb)).
-[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Hyperparameter_search-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/4-Understand_and_optimize_hyperparameters.ipynb)
-
-That's it! Next step: fit the readout weights to perform the task we want.
-We will train the ESN to make one-step-ahead forecasts of our timeseries.
-
-**Step 3: Fit and run the ESN**
-
-We train our ESN on the first 500 timesteps of the timeseries, with 100 steps used to warm up the reservoir states.
-
-```python
-esn.fit(x_train, y_train, warmup=100)
-```
-
-Our ESN is now trained and ready to use. Let's run it on the remainder of the timeseries:
-
-```python
-predictions = esn.run(x_test)
-```
-
-Let's now evaluate its performances.
-
-**Step 4: Evaluate the ESN**
-
-```python
 from reservoirpy.observables import rmse, rsquare
 
+### Step 1: Load the dataset
+
+X = mackey_glass(n_timesteps=2000)  # (2000, 1)-shaped array
+# create y by shifting X, and train/test split
+x_train, x_test, y_train, y_test = to_forecasting(X, test_size=0.2)
+
+### Step 2: Create an Echo State Network
+
+# 100 neurons reservoir, spectral radius = 1.25, leak rate = 0.3
+reservoir = Reservoir(units=100, sr=1.25, lr=0.3)
+# feed-forward layer of neurons, trained with L2-regularization
+readout = Ridge(ridge=1e-5)
+# connect the two nodes
+esn = reservoir >> readout
+
+### Step 3: Fit, run and evaluate the ESN
+
+esn.fit(x_train, y_train, warmup=100)
+predictions = esn.run(x_test)
+
 print(f"RMSE: {rmse(y_test, predictions)}; R^2 score: {rsquare(y_test, predictions)}")
+# RMSE: 0.0020282; R^2 score: 0.99992
 ```
+
 
 ## More examples and tutorials 🎓
 
-#### Tutorials
+### Tutorials
 
 - [**1 - Getting started with ReservoirPy**](./tutorials/1-Getting_Started.ipynb)
 [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Getting_started-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/1-Getting_Started.ipynb)
@@ -152,7 +112,7 @@ print(f"RMSE: {rmse(y_test, predictions)}; R^2 score: {rsquare(y_test, predictio
 - [**6 - Interfacing ReservoirPy with scikit-learn**](./tutorials/6-Interfacing_with_scikit-learn.ipynb)
 [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_scikit--learn_interface-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/6-Interfacing_with_scikit-learn.ipynb)
 
-#### Examples
+### Examples
 
 For advanced users, we also showcase partial reproduction of papers on reservoir computing to demonstrate some features of the library.
 
@@ -164,14 +124,14 @@ For advanced users, we also showcase partial reproduction of papers on reservoir
 
 ## Papers and projects using ReservoirPy
 
-If you want your paper to appear here, please contact us (see contact link below).
+*If you want your paper to appear here, please contact us (see contact link below).*
 
-- Leger et al. (2024) *Evolving Reservoirs for Meta Reinforcement Learning.* EvoAPPS 2024 ( [HAL](https://inria.hal.science/hal-04354303) | [PDF](https://arxiv.org/pdf/2312.06695) | [Code](https://github.com/corentinlger/ER-MRL) )
-- Chaix-Eichel et al. (2022) *From implicit learning to explicit representations.* arXiv preprint arXiv:2204.02484. ( [arXiv](https://arxiv.org/abs/2204.02484) | [PDF](https://arxiv.org/pdf/2204.02484) )
-- Trouvain & Hinaut (2021) *Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs.* ICANN 2021 ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) | [HAL](https://hal.inria.fr/hal-03203374) | [PDF](https://hal.inria.fr/hal-03203374/document) )
-- Pagliarini et al. (2021) *Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator.* ICDL 2021. ( [HTML](https://ieeexplore.ieee.org/abstract/document/9515607?casa_token=QbpNhxjtfFQAAAAA:3klJ9jDfA0EEbckAdPFeyfIwQf5qEicaKS-U94aIIqf2q5xkX74gWJcm3w9zxYy9SYOC49mQt6vF) )
-- Pagliarini et al. (2021) *What does the Canary Say? Low-Dimensional GAN Applied to Birdsong.* HAL preprint. ( [HAL](https://hal.inria.fr/hal-03244723/) | [PDF](https://hal.inria.fr/hal-03244723/document) )
-- Hinaut & Trouvain (2021) *Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters.* ICANN 2021 ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) | [HAL](https://hal.inria.fr/hal-03203318) | [PDF](https://hal.inria.fr/hal-03203318) )
+- ( [HAL](https://inria.hal.science/hal-04354303) | [PDF](https://arxiv.org/pdf/2312.06695) | [Code](https://github.com/corentinlger/ER-MRL) ) Leger et al. (2024) *Evolving Reservoirs for Meta Reinforcement Learning.* EvoAPPS 2024
+- ( [arXiv](https://arxiv.org/abs/2204.02484) | [PDF](https://arxiv.org/pdf/2204.02484) ) Chaix-Eichel et al. (2022) *From implicit learning to explicit representations.* arXiv preprint arXiv:2204.02484.
+- ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_6) | [HAL](https://hal.inria.fr/hal-03203374) | [PDF](https://hal.inria.fr/hal-03203374/document) ) Trouvain & Hinaut (2021) *Canary Song Decoder: Transduction and Implicit Segmentation with ESNs and LTSMs.* ICANN 2021
+- ( [HTML](https://ieeexplore.ieee.org/abstract/document/9515607) ) Pagliarini et al. (2021) *Canary Vocal Sensorimotor Model with RNN Decoder and Low-dimensional GAN Generator.* ICDL 2021.
+- ( [HAL](https://hal.inria.fr/hal-03244723/) | [PDF](https://hal.inria.fr/hal-03244723/document) ) Pagliarini et al. (2021) *What does the Canary Say? Low-Dimensional GAN Applied to Birdsong.* HAL preprint.
+- ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-86383-8_7) | [HAL](https://hal.inria.fr/hal-03203318) | [PDF](https://hal.inria.fr/hal-03203318) ) Hinaut & Trouvain (2021) *Which Hype for My New Task? Hints and Random Search for Echo State Networks Hyperparameters.* ICANN 2021
 
 ## Awesome Reservoir Computing
 
@@ -186,7 +146,7 @@ If you have more general question or feedback you can contact us by email to **x
 
 ## Citing ReservoirPy
 
-Trouvain, N., Pedrelli, L., Dinh, T. T., Hinaut, X. (2020) *Reservoirpy: an efficient and user-friendly library to design echo state networks. In International Conference on Artificial Neural Networks* (pp. 494-505). Springer, Cham. ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-61616-8_40) | [HAL](https://hal.inria.fr/hal-02595026) | [PDF](https://hal.inria.fr/hal-02595026/document) )
+Trouvain, N., Pedrelli, L., Dinh, T. T., Hinaut, X. (2020) *ReservoirPy: an efficient and user-friendly library to design echo state networks. In International Conference on Artificial Neural Networks* (pp. 494-505). Springer, Cham. ( [HTML](https://link.springer.com/chapter/10.1007/978-3-030-61616-8_40) | [HAL](https://hal.inria.fr/hal-02595026) | [PDF](https://hal.inria.fr/hal-02595026/document) )
 
 If you're using ReservoirPy in your work, please cite our package using the following bibtex entry:
 
@@ -204,7 +164,7 @@ If you're using ReservoirPy in your work, please cite our package using the foll
 ```
 
 
-## Aknowledgment
+## Acknowledgement
 
 <div align="left">
   <img src="./static/inria_red.svg" width=300><br>
