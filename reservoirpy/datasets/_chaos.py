@@ -70,6 +70,22 @@ def henon_map(
     array of shape (n_timesteps, 2)
         Hénon map discrete timeseries.
 
+    Examples
+    --------
+    >>> from reservoirpy.datasets import henon_map
+    >>> timeseries = henon_map(2_000, a=1.4, b=0.3)
+    >>> timeseries.shape
+    (2000, 2)
+
+    .. plot::
+
+        from reservoirpy.datasets import henon_map
+        plt.figure()
+        timeseries = henon_map(2_000, a=1.4, b=0.3)
+        plt.scatter(timeseries[:, 0], timeseries[:, 1], s=1)
+        plt.xlabel("X"); plt.ylabel("Y")
+        plt.show()
+
     References
     ----------
     .. [2] M. Hénon, ‘A two-dimensional mapping with a strange
@@ -111,6 +127,23 @@ def logistic_map(
     -------
     array of shape (n_timesteps, 1)
         Logistic map discrete timeseries.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import logistic_map
+    >>> timeseries = logistic_map(n_timesteps=100)
+    >>> timeseries.shape
+    (100, 1)
+
+    .. plot::
+
+        from reservoirpy.datasets import logistic_map
+        plt.figure()
+        timeseries = logistic_map(100)
+        plt.plot(timeseries[:100, :])
+        plt.xlabel("Timesteps")
+        plt.show()
 
     References
     ----------
@@ -169,6 +202,24 @@ def lorenz(
     **kwargs:
         Other parameters to pass to the `scipy.integrate.solve_ivp`
         solver.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import lorenz
+    >>> timeseries = lorenz(10000)
+    >>> timeseries.shape
+    (10000, 3)
+
+    .. plot::
+
+        from reservoirpy.datasets import lorenz
+        plt.figure()
+        plt.subplot(projection="3d")
+        timeseries = lorenz(10000)
+        plt.plot(timeseries[:, 0], timeseries[:, 1], timeseries[:, 2], linewidth=0.1)
+        plt.tight_layout()
+        plt.show()
 
     Returns
     -------
@@ -241,6 +292,23 @@ def mackey_glass(
     history: array of shape (T, ), optional
         Past timesteps used to "warmup" the process.
         T must be greater than tau//h. If None, a random history is generated.
+
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import mackey_glass
+    >>> timeseries = mackey_glass(1000)
+    >>> timeseries.shape
+    (1000, 1)
+
+    .. plot::
+
+        from reservoirpy.datasets import mackey_glass
+        plt.figure(figsize=(12, 3))
+        timeseries = mackey_glass(500)
+        plt.plot(timeseries)
+        plt.show()
 
     Returns
     -------
@@ -352,6 +420,24 @@ def multiscroll(
     h : float, default to 0.01
         Time delta between two discrete timesteps.
 
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import multiscroll
+    >>> timeseries = multiscroll(1000)
+    >>> timeseries.shape
+    (1000, 3)
+
+    .. plot::
+
+        from reservoirpy.datasets import multiscroll
+        plt.figure()
+        plt.subplot(projection="3d")
+        timeseries = multiscroll(10000)
+        plt.plot(timeseries[:, 0], timeseries[:, 1], timeseries[:, 2], linewidth=0.1)
+        plt.tight_layout()
+        plt.show()
+
     Returns
     -------
     array of shape (n_timesteps, 3)
@@ -435,6 +521,26 @@ def doublescroll(
     array of shape (n_timesteps, 3)
         Multiscroll attractor timeseries.
 
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import doublescroll
+    >>> timeseries = doublescroll(1000)
+    >>> timeseries.shape
+    (1000, 3)
+
+    .. plot::
+
+        from reservoirpy.datasets import doublescroll
+        plt.figure()
+        plt.subplot(projection="3d")
+        timeseries = doublescroll(10000)
+        print(timeseries.shape)
+        plt.plot(timeseries[:, 0], timeseries[:, 1], timeseries[:, 2], linewidth=0.1)
+        plt.tight_layout()
+        plt.show()
+
+
     References
     ----------
     .. [10] G. Chen and T. Ueta, ‘Yet another chaotic attractor’,
@@ -505,6 +611,25 @@ def rabinovich_fabrikant(
     -------
     array of shape (n_timesteps, 3)
         Rabinovitch-Fabrikant system timeseries.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import rabinovich_fabrikant
+    >>> timeseries = rabinovich_fabrikant(2500)
+    >>> timeseries.shape
+    (2500, 3)
+
+    .. plot::
+
+        from reservoirpy.datasets import rabinovich_fabrikant
+        plt.figure()
+        plt.subplot(projection="3d")
+        timeseries = rabinovich_fabrikant(2500)
+        print(timeseries.shape)
+        plt.plot(timeseries[:, 0], timeseries[:, 1], timeseries[:, 2], linewidth=0.4)
+        plt.tight_layout()
+        plt.show()
 
     References
     ----------
@@ -608,6 +733,14 @@ def narma(
     >>> y = narma(n_timesteps=n_timesteps, order=order, u=u)
     >>> model = model.fit(u[order:], y)
 
+    .. plot::
+
+        from reservoirpy.datasets import narma
+        plt.figure(figsize=(12, 3))
+        timeseries = narma(100, order=30)
+        plt.plot(timeseries)
+        plt.show()
+
     References
     ----------
     .. [14] A. F. Atiya and A. G. Parlos, ‘New results on recurrent
@@ -691,6 +824,22 @@ def lorenz96(
     array of shape (n_timesteps - warmup, N)
         Lorenz96 timeseries.
 
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import lorenz96
+    >>> timeseries = lorenz96(1000, h=0.1, N=5)
+    >>> timeseries.shape
+    (1000, 5)
+
+    .. plot::
+
+        from reservoirpy.datasets import lorenz96
+        timeseries = lorenz96(1000, h=0.1, N=5)
+        plt.figure()
+        plt.plot(timeseries)
+        plt.show()
+
     References
     ----------
     .. [17] Lorenz, E. N. (1996, September).
@@ -769,6 +918,25 @@ def rossler(
     -------
     array of shape (n_timesteps, 3)
         Rössler attractor timeseries.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import rossler
+    >>> timeseries = rossler(2000)
+    >>> timeseries.shape
+    (2000, 3)
+
+    .. plot::
+
+        from reservoirpy.datasets import rossler
+        timeseries = rossler(2000)
+        plt.figure()
+        plt.subplot(projection="3d")
+        plt.plot(timeseries[:, 0], timeseries[:, 1], timeseries[:, 2], linewidth=1)
+        plt.tight_layout()
+        plt.show()
+
 
     References
     ----------
@@ -897,6 +1065,23 @@ def kuramoto_sivashinsky(
     -------
     array of shape (n_timesteps - warmup, N)
         Kuramoto-Sivashinsky equation solution.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import kuramoto_sivashinsky
+    >>> timeseries = kuramoto_sivashinsky(1000)
+    >>> print(timeseries.shape)
+
+    .. plot::
+
+        from reservoirpy.datasets import kuramoto_sivashinsky
+        timeseries = kuramoto_sivashinsky(1000)
+        plt.figure(figsize=(12, 4))
+        plt.imshow(timeseries.T)
+        plt.ylabel("Dimension No.")
+        plt.xlabel("Time")
+        plt.show()
 
     References
     ----------
