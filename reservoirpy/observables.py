@@ -502,6 +502,18 @@ def effective_spectral_radius(
         this may drastically increase the computation
         time.
 
+    Examples
+    --------
+
+    >>> from reservoirpy.observables import spectral_radius, effective_spectral_radius
+    >>> from reservoirpy.mat_gen import uniform
+    >>> W = uniform(100, 100, sr=0.5, seed=0)
+    >>> lr = 0.5
+    >>> print(f"{spectral_radius(W)=:.3}")
+    >>> print(f"{effective_spectral_radius(W, lr=lr)=:.3}")
+    spectral_radius(W)=0.5
+    effective_spectral_radius(W, lr=lr)=0.701
+
     References
     ----------
     .. [1] Jaeger, H., Lukoševičius, M., Popovici, D., & Siewert, U. (2007).
