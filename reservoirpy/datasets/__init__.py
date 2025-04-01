@@ -241,6 +241,30 @@ def to_forecasting(
         The size of the returned timeseries is therefore the size of
         :math:`X` minus the forecasting length ``forecast``.
 
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import to_forecasting
+    >>> from numpy import linspace, sin
+    >>> t = linspace(0, 500, 1000)
+    >>> timeseries = sin(0.2*t) + sin(0.311*t)
+    >>> X_train, X_test, y_train, y_test = to_forecasting(timeseries, forecast=10, test_size=200)
+
+    .. plot::
+
+        from reservoirpy.datasets import to_forecasting
+        from numpy import linspace, sin
+        t = linspace(0, 500, 1000); h=10
+        timeseries = sin(0.2*t) + sin(0.311*t)
+        X_train, X_test, y_train, y_test = to_forecasting(timeseries, forecast=h, test_size=200)
+        plt.figure(figsize=(12, 3))
+        plt.plot(t[:-200-h], X_train, label="Training data")
+        plt.plot(t[:-200-h], y_train, label="Training ground truth")
+        plt.plot(t[-200:], X_test, label="Testing data")
+        plt.plot(t[-200:], y_test, label="Testing ground truth")
+        plt.legend(loc="lower left", bbox_to_anchor=(0.0, 0.0))
+        plt.show()
+
     Raises
     ------
     ValueError
@@ -291,7 +315,7 @@ def mso(n_timesteps: int, freqs: list, normalize: bool = True):
 
     .. math::
 
-        MSO(t) = \sum_{i} sin(f_i t)
+        MSO(t) = \\sum_{i} sin(f_i t)
 
     Parameters
     ----------
@@ -306,6 +330,22 @@ def mso(n_timesteps: int, freqs: list, normalize: bool = True):
     -------
     array of shape (n_timesteps, 1)
         Multiple superimposed oscillator timeseries.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import mso
+    >>> timeseries = mso(200, freqs=[0.2, 0.44])
+    >>> print(timeseries.shape)
+    (200, 1)
+
+    .. plot::
+
+        from reservoirpy.datasets import mso
+        timeseries = mso(200, freqs=[0.2, 0.44])
+        plt.figure(figsize=(12, 4))
+        plt.plot(timeseries)
+        plt.show()
 
     References
     ----------
@@ -349,6 +389,22 @@ def mso2(n_timesteps: int, normalize: bool = True):
     array of shape (n_timesteps, 1)
         Multiple superimposed oscillator timeseries.
 
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import mso2
+    >>> timeseries = mso(500)
+    >>> print(timeseries.shape)
+    (500, 1)
+
+    .. plot::
+
+        from reservoirpy.datasets import mso2
+        timeseries = mso2(500)
+        plt.figure(figsize=(12, 4))
+        plt.plot(timeseries)
+        plt.show()
+
     References
     ----------
     .. [22] Jaeger, H. (2004b). Seminar slides. (Online) Available http://www.faculty.
@@ -378,6 +434,22 @@ def mso8(n_timesteps: int, normalize: bool = True):
     -------
     array of shape (n_timesteps, 1)
         Multiple superimposed oscillator timeseries.
+
+    Examples
+    --------
+
+    >>> from reservoirpy.datasets import mso8
+    >>> timeseries = mso(500)
+    >>> print(timeseries.shape)
+    (500, 1)
+
+    .. plot::
+
+        from reservoirpy.datasets import mso8
+        timeseries = mso8(500)
+        plt.figure(figsize=(12, 4))
+        plt.plot(timeseries)
+        plt.show()
 
     References
     ----------
