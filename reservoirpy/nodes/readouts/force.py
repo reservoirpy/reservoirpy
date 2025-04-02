@@ -4,10 +4,11 @@
 import warnings
 from functools import partial
 from numbers import Number
-from typing import Iterable
+from typing import Callable, Iterable, Union
 
 from ...mat_gen import zeros
 from ...node import Node
+from ...type import Weights
 from .base import readout_forward
 from .lms import initialize as initialize_lms
 from .lms import train as lms_like_train
@@ -48,7 +49,7 @@ class FORCE(Node):
                        default).
     ``input_bias``     If True, learn a bias term (True by default).
     ``rule``           One of RLS or LMS rule ("rls" by default).
-     ``forgetting``    Forgetting factor, only used with RLS (:math:`\\lambda`) 
+     ``forgetting``    Forgetting factor, only used with RLS (:math:`\\lambda`)
                        (:math:`1` by default).
     ================== =================================================================
 
@@ -97,14 +98,14 @@ class FORCE(Node):
 
     def __init__(
         self,
-        output_dim=None,
-        alpha=1e-6,
-        rule="rls",
-        Wout=zeros,
-        bias=zeros,
-        input_bias=True,
-        forgetting=1.0,
-        name=None,
+        output_dim: int = None,
+        alpha: Union[float, Iterable[float]] = 1e-6,
+        rule: str = "rls",
+        Wout: Union[Weights, Callable] = zeros,
+        bias: Union[Weights, Callable] = zeros,
+        input_bias: bool = True,
+        forgetting: float = 1.0,
+        name: str = None,
     ):
 
         warnings.warn(
@@ -139,24 +140,14 @@ class FORCE(Node):
             alpha_gen = _alpha_gen()
         elif isinstance(alpha, Iterable):
             alpha_gen = alpha
-        else:
-            raise TypeError(
-                "'alpha' parameter should be a float or an iterable yielding floats."
-            )
-        
+
         hypers = {
             "alpha": alpha,
             "_alpha_gen": alpha_gen,
             "input_bias": input_bias,
             "rule": rule,
+            "forgetting": forgetting,
         }
-
-        if rule == "rls":
-            if not isinstance(forgetting, Number):
-                raise TypeError(
-                    "'forgetting' parameter should be a float."
-                )
-            hypers["forgetting"] = forgetting
 
         super(FORCE, self).__init__(
             params=params,
