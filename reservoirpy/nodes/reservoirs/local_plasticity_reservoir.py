@@ -320,26 +320,6 @@ class LocalPlasticityReservoir(Unsupervised):
             **kwargs,
         )
 
-    ##############
-    # Properties #
-    ##############
-
-    @property
-    def local_rule(self) -> str:
-        return self.hypers["local_rule"]
-
-    @property
-    def bcm_theta(self) -> float:
-        return self.hypers["bcm_theta"]
-
-    @property
-    def eta(self) -> float:
-        return self.hypers["eta"]
-
-    @property
-    def synapse_normalization(self) -> bool:
-        return self.hypers["synapse_normalization"]
-
     @property
     def fitted(self) -> bool:
         # For an unsupervised node that can always be updated,

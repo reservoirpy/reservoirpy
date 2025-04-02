@@ -25,6 +25,24 @@ def test_lsp_init():
     assert res.Win.shape == (100, 5)
 
     with pytest.raises(ValueError):
+        _ = LocalPlasticityReservoir(local_rule="oja")
+
+
+def test_lsp_rules():
+    x = np.ones((10, 5))
+
+    res = LocalPlasticityReservoir(100, local_rule="oja")
+    _ = res.run(x)
+    res = LocalPlasticityReservoir(100, local_rule="anti-oja")
+    _ = res.run(x)
+    res = LocalPlasticityReservoir(100, local_rule="hebbian")
+    _ = res.run(x)
+    res = LocalPlasticityReservoir(100, local_rule="anti-hebbian")
+    _ = res.run(x)
+    res = LocalPlasticityReservoir(100, local_rule="bcm")
+    _ = res.run(x)
+
+    with pytest.raises(ValueError):
         res = LocalPlasticityReservoir(100, local_rule="anti-bcm")
 
     with pytest.raises(ValueError):
