@@ -4,7 +4,7 @@ from numpy.testing import assert_allclose
 
 from ...mat_gen import ring
 from ..readouts import Ridge
-from ..reservoirs.local_synaptic_plasticity import LocalPlasticityReservoir
+from ..reservoirs.local_plasticity_reservoir import LocalPlasticityReservoir
 
 
 def test_lsp_init():
