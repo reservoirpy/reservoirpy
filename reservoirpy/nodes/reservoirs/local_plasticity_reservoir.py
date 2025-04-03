@@ -38,7 +38,7 @@ def local_synaptic_plasticity(reservoir, pre_state, post_state):
 
     # Ensure W is in CSR format.
     if not sp.isspmatrix_csr(W):
-        W = sp.csr_array(W)
+        W = sp.csr_matrix(W)
 
     # Compute the row index for each nonzero element using np.repeat.
     # np.diff(W.indptr) gives the count of nonzeros in each row.
