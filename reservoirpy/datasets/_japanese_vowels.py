@@ -1,4 +1,5 @@
 """Japanese vowels dataset."""
+
 # Author: Nathan Trouvain at 07/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -8,7 +9,6 @@ from urllib.request import urlopen
 
 import numpy as np
 
-from .. import logger
 from ._utils import _get_data_folder
 
 SOURCE_URL = "https://archive.ics.uci.edu/static/public/128/japanese+vowels.zip"
@@ -38,7 +38,6 @@ def _format_data(data, block_numbers, one_hot_encode):
     block_cursor = 0
     speaker_cursor = 0
     for block in data:
-
         if block_cursor >= block_numbers[speaker_cursor]:
             block_cursor = 0
             speaker_cursor += 1
@@ -57,8 +56,6 @@ def _format_data(data, block_numbers, one_hot_encode):
 
 def _download(data_folder):  # pragma: no cover
     """Download data from source into the reservoirpy data local directory."""
-
-    logger.info(f"Downloading {SOURCE_URL}.")
 
     with urlopen(SOURCE_URL) as zipresp:
         with zipfile.ZipFile(io.BytesIO(zipresp.read())) as zfile:
@@ -117,7 +114,7 @@ def japanese_vowels(
 
     Returns
     -------
-    X_train, Y_train, X_test, Y_test
+    X_train, X_test, Y_train, Y_test
         Lists of arrays of shape (timesteps, features) or (timesteps, target)
         or (target,).
 
@@ -142,9 +139,7 @@ def japanese_vowels(
 
     data_files = {}
     for file_role, file_name in REMOTE_FILES.items():
-
         with open(data_folder / file_name, "r") as fp:
-
             if file_role in ["train_sizes", "test_sizes"]:
                 data = fp.read().split(" ")
                 # remove empty characters and spaces
@@ -169,4 +164,4 @@ def japanese_vowels(
         Y_train = _repeat_target(X_train, Y_train)
         Y_test = _repeat_target(X_test, Y_test)
 
-    return X_train, Y_train, X_test, Y_test
+    return X_train, X_test, Y_train, Y_test
