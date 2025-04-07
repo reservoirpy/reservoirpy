@@ -27,18 +27,9 @@ def set_seed(seed):
         raise TypeError(f"Random seed must be an integer, not {type(seed)}")
 
 
-def rand_generator(seed: Union[int, Generator, RandomState] = None) -> Generator:
+def rand_generator(seed: Union[int, Generator] = None) -> Generator:
     if seed is None:
-        return __global_rg
-    # provided to support legacy RandomState generator
-    # of Numpy. It is not the best thing to do however
-    # and recommend the user to keep using integer seeds
-    # and proper Numpy Generator API.
-    if isinstance(seed, RandomState):
-        mt19937 = MT19937()
-        mt19937.state = seed.get_state()
-        return Generator(mt19937)
-
+        return __global_rg.spawn(n_children=1)[0]
     if isinstance(seed, Generator):
         return seed
     else:
