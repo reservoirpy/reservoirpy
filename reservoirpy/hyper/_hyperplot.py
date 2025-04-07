@@ -144,10 +144,12 @@ def _cross_parameter_plot(
     ax.set_ylabel(p1)
 
     sc_l = ax.scatter(
-        X[lmaxs], Y[lmaxs], scores[lmaxs] * 100, c=loss[lmaxs], cmap="inferno"
+        x=X[lmaxs], y=Y[lmaxs], s=scores[lmaxs] * 100, c=loss[lmaxs], cmap="inferno"
     )
-    sc_s = ax.scatter(X[smaxs], Y[smaxs], scores[smaxs] * 100, c=cmaxs, cmap="YlGn")
-    sc_m = ax.scatter(X[~(lmaxs)], Y[~(lmaxs)], scores[~(lmaxs)] * 100, color="red")
+    sc_s = ax.scatter(
+        x=X[smaxs], y=Y[smaxs], s=scores[smaxs] * 100, c=cmaxs, cmap="YlGn"
+    )
+    sc_m = ax.scatter(x=X[~lmaxs], y=Y[~lmaxs], s=scores[~lmaxs] * 100, color="red")
 
     return sc_l, sc_s, sc_m
 
@@ -182,21 +184,26 @@ def _loss_plot(
     ax.tick_params(axis="both", labelsize="xx-small")
     ax.grid(True, which="both", ls="-", alpha=0.75)
 
-    sc_l = ax.scatter(X[lmaxs], loss[lmaxs], scores[lmaxs] * 100, color="orange")
-    sc_s = ax.scatter(X[smaxs], loss[smaxs], scores[smaxs] * 100, c=cmaxs, cmap="YlGn")
+    # all the rest
+    sc_l = ax.scatter(x=X[lmaxs], y=loss[lmaxs], s=scores[lmaxs] * 100, color="orange")
+    # metric top 5%
+    sc_s = ax.scatter(
+        x=X[smaxs], y=loss[smaxs], s=scores[smaxs] * 100, c=cmaxs, cmap="YlGn"
+    )
+    # best value
     if loss_behaviour == "min":
         sc_m = ax.scatter(
-            X[~lmaxs],
-            [loss.min()] * np.sum(~lmaxs),
-            scores[~(lmaxs)] * 100,
+            x=X[~lmaxs],
+            y=[loss.min()] * np.sum(~lmaxs),
+            s=scores[~(lmaxs)] * 100,
             color="red",
             label="Loss min.",
         )
     else:
         sc_m = ax.scatter(
-            X[~(lmaxs)],
-            [loss.max()] * np.sum(~lmaxs),
-            scores[~(lmaxs)] * 100,
+            x=X[~(lmaxs)],
+            y=[loss.max()] * np.sum(~lmaxs),
+            s=scores[~(lmaxs)] * 100,
             color="red",
             label="Score max.",
         )
@@ -239,20 +246,22 @@ def _parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
 
     quartile1, medians, quartile3 = np.percentile(y, [25, 50, 75])
 
-    ax.scatter(medians, 1, marker="o", color="orange", s=30, zorder=4, label="Median")
+    ax.scatter(
+        x=medians, y=1, marker="o", color="orange", s=30, zorder=4, label="Median"
+    )
     ax.hlines(
         1, quartile1, quartile3, color="gray", linestyle="-", lw=4, label="Q25/Q75"
     )
     ax.vlines(y.mean(), 0.5, 1.5, color="blue", label="Mean")
 
     ax.scatter(
-        np.log10(values[p][scores.argmax()]),
-        1,
+        x=np.log10(values[p][scores.argmax()]),
+        y=1,
         color="red",
         zorder=5,
         label="Best score",
     )
-    ax.scatter(y, np.ones_like(y), c=cmaxs, cmap="YlGn", alpha=0.5, zorder=3)
+    ax.scatter(x=y, y=np.ones_like(y), c=cmaxs, cmap="YlGn", alpha=0.5, zorder=3)
 
     if legend:
         ax.legend(loc=2)
