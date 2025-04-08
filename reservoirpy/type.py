@@ -6,9 +6,7 @@ from typing import (
     Callable,
     Dict,
     Iterable,
-    Iterator,
     Optional,
-    Protocol,
     Sequence,
     Tuple,
     TypeVar,
@@ -16,10 +14,23 @@ from typing import (
 )
 
 import numpy as np
-from scipy.sparse import coo_matrix, csc_matrix, csr_matrix
+from scipy.sparse import coo_matrix, csc_matrix, csr_matrix, issparse
 
 global_dtype = np.float64
-global_ctype = "d"
+
+Shape1D = Tuple[int]
+Shape2D = Tuple[int, int]
+Shape3D = Tuple[int, int, int]
+NodeName = str
+
+Timestep = np.ndarray[Shape1D, np.dtype[np.floating]]
+Timeseries = np.ndarray[Shape2D, np.dtype[np.floating]]
+MultiTimeseries = Union[
+    np.ndarray[Shape3D, np.dtype[np.floating]],
+    Sequence[Timeseries],
+]
+
+NodeInput = Timeseries | MultiTimeseries
 
 Weights = TypeVar("Weights", np.ndarray, csr_matrix, csc_matrix, coo_matrix)
 Shape = TypeVar("Shape", int, Tuple[int, ...])
@@ -33,50 +44,9 @@ MappedData = TypeVar(
 )
 
 
-class NodeType(Protocol):
-    """Node base Protocol class for type checking and interface inheritance."""
-
-    name: str
-    params: Dict[str, Any]
-    hypers: Dict[str, Any]
-    is_initialized: bool
-    input_dim: Shape
-    output_dim: Shape
-    is_trained_offline: bool
-    is_trained_online: bool
-    is_trainable: bool
-    fitted: bool
-
-    def __call__(self, *args, **kwargs) -> np.ndarray:
-        ...
-
-    def __rshift__(self, other: Union["NodeType", Sequence["NodeType"]]) -> "NodeType":
-        ...
-
-    def __rrshift__(self, other: Union["NodeType", Sequence["NodeType"]]) -> "NodeType":
-        ...
-
-    def __and__(self, other: Union["NodeType", Sequence["NodeType"]]) -> "NodeType":
-        ...
-
-    def get_param(self, name: str) -> Any:
-        ...
-
-    def initialize(self, x: MappedData = None, y: MappedData = None):
-        ...
-
-    def reset(self, to_state: np.ndarray = None) -> "NodeType":
-        ...
-
-    def with_state(
-        self, state=None, stateful=False, reset=False
-    ) -> Iterator["NodeType"]:
-        ...
+def is_array(obj: Any) -> bool:
+    return obj is not None and isinstance(obj, np.ndarray) or issparse(obj)
 
 
-Activation = Callable[[np.ndarray], np.ndarray]
-ForwardFn = Callable[[NodeType, Data], np.ndarray]
-BackwardFn = Callable[[NodeType, Optional[Data], Optional[Data]], None]
-PartialBackFn = Callable[[NodeType, Data, Optional[Data]], None]
-ForwardInitFn = Callable[[NodeType, Optional[Data], Optional[Data]], None]
-EmptyInitFn = Callable[[NodeType], None]
+def is_multiseries(x: NodeInput):
+    return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)
