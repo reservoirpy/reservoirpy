@@ -14,7 +14,7 @@ from typing import (
 )
 
 import numpy as np
-from scipy.sparse import coo_matrix, csc_matrix, csr_matrix, issparse
+from scipy.sparse import issparse, sparray, spmatrix
 
 global_dtype = np.float64
 
@@ -32,7 +32,7 @@ MultiTimeseries = Union[
 
 NodeInput = Timeseries | MultiTimeseries
 
-Weights = TypeVar("Weights", np.ndarray, csr_matrix, csc_matrix, coo_matrix)
+Weights = TypeVar("Weights", np.ndarray, spmatrix, sparray)
 Shape = TypeVar("Shape", int, Tuple[int, ...])
 Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
 MappedData = TypeVar(
