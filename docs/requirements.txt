@@ -1,6 +1,6 @@
 sphinx==7.2.6
 ipython==8.10.0
-matplotlib==3.5.1
+matplotlib==3.10.1
 nbsphinx==0.8.7
 pydata-sphinx-theme==0.13.3
 sphinx-copybutton==0.5.2
