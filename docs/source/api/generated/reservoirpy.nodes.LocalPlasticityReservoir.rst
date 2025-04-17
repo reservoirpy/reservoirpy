@@ -49,9 +49,7 @@ reservoirpy.nodes.LocalPlasticityReservoir
 
    .. autosummary::
    
-      ~LocalPlasticityReservoir.bcm_theta
       ~LocalPlasticityReservoir.dtype
-      ~LocalPlasticityReservoir.eta
       ~LocalPlasticityReservoir.feedback_dim
       ~LocalPlasticityReservoir.fitted
       ~LocalPlasticityReservoir.has_feedback
@@ -62,11 +60,9 @@ reservoirpy.nodes.LocalPlasticityReservoir
       ~LocalPlasticityReservoir.is_trainable
       ~LocalPlasticityReservoir.is_trained_offline
       ~LocalPlasticityReservoir.is_trained_online
-      ~LocalPlasticityReservoir.local_rule
       ~LocalPlasticityReservoir.name
       ~LocalPlasticityReservoir.output_dim
       ~LocalPlasticityReservoir.params
-      ~LocalPlasticityReservoir.synapse_normalization
       ~LocalPlasticityReservoir.unsupervised
    
    
