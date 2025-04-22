@@ -89,6 +89,25 @@ a:visited {
 }
 
 
+/* API cards */
+
+.bd-content .api-card {
+  border-radius: 0;
+  padding: 30px 10px 20px 10px;
+  margin: 10px 0px;
+}
+
+.bd-content .api-card .sd-card-img-top {
+  margin-left: 3em;
+  margin-right: 3em;
+  width: auto;
+}
+
+.bd-content .api-card .sd-card-body {
+  text-align: center;
+}
+
+
 /* Card in the getting start guide */
 
 .bd-content .install-card {
