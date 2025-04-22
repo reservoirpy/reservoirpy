@@ -73,19 +73,7 @@ ReservoirPy API reference
 
         Basic activation functions
 
-    .. grid-item-card:: Experimental features
-        :columns: 12 6 6 4
-        :class-card: api-card
-        :shadow: md
-        :img-top: ../_static/getting_started.svg
-        :class-img-top: dark-light
-        :link: experimental
-        :link-type: ref
-
-        Features that aims to be part of ReservoirPy but that are still under
-        development, and may break semantic versioning.
-
-Other modules
+All modules
 -------------
 
 .. toctree::
