@@ -32,8 +32,8 @@ master_doc = "index"
 # -- Project information -----------------------------------------------------
 
 project = "ReservoirPy"
-copyright = "2021, Xavier Hinaut, Nathan Trouvain"
-author = "Xavier Hinaut, Nathan Trouvain"
+copyright = "2025, Xavier Hinaut, Nathan Trouvain, Paul Bernard"
+author = "Xavier Hinaut, Nathan Trouvain, Paul Bernard"
 
 # The full version, including alpha/beta/rc tags
 release = str(__version__)
