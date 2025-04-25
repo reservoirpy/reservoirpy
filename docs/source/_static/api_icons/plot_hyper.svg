@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.2" width="134.82mm" height="108.58mm" viewBox="12547 15044 13482 10858" preserveAspectRatio="xMidYMid" fill-rule="evenodd" stroke-width="28.222" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" xmlns:ooo="http://xml.openoffice.org/svg/export" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:presentation="http://sun.com/xmlns/staroffice/presentation" xmlns:smil="http://www.w3.org/2001/SMIL20/" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" xml:space="preserve">
+<svg version="1.2" width="134.82mm" height="134.82mm" viewBox="12547 14044 13482 13482" preserveAspectRatio="xMidYMid" fill-rule="evenodd" stroke-width="28.222" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" xmlns:ooo="http://xml.openoffice.org/svg/export" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:presentation="http://sun.com/xmlns/staroffice/presentation" xmlns:smil="http://www.w3.org/2001/SMIL20/" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" xml:space="preserve">
  <defs>
   <font id="EmbeddedFont_1" horiz-adv-x="2048">
    <font-face font-family="DejaVuSans embedded" units-per-em="2048" font-weight="normal" font-style="normal" ascent="1879" descent="476"/>
@@ -48,12 +48,6 @@
   </g>
  </defs>
  <g class="Page">
-  <g class="com.sun.star.drawing.LineShape">
-   <g id="id3">
-    <rect class="BoundingBox" stroke="none" fill="none" x="12547" y="15044" width="37" height="9630"/>
-    <path fill="none" stroke="rgb(255,255,255)" stroke-width="35" stroke-linejoin="miter" stroke-linecap="square" d="M 12565,24655 L 12565,15062"/>
-   </g>
-  </g>
   <g class="com.sun.star.drawing.PolyPolygonShape">
    <g id="id4">
     <rect class="BoundingBox" stroke="none" fill="none" x="14437" y="15062" width="10845" height="9595"/>
@@ -2109,12 +2103,6 @@
    <g id="id311">
     <rect class="BoundingBox" stroke="none" fill="none" x="12724" y="19365" width="591" height="985"/>
     <text class="SVGTextShape" transform="rotate(-90 13194 20349)"><tspan class="TextParagraph" font-family="DejaVuSans, sans-serif" font-size="508px" font-weight="400"><tspan class="TextPosition" x="13194" y="20349"><tspan fill="rgb(38,38,38)" stroke="none" style="white-space: pre">loss</tspan></tspan></tspan></text>
-   </g>
-  </g>
-  <g class="TextShape">
-   <g id="id312">
-    <rect class="BoundingBox" stroke="none" fill="none" x="25438" y="19588" width="591" height="508"/>
-    <text class="SVGTextShape" transform="rotate(-90 25908 20095)"><tspan class="TextParagraph" font-family="DejaVuSans, sans-serif" font-size="508px" font-weight="400"><tspan class="TextPosition" x="25908" y="20095"><tspan fill="rgb(38,38,38)" stroke="none" style="white-space: pre">sr</tspan></tspan></tspan></text>
    </g>
   </g>
  </g>
