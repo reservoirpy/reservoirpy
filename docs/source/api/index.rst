@@ -66,7 +66,7 @@ ReservoirPy API reference
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
-        :img-top: ../_static/api_icons/relu_activationsfunc.svg
+        :img-top: ../_static/api_icons/tanh_activationsfunc.svg
         :class-img-top: dark-light
         :link: activationsfunc
         :link-type: ref
