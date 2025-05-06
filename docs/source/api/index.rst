@@ -7,7 +7,7 @@ ReservoirPy API reference
 
 .. grid:: 1 3 3 2
 
-    .. grid-item-card:: Nodes
+    .. grid-item-card:: ``nodes``
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
@@ -18,7 +18,7 @@ ReservoirPy API reference
 
         Atomic components used to create models.
 
-    .. grid-item-card:: Datasets
+    .. grid-item-card:: ``datasets``
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
@@ -29,7 +29,7 @@ ReservoirPy API reference
 
         Loadable datasets and helper functions
 
-    .. grid-item-card:: Observables
+    .. grid-item-card:: ``observables``
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
@@ -40,7 +40,7 @@ ReservoirPy API reference
 
         Metrics for timeseries and reservoirs
 
-    .. grid-item-card:: Hyper
+    .. grid-item-card:: ``hyper``
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
@@ -51,7 +51,7 @@ ReservoirPy API reference
 
         Explore and optimize your hyperparameters
 
-    .. grid-item-card:: Matrix generators
+    .. grid-item-card:: ``mat_gen``
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
@@ -62,7 +62,7 @@ ReservoirPy API reference
 
         Matrix generators for reservoir's weights
 
-    .. grid-item-card:: Activation functions
+    .. grid-item-card:: ``activationsfunc``
         :columns: 12 6 6 4
         :class-card: api-card
         :shadow: md
