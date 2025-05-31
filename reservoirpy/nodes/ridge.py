@@ -44,19 +44,19 @@ class Ridge(ParallelNode):
         self.initialized = True
 
     def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        return (), (self.Wout @ x.T).T
+        return (), x @ self.Wout
 
     def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
-        return (), (self.Wout @ x.T).T
+        return (), x @ self.Wout
 
     def worker(self, x: Timeseries, y: Timeseries):
         XXT = x.T @ x
-        YXT = y.T @ x
+        YXT = x.T @ y
         return XXT, YXT
 
     def master(self, generator: Generator):
         XXT = np.zeros((self.input_dim, self.input_dim))
-        YXT = np.zeros((self.output_dim, self.input_dim))
+        YXT = np.zeros((self.input_dim, self.output_dim))
         ridge_In = self.ridge * np.eye(self.input_dim)
 
         for (xxt, yxt) in generator:
