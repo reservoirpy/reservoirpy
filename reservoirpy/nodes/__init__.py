@@ -81,35 +81,39 @@ Operators
    Delay - Adds a discrete delay between input and output.
 """
 
+
 # Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
-from .concat import Concat
-from .delay import Delay
-from .esn import ESN
-from .io import Input, Output
-from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir, Reservoir
-from .readouts import LMS, RLS, Ridge, ScikitLearnNode
+# from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
+# from .concat import Concat
+# from .delay import Delay
+# from .esn import ESN
+# from .io import Input, Output
+# from .readouts import LMS, RLS, Ridge, ScikitLearnNode
+# from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir, Reservoir
+from .lms import LMS
+from .reservoir import Reservoir
+from .ridge import Ridge
 
 __all__ = [
     "Reservoir",
-    "Input",
-    "Output",
+    #  "Input",
+    #  "Output",
     "Ridge",
     "LMS",
-    "RLS",
-    "Tanh",
-    "Softmax",
-    "Softplus",
-    "Identity",
-    "Sigmoid",
-    "ReLU",
-    "NVAR",
-    "ESN",
-    "Concat",
-    "Delay",
-    "IPReservoir",
-    "ScikitLearnNode",
-    "LocalPlasticityReservoir",
+    #  "RLS",
+    #  "Tanh",
+    #  "Softmax",
+    #  "Softplus",
+    #  "Identity",
+    #  "Sigmoid",
+    #  "ReLU",
+    #  "NVAR",
+    #  "ESN",
+    #  "Concat",
+    #  "Delay",
+    #  "IPReservoir",
+    #  "ScikitLearnNode",
+    #  "LocalPlasticityReservoir",
 ]
