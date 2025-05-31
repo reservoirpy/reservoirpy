@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generator, Optional, Tuple
+from itertools import repeat
+from typing import Any, Generator, Optional, Self, Tuple
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -33,12 +34,12 @@ class Node(ABC):
         return output
 
     def run(self, x: Optional[NodeInput], length: Optional[int] = None):
-        if not self.initialized:
-            self.initialize(x)
-
         # Auto-regressive mode
         if x is None:
             x = np.empty((length, 0))
+
+        if not self.initialized:
+            self.initialize(x)
 
         initial_state = self.state
 
@@ -75,18 +76,31 @@ class Node(ABC):
 
 class TrainableNode(Node):
     @abstractmethod
-    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> Node:
+    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> Self:
         ...
 
 
 class OnlineNode(TrainableNode):
     @abstractmethod
-    def partial_fit(self, x: Timeseries, y: Optional[Timeseries]):
+    def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
         ...
 
-    @abstractmethod
-    def fit(self, x: NodeInput, y: Optional[NodeInput]):
-        ...
+    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> Self:
+        if not self.initialized:
+            self.initialize(x, y)
+
+        # TODO: reset interface
+
+        if is_multiseries(x):
+            if y is None:
+                y = repeat(None)
+
+            for x_ts, y_ts in zip(x, y):
+                y_pred_current = self.partial_fit(x_ts, y_ts)
+        else:
+            y_pred = self.partial_fit(x, y)
+
+        return self
 
 
 class ParallelNode(TrainableNode, ABC):
@@ -98,7 +112,7 @@ class ParallelNode(TrainableNode, ABC):
     def master(self, generator: Generator):
         ...
 
-    def fit(self, x: NodeInput, y: Optional[NodeInput], workers=1):
+    def fit(self, x: NodeInput, y: Optional[NodeInput], workers=1) -> Self:
         if not self.initialized:
             self.initialize(x, y)
 
@@ -117,3 +131,5 @@ class ParallelNode(TrainableNode, ABC):
             results = (self.worker(x, y) for _ in range(1))
 
         self.master(results)
+
+        return self
