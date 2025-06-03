@@ -40,7 +40,7 @@ class Reservoir(Node):
         rc_connectivity: float = 0.1,
         Win: Union[Weights, Callable] = bernoulli,
         W: Union[Weights, Callable] = normal,
-        bias: Union[Weights, Callable] = bernoulli,
+        bias: Union[Weights, Callable, float] = 0.0,
         activation: Union[str, Callable] = tanh,
         input_dim: Optional[int] = None,
         dtype: type = np.float64,
@@ -124,7 +124,7 @@ class Reservoir(Node):
     def _step(self, state, x):
         W = self.W  # NxN
         Win = self.Win  # NxI
-        bias = self.bias  # Nx1
+        bias = self.bias  # N or float
         f = self.activation
         lr = self.lr
         (state,) = state
