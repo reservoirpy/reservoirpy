@@ -22,7 +22,7 @@ Activation functions for reservoir, feedback and output.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import wraps
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 
@@ -42,23 +42,27 @@ def _elementwise(func):
     return vect_wrapper
 
 
-def get_function(name: str) -> Callable:
+def get_function(name: Union[Callable, str]) -> Callable:
     """Return an activation function from name.
 
     Parameters
     ----------
-    name : str
+    name : str, Callable
         Name of the activation function.
         Can be one of {'softmax', 'softplus',
         'sigmoid', 'tanh', 'identity', 'relu'} or
         their respective short names {'smax', 'sp',
-        'sig', 'id', 're'}.
+        'sig', 'id', 're'}. If `name` is a Callable,
+        simply returns `name`.
 
     Returns
     -------
     callable
         An activation function.
     """
+    if isinstance(name, Callable):
+        return name
+
     index = {
         "softmax": softmax,
         "softplus": softplus,

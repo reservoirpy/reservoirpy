@@ -3,7 +3,7 @@ from typing import Callable, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-from ..activationsfunc import tanh
+from ..activationsfunc import get_function, tanh
 from ..mat_gen import bernoulli, normal
 from ..node import Node
 from ..type import NodeInput, Timestep, Weights, is_array
@@ -55,7 +55,7 @@ class Reservoir(Node):
         self.Win = Win
         self.W = W
         self.bias = bias
-        self.activation = activation
+        self.activation = get_function(activation)
         self.dtype = dtype
         self.rng = random.rand_generator(seed=seed)
         self.initialized = False
