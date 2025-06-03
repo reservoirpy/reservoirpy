@@ -44,7 +44,7 @@ class Reservoir(Node):
         activation: Union[str, Callable] = tanh,
         input_dim: Optional[int] = None,
         dtype: type = np.float64,
-        seed=None,
+        seed: Optional[Union[int, np.random.Generator]] = None,
     ):
 
         self.lr = lr
