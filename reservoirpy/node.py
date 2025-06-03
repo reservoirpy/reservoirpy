@@ -73,6 +73,9 @@ class Node(ABC):
     def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
         ...
 
+    def __call__(self, x: Optional[Timestep]) -> Timestep:
+        return self.step(x)
+
 
 class TrainableNode(Node):
     @abstractmethod
