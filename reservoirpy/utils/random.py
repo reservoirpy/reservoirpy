@@ -1,10 +1,10 @@
 # Author: Nathan Trouvain at 06/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
-from numpy.random import MT19937, Generator, RandomState, default_rng
+from numpy.random import Generator, default_rng
 
 __SEED = None
 __global_rg = default_rng()
@@ -27,7 +27,7 @@ def set_seed(seed):
         raise TypeError(f"Random seed must be an integer, not {type(seed)}")
 
 
-def rand_generator(seed: Union[int, Generator] = None) -> Generator:
+def rand_generator(seed: Optional[Union[int, Generator]] = None) -> Generator:
     if seed is None:
         return __global_rg.spawn(n_children=1)[0]
     if isinstance(seed, Generator):
