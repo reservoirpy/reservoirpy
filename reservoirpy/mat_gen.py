@@ -191,8 +191,7 @@ class Initializer:
             )
 
     def __repr__(self):
-        split = super().__repr__().split(" ")
-        return split[0] + f" ({self._func.__name__}) " + " ".join(split[1:])
+        return f"{self._func.__name__}({str(self._kwargs)[1:-1]})"
 
     def __call__(self, *shape, **kwargs):
         if "sr" in kwargs and not self._allow_sr:
