@@ -8,19 +8,17 @@ from ..type import NodeInput, Timeseries, Timestep, Weights
 
 
 class Ridge(ParallelNode):
-    # TODO: bias
-    # TODO: input_bias
     def __init__(
         self,
         ridge: float = 0.0,
-        input_bias: bool = True,
+        fit_bias: bool = True,
         Wout: Optional[Union[Weights, Callable]] = None,
         bias: Optional[Union[Weights, Callable]] = None,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
     ):
         self.ridge = ridge
-        self.input_bias = input_bias
+        self.fit_bias = fit_bias
         self.Wout = Wout
         self.bias = bias
 
@@ -44,28 +42,47 @@ class Ridge(ParallelNode):
         self.initialized = True
 
     def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        return (), x @ self.Wout
+        return (), x @ self.Wout + self.bias
 
     def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
-        return (), x @ self.Wout
+        return (), x @ self.Wout + self.bias
 
     def worker(self, x: Timeseries, y: Timeseries):
+        x_sum = np.sum(x, axis=0)
+        y_sum = np.sum(y, axis=0)
+        sample_size = x.shape[-1]
         XXT = x.T @ x
         YXT = x.T @ y
-        return XXT, YXT
+        return XXT, YXT, x_sum, y_sum, sample_size
 
     def master(self, generator: Generator):
         XXT = np.zeros((self.input_dim, self.input_dim))
         YXT = np.zeros((self.input_dim, self.output_dim))
+        X_sum = 0.0
+        Y_sum = 0.0
+        total_samples = 0
         ridge_In = self.ridge * np.eye(self.input_dim)
 
-        for (xxt, yxt) in generator:
+        for (xxt, yxt, x_sum, y_sum, sample_size) in generator:
             XXT += xxt
             YXT += yxt
+            X_sum += x_sum
+            Y_sum += y_sum
+            total_samples = sample_size
+
+        if self.fit_bias:
+            X_means = X_sum / total_samples
+            Y_means = Y_sum / total_samples
+            XXT -= total_samples * np.outer(X_means, X_means)
+            YXT -= total_samples * np.outer(X_means, Y_means)
 
         Wout = Ridge._solve_ridge(XXT=XXT, YXT=YXT, ridge=ridge_In)
 
         self.Wout = Wout
+        if self.fit_bias:
+            self.bias = Y_means - X_means @ Wout
+        else:
+            self.bias = np.zeros((self.output_dim,))
 
     def _solve_ridge(XXT, YXT, ridge):
         """Solve Tikhonov regression."""
