@@ -5,137 +5,119 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import os
-import sys
 
 import numpy as np
+import pytest
 from joblib import Parallel, delayed
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
-from reservoirpy.node import _filter_where_na_target
-from reservoirpy.nodes import Reservoir, Ridge
+from reservoirpy.nodes import Ridge
 
 
 def test_ridge_init():
-    node = Ridge(ridge=1e-8, output_dim=10)
+    x: np.ndarray = np.ones((100,))
+    X: np.ndarray = np.ones((120, 100))
+    Y: np.ndarray = np.ones((120, 10))
 
-    data = np.ones((1, 100))
-    res = node(data)
-
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
+    node = Ridge(ridge=1e-8)
+    node.initialize(X, Y)
+    assert node.output_dim == 10
+    assert node.input_dim == 100
     assert node.ridge == 1e-8
 
-    data = np.ones((10000, 100))
-    res = node.run(data)
-
-    assert res.shape == (10000, 10)
-
-
-def test_ridge_partial_fit():
-    node = Ridge(1e-8, output_dim=10)
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-    res = node.fit(X, Y)
-
-    assert node.Wout.shape == (100, 10)
-    assert_array_almost_equal(node.Wout, np.ones((100, 10)) * 0.01, decimal=4)
-    assert node.bias.shape == (1, 10)
-    assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
-
     node = Ridge(ridge=1e-8, output_dim=10)
+    node.initialize(X)
+    assert node.output_dim == 10
+    assert node.input_dim == 100
+    assert node.ridge == 1e-8
 
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
+    with pytest.raises(ValueError):
+        node = Ridge(ridge=1e-8, input_dim=100, output_dim=10)
+        node(x)
 
-    for x, y in zip(X, Y):
-        res = node.partial_fit(x, y)
+    node = Ridge(ridge=1e-8, Wout=np.ones((100, 10)), bias=np.ones((10,)))
+    node.run(X)
+    assert node.output_dim == 10
+    assert node.input_dim == 100
+    assert node.ridge == 1e-8
 
-    node.fit()
 
+def test_ridge_worker():
+    X: np.ndarray = 2 * np.ones((120, 100))
+    Y: np.ndarray = 2 * np.ones((120, 10))
+
+    node = Ridge(1e-6)
+
+    XXT, YXT, x_sum, y_sum, sample_size = node.worker(X, Y)
+    assert XXT.shape == (100, 100)
+    assert YXT.shape == (100, 10)
+    assert_array_equal(x_sum, 2 * 120 * np.ones((100,)))
+    assert_array_equal(y_sum, 2 * 120 * np.ones((10,)))
+    assert_array_equal(sample_size, 120)
+
+
+def test_ridge_fit():
+    X: np.ndarray = np.ones((120, 100))
+    Y: np.ndarray = np.ones((120, 10))
+
+    node = Ridge(1e-6)
+    node.fit(X, Y)
+    assert node.input_dim == 100
+    assert node.output_dim == 10
     assert node.Wout.shape == (100, 10)
-    assert_array_almost_equal(node.Wout, np.ones((100, 10)) * 0.01, decimal=4)
-    assert node.bias.shape == (1, 10)
-    assert_array_almost_equal(node.bias, np.ones((1, 10)) * 0.01, decimal=4)
+    assert node.bias.shape == (10,)
+    assert np.any(node.bias != np.zeros((10,)))
 
-    data = np.ones((100, 100))
-    res = node.run(data)
-
-    assert res.shape == (100, 10)
-
-
-def test_esn():
-    readout = Ridge(1e-8, output_dim=10)
-    reservoir = Reservoir(100)
-
-    esn = reservoir >> readout
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-    res = esn.fit(X, Y)
-
-    assert readout.Wout.shape == (100, 10)
-    assert readout.bias.shape == (1, 10)
-
-    data = np.ones((100, 100))
-    res = esn.run(data)
-
-    assert res.shape == (100, 10)
+    node = Ridge(1e-6, fit_bias=False)
+    node.fit(X, Y)
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.Wout.shape == (100, 10)
+    assert_array_equal(node.bias, np.zeros((10,)))
 
 
-def test_ridge_feedback():
-    readout = Ridge(1e-8, output_dim=10)
-    reservoir = Reservoir(100)
+def test_ridge_fit_multiseries():
+    X: np.ndarray = np.ones((15, 12, 100))
+    Y: np.ndarray = np.ones((15, 12, 10))
 
-    esn = reservoir >> readout
+    node = Ridge(1e-6)
+    node.fit(X, Y)
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.Wout.shape == (100, 10)
+    assert node.bias.shape == (10,)
+    assert np.any(node.bias != np.zeros((10,)))
 
-    reservoir <<= readout
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-    res = esn.fit(X, Y)
-
-    assert readout.Wout.shape == (100, 10)
-    assert readout.bias.shape == (1, 10)
-
-    data = np.ones((100, 100))
-    res = esn.run(data)
-
-    assert res.shape == (100, 10)
+    node = Ridge(1e-6, fit_bias=False)
+    node.fit(X, Y)
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.Wout.shape == (100, 10)
+    assert_array_equal(node.bias, np.zeros((10,)))
 
 
-def test_hierarchical_esn():
-    reservoir1 = Reservoir(100, input_dim=5, name="h1")
-    readout1 = Ridge(ridge=1e-8, name="r1")
+def test_ridge_fit_parallel():
+    X: np.ndarray = np.ones((15, 12, 100))
+    Y: np.ndarray = np.ones((15, 12, 10))
 
-    reservoir2 = Reservoir(100, name="h2")
-    readout2 = Ridge(ridge=1e-8, name="r2")
+    node = Ridge(1e-6)
+    node.fit(X, Y, workers=-1)
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.Wout.shape == (100, 10)
+    assert node.bias.shape == (10,)
+    assert np.any(node.bias != np.zeros((10,)))
 
-    esn = reservoir1 >> readout1 >> reservoir2 >> readout2
-
-    X, Y = (
-        np.ones((1, 200, 5)),
-        {
-            "r1": np.ones((1, 200, 10)),
-            "r2": np.ones((1, 200, 3)),
-        },
-    )
-
-    res = esn.fit(X, Y)
-
-    assert readout1.Wout.shape == (100, 10)
-    assert readout1.bias.shape == (1, 10)
-
-    assert readout2.Wout.shape == (100, 3)
-    assert readout2.bias.shape == (1, 3)
-
-    assert reservoir1.Win.shape == (100, 5)
-    assert reservoir2.Win.shape == (100, 10)
-
-    data = np.ones((100, 5))
-    res = esn.run(data)
-
-    assert res.shape == (100, 3)
+    node = Ridge(1e-6, fit_bias=False)
+    node.fit(X, Y)
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.Wout.shape == (100, 10)
+    assert_array_equal(node.bias, np.zeros((10,)))
 
 
 def test_parallel():
-    process_count = 4 * os.cpu_count()
+    process_count = 16
 
     rng = np.random.default_rng(seed=42)
     x = rng.random((40000, 10))
