@@ -146,16 +146,16 @@ def test_to_forecasting_with_test(dataset_func):
 
 
 def test_japanese_vowels():
-    X, Y, X_test, Y_test = datasets.japanese_vowels(reload=True)
+    X_train, X_test, Y_train, Y_test = datasets.japanese_vowels(reload=True)
 
-    assert len(X) == 270 == len(Y)
+    assert len(X_train) == 270 == len(Y_train)
     assert len(X_test) == 370 == len(Y_test)
 
-    assert Y[0].shape == (1, 9)
+    assert Y_train[0].shape == (1, 9)
 
-    X, Y, X_test, Y_test = datasets.japanese_vowels(repeat_targets=True)
+    X_train, Y_train, X_test, Y_test = datasets.japanese_vowels(repeat_targets=True)
 
-    assert Y[0].shape == (X[0].shape[0], 9)
+    assert Y_train[0].shape == (X_train[0].shape[0], 9)
 
     X, Y, X_test, Y_test = datasets.japanese_vowels(one_hot_encode=False)
 
