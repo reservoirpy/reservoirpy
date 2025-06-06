@@ -1,20 +1,21 @@
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
-from ..type import NodeInput, Timeseries, Timestep
+from ..type import NodeInput, Timeseries, Timestep, Weights
 
 
 class LMS(OnlineNode):
     def __init__(
         self,
-        learning_rate=1e-6,
-        Wout=zeros,
-        bias=zeros,
-        input_bias=True,
-        output_dim=None,
+        learning_rate: float = 1e-6,
+        Wout: Optional[Union[Weights, Callable]] = zeros,
+        bias: Optional[Union[Weights, Callable]] = zeros,
+        fit_bias: bool = True,
+        input_dim: Optional[int] = None,
+        output_dim: Optional[int] = None,
     ):
         self.learning_rate = learning_rate
         self.Wout = Wout
