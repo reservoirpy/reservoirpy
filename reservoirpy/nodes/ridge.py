@@ -30,14 +30,25 @@ class Ridge(ParallelNode):
         self.state = ()
 
     def initialize(
-        self, x: Optional[NodeInput | Timestep], y: Optional[NodeInput | Timestep]
+        self,
+        x: Optional[NodeInput | Timestep],
+        y: Optional[NodeInput | Timestep] = None,
     ):
         # set input_dim
         if self.input_dim is None:
+            if self.Wout is not None:
+                self.input_dim = self.Wout.shape[0]
             self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
         # set output_dim
         if self.output_dim is None:
-            self.output_dim = y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+            if self.Wout is not None:
+                self.output_dim = self.Wout.shape[1]
+            if self.bias is not None:
+                self.output_dim = self.bias.shape[0]
+            if y is not None:
+                self.output_dim = (
+                    y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+                )
 
         self.initialized = True
 
