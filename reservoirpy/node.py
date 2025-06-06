@@ -123,10 +123,10 @@ class ParallelNode(TrainableNode, ABC):
         if is_multiseries(x):
             parallel_operator = Parallel(n_jobs=workers, return_as="generator")
             if y is None:
-                results = parallel_operator(self.worker(x_ts) for x_ts in x)
+                results = parallel_operator(delayed(self.worker)(x_ts) for x_ts in x)
             else:
                 results = parallel_operator(
-                    self.worker(x_ts, y_ts) for x_ts, y_ts in zip(x, y)
+                    delayed(self.worker)(x_ts, y_ts) for x_ts, y_ts in zip(x, y)
                 )
 
         # Single timeseries
