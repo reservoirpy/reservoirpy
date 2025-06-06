@@ -61,7 +61,7 @@ class Ridge(ParallelNode):
     def worker(self, x: Timeseries, y: Timeseries):
         x_sum = np.sum(x, axis=0)
         y_sum = np.sum(y, axis=0)
-        sample_size = x.shape[-1]
+        sample_size = x.shape[0]
         XXT = x.T @ x
         YXT = x.T @ y
         return XXT, YXT, x_sum, y_sum, sample_size
