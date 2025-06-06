@@ -43,11 +43,11 @@ class LMS(OnlineNode):
     def learning_step(self, Wout, x: Timestep, y: Timestep):
         alpha: float = self.learning_rate
 
-        y_pred_before: np.ndarray = x @ Wout  # (out, ) = (in, ) @ (in, out)
-        error: np.ndarray = y - y_pred_before  # (out, )
-        dWout: np.ndarray = -alpha * np.linalg.outer(x, error)  # (in, out)
-        Wout_next: np.ndarray = Wout + dWout  # (in, out)
-        y_pred_after: "(out, )" = x @ Wout_next
+        y_pred_before = x @ Wout  # (out, ) = (in, ) @ (in, out)
+        error = y - y_pred_before  # (out, )
+        dWout = -alpha * np.outer(x, error)  # (in, out)
+        Wout_next = Wout + dWout  # (in, out)
+        y_pred_after = x @ Wout_next
 
         return (Wout_next,), y_pred_after
 
