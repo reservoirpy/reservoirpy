@@ -20,17 +20,20 @@ class LMS(OnlineNode):
         self.learning_rate = learning_rate
         self.Wout = Wout
         self.bias = bias
-        self.input_bias = input_bias
+        self.fit_bias = fit_bias
+        self.input_dim = input_dim
         self.output_dim = output_dim
 
     def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
-        return (), x @ self.Wout  # (len, in) @ (in, out)
+        return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
 
     def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        return (), x @ self.Wout  # (in, ) @ (in, out)
+        return (), x @ self.Wout + self.bias  # (in, ) @ (in, out) + (out,)
 
     def initialize(
-        self, x: Optional[NodeInput | Timestep], y: Optional[NodeInput | Timestep]
+        self,
+        x: Optional[NodeInput | Timestep],
+        y: Optional[NodeInput | Timestep] = None,
     ):
         # set input_dim
         if self.input_dim is None:
@@ -41,28 +44,32 @@ class LMS(OnlineNode):
 
         self.initialized = True
 
-    def learning_step(self, Wout, x: Timestep, y: Timestep):
+    def learning_step(self, Wout: Weights, bias: Weights, x: Timestep, y: Timestep):
         alpha: float = self.learning_rate
 
-        y_pred_before = x @ Wout  # (out, ) = (in, ) @ (in, out)
-        error = y - y_pred_before  # (out, )
+        y_pred_before = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
+        error = y - y_pred_before  # (out,)
         dWout = -alpha * np.outer(x, error)  # (in, out)
         Wout_next = Wout + dWout  # (in, out)
+        dbias = -alpha * error
+        bias_next = bias + dbias
         y_pred_after = x @ Wout_next
 
-        return (Wout_next,), y_pred_after
+        return (Wout_next, bias_next), y_pred_after
 
     def partial_fit(self, x: Timeseries, y: Timeseries):
         if not self.initialized:
             self.initialize(x, y)
 
         Wout = self.Wout
+        bias = self.bias
         n_timesteps = x.shape[-2]
         out_dim = y.shape[-1]
         y_pred = np.empty((n_timesteps, out_dim))
         for i, (x_, y_) in enumerate(zip(x, y)):
-            (Wout,), y_pred_ = self.learning_step(Wout, x_, y_)
+            (Wout, bias), y_pred_ = self.learning_step(Wout, bias, x_, y_)
             y_pred[i] = y_pred_
 
         self.Wout = Wout
+        self.bias = bias
         return y_pred
