@@ -38,19 +38,25 @@ class LMS(OnlineNode):
     ):
         # set input_dim
         if self.input_dim is None:
-            if isinstance(self.Wout, np.ndarray):
+            if isinstance(self.Wout, Weights):
                 self.input_dim = self.Wout.shape[0]
             self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
         # set output_dim
         if self.output_dim is None:
-            if self.Wout is not None:
+            if isinstance(self.Wout, Weights):
                 self.output_dim = self.Wout.shape[1]
-            if self.bias is not None:
+            if isinstance(self.Wout, Weights):
                 self.output_dim = self.bias.shape[0]
             if y is not None:
                 self.output_dim = (
                     y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
                 )
+
+        # initialize matrices
+        if isinstance(self.Wout, Callable):
+            self.Wout = self.Wout(self.input_dim, self.output_dim)
+        if isinstance(self.bias, Callable):
+            self.bias = self.bias(self.output_dim)
 
         self.initialized = True
 
