@@ -23,6 +23,7 @@ class LMS(OnlineNode):
         self.fit_bias = fit_bias
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.initialized = False
 
     def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
         return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
@@ -37,10 +38,19 @@ class LMS(OnlineNode):
     ):
         # set input_dim
         if self.input_dim is None:
+            if isinstance(self.Wout, np.ndarray):
+                self.input_dim = self.Wout.shape[0]
             self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
         # set output_dim
         if self.output_dim is None:
-            self.output_dim = y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+            if self.Wout is not None:
+                self.output_dim = self.Wout.shape[1]
+            if self.bias is not None:
+                self.output_dim = self.bias.shape[0]
+            if y is not None:
+                self.output_dim = (
+                    y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+                )
 
         self.initialized = True
 
