@@ -32,7 +32,7 @@ MultiTimeseries = Union[
 
 NodeInput = Timeseries | MultiTimeseries
 
-Weights = TypeVar("Weights", np.ndarray, spmatrix, sparray)
+Weights = Union[np.ndarray, spmatrix, sparray]
 Shape = TypeVar("Shape", int, Tuple[int, ...])
 Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
 MappedData = TypeVar(
