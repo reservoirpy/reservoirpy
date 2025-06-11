@@ -34,11 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2019, macos-latest]
-        python-version: ["3.9", "3.11"]
-        exclude:
-          - os: macos-latest
-            python-version: "3.9"
+        os: [ubuntu-22.04, windows-2022, macos-latest]
+        python-version: ["3.9", "3.13"]
     env:
       OS: ${{ matrix.os }}
       PYTHON: ${{ matrix.python-version }}
