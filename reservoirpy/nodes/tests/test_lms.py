@@ -2,39 +2,49 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 from reservoirpy.nodes import LMS, Reservoir
 
 
 def test_lms_init():
-    node = LMS(10)
+    X = np.ones((2, 100))
+    Y = np.ones((2, 10))
 
-    data = np.ones((1, 100))
-    res = node(data)
+    # with callable Wout & bias
+    node = LMS(0.1)
+    assert node.input_dim is None
+    assert node.output_dim is None
+    node.initialize(X, Y)
+    assert_array_equal(node.Wout, np.zeros((100, 10)))
+    assert_array_equal(node.bias, np.zeros((10,)))
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.learning_rate == 0.1
 
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
-    assert node.alpha == 1e-6
+    # with initialized weights
+    node = LMS(1e-6, Wout=np.ones((100, 10)), bias=np.ones((10,)))
+    node.initialize(X, Y)
+    assert_array_equal(node.Wout, np.ones((100, 10)))
+    assert_array_equal(node.bias, np.ones((10,)))
+    assert node.input_dim == 100
+    assert node.output_dim == 10
+    assert node.learning_rate == 1e-6
 
-    data = np.ones((1000, 100))
-    res = node.run(data)
 
-    assert res.shape == (1000, 10)
+def test_lms_fit():
+    node = LMS(1e-3)
 
+    x = np.ones((7, 5, 2))
+    y = np.ones((7, 5, 10))
 
-def test_lms_train_one_step():
-    node = LMS(10)
-
-    x = np.ones((5, 2))
-    y = np.ones((5, 10))
-
-    for x, y in zip(x, y):
-        res = node.train(x, y)
+    res = node.fit(x, y)
 
     assert node.Wout.shape == (2, 10)
-    assert node.bias.shape == (1, 10)
-    assert node.alpha == 1e-6
+    assert not np.all(node.Wout == np.zeros((2, 10)))
+    assert node.bias.shape == (10,)
+    assert not np.all(node.bias == np.zeros((10,)))
+    assert node.learning_rate == 1e-3
 
     data = np.ones((1000, 2))
     res = node.run(data)
@@ -42,133 +52,40 @@ def test_lms_train_one_step():
     assert res.shape == (1000, 10)
 
 
-def test_lms_train():
-    node = LMS(10)
+def test_lms_partial_fit():
+    rng = np.random.default_rng(seed=2368)
+    X = rng.normal(size=(10, 5, 2))
+    Y = rng.normal(size=(10, 5, 10))
+    data = rng.normal(size=(1000, 2))
 
-    X, Y = np.ones((200, 100)), np.ones((200, 10))
-
-    res = node.train(X, Y)
-
-    assert res.shape == (200, 10)
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
-
-    node = LMS(10)
-
-    X, Y = np.ones((200, 100)), np.ones((200, 10))
-
-    res = node.train(X, Y)
-
-    assert res.shape == (200, 10)
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
-
-    node = LMS(10)
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-
+    node1 = LMS(1e-4)
     for x, y in zip(X, Y):
-        res = node.train(x, y)
+        node1.partial_fit(x, y)
 
-    assert node.Wout.shape == (100, 10)
-    assert node.bias.shape == (1, 10)
+    assert node1.Wout.shape == (2, 10)
+    assert node1.bias.shape == (10,)
 
-    data = np.ones((1000, 100))
-    res = node.run(data)
+    res1 = node1.run(data)
+    assert res1.shape == (1000, 10)
 
-    assert res.shape == (1000, 10)
-
-
-def test_esn_lms():
-    readout = LMS(10)
-    reservoir = Reservoir(100)
-
-    esn = reservoir >> readout
-
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
-
-    for x, y in zip(X, Y):
-        res = esn.train(x, y)
-
-    assert readout.Wout.shape == (100, 10)
-    assert readout.bias.shape == (1, 10)
-
-    data = np.ones((1000, 100))
-    res = esn.run(data)
-
-    assert res.shape == (1000, 10)
+    # compare with .fit()
+    node2 = LMS(1e-4)
+    node2.fit(X.reshape(10 * 5, 2), Y.reshape(10 * 5, 10))
+    res2 = node2.run(data)
+    assert_array_almost_equal(res1, res2)
+    assert not np.all(res1 == np.zeros((1000, 10)))
+    assert_array_almost_equal(node1.Wout, node2.Wout)
+    assert not np.all(node1.Wout == np.zeros((2, 10)))
+    assert_array_almost_equal(node1.bias, node2.bias)
+    assert not np.all(node1.bias == np.zeros((10,)))
 
 
-def test_lms_feedback():
-    readout = LMS(10)
-    reservoir = Reservoir(100)
+def test_lms_call():
+    x = np.array([0.1, 0.2, 0.3])
 
-    esn = reservoir >> readout
-
-    reservoir <<= readout
-
-    X, Y = np.ones((5, 200, 8)), np.ones((5, 200, 10))
-    for x, y in zip(X, Y):
-        res = esn.train(x, y)
-
-    assert readout.Wout.shape == (100, 10)
-    assert readout.bias.shape == (1, 10)
-
-    data = np.ones((1000, 8))
-    res = esn.run(data)
-
-    assert res.shape == (1000, 10)
-
-
-def test_hierarchical_esn():
-    readout1 = LMS(10, name="r1")
-    reservoir1 = Reservoir(100)
-    readout2 = LMS(3, name="r2")
-    reservoir2 = Reservoir(100)
-
-    esn = reservoir1 >> readout1 >> reservoir2 >> readout2
-
-    X, Y = np.ones((200, 5)), {"r1": np.ones((200, 10)), "r2": np.ones((200, 3))}
-    res = esn.train(X, Y)
-
-    assert readout1.Wout.shape == (100, 10)
-    assert readout1.bias.shape == (1, 10)
-
-    assert readout2.Wout.shape == (100, 3)
-    assert readout2.bias.shape == (1, 3)
-
-    assert reservoir1.Win.shape == (100, 5)
-    assert reservoir2.Win.shape == (100, 10)
-
-    data = np.ones((1000, 5))
-    res = esn.run(data)
-
-    assert res.shape == (1000, 3)
-
-
-def test_dummy_mutual_supervision():
-    readout1 = LMS(1, name="r1")
-    reservoir1 = Reservoir(100)
-    readout2 = LMS(1, name="r2")
-    reservoir2 = Reservoir(100)
-
-    reservoir1 <<= readout1
-    reservoir2 <<= readout2
-
-    branch1 = reservoir1 >> readout1
-    branch2 = reservoir2 >> readout2
-
-    model = branch1 & branch2
-
-    X = np.ones((200, 5))
-
-    res = model.train(X, Y={"r1": readout2, "r2": readout1}, force_teachers=True)
-
-    assert readout1.Wout.shape == (100, 1)
-    assert readout1.bias.shape == (1, 1)
-
-    assert readout2.Wout.shape == (100, 1)
-    assert readout2.bias.shape == (1, 1)
-
-    assert reservoir1.Win.shape == (100, 5)
-    assert reservoir2.Win.shape == (100, 5)
+    node = LMS(output_dim=3)
+    y1 = node.step(x)
+    assert_array_equal(y1, np.zeros((3,)))
+    node = LMS(output_dim=2)
+    y2 = node(x)
+    assert_array_equal(y2, np.zeros((2,)))
