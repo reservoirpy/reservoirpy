@@ -11,8 +11,8 @@ class LMS(OnlineNode):
     def __init__(
         self,
         learning_rate: float = 1e-6,
-        Wout: Optional[Union[Weights, Callable]] = zeros,
-        bias: Optional[Union[Weights, Callable]] = zeros,
+        Wout: Union[Weights, Callable] = zeros,
+        bias: Union[Weights, Callable] = zeros,
         fit_bias: bool = True,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
