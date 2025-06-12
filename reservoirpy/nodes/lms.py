@@ -60,7 +60,7 @@ class LMS(OnlineNode):
 
         self.initialized = True
 
-    def learning_step(self, Wout: Weights, bias: Weights, x: Timestep, y: Timestep):
+    def _learning_step(self, Wout: Weights, bias: Weights, x: Timestep, y: Timestep):
         alpha: float = self.learning_rate
 
         y_pred_before = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
@@ -86,7 +86,7 @@ class LMS(OnlineNode):
         out_dim = y.shape[-1]
         y_pred = np.empty((n_timesteps, out_dim))
         for i, (x_, y_) in enumerate(zip(x, y)):
-            (Wout, bias), y_pred_ = self.learning_step(Wout, bias, x_, y_)
+            (Wout, bias), y_pred_ = self._learning_step(Wout, bias, x_, y_)
             y_pred[i] = y_pred_
 
         self.Wout = Wout
