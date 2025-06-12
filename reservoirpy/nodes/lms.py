@@ -24,6 +24,7 @@ class LMS(OnlineNode):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.initialized = False
+        self.state = ()
 
     def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
         return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
