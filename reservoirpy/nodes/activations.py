@@ -12,10 +12,13 @@ from ..type import NodeInput, Timeseries, Timestep
 class F(Node):
     def __init__(self, f: Callable, **kwargs):
         self.f = partial(f, **kwargs)
+        self.state = ()
         self.initialized = False
 
     def initialize(
-        self, x: Optional[NodeInput | Timestep], y: Optional[NodeInput | Timestep]
+        self,
+        x: Optional[NodeInput | Timestep],
+        y: Optional[NodeInput | Timestep] = None,
     ):
         self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
         self.output_dim = self.input_dim
@@ -43,6 +46,7 @@ class Softmax(F):
 
     def __init__(self, beta=1.0):
         self.f = partial(softmax, beta=beta)
+        self.state = ()
         self.initialized = False
 
 
@@ -56,6 +60,7 @@ class Softplus(F):
 
     def __init__(self):
         self.f = softplus
+        self.state = ()
         self.initialized = False
 
 
@@ -69,6 +74,7 @@ class Sigmoid(F):
 
     def __init__(self):
         self.f = sigmoid
+        self.state = ()
         self.initialized = False
 
 
@@ -82,6 +88,7 @@ class Tanh(F):
 
     def __init__(self):
         self.f = tanh
+        self.state = ()
         self.initialized = False
 
 
@@ -97,6 +104,7 @@ class Identity(F):
 
     def __init__(self):
         self.f = identity
+        self.state = ()
         self.initialized = False
 
 
@@ -110,4 +118,5 @@ class ReLU(F):
 
     def __init__(self):
         self.f = relu
+        self.state = ()
         self.initialized = False
