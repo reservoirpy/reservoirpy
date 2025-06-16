@@ -102,7 +102,7 @@ def softmax(x: np.ndarray, beta: float = 1.0) -> np.ndarray:
         Activated vector.
     """
     _x = np.asarray(x)
-    return np.exp(beta * _x) / np.exp(beta * _x).sum()
+    return np.exp(beta * _x) / np.exp(beta * _x).sum(axis=-1, keepdims=True)
 
 
 @_elementwise
