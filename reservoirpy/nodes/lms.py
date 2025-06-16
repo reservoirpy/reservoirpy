@@ -64,8 +64,8 @@ class LMS(OnlineNode):
     def _learning_step(self, Wout: Weights, bias: Weights, x: Timestep, y: Timestep):
         alpha: float = self.learning_rate
 
-        y_pred_before = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
-        error = y - y_pred_before  # (out,)
+        prediction = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
+        error = prediction - y  # (out,)
         dWout = -alpha * np.outer(x, error)  # (in, out)
         Wout_next = Wout + dWout  # (in, out)
         if self.fit_bias:
@@ -73,9 +73,9 @@ class LMS(OnlineNode):
             bias_next = bias + dbias
         else:
             bias_next = bias
-        y_pred_after = x @ Wout_next
+        y_pred = x @ Wout_next
 
-        return (Wout_next, bias_next), y_pred_after
+        return (Wout_next, bias_next), y_pred
 
     def partial_fit(self, x: Timeseries, y: Timeseries):
         if not self.initialized:
