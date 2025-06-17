@@ -2,11 +2,12 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict, deque, namedtuple
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 
 from .._base import _Node
+from ..node import Node
 from . import safe_defaultdict_copy
 from .validation import is_mapping
 
@@ -132,18 +133,48 @@ def _get_links(previous, nexts, children):
     return links
 
 
-def find_entries_and_exits(nodes, edges):
-    """Find outputs and inputs nodes of a directed acyclic graph."""
-    nodes = set(nodes)
-    senders = set([n for n, _ in edges])
-    receivers = set([n for _, n in edges])
+# def find_entries_and_exits(nodes, edges):
+#     """Find outputs and inputs nodes of a directed acyclic graph."""
+#     nodes = set(nodes)
+#     senders = set([n for n, _ in edges])
+#     receivers = set([n for _, n in edges])
+
+#     lonely = nodes - senders - receivers
+
+#     entrypoints = senders - receivers | lonely
+#     endpoints = receivers - senders | lonely
+
+#     return list(entrypoints), list(endpoints)
+
+
+def find_sources(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
+    """
+    Find all nodes that are senders (out-going connections) but
+    not receivers (without incoming connections).
+    """
+    nodes: set[Node] = set(nodes)
+    senders: set[Node] = set([n for n, _ in edges])
+    receivers: set[Node] = set([n for _, n in edges])
 
     lonely = nodes - senders - receivers
 
     entrypoints = senders - receivers | lonely
-    endpoints = receivers - senders | lonely
+    return list(entrypoints)
 
-    return list(entrypoints), list(endpoints)
+
+def find_sinks(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
+    """
+    Find all nodes that are receivers (with incoming connections) but
+    not senders (no out-going connections).
+    """
+    nodes: set[Node] = set(nodes)
+    senders: set[Node] = set([n for n, _ in edges])
+    receivers: set[Node] = set([n for _, n in edges])
+
+    lonely = nodes - senders - receivers
+
+    endpoints = receivers - senders | lonely
+    return list(endpoints)
 
 
 def dispatch(
