@@ -258,7 +258,7 @@ def initializer(model: "Model", x: MappedData, y: Optional[MappedData] = None):
         node.initialize(x=data[node].x, y=data[node].y)
 
 
-class Model(_Node):
+class Model:
     """Model base class.
 
     Parameters
@@ -281,14 +281,9 @@ class Model(_Node):
 
     def __init__(
         self,
-        nodes: Sequence[_Node] = None,
-        edges: Sequence[Tuple[_Node, _Node]] = None,
-        name: str = None,
+        nodes: Sequence[_Node],
+        edges: Sequence[Tuple[_Node, _Node]],
     ):
-        if nodes is None:
-            nodes = tuple()
-        if edges is None:
-            edges = tuple()
 
         self._forward = forward
         self._train = train
