@@ -99,9 +99,9 @@ class OnlineNode(TrainableNode):
                 y = repeat(None)
 
             for x_ts, y_ts in zip(x, y):
-                y_pred_current = self.partial_fit(x_ts, y_ts)
+                _y_pred_current = self.partial_fit(x_ts, y_ts)
         else:
-            y_pred = self.partial_fit(x, y)
+            _y_pred = self.partial_fit(x, y)
 
         return self
 
