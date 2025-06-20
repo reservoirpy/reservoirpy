@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict, deque, namedtuple
-from typing import Dict, List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 import numpy as np
 
@@ -14,19 +14,20 @@ from .validation import is_mapping
 DataPoint = namedtuple("DataPoint", "x, y")
 
 
-def find_parents_and_children(edges):
+def unique_ordered(x: Sequence) -> List:
+    """Returns a list with the same elements as x occuring only once, and in the same order"""
+    return list(dict.fromkeys(x))
+
+
+def find_parents_and_children(nodes, edges):
     """Returns two dicts linking nodes to their parents and children in the graph."""
-    parents = defaultdict(list)
-    children = defaultdict(list)
-
-    # Kludge to always have the parents and children in the same order at every run.
-    # TODO: refactor the graphflow part.
-    edges = sorted(list(edges), key=lambda x: x[0].name + x[1].name)
-
-    for edge in edges:
-        parent, child = edge
-        parents[child] += [parent]
-        children[parent] += [child]
+    # TODO: more efficient method, not in O(#nodes * #edges)
+    parents = {
+        child: unique_ordered([p for p, c in edges if c is child]) for child in nodes
+    }
+    children = {
+        parent: unique_ordered([c for p, c in edges if p is parent]) for parent in nodes
+    }
 
     return parents, children
 
@@ -34,9 +35,9 @@ def find_parents_and_children(edges):
 def topological_sort(nodes, edges, inputs=None):
     """Topological sort of nodes in a Model, to determine execution order."""
     if inputs is None:
-        inputs, _ = find_entries_and_exits(nodes, edges)
+        inputs = find_inputs(nodes, edges)
 
-    parents, children = find_parents_and_children(edges)
+    parents, children = find_parents_and_children(nodes, edges)
 
     # using Kahn's algorithm
     ordered_nodes = []
@@ -63,8 +64,9 @@ def topological_sort(nodes, edges, inputs=None):
 def get_offline_subgraphs(nodes, edges):
     """Cut a graph into several subgraphs where output nodes are untrained offline
     learner nodes."""
-    inputs, outputs = find_entries_and_exits(nodes, edges)
-    parents, children = find_parents_and_children(edges)
+    inputs = find_inputs(nodes, edges)
+    outputs = find_outputs(nodes, edges)
+    parents, children = find_parents_and_children(nodes, edges)
 
     offlines = set(
         [n for n in nodes if n.is_trained_offline and not n.is_trained_online]
@@ -147,34 +149,24 @@ def _get_links(previous, nexts, children):
 #     return list(entrypoints), list(endpoints)
 
 
-def find_sources(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
+def find_inputs(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
     """
-    Find all nodes that are senders (out-going connections) but
-    not receivers (without incoming connections).
+    Find all nodes that are not receivers (without incoming connections).
+    Guaranteed to preserve order.
     """
-    nodes: set[Node] = set(nodes)
-    senders: set[Node] = set([n for n, _ in edges])
     receivers: set[Node] = set([n for _, n in edges])
-
-    lonely = nodes - senders - receivers
-
-    entrypoints = senders - receivers | lonely
-    return list(entrypoints)
+    sources = [node for node in nodes if node not in receivers]
+    return sources
 
 
-def find_sinks(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
+def find_outputs(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
     """
-    Find all nodes that are receivers (with incoming connections) but
-    not senders (no out-going connections).
+    Find all nodes that are not senders (no out-going connections).
+    Guaranteed to preserve order.
     """
-    nodes: set[Node] = set(nodes)
     senders: set[Node] = set([n for n, _ in edges])
-    receivers: set[Node] = set([n for _, n in edges])
-
-    lonely = nodes - senders - receivers
-
-    endpoints = receivers - senders | lonely
-    return list(endpoints)
+    sinks = [node for node in nodes if node not in senders]
+    return sinks
 
 
 def dispatch(
@@ -212,7 +204,7 @@ class DataDispatcher:
         self._nodes = model.nodes
         self._trainables = model.trainable_nodes
         self._inputs = model.input_nodes
-        self.__parents, _ = find_parents_and_children(model.edges)
+        self.__parents, _ = find_parents_and_children(model.nodes, model.edges)
 
         self._parents = safe_defaultdict_copy(self.__parents)
         self._teachers = dict()
