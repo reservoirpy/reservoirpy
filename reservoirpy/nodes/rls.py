@@ -17,6 +17,7 @@ class RLS(OnlineNode):
         forgetting: float = 1.0,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
+        name: Optional[str] = None,
     ):
         self.alpha = alpha
         self.Wout = Wout
@@ -25,6 +26,7 @@ class RLS(OnlineNode):
         self.forgetting = forgetting
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.name = name
 
         self.initialized = False
         self.state = ()

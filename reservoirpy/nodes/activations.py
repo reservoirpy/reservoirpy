@@ -10,10 +10,11 @@ from ..type import NodeInput, Timeseries, Timestep
 
 
 class F(Node):
-    def __init__(self, f: Callable, **kwargs):
+    def __init__(self, f: Callable, name: Optional[str] = None, **kwargs):
         self.f = partial(f, **kwargs)
         self.state = ()
         self.initialized = False
+        self.name = name
 
     def initialize(
         self,
@@ -44,10 +45,11 @@ class Softmax(F):
         Beta parameter of softmax.
     """
 
-    def __init__(self, beta=1.0):
+    def __init__(self, beta=1.0, name: Optional[str] = None):
         self.f = partial(softmax, beta=beta)
         self.state = ()
         self.initialized = False
+        self.name = name
 
 
 class Softplus(F):
@@ -58,10 +60,11 @@ class Softplus(F):
         f(x) = \\mathrm{ln}(1 + e^{x})
     """
 
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None):
         self.f = softplus
         self.state = ()
         self.initialized = False
+        self.name = name
 
 
 class Sigmoid(F):
@@ -72,10 +75,11 @@ class Sigmoid(F):
         f(x) = \\frac{1}{1 + e^{-x}}
     """
 
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None):
         self.f = sigmoid
         self.state = ()
         self.initialized = False
+        self.name = name
 
 
 class Tanh(F):
@@ -86,10 +90,11 @@ class Tanh(F):
         f(x) = \\frac{e^x - e^{-x}}{e^x + e^{-x}}
     """
 
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None):
         self.f = tanh
         self.state = ()
         self.initialized = False
+        self.name = name
 
 
 class Identity(F):
@@ -102,10 +107,11 @@ class Identity(F):
     Provided for convenience.
     """
 
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None):
         self.f = identity
         self.state = ()
         self.initialized = False
+        self.name = name
 
 
 class ReLU(F):
@@ -116,7 +122,8 @@ class ReLU(F):
         f(x) = x ~~ \\mathrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
     """
 
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None):
         self.f = relu
         self.state = ()
         self.initialized = False
+        self.name = name

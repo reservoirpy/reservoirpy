@@ -13,6 +13,7 @@ class Node(ABC):
     input_dim: int
     output_dim: int
     state: tuple
+    name: Optional[str] = None
 
     @abstractmethod
     def initialize(

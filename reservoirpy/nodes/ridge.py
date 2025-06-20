@@ -8,6 +8,12 @@ from ..type import NodeInput, Timeseries, Timestep, Weights
 
 
 class Ridge(ParallelNode):
+    ridge: float
+    fit_bias: bool
+    Wout: Weights
+    bias: Weights
+    name: Optional[str]
+
     def __init__(
         self,
         ridge: float = 0.0,
@@ -16,11 +22,13 @@ class Ridge(ParallelNode):
         bias: Optional[Union[Weights, Callable]] = None,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
+        name: Optional[str] = None,
     ):
         self.ridge = ridge
         self.fit_bias = fit_bias
         self.Wout = Wout
         self.bias = bias
+        self.name = name
 
         # TODO: dimension checks
 

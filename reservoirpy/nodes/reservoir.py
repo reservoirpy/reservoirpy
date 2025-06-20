@@ -27,6 +27,7 @@ class Reservoir(Node):
     bias: Union[Weights, Callable]
     activation: Callable
     rng: np.random.Generator
+    name: Optional[str]
     # state
     state: Tuple[np.ndarray]
 
@@ -45,6 +46,7 @@ class Reservoir(Node):
         input_dim: Optional[int] = None,
         dtype: type = np.float64,
         seed: Optional[Union[int, np.random.Generator]] = None,
+        name: Optional[str] = None,
     ):
 
         self.lr = lr
@@ -59,6 +61,7 @@ class Reservoir(Node):
         self.dtype = dtype
         self.rng = random.rand_generator(seed=seed)
         self.initialized = False
+        self.name = name
 
         # set units / output_dim
         if units is None and not is_array(W):
@@ -121,7 +124,7 @@ class Reservoir(Node):
 
         self.initialized = True
 
-    def _step(self, state, x):
+    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
         W = self.W  # NxN
         Win = self.Win  # NxI
         bias = self.bias  # N or float

@@ -16,6 +16,7 @@ class LMS(OnlineNode):
         fit_bias: bool = True,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
+        name: Optional[str] = None,
     ):
         self.learning_rate = learning_rate
         self.Wout = Wout
@@ -25,6 +26,7 @@ class LMS(OnlineNode):
         self.output_dim = output_dim
         self.initialized = False
         self.state = ()
+        self.name = name
 
     def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
         return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
