@@ -215,6 +215,30 @@ def _initialize_feedback_default(node, fb):
     node.set_feedback_dim(fb_dim)
 
 
+def _filter_warmup_and_na(x, y, warmup):
+    if x.ndim == 1 and y.ndim == 1:
+        is_na = np.isnan(y)
+    elif x.ndim == 2 and y.ndim == 2:
+        is_na = np.any(np.isnan(y), axis=-1)
+    else:
+        assert False  # it's a dev problem…
+
+    if np.all(is_na):
+        raise (UserWarning("The Y_batch has only incompletevalues"))
+
+    is_warmup = np.full_like(is_na, True)
+    is_warmup[warmup:] = False
+
+    is_removed = np.logical_or(is_na, is_warmup)
+    is_kept = np.logical_not(is_removed)
+    idx_kept = np.where(is_kept)[0]
+
+    x = np.take(x, indices=idx_kept, axis=0)
+    y = np.take(y, indices=idx_kept, axis=0)
+
+    return x, y
+
+
 class Node(_Node):
     """Node base class.
 
@@ -1080,7 +1104,8 @@ class Node(_Node):
                 )
 
             if Y_seq is not None:
-                self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:], **kwargs)
+                X_filtr, Y_filtr = _filter_warmup_and_na(X_seq, Y_seq, warmup)
+                self._partial_backward(self, X_filtr, Y_filtr, **kwargs)
             else:
                 self._partial_backward(self, X_seq[warmup:], **kwargs)
 
