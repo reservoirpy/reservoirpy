@@ -1,18 +1,10 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from typing import Optional, Union
+
 from ..node import Node
-
-
-def _io_initialize(io_node: "Node", x=None, **kwargs):
-    if x is not None:
-        if io_node.input_dim is None:
-            io_node.input_dim = x.shape[1]
-            io_node.output_dim = x.shape[1]
-
-
-def _input_forward(inp_node: "Input", x):
-    return x
+from ..type import NodeInput, Timeseries, Timestep
 
 
 class Input(Node):
@@ -49,15 +41,25 @@ class Input(Node):
     >>> outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})
     """
 
-    def __init__(self, input_dim=None, name=None, **kwargs):
-        super(Input, self).__init__(
-            forward=_input_forward,
-            initializer=_io_initialize,
-            input_dim=input_dim,
-            output_dim=input_dim,
-            name=name,
-            **kwargs,
-        )
+    initialized: bool
+    state: tuple
+    name: str
+
+    def __init__(self, name: Optional[str] = None):
+        self.initialized = False
+        self.name = name
+
+    def initialize(self, x: Union[NodeInput, Timestep]):
+        dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        self.input_dim = dim
+        self.output_dim = dim
+        self.initialized = True
+
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+        return (), x
+
+    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
+        return (), x
 
 
 class Output(Node):
@@ -92,7 +94,21 @@ class Output(Node):
     >>> states = outputs["reservoir-states"]
     """
 
-    def __init__(self, name=None, **kwargs):
-        super(Output, self).__init__(
-            forward=_input_forward, initializer=_io_initialize, name=name, **kwargs
-        )
+    initialized: bool
+    state: tuple
+
+    def __init__(self, name: Optional[str]):
+        self.initialized = False
+        self.name = name
+
+    def initialize(self, x: Union[NodeInput, Timestep]):
+        dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        self.input_dim = dim
+        self.output_dim = dim
+        self.initialized = True
+
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+        return (), x
+
+    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
+        return (), x

@@ -86,24 +86,23 @@ Operators
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
-# from .concat import Concat
-# from .delay import Delay
 # from .esn import ESN
-# from .io import Input, Output
 # from .readouts import LMS, RLS, Ridge, ScikitLearnNode
-# from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir, Reservoir
+# from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
+from .io import Input, Output
 from .lms import LMS
 from .reservoir import Reservoir
 from .ridge import Ridge
+from .rls import RLS
 
 __all__ = [
     "Reservoir",
-    #  "Input",
-    #  "Output",
+    "Input",
+    "Output",
     "Ridge",
     "LMS",
-    #  "RLS",
+    "RLS",
     "Tanh",
     "Softmax",
     "Softplus",
@@ -112,8 +111,6 @@ __all__ = [
     "ReLU",
     #  "NVAR",
     #  "ESN",
-    #  "Concat",
-    #  "Delay",
     #  "IPReservoir",
     #  "ScikitLearnNode",
     #  "LocalPlasticityReservoir",
