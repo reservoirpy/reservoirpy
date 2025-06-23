@@ -221,10 +221,12 @@ def _filter_warmup_and_na(x, y, warmup):
     elif x.ndim == 2 and y.ndim == 2:
         is_na = np.any(np.isnan(y), axis=-1)
     else:
-        assert False  # it's a dev problem…
+        raise AssertionError(
+            "The dimensions of X_batch and Y_batch do not fit the expected cases."
+        )
 
     if np.all(is_na):
-        raise (UserWarning("The Y_batch has only incompletevalues"))
+        raise (UserWarning("The Y_batch has only incomplete values."))
 
     is_warmup = np.full_like(is_na, True)
     is_warmup[warmup:] = False
