@@ -44,7 +44,7 @@ this task.
 6. **[Interfacing with scikit-learn](6-Interfacing_with_scikit-learn.ipynb)**
 
 A guide to use the ScikitLearnNode, an interface to integrate any scikit-learn models to
-your ReservoirPy architecture, including classification models.
+your ReservoirPy architecture, including classification models. It also includes an example to speed-up the optimisation of ridge parameter search with *Ridge-CV*.
 
 
 ## Getting started
