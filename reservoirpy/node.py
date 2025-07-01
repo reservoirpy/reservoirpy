@@ -227,12 +227,7 @@ def _filter_where_na_target(x, y):
         )
 
     is_kept = np.logical_not(is_na)
-    idx_kept = np.where(is_kept)[0]
-
-    x = np.take(x, indices=idx_kept, axis=0)
-    y = np.take(y, indices=idx_kept, axis=0)
-
-    return x, y
+    return x[is_kept], y[is_kept]
 
 
 class Node(_Node):
