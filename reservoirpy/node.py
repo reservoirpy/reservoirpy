@@ -222,7 +222,7 @@ def _filter_where_na_target(x, y):
     elif x.ndim == 2 and y.ndim == 2:
         is_na = np.any(np.isnan(y), axis=-1)
     else:
-        raise AssertionError(
+        raise ValueError(
             "The dimensions of X_batch and Y_batch do not fit the expected cases."
         )
 
