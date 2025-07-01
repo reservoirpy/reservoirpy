@@ -215,6 +215,21 @@ def _initialize_feedback_default(node, fb):
     node.set_feedback_dim(fb_dim)
 
 
+def _filter_where_na_target(x, y):
+
+    if x.ndim == 1 and y.ndim == 1:
+        is_na = np.isnan(y)
+    elif x.ndim == 2 and y.ndim == 2:
+        is_na = np.any(np.isnan(y), axis=-1)
+    else:
+        raise ValueError(
+            "The dimensions of X_batch and Y_batch do not fit the expected cases."
+        )
+
+    is_kept = np.logical_not(is_na)
+    return x[is_kept], y[is_kept]
+
+
 class Node(_Node):
     """Node base class.
 
@@ -1080,7 +1095,8 @@ class Node(_Node):
                 )
 
             if Y_seq is not None:
-                self._partial_backward(self, X_seq[warmup:], Y_seq[warmup:], **kwargs)
+                X_nona, Y_nona = _filter_where_na_target(X_seq[warmup:], Y_seq[warmup:])
+                self._partial_backward(self, X_nona, Y_nona, **kwargs)
             else:
                 self._partial_backward(self, X_seq[warmup:], **kwargs)
 
