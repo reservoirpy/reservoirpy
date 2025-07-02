@@ -170,3 +170,33 @@ def to_data_mapping(model, X, Y=None):
         Y_sequences = unfold_mapping(Y_map)
 
     return X_sequences, Y_sequences
+
+
+def check_input_output_connections(edges: list[tuple[Node, Node]]):
+    """Raise a warning if an Input node has an incoming connection or if an
+    Output node has an outgoing connection."""
+    output_children = [c for p, c in edges if isinstance(p, Output)]
+    if len(output_children) > 0:
+        raise ValueError("An Output node is connected to another Node.")
+
+    input_children = [p for p, c in edges if isinstance(p, Input)]
+    if len(input_children) > 0:
+        raise ValueError("A Node is connected to an Input node.")
+
+
+def check_unnamed_in_out(model):
+    """Raise ValueError if the model has multiple inputs but an input node is not named,
+    or if the model has multiple outputs but an output node is not named
+    """
+    unnamed_inputs = [n for n in model._inputs if n.name is None]
+    if model._inputs > 1 and len(unnamed_inputs) > 0:
+        raise ValueError(
+            f"Model has multiple input nodes but at least one"
+            f"of them is not named: {', '.join(unnamed_inputs)}."
+        )
+    unnamed_outputs = [n for n in model._outputs if n.name is None]
+    if model._outputs > 1 and len(unnamed_outputs) > 0:
+        raise ValueError(
+            f"Model has multiple input nodes but at least one"
+            f"of them is not named: {', '.join(unnamed_outputs)}."
+        )
