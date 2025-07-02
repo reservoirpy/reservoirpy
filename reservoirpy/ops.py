@@ -23,33 +23,7 @@ from typing import Iterable, Sequence, Union
 
 from ._base import _Node
 from .model import Model
-from .nodes.concat import Concat
 from .utils.graphflow import find_parents_and_children
-
-_MULTI_INPUTS_OPS = (Concat,)
-
-
-def concat_multi_inputs(nodes, edges):
-    parents, _ = find_parents_and_children(edges)
-
-    concatenated = {}
-    new_nodes = set()
-    new_edges = set()
-    for node in nodes:
-        indegree = len(parents[node])
-        if indegree > 1 and type(node) not in _MULTI_INPUTS_OPS:
-            # add a Concat node
-            concat = Concat()
-
-            new_nodes |= {concat, node}
-            new_edges |= set([(p, concat) for p in parents[node]] + [(concat, node)])
-            # add concatenated nodes to the registry
-            concatenated.update({p.name: concat for p in parents[node]})
-        else:
-            new_nodes |= {node}
-            new_edges |= set([(p, node) for p in parents[node]])
-
-    return list(new_nodes), list(new_edges)
 
 
 def _check_all_nodes(*nodes):
@@ -149,10 +123,9 @@ def link(
         step2 = step1 >> node2  # this is another
 
     -`node1` and `node2` can finally be lists or tuples of nodes. In this
-    case, all `node1` outputs will be linked to a :py:class:`~.Concat` node to
-    concatenate them, and the :py:class:`~.Concat` node will be linked to all
-    `node2` inputs. You can still use the ``>>`` operator in this situation,
-    except for many-to-many nodes connections::
+    case, all `node1` outputs will be linked to all `node2` inputs. You can
+    still use the ``>>`` operator in this situation, except for many-to-many
+    nodes connections::
 
         # many-to-one
         model = [node1, node2, ..., node] >> node_out

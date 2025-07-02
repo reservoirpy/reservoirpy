@@ -193,11 +193,6 @@ To create this graph, we can apply ``>>`` on a list of nodes:
 This model will give inputs to node A1 and node A2, concatenate their internal states and give the concatenated states
 to node B.
 
-.. note::
-
-    Concatenation of A1 and A2 states will be handled by a :py:class:`~.Concat` node. This node will be automatically inserted
-    between nodes A1, A2 and B in that case.
-
 To run this model, we can either give a single data point that will be used by both A1 and A2, or give
 different inputs to each nodes in the call or run method using a dictionary. In this dictionary, the key must be
 the name of a model input node, and the value a data point (or a timeseries) to give to these input nodes:

@@ -77,7 +77,6 @@ Operators
    :toctree: generated/
    :template: autosummary/class.rst
 
-   Concat - Concatenate vector of data along feature axis.
    Delay - Adds a discrete delay between input and output.
 """
 
