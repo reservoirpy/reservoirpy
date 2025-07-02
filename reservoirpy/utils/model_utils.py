@@ -3,11 +3,12 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
 from typing import Iterable
-from uuid import uuid4
 
 import numpy as np
 
 from .._base import check_xy
+from ..node import Node
+from ..nodes import Input, Output
 from .validation import is_mapping, is_sequence_set
 
 
@@ -23,9 +24,7 @@ def build_forward_submodels(nodes, edges, already_trained):
     forward_nodes = list(set(nodes) - set(offline_nodes))
     forward_edges = [edge for edge in edges if edge[1] not in offline_nodes]
 
-    submodel = Model(forward_nodes, forward_edges, name=f"SubModel-{uuid4()}")
-
-    submodel.already_trained = already_trained
+    submodel = Model(forward_nodes, forward_edges)
 
     return submodel, offline_nodes
 
