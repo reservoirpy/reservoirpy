@@ -22,7 +22,7 @@ from itertools import product
 from typing import Iterable, Sequence, Union
 
 from ._base import _Node
-from .model import FrozenModel, Model
+from .model import Model
 from .nodes.concat import Concat
 from .utils.graphflow import find_parents_and_children
 
@@ -69,7 +69,7 @@ def _link_1to1(node1: _Node, node2: _Node):
     # fetch all nodes in the two subgraphs, if they are models.
     all_nodes = []
     for node in (node1, node2):
-        if isinstance(node, Model) and not isinstance(node, FrozenModel):
+        if isinstance(node, Model):
             all_nodes += node.nodes
         else:
             all_nodes += [node]
@@ -77,19 +77,19 @@ def _link_1to1(node1: _Node, node2: _Node):
     # fetch all edges in the two subgraphs, if they are models.
     all_edges = []
     for node in (node1, node2):
-        if isinstance(node, Model) and not isinstance(node, FrozenModel):
+        if isinstance(node, Model):
             all_edges += node.edges
 
     # create edges between output nodes of the
     # subgraph 1 and input nodes of the subgraph 2.
     senders = []
-    if isinstance(node1, Model) and not isinstance(node, FrozenModel):
+    if isinstance(node1, Model):
         senders += node1.output_nodes
     else:
         senders += [node1]
 
     receivers = []
-    if isinstance(node2, Model) and not isinstance(node, FrozenModel):
+    if isinstance(node2, Model):
         receivers += node2.input_nodes
     else:
         receivers += [node2]
@@ -193,24 +193,6 @@ def link(
 
     _check_all_nodes(node1, node2)
 
-    frozens = []
-    if isinstance(node1, Sequence):
-        frozens += [n.name for n in node1 if isinstance(n, FrozenModel)]
-    else:
-        if isinstance(node1, FrozenModel):
-            frozens.append(node1)
-    if isinstance(node2, Sequence):
-        frozens += [n.name for n in node2 if isinstance(n, FrozenModel)]
-    else:
-        if isinstance(node2, FrozenModel):
-            frozens.append(node2)
-
-    if len(frozens) > 0:
-        raise TypeError(
-            "Impossible to link FrozenModel to other Nodes or "
-            f"Model. FrozenModel found: {frozens}."
-        )
-
     nodes = set()
     edges = set()
     if not isinstance(node1, Sequence):
@@ -286,14 +268,14 @@ def merge(
         all_edges = set()
         for m in models:
             # fuse models nodes and edges (right side argument)
-            if isinstance(m, Model) and not isinstance(m, FrozenModel):
+            if isinstance(m, Model):
                 all_nodes |= set(m.nodes)
                 all_edges |= set(m.edges)
             elif isinstance(m, _Node):
                 all_nodes |= {m}
 
         if inplace:
-            if not isinstance(model, Model) or isinstance(model, FrozenModel):
+            if not isinstance(model, Model):
                 raise ValueError(
                     f"Impossible to merge models in-place: "
                     f"{model} is not a Model instance."
@@ -302,7 +284,7 @@ def merge(
 
         else:
             # add left side model nodes
-            if isinstance(model, Model) and not isinstance(model, FrozenModel):
+            if isinstance(model, Model):
                 all_nodes |= set(model.nodes)
                 all_edges |= set(model.edges)
             else:
