@@ -29,7 +29,6 @@ from scipy import linalg
 from scipy.sparse import issparse
 from scipy.sparse.linalg import eigs
 
-from .model import Model
 from .type import Weights
 from .utils.random import rand_generator
 
@@ -334,7 +333,7 @@ def rsquare(
 
 
 def memory_capacity(
-    model: Model,
+    model: "Model",
     k_max: int,
     as_list: bool = False,
     series: Optional[np.ndarray] = None,
