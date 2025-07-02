@@ -32,5 +32,6 @@ __all__ = [
     "link",
     "merge",
     "set_seed",
+    "type",
     "verbosity",
 ]

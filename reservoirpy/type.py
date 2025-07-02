@@ -50,3 +50,10 @@ def is_array(obj: Any) -> bool:
 
 def is_multiseries(x: NodeInput):
     return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)
+
+
+def timestep_from_input(x: NodeInput | Timestep):
+    if isinstance(x, list):
+        return np.zeros((x[0].shape[-1],))
+    else:
+        return np.zeros((x.shape[-1],))
