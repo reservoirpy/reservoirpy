@@ -69,14 +69,13 @@ a :py:class:`Model`.
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
 import numpy as np
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
-from .type import MappedData, NodeInput, Timestep, timestep_from_input
+from .type import ModelInput, NodeInput, Timestep, timestep_from_input
 from .utils.graphflow import (
-    DataDispatcher,
     find_inputs,
     find_outputs,
     find_parents_and_children,
@@ -84,7 +83,6 @@ from .utils.graphflow import (
     unique_ordered,
 )
 from .utils.model_utils import check_input_output_connections, check_unnamed_in_out
-from .utils.validation import is_mapping
 
 
 class Model:
@@ -100,12 +98,12 @@ class Model:
     """
 
     nodes: list[Node]
-    edges: list[Tuple[Node, Node]]
-    _inputs: list[Node]
-    _outputs: list[Node]
-    _named_nodes: dict[str, Node]
-    _dispatcher: "DataDispatcher"
+    edges: list[tuple[Node, Node]]
+    inputs: list[Node]
+    outputs: list[Node]
+    named_nodes: dict[str, Node]
     initialized: bool
+    trainable_nodes: list[Node]
     is_trainable: bool
     is_multi_input: bool
     is_multi_output: bool
@@ -115,33 +113,33 @@ class Model:
     def __init__(
         self,
         nodes: Sequence[Node],
-        edges: Sequence[Tuple[Node, int, Node]],
+        edges: Sequence[tuple[Node, Node]],
     ):
         # convert to List[Node], removes duplicates, use dict to preserve order
         self.nodes = unique_ordered(nodes)
         self.edges = unique_ordered(edges)
 
-        self._inputs = find_inputs(self.nodes, self.edges)
-        self._outputs = find_outputs(self.nodes, self.edges)
-        self._named_nodes = {
-            n.name: i for i, n in enumerate(self.nodes) if n.name is not None
-        }
-        self._trainable_nodes = [
+        self.inputs = find_inputs(self.nodes, self.edges)
+        self.outputs = find_outputs(self.nodes, self.edges)
+        self.named_nodes = {n.name: n for n in self.nodes if n.name is not None}
+        self.trainable_nodes = [
             i for i, n in enumerate(nodes) if isinstance(n, TrainableNode)
         ]
-        self._is_trainable = len(self._trainable_nodes) > 0
-        self._is_multi_input = len(self._inputs) > 1
-        self._is_multi_output = len(self._outputs) > 1
-        self._is_online = all(
-            [isinstance(n, OnlineNode) for n in self._trainable_nodes]
+        self.is_trainable = len(self.trainable_nodes) > 0
+        self.is_multi_input = len(self.inputs) > 1
+        self.is_multi_output = len(self.outputs) > 1
+        self.is_online = all([isinstance(n, OnlineNode) for n in self.trainable_nodes])
+        self.is_parallel = all(
+            [isinstance(n, ParallelNode) for n in self.trainable_nodes]
         )
-        self._is_parallel = all(
-            [isinstance(n, ParallelNode) for n in self._trainable_nodes]
-        )
+
+        self.parents: dict[Node, list[Node]]
+        self.children: dict[Node, list[Node]]
+        self.execution_order: list[Node]
 
         self.initialized = False
 
-    def initialize(self, x: MappedData, y: Optional[MappedData] = None):
+    def initialize(self, x: ModelInput, y: Optional[ModelInput] = None):
         """Initializes a :py:class:`Model` instance at runtime, using samples of
         data to infer all :py:class:`Node` dimensions.
 
@@ -156,14 +154,12 @@ class Model:
             data, or a dictionary mapping node names to vector of
             shapes `(1, ndim of corresponding node)`.
         """
-        self._parents, self._children = find_parents_and_children(
-            self.nodes, self.edges
-        )
+        self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
         check_unnamed_in_out(self)
         check_input_output_connections(self.edges)
 
         # execution order / cycle detection
-        self._execution_order = topological_sort(
+        self.execution_order = topological_sort(
             self.nodes, self.edges, inputs=self.inputs
         )
 
@@ -173,19 +169,19 @@ class Model:
 
         if isinstance(x, dict):
             for node_name, val in x.items():
-                node = self._named_nodes[node_name]
+                node = self.named_nodes[node_name]
                 val = timestep_from_input(val)
                 np.concatenate((node_inputs[node], val), axis=1, out=node_inputs[node])
-        elif isinstance(x, Timestep | NodeInput):
-            [node] = self._inputs
+        else:
+            [node] = self.inputs
             x = timestep_from_input(x)
             np.concatenate((node_inputs[node], x), axis=1, out=node_inputs[node])
 
-        for node in self._execution_order:
+        for node in self.execution_order:
             node_input = node_inputs[node]
             node.initialize(node_input)
             out = np.zeros((node.output_dim,))
-            node_parents = self._parents[node]
+            node_parents = self.parents[node]
             for parent in node_parents:
                 np.concatenate(
                     (node_inputs[parent], x), axis=1, out=node_inputs[parent]
@@ -200,9 +196,9 @@ class Model:
         node_states: dict[Node, tuple[np.ndarray]] = {}
         output: dict[Node, Timestep] = {}
 
-        for node in self._execution_order:
+        for node in self.execution_order:
             # TODO: optimize
-            sources: list[Node] = self._children[node]
+            sources: list[Node] = self.children[node]
             node_input: np.ndarray = np.concatenate(
                 [node_states[source] for source in sources], axis=-1
             )
