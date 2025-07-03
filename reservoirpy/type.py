@@ -1,26 +1,16 @@
 # Author: Nathan Trouvain at 22/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Iterable, Sequence, TypeVar, Union
 
 import numpy as np
 from scipy.sparse import issparse, sparray, spmatrix
 
 global_dtype = np.float64
 
-Shape1D = Tuple[int]
-Shape2D = Tuple[int, int]
-Shape3D = Tuple[int, int, int]
+Shape1D = tuple[int]
+Shape2D = tuple[int, int]
+Shape3D = tuple[int, int, int]
 NodeName = str
 
 Timestep = np.ndarray[Shape1D, np.dtype[np.floating]]
@@ -30,17 +20,17 @@ MultiTimeseries = Union[
     Sequence[Timeseries],
 ]
 
-NodeInput = Timeseries | MultiTimeseries
+NodeInput = Union[Timeseries, MultiTimeseries]
 
 Weights = Union[np.ndarray, spmatrix, sparray]
-Shape = TypeVar("Shape", int, Tuple[int, ...])
+Shape = TypeVar("Shape", int, tuple[int, ...])
 Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
 MappedData = TypeVar(
     "MappedData",
-    Iterable[np.ndarray],
+    dict[str, Iterable[np.ndarray]],
+    dict[str, np.ndarray],
+    list[np.ndarray],
     np.ndarray,
-    Dict[str, Iterable[np.ndarray]],
-    Dict[str, np.ndarray],
 )
 
 
@@ -52,7 +42,7 @@ def is_multiseries(x: NodeInput):
     return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)
 
 
-def timestep_from_input(x: NodeInput | Timestep):
+def timestep_from_input(x: Union[NodeInput, Timestep]):
     if isinstance(x, list):
         return np.zeros((x[0].shape[-1],))
     else:
