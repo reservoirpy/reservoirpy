@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -28,22 +28,24 @@ class LMS(OnlineNode):
         self.state = ()
         self.name = name
 
-    def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
+    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
         return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
 
-    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
         return (), x @ self.Wout + self.bias  # (in, ) @ (in, out) + (out,)
 
     def initialize(
         self,
-        x: Optional[NodeInput | Timestep],
-        y: Optional[NodeInput | Timestep] = None,
+        x: Union[NodeInput, Timestep],
+        y: Optional[Union[NodeInput, Timestep]] = None,
     ):
         # set input_dim
         if self.input_dim is None:
             if isinstance(self.Wout, Weights):
                 self.input_dim = self.Wout.shape[0]
-            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+            self.input_dim = (
+                x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+            )
         # set output_dim
         if self.output_dim is None:
             if isinstance(self.Wout, Weights):
@@ -52,7 +54,7 @@ class LMS(OnlineNode):
                 self.output_dim = self.bias.shape[0]
             if y is not None:
                 self.output_dim = (
-                    y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+                    y.shape[-1] if not isinstance(y, Sequence) else y[0].shape[-1]
                 )
 
         # initialize matrices

@@ -1,5 +1,4 @@
-from functools import partial
-from typing import Callable, Literal, Optional, Sequence, Tuple, Union
+from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
 
@@ -17,19 +16,19 @@ class Reservoir(Node):
 
     # params
     units: int
-    lr: float
+    lr: Union[float, np.ndarray]
     sr: float
     input_scaling: Union[float, Sequence]
     input_connectivity: float
     rc_connectivity: float
     Win: Union[Weights, Callable]
     W: Union[Weights, Callable]
-    bias: Union[Weights, Callable]
+    bias: Union[Weights, Callable, float]
     activation: Callable
     rng: np.random.Generator
     name: Optional[str]
     # state
-    state: Tuple[np.ndarray]
+    state: tuple[np.ndarray]
 
     def __init__(
         self,
@@ -124,15 +123,15 @@ class Reservoir(Node):
 
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
         W = self.W  # NxN
         Win = self.Win  # NxI
         bias = self.bias  # N or float
         f = self.activation
         lr = self.lr
-        (state,) = state
+        (s,) = state
 
-        next_state = f(W @ state + Win @ x + bias)
-        next_state = (1 - lr) * state + lr * next_state
+        next_state = f(W @ s + Win @ x + bias)
+        next_state = (1 - lr) * s + lr * next_state
 
         return (next_state,), next_state

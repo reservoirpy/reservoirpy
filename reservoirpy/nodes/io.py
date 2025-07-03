@@ -1,7 +1,7 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 from ..node import Node
 from ..type import NodeInput, Timeseries, Timestep
@@ -43,14 +43,14 @@ class Input(Node):
 
     initialized: bool
     state: tuple
-    name: str
+    name: Optional[str]
 
     def __init__(self, name: Optional[str] = None):
         self.initialized = False
         self.name = name
 
     def initialize(self, x: Union[NodeInput, Timestep]):
-        dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.input_dim = dim
         self.output_dim = dim
         self.initialized = True
@@ -102,7 +102,7 @@ class Output(Node):
         self.name = name
 
     def initialize(self, x: Union[NodeInput, Timestep]):
-        dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.input_dim = dim
         self.output_dim = dim
         self.initialized = True

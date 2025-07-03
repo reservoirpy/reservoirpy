@@ -39,8 +39,8 @@ class RLS(OnlineNode):
 
     def initialize(
         self,
-        x: Optional[NodeInput | Timestep],
-        y: Optional[NodeInput | Timestep] = None,
+        x: Optional[Union[NodeInput, Timestep]],
+        y: Optional[Union[NodeInput, Timestep]] = None,
     ):
         # set input_dim
         if self.input_dim is None:
@@ -83,6 +83,7 @@ class RLS(OnlineNode):
         x: np.ndarray (in,)
         y: np.ndarray (out,)
         """
+        # TODO: forgetting factor
 
         Px = P @ x  # (in,)
         dP = -np.outer(Px, Px) / (1.0 + x @ Px)  # (in, in)
@@ -107,11 +108,15 @@ class RLS(OnlineNode):
 
         Wout = self.Wout
         bias = self.bias
+        forgetting = self.forgetting
+        P = self.P
         n_timesteps = x.shape[-2]
         out_dim = y.shape[-1]
         y_pred = np.empty((n_timesteps, out_dim))
         for i, (x_, y_) in enumerate(zip(x, y)):
-            (Wout, bias), y_pred_ = self._learning_step(Wout, bias, x_, y_)
+            (Wout, bias), y_pred_ = self._learning_step(
+                Wout, bias, P, forgetting, x_, y_
+            )
             y_pred[i] = y_pred_
 
         self.Wout = Wout

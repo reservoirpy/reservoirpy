@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import partial
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 from ..activationsfunc import identity, relu, sigmoid, softmax, softplus, tanh
 from ..node import Node
@@ -18,10 +18,10 @@ class F(Node):
 
     def initialize(
         self,
-        x: Optional[NodeInput | Timestep],
-        y: Optional[NodeInput | Timestep] = None,
+        x: Union[NodeInput, Timestep],
+        y: Optional[Union[NodeInput, Timestep]] = None,
     ):
-        self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
 

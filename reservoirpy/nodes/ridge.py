@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Optional, Tuple, Union
+from typing import Callable, Generator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from scipy import linalg
@@ -39,14 +39,16 @@ class Ridge(ParallelNode):
 
     def initialize(
         self,
-        x: Optional[NodeInput | Timestep],
-        y: Optional[NodeInput | Timestep] = None,
+        x: Optional[Union[NodeInput, Timestep]],
+        y: Optional[Union[NodeInput, Timestep]] = None,
     ):
         # set input_dim
         if self.input_dim is None:
             if self.Wout is not None:
                 self.input_dim = self.Wout.shape[0]
-            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+            self.input_dim = (
+                x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+            )
         # set output_dim
         if self.output_dim is None:
             if self.Wout is not None:
@@ -55,7 +57,7 @@ class Ridge(ParallelNode):
                 self.output_dim = self.bias.shape[0]
             if y is not None:
                 self.output_dim = (
-                    y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+                    y.shape[-1] if not isinstance(y, Sequence) else y[0].shape[-1]
                 )
 
         self.initialized = True
@@ -95,14 +97,10 @@ class Ridge(ParallelNode):
             XXT -= total_samples * np.outer(X_means, X_means)
             YXT -= total_samples * np.outer(X_means, Y_means)
 
-        Wout = Ridge._solve_ridge(XXT=XXT, YXT=YXT, ridge=ridge_In)
+        Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="sym")
 
         self.Wout = Wout
         if self.fit_bias:
             self.bias = Y_means - X_means @ Wout
         else:
             self.bias = np.zeros((self.output_dim,))
-
-    def _solve_ridge(XXT, YXT, ridge):
-        """Solve Tikhonov regression."""
-        return linalg.solve(XXT + ridge, YXT, assume_a="sym")
