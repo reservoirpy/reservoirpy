@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict, deque, namedtuple
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, TypeVar
 
 import numpy as np
 
@@ -12,14 +12,15 @@ from . import safe_defaultdict_copy
 from .validation import is_mapping
 
 DataPoint = namedtuple("DataPoint", "x, y")
+T = TypeVar("T")
 
 
-def unique_ordered(x: Sequence) -> List:
+def unique_ordered(x: Sequence[T]) -> list[T]:
     """Returns a list with the same elements as x occuring only once, and in the same order"""
     return list(dict.fromkeys(x))
 
 
-def find_parents_and_children(nodes, edges):
+def find_parents_and_children(nodes: list[T], edges: list[tuple[T, T]]):
     """Returns two dicts linking nodes to their parents and children in the graph."""
     # TODO: more efficient method, not in O(#nodes * #edges)
     parents = {
@@ -32,7 +33,9 @@ def find_parents_and_children(nodes, edges):
     return parents, children
 
 
-def topological_sort(nodes, edges, inputs=None):
+def topological_sort(
+    nodes: list[T], edges: list[tuple[T, T]], inputs: Optional[list[T]] = None
+) -> list[T]:
     """Topological sort of nodes in a Model, to determine execution order."""
     if inputs is None:
         inputs = find_inputs(nodes, edges)
@@ -41,17 +44,17 @@ def topological_sort(nodes, edges, inputs=None):
 
     # using Kahn's algorithm
     ordered_nodes = []
-    edges = set(edges)
-    inputs = deque(inputs)
-    while len(inputs) > 0:
-        n = inputs.pop()
+    edges_set = set(edges)
+    inputs_deque = deque(inputs)
+    while len(inputs_deque) > 0:
+        n = inputs_deque.pop()
         ordered_nodes.append(n)
         for m in children.get(n, ()):
-            edges.remove((n, m))
+            edges_set.remove((n, m))
             parents[m].remove(n)
             if parents.get(m) is None or len(parents[m]) < 1:
-                inputs.append(m)
-    if len(edges) > 0:
+                inputs_deque.append(m)
+    if len(edges_set) > 0:
         raise RuntimeError(
             "Model has a cycle: impossible "
             "to automatically determine operations "
@@ -149,22 +152,22 @@ def _get_links(previous, nexts, children):
 #     return list(entrypoints), list(endpoints)
 
 
-def find_inputs(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
+def find_inputs(nodes: list[T], edges: list[tuple[T, T]]) -> list[T]:
     """
     Find all nodes that are not receivers (without incoming connections).
     Guaranteed to preserve order.
     """
-    receivers: set[Node] = set([n for _, n in edges])
+    receivers: set[T] = set([n for _, n in edges])
     sources = [node for node in nodes if node not in receivers]
     return sources
 
 
-def find_outputs(nodes: List[Node], edges: List[Tuple[Node, Node]]) -> List[Node]:
+def find_outputs(nodes: list[T], edges: list[tuple[T, T]]) -> list[T]:
     """
     Find all nodes that are not senders (no out-going connections).
     Guaranteed to preserve order.
     """
-    senders: set[Node] = set([n for n, _ in edges])
+    senders = set([n for n, _ in edges])
     sinks = [node for node in nodes if node not in senders]
     return sinks
 
