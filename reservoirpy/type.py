@@ -21,17 +21,13 @@ MultiTimeseries = Union[
 ]
 
 NodeInput = Union[Timeseries, MultiTimeseries]
+ModelInput = Union[NodeInput, dict[str, NodeInput]]
+MappedTimestep = dict[str, Timestep]
+ModelTimestep = Union[Timestep, MappedTimestep]
 
 Weights = Union[np.ndarray, spmatrix, sparray]
 Shape = TypeVar("Shape", int, tuple[int, ...])
 Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
-MappedData = TypeVar(
-    "MappedData",
-    dict[str, Iterable[np.ndarray]],
-    dict[str, np.ndarray],
-    list[np.ndarray],
-    np.ndarray,
-)
 
 
 def is_array(obj: Any) -> bool:
