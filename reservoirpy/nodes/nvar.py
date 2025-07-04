@@ -2,68 +2,13 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import itertools as it
-import sys
 from math import comb
+from typing import Optional, Sequence, Union
 
 import numpy as np
 
-from ...node import Node
-
-
-def forward(node, x):
-    store = node.store
-    strides = node.strides
-    idxs = node._monomial_idx
-
-    # store the current input
-    new_store = np.roll(store, 1, axis=0)
-    new_store[0] = x
-    node.set_param("store", new_store)
-
-    output = np.zeros((node.output_dim, 1))
-
-    # select all previous inputs, including the current, with strides
-    linear_feats = np.ravel(new_store[::strides, :]).reshape(-1, 1)
-    linear_len = linear_feats.shape[0]
-
-    output[:linear_len, :] = linear_feats
-
-    # select monomial terms and compute them
-    output[linear_len:, :] = np.prod(linear_feats[idxs.astype(int)], axis=1)
-
-    return output.reshape(1, -1)
-
-
-def initialize(node, x=None, *args, **kwargs):
-    if x is not None:
-        input_dim = x.shape[1]
-
-        order = node.order
-        delay = node.delay
-        strides = node.strides
-
-        linear_dim = delay * input_dim
-        # number of non linear components is (d + n - 1)! / (d - 1)! n!
-        # i.e. number of all unique monomials of order n made from the
-        # linear components.
-        nonlinear_dim = comb(linear_dim + order - 1, order)
-
-        output_dim = int(linear_dim + nonlinear_dim)
-
-        node.input_dim = input_dim
-        node.output_dim = output_dim
-
-        # for each monomial created in the non linear part, indices
-        # of the n components involved, n being the order of the
-        # monomials. Pre-compute them to improve efficiency.
-        idx = np.array(
-            list(it.combinations_with_replacement(np.arange(linear_dim), order))
-        )
-
-        node.set_param("_monomial_idx", idx)
-
-        # to store the k*s last inputs, k being the delay and s the strides
-        node.set_param("store", np.zeros((delay * strides, node.input_dim)))
+from ..node import Node
+from ..type import NodeInput, Timestep
 
 
 class NVAR(Node):
@@ -177,11 +122,74 @@ class NVAR(Node):
 
     """
 
-    def __init__(self, delay: int, order: int, strides: int = 1, **kwargs):
-        super(NVAR, self).__init__(
-            params={"store": None, "_monomial_idx": None},
-            hypers={"delay": delay, "order": order, "strides": strides},
-            forward=forward,
-            initializer=initialize,
-            **kwargs,
-        )
+    def __init__(
+        self, delay: int, order: int, strides: int = 1, name: Optional[str] = None
+    ):
+        self.store = None
+        self._monomial_idx = None
+        self.delay = delay
+        self.order = order
+        self.strides = strides
+        self.name = name
+
+    def initialize(
+        self,
+        x: Union[NodeInput, Timestep],
+        y: Optional[Union[NodeInput, Timestep]] = None,
+    ):
+
+        # set input_dim
+        if self.input_dim is None:
+            self.input_dim = (
+                x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+            )
+
+            order = self.order
+            delay = self.delay
+            strides = self.strides
+
+            linear_dim = delay * self.input_dim
+            # number of non linear components is (d + n - 1)! / (d - 1)! n!
+            # i.e. number of all unique monomials of order n made from the
+            # linear components.
+            nonlinear_dim = comb(linear_dim + order - 1, order)
+
+            output_dim = int(linear_dim + nonlinear_dim)
+
+            self.output_dim = output_dim
+
+            # for each monomial created in the non linear part, indices
+            # of the n components involved, n being the order of the
+            # monomials. Pre-compute them to improve efficiency.
+            idx = np.array(
+                list(it.combinations_with_replacement(np.arange(linear_dim), order))
+            )
+
+            self._monomial_idx = idx
+
+            # to store the k*s last inputs, k being the delay and s the strides
+            self.store = np.zeros((delay * strides, self.input_dim))
+
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+        store = self.store
+        strides = self.strides
+        idxs = self._monomial_idx
+        output_dim = self.output_dim
+
+        # store the current input
+        new_store = np.roll(store, 1, axis=0)
+        new_store[0] = x
+        self.store = new_store
+
+        output = np.zeros((1, output_dim))
+
+        # select all previous inputs, including the current, with strides
+        linear_feats = np.ravel(new_store[::strides, :]).reshape(-1, 1)
+        linear_len = linear_feats.shape[0]
+
+        output[:, :linear_len] = linear_feats
+
+        # select monomial terms and compute them
+        output[:, linear_len:] = np.prod(linear_feats[idxs], axis=1)
+
+        return (), output
