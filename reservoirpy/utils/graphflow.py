@@ -1,12 +1,11 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from collections import defaultdict, deque, namedtuple
+from collections import deque, namedtuple
 from typing import Dict, List, Optional, Sequence, TypeVar
 
 import numpy as np
 
-from .._base import _Node
 from ..node import Node
 from . import safe_defaultdict_copy
 from .validation import is_mapping
@@ -80,7 +79,7 @@ def get_offline_subgraphs(nodes, edges):
     while trained != offlines:
         subnodes, subedges = [], []
         for node in _nodes:
-            if node in inputs or all([p in included for p in parents.get(node)]):
+            if node in inputs or all([p in included for p in parents[node]]):
                 if node.is_trained_offline and node not in trained:
                     trained.add(node)
                     subnodes.append(node)
@@ -246,8 +245,8 @@ class DataDispatcher:
 
         x = []
         for parent in parents:
-            if isinstance(parent, _Node):
-                x.append(parent.state())
+            if isinstance(parent, Node):
+                x.append(parent.state)
             else:
                 x.append(parent)
 

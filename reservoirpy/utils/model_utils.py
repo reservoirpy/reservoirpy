@@ -6,7 +6,6 @@ from typing import Iterable
 
 import numpy as np
 
-from .._base import check_xy
 from ..node import Node
 from ..nodes import Input, Output
 from .validation import is_mapping, is_sequence_set

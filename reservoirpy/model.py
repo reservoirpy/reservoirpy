@@ -122,9 +122,7 @@ class Model:
         self.inputs = find_inputs(self.nodes, self.edges)
         self.outputs = find_outputs(self.nodes, self.edges)
         self.named_nodes = {n.name: n for n in self.nodes if n.name is not None}
-        self.trainable_nodes = [
-            i for i, n in enumerate(nodes) if isinstance(n, TrainableNode)
-        ]
+        self.trainable_nodes = [n for n in nodes if isinstance(n, TrainableNode)]
         self.is_trainable = len(self.trainable_nodes) > 0
         self.is_multi_input = len(self.inputs) > 1
         self.is_multi_output = len(self.outputs) > 1
@@ -197,7 +195,6 @@ class Model:
         output: dict[Node, Timestep] = {}
 
         for node in self.execution_order:
-            # TODO: optimize
             sources: list[Node] = self.children[node]
             node_input: np.ndarray = np.concatenate(
                 [node_states[source] for source in sources], axis=-1
