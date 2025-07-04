@@ -123,7 +123,12 @@ class NVAR(Node):
     """
 
     def __init__(
-        self, delay: int, order: int, strides: int = 1, name: Optional[str] = None
+        self,
+        delay: int,
+        order: int,
+        strides: int = 1,
+        input_dim: Optional[int] = None,
+        name: Optional[str] = None,
     ):
         self.store = None
         self._monomial_idx = None
@@ -131,6 +136,10 @@ class NVAR(Node):
         self.order = order
         self.strides = strides
         self.name = name
+        self.initialized = False
+        self.state = ()
+        self.input_dim = input_dim
+        self.output_dim = None
 
     def initialize(
         self,
@@ -169,6 +178,7 @@ class NVAR(Node):
 
             # to store the k*s last inputs, k being the delay and s the strides
             self.store = np.zeros((delay * strides, self.input_dim))
+            self.initialized = True
 
     def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
         store = self.store
@@ -181,15 +191,15 @@ class NVAR(Node):
         new_store[0] = x
         self.store = new_store
 
-        output = np.zeros((1, output_dim))
+        output = np.zeros((output_dim,))
 
         # select all previous inputs, including the current, with strides
-        linear_feats = np.ravel(new_store[::strides, :]).reshape(-1, 1)
+        linear_feats = np.ravel(new_store[::strides, :])
         linear_len = linear_feats.shape[0]
 
-        output[:, :linear_len] = linear_feats
+        output[:linear_len] = linear_feats
 
         # select monomial terms and compute them
-        output[:, linear_len:] = np.prod(linear_feats[idxs], axis=1)
+        output[linear_len:] = np.prod(linear_feats[idxs], axis=1)
 
         return (), output

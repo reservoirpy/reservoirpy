@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 18/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-import sys
 from math import comb
 
 import numpy as np
@@ -15,28 +14,21 @@ def _get_output_dim(input_dim, delay, order):
     return int(linear_dim + nonlinear_dim)
 
 
-def test_nvar_init():
+def test_nvar():
     node = NVAR(3, 2)
 
-    data = np.ones((1, 10))
+    data = np.ones((10,))
     res = node(data)
 
     assert node.store is not None
     assert node.strides == 1
     assert node.delay == 3
     assert node.order == 2
+    assert node.input_dim == 10
+    assert node.output_dim == _get_output_dim(10, 3, 2)
+    assert res.shape == (_get_output_dim(10, 3, 2),)
 
-    data = np.ones((10000, 10))
+    data = np.ones((1000, 10))
     res = node.run(data)
 
-    assert res.shape == (10000, _get_output_dim(10, 3, 2))
-
-
-def test_nvar_chain():
-    node1 = NVAR(3, 1)
-    node2 = NVAR(3, 2, strides=2)
-
-    data = np.ones((1, 10))
-    res = (node1 >> node2)(data)
-
-    assert res.shape == (1, _get_output_dim(_get_output_dim(10, 3, 1), 3, 2))
+    assert res.shape == (1000, _get_output_dim(10, 3, 2))

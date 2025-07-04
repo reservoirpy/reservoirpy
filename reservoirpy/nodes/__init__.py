@@ -91,6 +91,7 @@ Operators
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .io import Input, Output
 from .lms import LMS
+from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
 from .rls import RLS
@@ -108,7 +109,7 @@ __all__ = [
     "Identity",
     "Sigmoid",
     "ReLU",
-    #  "NVAR",
+    "NVAR",
     #  "ESN",
     #  "IPReservoir",
     #  "ScikitLearnNode",
