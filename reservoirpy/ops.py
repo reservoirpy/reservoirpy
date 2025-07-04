@@ -21,8 +21,8 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 from itertools import product
 from typing import Iterable, Sequence, Union
 
-from ._base import _Node
 from .model import Model
+from .node import Node
 from .utils.graphflow import find_parents_and_children
 
 
@@ -31,14 +31,14 @@ def _check_all_nodes(*nodes):
     for nn in nodes:
         if isinstance(nn, Iterable):
             for n in nn:
-                if not isinstance(n, _Node):
+                if not isinstance(n, Node):
                     raise TypeError(msg.format(n))
         else:
-            if not isinstance(nn, _Node):
+            if not isinstance(nn, Node):
                 raise TypeError(msg.format(nn))
 
 
-def _link_1to1(node1: _Node, node2: _Node):
+def _link_1to1(node1: Node, node2: Node):
     """Connects two nodes or models. See `link` doc for more info."""
     # fetch all nodes in the two subgraphs, if they are models.
     all_nodes = []
@@ -94,8 +94,8 @@ def _link_1to1(node1: _Node, node2: _Node):
 
 
 def link(
-    node1: Union[_Node, Sequence[_Node]],
-    node2: Union[_Node, Sequence[_Node]],
+    node1: Union[Node, Sequence[Node]],
+    node2: Union[Node, Sequence[Node]],
     name: str = None,
 ) -> Model:
     """Link two :py:class:`~.Node` instances to form a :py:class:`~.Model`
@@ -136,7 +136,7 @@ def link(
 
     Parameters
     ----------
-        node1, node2 : _Node or list of _Node
+        node1, node2 : Node or list of Node
             Nodes or lists of nodes to link.
         name: str, optional
             Name for the chaining Model.
@@ -182,9 +182,7 @@ def link(
     return Model(nodes=list(nodes), edges=list(edges), name=name)
 
 
-def merge(
-    model: _Node, *models: _Node, inplace: bool = False, name: str = None
-) -> Model:
+def merge(model: Node, *models: Node, inplace: bool = False, name: str = None) -> Model:
     """Merge different :py:class:`~.Model` or :py:class:`~.Node`
     instances into a single :py:class:`~.Model` instance.
 
@@ -236,7 +234,7 @@ def merge(
     """
     msg = "Impossible to merge models: object {} is not a Model instance."
 
-    if isinstance(model, _Node):
+    if isinstance(model, Node):
         all_nodes = set()
         all_edges = set()
         for m in models:
@@ -244,7 +242,7 @@ def merge(
             if isinstance(m, Model):
                 all_nodes |= set(m.nodes)
                 all_edges |= set(m.edges)
-            elif isinstance(m, _Node):
+            elif isinstance(m, Node):
                 all_nodes |= {m}
 
         if inplace:
