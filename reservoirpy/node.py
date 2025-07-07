@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from itertools import repeat
-from typing import Any, Generator, Optional, Self, Tuple
+from typing import Any, Iterable, Optional, Union
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -113,7 +113,7 @@ class ParallelNode(TrainableNode, ABC):
         ...
 
     @abstractmethod
-    def master(self, generator: Generator):
+    def master(self, generator: Iterable):
         ...
 
     def fit(self, x: NodeInput, y: Optional[NodeInput], workers=1) -> Self:

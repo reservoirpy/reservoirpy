@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Optional, Sequence, Tuple, Union
+from typing import Callable, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from scipy import linalg
@@ -76,7 +76,7 @@ class Ridge(ParallelNode):
         YXT = x.T @ y
         return XXT, YXT, x_sum, y_sum, sample_size
 
-    def master(self, generator: Generator):
+    def master(self, generator: Iterable):
         XXT = np.zeros((self.input_dim, self.input_dim))
         YXT = np.zeros((self.input_dim, self.output_dim))
         X_sum = 0.0
