@@ -17,8 +17,14 @@ class Node(ABC):
 
     @abstractmethod
     def initialize(
-        self, x: Optional[NodeInput | Timestep], y: Optional[NodeInput | Timestep]
+        self,
+        x: Optional[Union[NodeInput, Timestep]],
+        y: Optional[Union[NodeInput, Timestep]] = None,
     ):
+        ...
+
+    @abstractmethod
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
         ...
 
     def step(self, x: Optional[Timestep]) -> Timestep:
@@ -59,7 +65,7 @@ class Node(ABC):
         self.state = final_state
         return result
 
-    def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
+    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
         current_state = state
         n_timesteps = x.shape[-2]
 
@@ -70,17 +76,13 @@ class Node(ABC):
 
         return current_state, output
 
-    @abstractmethod
-    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        ...
-
     def __call__(self, x: Optional[Timestep]) -> Timestep:
         return self.step(x)
 
 
 class TrainableNode(Node):
     @abstractmethod
-    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> Self:
+    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> "TrainableNode":
         ...
 
 
@@ -89,7 +91,7 @@ class OnlineNode(TrainableNode):
     def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
         ...
 
-    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> Self:
+    def fit(self, x: NodeInput, y: Optional[NodeInput]) -> "OnlineNode":
         if not self.initialized:
             self.initialize(x, y)
 
@@ -116,7 +118,7 @@ class ParallelNode(TrainableNode, ABC):
     def master(self, generator: Iterable):
         ...
 
-    def fit(self, x: NodeInput, y: Optional[NodeInput], workers=1) -> Self:
+    def fit(self, x: NodeInput, y: Optional[NodeInput], workers=1) -> "ParallelNode":
         if not self.initialized:
             self.initialize(x, y)
 
