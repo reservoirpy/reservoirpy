@@ -14,47 +14,6 @@ from ..type import NodeInput, Timeseries, Timestep, Weights, is_array, is_multis
 from ..utils.random import rand_generator
 
 
-def forward_external(reservoir, x: np.ndarray) -> np.ndarray:
-    """Reservoir with external activation function:
-
-    .. math::
-
-        x[n+1] = (1 - \\alpha) \\cdot x[t] + \\alpha
-         \\cdot f (W_{in} \\cdot u[n] + W \\cdot r[t])
-
-        r[n+1] = f(x[n+1])
-
-
-    where :math:`x[n]` is the internal state of the reservoir and :math:`r[n]`
-    is the response of the reservoir."""
-    lr = reservoir.lr
-    f = reservoir.activation
-    dist = reservoir.noise_type
-    g_rc = reservoir.noise_rc
-    noise_gen = reservoir.noise_generator
-
-    u = x.reshape(-1, 1)
-    r = reservoir.state().T
-    s = reservoir.internal_state.T
-
-    s_next = (
-        np.multiply((1 - lr), s.T).T
-        + np.multiply(lr, reservoir_kernel(reservoir, u, r).T).T
-        + noise_gen(dist=dist, shape=r.shape, gain=g_rc)
-    )
-
-    reservoir.set_param("internal_state", s_next.T)
-
-    return f(s_next).T
-
-
-def ip_activation(state, *, reservoir, f):
-    """Activation of neurons f(a*x+b) where a and b are intrinsic plasticity
-    parameters."""
-    a, b = reservoir.a, reservoir.b
-    return f(a * state + b)
-
-
 class IPReservoir(TrainableNode):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
