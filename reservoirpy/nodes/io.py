@@ -48,6 +48,7 @@ class Input(Node):
     def __init__(self, name: Optional[str] = None):
         self.initialized = False
         self.name = name
+        self.state = ()
 
     def initialize(self, x: Union[NodeInput, Timestep]):
         dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -97,9 +98,10 @@ class Output(Node):
     initialized: bool
     state: tuple
 
-    def __init__(self, name: Optional[str]):
+    def __init__(self, name: Optional[str] = None):
         self.initialized = False
         self.name = name
+        self.state = ()
 
     def initialize(self, x: Union[NodeInput, Timestep]):
         dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]

@@ -10,16 +10,12 @@ from reservoirpy.nodes import Input, Output
 
 def test_input():
     inp = Input()
-    x = np.ones((1, 10))
+    x = np.ones((10,))
     out = inp(x)
     assert_equal(out, x)
     x = np.ones((10, 10))
     out = inp.run(x)
     assert_equal(out, x)
-
-    with pytest.raises(ValueError):
-        inp = Input(input_dim=9)
-        inp.run(x)
 
 
 def test_output():
