@@ -1,67 +1,51 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from collections import namedtuple
 from functools import partial
-from typing import Callable, Dict, Literal, Optional, Sequence, Union
+from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
 
-from ..._base import check_xy
-from ...activationsfunc import get_function
-from ...mat_gen import bernoulli, uniform
-from ...node import Node, _init_with_sequences
-from ...type import Weights
-from ...utils.random import noise, rand_generator
-from ...utils.validation import is_array
-from .base import forward_external
-from .base import initialize as initialize_base
+from ..activationsfunc import get_function
+from ..mat_gen import bernoulli, uniform
+from ..node import TrainableNode
+from ..type import NodeInput, Timeseries, Timestep, Weights, is_array, is_multiseries
+from ..utils.random import rand_generator
 
 
-def gaussian_gradients(x, y, a, mu, sigma, eta):
-    """KL loss gradients of neurons with tanh activation (~ Normal(mu, sigma))."""
-    sig2 = sigma**2
-    delta_b = -eta * (-(mu / sig2) + (y / sig2) * (2 * sig2 + 1 - y**2 + mu * y))
-    delta_a = (eta / a) + delta_b * x
-    return delta_a, delta_b
+def forward_external(reservoir, x: np.ndarray) -> np.ndarray:
+    """Reservoir with external activation function:
+
+    .. math::
+
+        x[n+1] = (1 - \\alpha) \\cdot x[t] + \\alpha
+         \\cdot f (W_{in} \\cdot u[n] + W \\cdot r[t])
+
+        r[n+1] = f(x[n+1])
 
 
-def exp_gradients(x, y, a, mu, eta):
-    """KL loss gradients of neurons with sigmoid activation
-    (~ Exponential(lambda=1/mu))."""
-    delta_b = eta * (1 - (2 + (1 / mu)) * y + (y**2) / mu)
-    delta_a = (eta / a) + delta_b * x
-    return delta_a, delta_b
+    where :math:`x[n]` is the internal state of the reservoir and :math:`r[n]`
+    is the response of the reservoir."""
+    lr = reservoir.lr
+    f = reservoir.activation
+    dist = reservoir.noise_type
+    g_rc = reservoir.noise_rc
+    noise_gen = reservoir.noise_generator
 
+    u = x.reshape(-1, 1)
+    r = reservoir.state().T
+    s = reservoir.internal_state.T
 
-def apply_gradients(a, b, delta_a, delta_b):
-    """Apply gradients on a and b parameters of intrinsic plasticity."""
-    a2 = a + delta_a
-    b2 = b + delta_b
-    return a2, b2
+    s_next = (
+        np.multiply((1 - lr), s.T).T
+        + np.multiply(lr, reservoir_kernel(reservoir, u, r).T).T
+        + noise_gen(dist=dist, shape=r.shape, gain=g_rc)
+    )
 
+    reservoir.set_param("internal_state", s_next.T)
 
-def ip(reservoir, pre_state, post_state):
-    """Perform one step of intrinsic plasticity.
-
-    Optimize a and b such that
-    post_state = f(a*pre_state+b) ~ Dist(params) where Dist can be normal or
-    exponential."""
-    a = reservoir.a
-    b = reservoir.b
-    mu = reservoir.mu
-    eta = reservoir.learning_rate
-
-    if reservoir.activation_type == "tanh":
-        sigma = reservoir.sigma
-        delta_a, delta_b = gaussian_gradients(
-            x=pre_state.T, y=post_state.T, a=a, mu=mu, sigma=sigma, eta=eta
-        )
-    else:  # sigmoid
-        delta_a, delta_b = exp_gradients(
-            x=pre_state.T, y=post_state.T, a=a, mu=mu, eta=eta
-        )
-
-    return apply_gradients(a=a, b=b, delta_a=delta_a, delta_b=delta_b)
+    return f(s_next).T
 
 
 def ip_activation(state, *, reservoir, f):
@@ -71,30 +55,7 @@ def ip_activation(state, *, reservoir, f):
     return f(a * state + b)
 
 
-def backward(reservoir: "IPReservoir", X=None, *args, **kwargs):
-    for e in range(reservoir.epochs):
-        for seq in X:
-            for u in seq:
-                post_state = reservoir.call(u.reshape(1, -1))
-                pre_state = reservoir.internal_state
-
-                a, b = ip(reservoir, pre_state, post_state)
-
-                reservoir.set_param("a", a)
-                reservoir.set_param("b", b)
-
-
-def initialize(reservoir, *args, **kwargs):
-    initialize_base(reservoir, *args, **kwargs)
-
-    a = np.ones((reservoir.output_dim, 1))
-    b = np.zeros((reservoir.output_dim, 1))
-
-    reservoir.set_param("a", a)
-    reservoir.set_param("b", b)
-
-
-class IPReservoir(Node):
+class IPReservoir(TrainableNode):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
 
@@ -271,143 +232,178 @@ class IPReservoir(Node):
 
     """
 
+    # TODO: make it OnlineNode
+    state_type = namedtuple("state", ["internal", "outer"])
+
     def __init__(
         self,
-        units: int = None,
+        units: Optional[int] = None,
         sr: Optional[float] = None,
         lr: float = 1.0,
         mu: float = 0.0,
         sigma: float = 1.0,
         learning_rate: float = 5e-4,
         epochs: int = 1,
-        input_bias: bool = True,
-        noise_rc: float = 0.0,
-        noise_in: float = 0.0,
-        noise_type: str = "normal",
-        noise_kwargs: Dict = None,
         input_scaling: Union[float, Sequence] = 1.0,
-        bias_scaling: float = 1.0,
         input_connectivity: Optional[float] = 0.1,
         rc_connectivity: Optional[float] = 0.1,
         Win: Union[Weights, Callable] = bernoulli,
         W: Union[Weights, Callable] = uniform,
         bias: Union[Weights, Callable] = bernoulli,
         activation: Literal["tanh", "sigmoid"] = "tanh",
+        input_dim: Optional[int] = None,
+        dtype: type = np.float64,
+        seed: Optional[Union[int, np.random.Generator]] = None,
         name=None,
-        seed=None,
-        **kwargs,
     ):
         if units is None and not is_array(W):
             raise ValueError(
                 "'units' parameter must not be None if 'W' parameter is not "
                 "a matrix."
             )
+        if units is not None and is_array(W) and W.shape[-1] != units:
+            raise ValueError(
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
+                f"{units} != {W.shape[-1]}."
+            )
 
-        if activation not in ["tanh", "sigmoid"]:
+        self.units = units
+        self.sr = sr
+        self.lr = lr
+        self.mu = mu
+        self.sigma = sigma
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        self.input_scaling = input_scaling
+        self.input_connectivity = input_connectivity
+        self.rc_connectivity = rc_connectivity
+        self.Win = Win
+        self.W = W
+        self.bias = bias
+        self.activation = get_function(activation)
+
+        if activation == "tanh":
+            self.gradient = partial(
+                IPReservoir.gaussian_gradients, mu=mu, sigma=sigma, eta=learning_rate
+            )
+        elif activation == "sigmoid":
+            self.gradient = partial(IPReservoir.exp_gradients, mu=mu, eta=learning_rate)
+        else:
             raise ValueError(
                 f"Activation '{activation}' must be 'tanh' or 'sigmoid' when "
                 "applying intrinsic plasticity."
             )
 
-        rng = rand_generator(seed=seed)
-        noise_kwargs = dict() if noise_kwargs is None else noise_kwargs
+        # set input_dim (if possible)
+        if input_dim is not None and is_array(Win) and Win.shape[-1] != input_dim:
+            raise ValueError(
+                f"Both 'input_dim' and 'Win' are set but their dimensions doesn't "
+                f"match: {input_dim} != {Win.shape[-1]}."
+            )
+        self.input_dim = np.shape(Win)[-1] if is_array(Win) else input_dim
 
-        super(IPReservoir, self).__init__(
-            params={
-                "W": None,
-                "Win": None,
-                "bias": None,
-                "a": None,
-                "b": None,
-                "internal_state": None,
-            },
-            hypers={
-                "sr": sr,
-                "lr": lr,
-                "mu": mu,
-                "sigma": sigma,
-                "learning_rate": learning_rate,
-                "epochs": epochs,
-                "input_bias": input_bias,
-                "input_scaling": input_scaling,
-                "rc_connectivity": rc_connectivity,
-                "input_connectivity": input_connectivity,
-                "noise_in": noise_in,
-                "noise_rc": noise_rc,
-                "noise_type": noise_type,
-                "activation_type": activation,
-                "activation": partial(
-                    ip_activation, reservoir=self, f=get_function(activation)
-                ),
-                "units": units,
-                "noise_generator": partial(noise, rng=rng, **noise_kwargs),
-            },
-            forward=forward_external,
-            initializer=partial(
-                initialize,
-                input_bias=input_bias,
-                bias_scaling=bias_scaling,
-                sr=sr,
-                input_scaling=input_scaling,
-                input_connectivity=input_connectivity,
-                rc_connectivity=rc_connectivity,
-                W_init=W,
-                Win_init=Win,
-                bias_init=bias,
-                seed=seed,
-            ),
-            backward=backward,
-            output_dim=units,
-            name=name,
-            **kwargs,
+        self.output_dim = units
+        self.dtype = dtype
+        self.rng = rand_generator(seed=seed)
+        self.name = name
+
+        self.a: np.ndarray
+        self.b: np.ndarray
+        self.state: IPReservoir.state_type
+        self.initialized = False
+
+    def initialize(self, x: Optional[Union[NodeInput, Timestep]], y: None = None):
+
+        # set input_dim
+        if self.input_dim is None:
+            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+
+        [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
+
+        if callable(self.Win):
+            self.Win = self.Win(
+                self.units,
+                self.input_dim,
+                input_scaling=self.input_scaling,
+                connectivity=self.input_connectivity,
+                dtype=self.dtype,
+                seed=Win_rng,
+            )
+
+        if callable(self.W):
+            self.W = self.W(
+                self.units,
+                self.units,
+                sr=self.sr,
+                connectivity=self.rc_connectivity,
+                dtype=self.dtype,
+                seed=W_rng,
+            )
+
+        if callable(self.bias):
+            self.bias = self.bias(
+                self.units,
+                connectivity=1.0,
+                dtype=self.dtype,
+                seed=bias_rng,
+            )
+
+        self.a = np.ones((self.output_dim,))
+        self.b = np.zeros((self.output_dim,))
+
+        self.state = IPReservoir.state_type(
+            internal=np.zeros((self.output_dim,)), outer=np.zeros((self.output_dim,))
         )
 
-    @property
-    def fitted(self):
-        return True
+        self.initialized = True
 
-    @property
-    def unsupervised(self):
-        return True
+    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+        W = self.W  # NxN
+        Win = self.Win  # NxI
+        bias = self.bias  # N or float
+        f = self.activation
+        lr = self.lr
+        (internal, external) = state
 
-    def partial_fit(self, X_batch, Y_batch=None, warmup=0, **kwargs) -> "Node":
-        """Partial offline fitting method of a Node.
-        Can be used to perform batched fitting or to pre-compute some variables
-        used by the fitting method.
+        next_state = W @ external + Win @ x + bias
+        next_state = (1 - lr) * internal + lr * next_state
 
-        Parameters
-        ----------
-        X_batch : array-like of shape ([series], timesteps, features)
-            A sequence or a batch of sequence of input data.
-        Y_batch : array-like of shape ([series], timesteps, features), optional
-            A sequence or a batch of sequence of teacher signals.
-        warmup : int, default to 0
-            Number of timesteps to consider as warmup and
-            discard at the beginning of each timeseries before training.
+        next_external = f(self.a * next_state + self.b)
 
-        Returns
-        -------
-            Node
-                Partially fitted Node.
-        """
-        X, _ = check_xy(self, X_batch, allow_n_inputs=False)
+        return (next_state, next_external), next_external
 
-        X, _ = _init_with_sequences(self, X)
+    def fit(self, x: NodeInput, y: None = None) -> "IPReservoir":
+        if not self.initialized:
+            self.initialize(x, y)
 
-        self.initialize_buffers()
-
-        for i in range(len(X)):
-            X_seq = X[i]
-
-            if X_seq.shape[0] <= warmup:
-                raise ValueError(
-                    f"Warmup set to {warmup} timesteps, but one timeseries is only "
-                    f"{X_seq.shape[0]} long."
-                )
-
-            if warmup > 0:
-                self.run(X_seq[:warmup])
-
-            self._partial_backward(self, X_seq[warmup:])
+        for _epoch in range(self.epochs):
+            if is_multiseries(x):
+                for seq in x:
+                    self.partial_fit(seq)
+            else:
+                self.partial_fit(x)
 
         return self
+
+    def partial_fit(self, x: Timeseries):
+        for u in x:
+            (pre_state, _out) = self.state
+            post_state = self.step(u)
+
+            delta_a, delta_b = self.gradient(x=pre_state.T, y=post_state.T, a=self.a)
+            self.a += delta_a
+            self.b += delta_b
+
+    def gaussian_gradients(x, y, a, mu, sigma, eta):
+        """KL loss gradients of neurons with tanh activation (~ Normal(mu, sigma))."""
+        sig2 = sigma**2
+        delta_b = -eta * (-(mu / sig2) + (y / sig2) * (2 * sig2 + 1 - y**2 + mu * y))
+        delta_a = (eta / a) + delta_b * x
+        return delta_a, delta_b
+
+    def exp_gradients(x, y, a, mu, eta):
+        """KL loss gradients of neurons with sigmoid activation
+        (~ Exponential(lambda=1/mu))."""
+        delta_b = eta * (1 - (2 + (1 / mu)) * y + (y**2) / mu)
+        delta_a = (eta / a) + delta_b * x
+        return delta_a, delta_b
