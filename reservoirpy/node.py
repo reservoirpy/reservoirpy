@@ -28,6 +28,7 @@ class Node(ABC):
         ...
 
     def step(self, x: Optional[Timestep]) -> Timestep:
+        # TODO: check input_dim==x.shape for all public functions
         if not self.initialized:
             self.initialize(x)
 
@@ -81,6 +82,7 @@ class Node(ABC):
 
 
 class TrainableNode(Node):
+    # TODO: warmup
     @abstractmethod
     def fit(self, x: NodeInput, y: Optional[NodeInput]) -> "TrainableNode":
         ...
