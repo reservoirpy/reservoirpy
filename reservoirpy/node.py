@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from itertools import repeat
-from typing import Any, Iterable, Optional, Union
+from typing import Iterable, Optional, Union
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -18,7 +18,7 @@ class Node(ABC):
     @abstractmethod
     def initialize(
         self,
-        x: Optional[Union[NodeInput, Timestep]],
+        x: Union[NodeInput, Timestep],
         y: Optional[Union[NodeInput, Timestep]] = None,
     ):
         ...
@@ -121,7 +121,9 @@ class ParallelNode(TrainableNode, ABC):
     def master(self, generator: Iterable):
         ...
 
-    def fit(self, x: NodeInput, y: Optional[NodeInput], workers=1) -> "ParallelNode":
+    def fit(
+        self, x: NodeInput, y: Optional[NodeInput], workers: int = 1
+    ) -> "ParallelNode":
         if not self.initialized:
             self.initialize(x, y)
 
