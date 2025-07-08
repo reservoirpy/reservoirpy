@@ -42,10 +42,10 @@ class Node(ABC):
         self.state = new_state
         return output
 
-    def run(self, x: Optional[NodeInput], length: Optional[int] = None):
+    def run(self, x: Optional[NodeInput], iters: Optional[int] = None):
         # Auto-regressive mode
         if x is None:
-            x = np.empty((length, 0))
+            x = np.empty((iters, 0))
 
         if not self.initialized:
             self.initialize(x)
