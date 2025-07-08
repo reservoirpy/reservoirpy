@@ -69,12 +69,12 @@ a :py:class:`Model`.
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import numpy as np
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
-from .type import ModelInput, NodeInput, Timestep, timestep_from_input
+from .type import ModelInput, ModelTimestep, Timeseries, Timestep, timestep_from_input
 from .utils.graphflow import (
     find_inputs,
     find_outputs,
@@ -102,13 +102,13 @@ class Model:
     inputs: list[Node]
     outputs: list[Node]
     named_nodes: dict[str, Node]
-    initialized: bool
     trainable_nodes: list[Node]
     is_trainable: bool
     is_multi_input: bool
     is_multi_output: bool
     is_online: bool
     is_parallel: bool
+    initialized: bool
 
     def __init__(
         self,
@@ -137,7 +137,11 @@ class Model:
 
         self.initialized = False
 
-    def initialize(self, x: ModelInput, y: Optional[ModelInput] = None):
+    def initialize(
+        self,
+        x: Union[ModelInput, ModelTimestep],
+        y: Optional[Union[ModelInput, ModelTimestep]] = None,
+    ):
         """Initializes a :py:class:`Model` instance at runtime, using samples of
         data to infer all :py:class:`Node` dimensions.
 
@@ -152,11 +156,11 @@ class Model:
             data, or a dictionary mapping node names to vector of
             shapes `(1, ndim of corresponding node)`.
         """
-        self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
         check_unnamed_in_out(self)
         check_input_output_connections(self.edges)
 
         # execution order / cycle detection
+        self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
         self.execution_order = topological_sort(
             self.nodes, self.edges, inputs=self.inputs
         )
@@ -177,7 +181,8 @@ class Model:
 
         for node in self.execution_order:
             node_input = node_inputs[node]
-            node.initialize(node_input)
+            if not node.initialized:
+                node.initialize(node_input)
             out = np.zeros((node.output_dim,))
             node_parents = self.parents[node]
             for parent in node_parents:
@@ -189,16 +194,48 @@ class Model:
         self.initialized = True
 
     def _step(
-        self, state: dict[Node, tuple], x: Timestep
-    ) -> tuple[dict[Node, tuple], dict[Node, Timestep]]:
-        node_states: dict[Node, tuple[np.ndarray]] = {}
-        output: dict[Node, Timestep] = {}
+        self, state: dict[Node, tuple], x: ModelTimestep
+    ) -> tuple[dict[Node, tuple], ModelTimestep]:
+
+        new_state: dict[Node, tuple[np.ndarray]] = {}
+        outputs: dict[Node, Timestep] = {}
 
         for node in self.execution_order:
-            sources: list[Node] = self.children[node]
-            node_input: np.ndarray = np.concatenate(
-                [node_states[source] for source in sources], axis=-1
-            )
-            node_states[node], output[node] = node._step(state[node], node_input)
+            # sources: list[Node] = self.children[node]
+            # node_input: np.ndarray = np.concatenate(
+            #     [node_states[source] for source in sources], axis=-1
+            # )
+            node_input = get_node_input(node)
+            new_state[node], outputs[node] = node._step(state[node], node_input)
 
-        return node_states, output
+        return new_state, outputs
+
+    def step(self, x: Optional[ModelTimestep]) -> ModelTimestep:
+        # Auto-regressive mode
+        if x is None:
+            x = np.empty((0,))
+
+        if not self.initialized:
+            self.initialize(x)
+
+        ...
+
+    def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
+        # Auto-regressive mode
+        if x is None:
+            x: Timeseries = np.empty((iters, 0))
+
+        if not self.initialized:
+            self.initialize(x)
+        ...
+
+    def partial_fit(self, x: ModelInput, y: Optional[ModelInput]) -> ModelInput:
+        ...
+
+    def fit(self, x: ModelInput, y: Optional[ModelInput], workers: int = 1) -> "Model":
+        if not self.initialized:
+            self.initialize(x, y)
+        ...
+
+    def __call__(self, x: Optional[ModelTimestep]) -> ModelTimestep:
+        return self.step(x)
