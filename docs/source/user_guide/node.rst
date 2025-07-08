@@ -230,7 +230,7 @@ The forward function of a Reservoir node can be seen in equation :eq:`res_equati
 .. math::
    :label: res_equation
 
-    s[n+1] = (1 - lr) \cdot s[t] + \alpha \cdot f(W_{in} \cdot x[n] + W \cdot s[t])
+    s[t+1] = (1 - lr) \cdot s[t] + lr \cdot f(W_{in} \times x[t] + W \times s[t])
 
 Internal state of the reservoir :math:`s[t]` is in that case a vector containing the activations of all neurons
 at timestep :math:`t`. The forward function is parametrized by an hyperparameter :math:`lr` (called *leaking rate*)
