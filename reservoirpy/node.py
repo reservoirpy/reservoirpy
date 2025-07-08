@@ -29,12 +29,13 @@ class Node(ABC):
 
     def step(self, x: Optional[Timestep]) -> Timestep:
         # TODO: check input_dim==x.shape for all public functions
-        if not self.initialized:
-            self.initialize(x)
 
         # Auto-regressive mode
         if x is None:
             x = np.empty((0,))
+
+        if not self.initialized:
+            self.initialize(x)
 
         new_state, output = self._step(self.state, x)
 
