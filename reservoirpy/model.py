@@ -230,11 +230,21 @@ class Model:
     def step(self, x: Optional[ModelTimestep]) -> ModelTimestep:
         # Auto-regressive mode
         if x is None:
-            x = np.empty((0,))
+            x = np.zeros((0,))
 
         if not self.initialized:
             self.initialize(x)
 
+        state = {node: node.state for node in self.nodes}
+        new_state = self._step(state, x)
+
+        for node in new_state:
+            node.state = new_state[node]
+
+        if len(self.outputs) == 1:
+            return new_state[self.outputs[0]]["state"]
+        else:
+            return {node.name: new_state[node]["state"] for node in self.outputs}
         ...
 
     def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
