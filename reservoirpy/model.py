@@ -272,11 +272,34 @@ class Model:
     def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
         # Auto-regressive mode
         if x is None:
-            x: Timeseries = np.empty((iters, 0))
+            x_: ModelInput = np.zeros((iters, 0))
+        else:
+            x_ = x
 
         if not self.initialized:
-            self.initialize(x)
-        ...
+            self.initialize(x_)
+
+        previous_states = {node: node.state for node in self.nodes}
+        # TODO: list[timeseries]
+        if is_multiseries(x_):
+            result: dict[Node, list[Timeseries]] = defaultdict(list)
+            iterable_x = unfold_mapping(x_) if isinstance(x_, dict) else x_
+
+            for timeseries in iterable_x:
+                new_state, output = self._run(previous_states, timeseries)
+                for node in output:
+                    result[node].append(output[node])
+
+        else:
+            new_state, result = self._run(previous_states, x_)
+
+        for node in new_state:
+            node.state = new_state[node]
+
+        if len(self.outputs) == 1:
+            return result[self.outputs[0]]
+        else:
+            return {node.name: result[node] for node in self.outputs}
 
     def partial_fit(self, x: ModelInput, y: Optional[ModelInput]) -> ModelInput:
         ...
