@@ -69,12 +69,24 @@ a :py:class:`Model`.
 # Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from collections import defaultdict
 from typing import Optional, Sequence, Union
 
 import numpy as np
+from typing_extensions import assert_type
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
-from .type import ModelInput, ModelTimestep, Timeseries, Timestep, timestep_from_input
+from .type import (
+    ModelInput,
+    ModelTimestep,
+    MultiTimeseries,
+    NodeInput,
+    State,
+    Timeseries,
+    Timestep,
+    is_multiseries,
+    timestep_from_input,
+)
 from .utils.graphflow import (
     find_inputs,
     find_outputs,
@@ -82,7 +94,11 @@ from .utils.graphflow import (
     topological_sort,
     unique_ordered,
 )
-from .utils.model_utils import check_input_output_connections, check_unnamed_in_out
+from .utils.model_utils import (
+    check_input_output_connections,
+    check_unnamed_in_out,
+    unfold_mapping,
+)
 
 
 class Model:
@@ -193,22 +209,23 @@ class Model:
         # TODO: Jax compilation
         self.initialized = True
 
-    def _step(
-        self, state: dict[Node, tuple], x: ModelTimestep
-    ) -> tuple[dict[Node, tuple], ModelTimestep]:
+    def _step(self, state: dict[Node, State], x: ModelTimestep) -> dict[Node, State]:
 
-        new_state: dict[Node, tuple[np.ndarray]] = {}
-        outputs: dict[Node, Timestep] = {}
+        new_state: dict[Node, State] = {}
 
         for node in self.execution_order:
-            # sources: list[Node] = self.children[node]
-            # node_input: np.ndarray = np.concatenate(
-            #     [node_states[source] for source in sources], axis=-1
-            # )
-            node_input = get_node_input(node)
-            new_state[node], outputs[node] = node._step(state[node], node_input)
+            inputs = []
+            if isinstance(x, dict):
+                if node.name in x:
+                    inputs += x[node.name]
+            else:
+                if self.inputs[0] == node:
+                    inputs += x
+            inputs += [new_state[parent]["state"] for parent in self.parents[node]]
+            node_input = np.concatenate(inputs, axis=-1)
+            new_state[node] = node._step(state[node], node_input)
 
-        return new_state, outputs
+        return new_state
 
     def step(self, x: Optional[ModelTimestep]) -> ModelTimestep:
         # Auto-regressive mode
