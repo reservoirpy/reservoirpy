@@ -245,7 +245,29 @@ class Model:
             return new_state[self.outputs[0]]["state"]
         else:
             return {node.name: new_state[node]["state"] for node in self.outputs}
-        ...
+
+    def _run(
+        self, state: dict[Node, State], x: Union[Timeseries, dict[str, Timeseries]]
+    ) -> tuple[dict[Node, State], dict[Node, Timeseries]]:
+
+        output_timeseries: dict[Node, Timeseries] = {}
+        new_state: dict[Node, State] = {}
+
+        for node in self.execution_order:
+            inputs = []
+            if isinstance(x, dict):
+                if node.name in x:
+                    inputs += x[node.name]
+            else:
+                if self.inputs == [node]:
+                    inputs += x
+            inputs += [output_timeseries[parent] for parent in self.parents[node]]
+            node_input = np.concatenate(inputs, axis=-1)
+            new_state[node], output_timeseries[node] = node._run(
+                state[node], node_input
+            )
+
+        return new_state, output_timeseries
 
     def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
         # Auto-regressive mode
