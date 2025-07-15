@@ -35,31 +35,63 @@ def test_node_initialize(plus_node, minus_node):
 
 
 def test_complex_node_link():
-    A = Node(name="A")
-    B = Node(name="B")
-    C = Node(name="C")
-    D = Node(name="D")
-    E = Node(name="E")
-    F = Node(name="F")
+    x = np.ones((10, 2))
+    A = PlusNode(name="A")
+    B = PlusNode(name="B")
+    C = PlusNode(name="C")
+    D = PlusNode(name="D")
+    E = PlusNode(name="E")
+    F = PlusNode(name="F")
     In = Input(name="In")
     Out = Output(name="Out")
 
-    path1, path2 = A >> F, B >> E
-    path3 = In >> [A, B, C]
-    path4 = A >> B >> C >> D >> E >> F >> Out
-    model = path1 & path2 & path3 & path4
+    # TODO: assert equivalence
+    # path1, path2 = A >> F, B >> E
+    # path3 = In >> [A, B, C]
+    # path4 = A >> B >> C >> D >> E >> F >> Out
+    # model = path1 & path2 & path3 & path4
+    model = Model(
+        [A, B, C, D, E, F, In, Out, A, B],  # with duplicatas
+        [
+            (A, F),
+            (B, E),
+            (In, A),
+            (In, B),
+            (In, C),
+            (A, B),
+            (B, C),
+            (C, D),
+            (D, E),
+            (E, F),
+            (F, Out),
+            (F, Out),
+            (F, Out),
+        ],
+    )
 
-    assert len(model.nodes) == 12  # 8 user-defined + 4 concat nodes
-    assert len(model.edges) == 15  # 11 user-defined + 4 created connections
+    assert model.nodes == [A, B, C, D, E, F, In, Out]
+    assert len(model.edges) == 11
+    assert model.inputs == [In]
+    assert model.outputs == [Out]
+    assert len(model.named_nodes) == 8 and model.named_nodes["A"] == A
+    assert not model.is_trainable
+    assert not model.is_multi_input
+    assert not model.is_multi_output
 
+    model.initialize(x)
 
-def test_empty_model_init():
-    model = Model()
-    assert model.is_empty
+    assert len(model.parents[B]) == 2
+    assert len(model.children[In]) == 3
+    assert len(model.execution_order) == len(model.nodes)
+
+    expected_dims = [2, 4, 6, 6, 10, 12, 2, 12]
+    assert all([node.initialized for node in model.nodes])
+    assert [node.input_dim for node in model.nodes] == expected_dims
 
 
 def test_model_call(plus_node, minus_node):
-    model = plus_node >> minus_node
+    # model = plus_node >> minus_node
+    model = Model([plus_node, minus_node], [(plus_node, minus_node)])
 
     data = np.zeros((1, 5))
     res = model(data)
