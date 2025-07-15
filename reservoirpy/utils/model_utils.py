@@ -6,6 +6,8 @@ from typing import Iterable
 
 import numpy as np
 
+from reservoirpy.type import ModelInput, MultiTimeseries, Timeseries
+
 from ..node import Node
 from ..nodes import Input, Output
 from .validation import is_mapping, is_sequence_set
@@ -64,11 +66,11 @@ def allocate_returned_states(model, inputs, return_states=None):
     return states
 
 
-def to_ragged_seq_set(data):
+def to_ragged_seq_set(data: ModelInput):
     """Convert dataset from mapping/array of sequences
     to lists of mappings of sequences."""
     # data is a dict
-    if is_mapping(data):
+    if isinstance(data, dict):
         new_data = {}
         for name, datum in data.items():
             if not is_sequence_set(datum):
@@ -90,7 +92,7 @@ def to_ragged_seq_set(data):
             return data
 
 
-def build_mapping(nodes, data, io_type="input"):
+def build_mapping(nodes: list[Node], data: ModelInput, io_type="input"):
     """Map input/target data to input/trainable nodes in the model."""
     data = to_ragged_seq_set(data)
     if not is_mapping(data):
@@ -110,8 +112,9 @@ def build_mapping(nodes, data, io_type="input"):
     return data_map
 
 
-def unfold_mapping(data_map):
+def unfold_mapping(data_map: dict[str, MultiTimeseries]) -> list[dict[str, Timeseries]]:
     """Convert a mapping of sequence lists into a list of sequence to nodes mappings."""
+    # TODO: extensively test this
     seq_numbers = [len(data_map[n]) for n in data_map.keys()]
     if len(np.unique(seq_numbers)) > 1:
         seq_numbers = {n: len(data_map[n]) for n in data_map.keys()}
@@ -123,7 +126,7 @@ def unfold_mapping(data_map):
     # select an input dataset and check
     n_sequences = len(data_map[list(data_map.keys())[0]])
 
-    mapped_sequences = []
+    mapped_sequences: list[dict[str, Timeseries]] = []
     for i in range(n_sequences):
         sequence = {n: data_map[n][i] for n in data_map.keys()}
         mapped_sequences.append(sequence)
@@ -177,7 +180,7 @@ def check_input_output_connections(edges: list[tuple[Node, Node]]):
     if len(output_children) > 0:
         raise ValueError("An Output node is connected to another Node.")
 
-    input_children = [p for p, c in edges if isinstance(p, Input)]
+    input_children = [p for p, c in edges if isinstance(c, Input)]
     if len(input_children) > 0:
         raise ValueError("A Node is connected to an Input node.")
 
@@ -186,14 +189,14 @@ def check_unnamed_in_out(model):
     """Raise ValueError if the model has multiple inputs but an input node is not named,
     or if the model has multiple outputs but an output node is not named
     """
-    unnamed_inputs = [n for n in model._inputs if n.name is None]
-    if model._inputs > 1 and len(unnamed_inputs) > 0:
+    unnamed_inputs = [n for n in model.inputs if n.name is None]
+    if len(model.inputs) > 1 and len(unnamed_inputs) > 0:
         raise ValueError(
             f"Model has multiple input nodes but at least one"
             f"of them is not named: {', '.join(unnamed_inputs)}."
         )
-    unnamed_outputs = [n for n in model._outputs if n.name is None]
-    if model._outputs > 1 and len(unnamed_outputs) > 0:
+    unnamed_outputs = [n for n in model.outputs if n.name is None]
+    if len(model.outputs) > 1 and len(unnamed_outputs) > 0:
         raise ValueError(
             f"Model has multiple input nodes but at least one"
             f"of them is not named: {', '.join(unnamed_outputs)}."

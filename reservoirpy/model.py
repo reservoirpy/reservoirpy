@@ -189,22 +189,19 @@ class Model:
             for node_name, val in x.items():
                 node = self.named_nodes[node_name]
                 val = timestep_from_input(val)
-                np.concatenate((node_inputs[node], val), axis=1, out=node_inputs[node])
+                node_inputs[node] = np.concatenate((node_inputs[node], val), axis=-1)
         else:
             [node] = self.inputs
             x = timestep_from_input(x)
-            np.concatenate((node_inputs[node], x), axis=1, out=node_inputs[node])
+            node_inputs[node] = np.concatenate((node_inputs[node], x), axis=-1)
 
         for node in self.execution_order:
             node_input = node_inputs[node]
             if not node.initialized:
                 node.initialize(node_input)
             out = np.zeros((node.output_dim,))
-            node_parents = self.parents[node]
-            for parent in node_parents:
-                np.concatenate(
-                    (node_inputs[parent], x), axis=1, out=node_inputs[parent]
-                )
+            for child in self.children[node]:
+                node_inputs[child] = np.concatenate((node_inputs[child], out), axis=-1)
 
         # TODO: Jax compilation
         self.initialized = True
