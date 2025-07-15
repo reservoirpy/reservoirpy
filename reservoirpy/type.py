@@ -34,7 +34,9 @@ def is_array(obj: Any) -> bool:
     return obj is not None and isinstance(obj, np.ndarray) or issparse(obj)
 
 
-def is_multiseries(x: NodeInput):
+def is_multiseries(x: ModelInput) -> bool:
+    if isinstance(x, dict):
+        return is_multiseries(x[list(x)[0]])
     return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)
 
 
