@@ -40,9 +40,19 @@ class Node(ABC):
         new_state, output = self._step(self.state, x)
 
         self.state = new_state
-        return output
 
-    def run(self, x: Optional[NodeInput], iters: Optional[int] = None):
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
+        current_state = state
+        n_timesteps = x.shape[-2]
+
+        output = np.empty((n_timesteps, self.output_dim))
+        for i, x_step in enumerate(x):
+            current_state = self._step(state=current_state, x=x_step)
+            output[i] = current_state["state"]
+
+        return current_state, output
+
+    def run(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
         # Auto-regressive mode
         if x is None:
             x = np.empty((iters, 0))
@@ -67,20 +77,9 @@ class Node(ABC):
         self.state = final_state
         return result
 
-    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
-        current_state = state
-        n_timesteps = x.shape[-2]
-
-        output = np.empty((n_timesteps, self.output_dim))
-        for i, x_step in enumerate(x):
-            current_state, output_step = self._step(state=current_state, x=x_step)
-            output[i] = output_step
-
-        return current_state, output
-
     def __call__(self, x: Optional[Timestep]) -> Timestep:
         return self.step(x)
-    
+
     def __repr__(self):
         if self.name is not None:
             return self.name
