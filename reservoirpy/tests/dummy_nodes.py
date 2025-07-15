@@ -1,271 +1,142 @@
 # Author: Nathan Trouvain at 10/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from typing import Sequence
+
 import numpy as np
 import pytest
 
-from reservoirpy.node import Node
+from reservoirpy.node import Node, OnlineNode, TrainableNode
+from reservoirpy.type import is_multiseries
 
 
-def plus_forward(node: Node, x: np.ndarray):
-    return x + node.c + node.h + node.state()
+class IdentityNode(Node):
+    def __init__(self, name=None):
+        self.name = name
+        self.initialized = False
 
+    def _step(self, x):
+        return x
 
-def plus_initialize(node: Node, x=None, **kwargs):
-    node.input_dim = x.shape[1]
-    node.output_dim = x.shape[1]
-    node.set_param("c", 1)
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
 
 
 class PlusNode(Node):
-    def __init__(self, **kwargs):
-        super().__init__(
-            params={"c": None},
-            hypers={"h": 1},
-            forward=plus_forward,
-            initializer=plus_initialize,
-            **kwargs,
-        )
+    def __init__(self, h=1, name=None):
+        self.h = h
+        self.name = name
+        self.initialized = False
 
+    def _step(self, x):
+        return x + self.h
 
-def minus_forward(node: Node, x):
-    return x - node.c - node.h - node.state()
-
-
-def minus_initialize(node: Node, x=None, **kwargs):
-    node.input_dim = x.shape[1]
-    node.output_dim = x.shape[1]
-    node.set_param("c", 1)
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
 
 
 class MinusNode(Node):
-    def __init__(self, **kwargs):
-        super().__init__(
-            params={"c": None},
-            hypers={"h": 1},
-            forward=minus_forward,
-            initializer=minus_initialize,
-            **kwargs,
-        )
+    def __init__(self, h=1, name=None):
+        self.h = h
+        self.name = name
+        self.initialized = False
 
+    def _step(self, x):
+        return x - self.h
 
-def inv_forward(node: Node, x):
-    return -x
-
-
-def inv_initialize(node: Node, x=None, **kwargs):
-    if x is not None:
-        node.input_dim = x.shape[1]
-        node.output_dim = x.shape[1]
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
 
 
 class Inverter(Node):
-    def __init__(self, **kwargs):
-        super(Inverter, self).__init__(
-            initializer=inv_initialize, forward=inv_forward, **kwargs
-        )
+    def __init__(self, name=None):
+        self.name = name
+        self.initialized = False
+
+    def _step(self, x):
+        return -x
+
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
 
 
-def off_forward(node: Node, x):
-    return x + node.b
+class Offline(TrainableNode):
+    def __init__(self, name=None):
+        self.name = name
+        self.b = 0
+        self.initialized = False
+
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
+
+    def _step(self, x):
+        return x + self.b
+
+    def fit(self, x, y):
+        if not self.initialized:
+            self.initialize(x, y)
+
+        for el in y:
+            self.b += np.sum(el)
+
+        return self
 
 
-def off_partial_backward(node: Node, X_batch, Y_batch=None):
-    db = np.mean(np.abs(X_batch - Y_batch))
-    b = node.get_buffer("b")
-    b += db
+class Unsupervised(TrainableNode):
+    def __init__(self, name=None):
+        self.name = name
+        self.b = 0
+        self.initialized = False
+
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
+
+    def _step(self, x):
+        return x + self.b
+
+    def fit(self, x):
+        if not self.initialized:
+            self.initialize(x)
+
+        for el in x:
+            self.b += np.sum(el)
+
+        return self
 
 
-def off_backward(node: Node, X=None, Y=None):
-    b = node.get_buffer("b")
-    node.set_param("b", np.array(b).copy())
+class OnlineUnsupervised(OnlineNode):
+    def __init__(self, name=None):
+        self.name = name
+        self.b = 0
+        self.initialized = False
 
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.initialized = True
 
-def off_initialize(node: Node, x=None, y=None):
-    if x is not None:
-        node.input_dim = x.shape[1]
-        node.output_dim = x.shape[1]
+    def _step(self, x):
+        return x + self.b
 
+    def partial_fit(self, x):
+        if not self.initialized:
+            self.initialize(x)
 
-def off_initialize_buffers(node: Node):
-    node.create_buffer("b", (1,))
+        self.b += np.sum(x)
 
-
-class Offline(Node):
-    def __init__(self, **kwargs):
-        super(Offline, self).__init__(
-            params={"b": 0},
-            forward=off_forward,
-            partial_backward=off_partial_backward,
-            backward=off_backward,
-            buffers_initializer=off_initialize_buffers,
-            initializer=off_initialize,
-            **kwargs,
-        )
-
-
-def off_backward_basic(node: Node, X=None, Y=None):
-    b = np.mean(node._X)
-    node.set_param("b", np.array(b).copy())
-
-
-class BasicOffline(Node):
-    def __init__(self, **kwargs):
-        super(BasicOffline, self).__init__(
-            params={"b": 0},
-            forward=off_forward,
-            backward=off_backward_basic,
-            initializer=off_initialize,
-        )
-
-
-def off2_forward(node: Node, x):
-    return x + node.b
-
-
-def off2_partial_backward(node: Node, X_batch, Y_batch=None):
-    db = np.mean(np.abs(X_batch - Y_batch))
-    b = node.get_buffer("b")
-    b += db
-
-
-def off2_backward(node: Node, X=None, Y=None):
-    b = node.get_buffer("b")
-    node.set_param("b", np.array(b).copy())
-
-
-def off2_initialize(node: Node, x=None, y=None):
-    if x is not None:
-        node.input_dim = x.shape[1]
-        node.output_dim = x.shape[1]
-
-
-def off2_initialize_buffers(node: Node):
-    node.create_buffer("b", (1,))
-
-
-class Offline2(Node):
-    def __init__(self, **kwargs):
-        super(Offline2, self).__init__(
-            params={"b": 0},
-            forward=off2_forward,
-            partial_backward=off2_partial_backward,
-            backward=off2_backward,
-            initializer=off2_initialize,
-            buffers_initializer=off2_initialize_buffers,
-            **kwargs,
-        )
-
-
-def sum_forward(node: Node, x):
-    if isinstance(x, list):
-        x = np.concatenate(x, axis=0)
-    return np.sum(x, axis=0)
-
-
-def sum_initialize(node: Node, x=None, **kwargs):
-    if x is not None:
-        if isinstance(x, list):
-            x = np.concatenate(x, axis=0)
-        node.input_dim = x.shape[1]
-        node.output_dim = x.shape[1]
-
-
-class Sum(Node):
-    def __init__(self, **kwargs):
-        super(Sum, self).__init__(
-            forward=sum_forward, initializer=sum_initialize, **kwargs
-        )
-
-
-def unsupervised_forward(node: Node, x):
-    return x + node.b
-
-
-def unsupervised_partial_backward(node: Node, X_batch, Y_batch=None):
-    b = np.mean(X_batch)
-    node.set_buffer("b", node.get_buffer("b") + b)
-
-
-def unsupervised_backward(node: Node, X=None, Y=None):
-    b = node.get_buffer("b")
-    node.set_param("b", np.array(b).copy())
-
-
-def unsupervised_initialize(node: Node, x=None, y=None):
-    if x is not None:
-        node.input_dim = x.shape[1]
-        node.output_dim = x.shape[1]
-
-
-def unsupervised_initialize_buffers(node: Node):
-    node.create_buffer("b", (1,))
-
-
-class Unsupervised(Node):
-    def __init__(self, **kwargs):
-        super(Unsupervised, self).__init__(
-            params={"b": 0},
-            forward=unsupervised_forward,
-            partial_backward=unsupervised_partial_backward,
-            backward=unsupervised_backward,
-            initializer=unsupervised_initialize,
-            buffers_initializer=unsupervised_initialize_buffers,
-            **kwargs,
-        )
-
-
-def on_forward(node: Node, x):
-    return x + node.b
-
-
-def on_train(node: Node, x, y=None):
-    if y is not None:
-        node.set_param("b", node.b + np.mean(x + y))
-    else:
-        node.set_param("b", node.b + np.mean(x))
-
-
-def on_initialize(node: Node, x=None, y=None):
-    if x is not None:
-        node.input_dim = x.shape[1]
-        node.output_dim = x.shape[1]
-
-
-class OnlineNode(Node):
-    def __init__(self, **kwargs):
-        super(OnlineNode, self).__init__(
-            params={"b": np.array([0])},
-            forward=on_forward,
-            train=on_train,
-            initializer=on_initialize,
-            **kwargs,
-        )
-
-
-def multi_forward(node, data):
-    return np.concatenate(data, axis=1)
-
-
-def multi_init(node, x=None, **kwargs):
-    if x is not None:
-        if isinstance(x, np.ndarray):
-            node.input_dim = x.shape[1]
-            node.output_dim = x.shape[1]
-        elif hasattr(x, "__iter__"):
-            result = multi_forward(node, x)
-            node.input_dim = tuple([u.shape[1] for u in x])
-            if result.shape[0] > 1:
-                node.output_dim = result.shape
-            else:
-                node.output_dim = result.shape[1]
-
-
-class MultiInput(Node):
-    def __init__(self, **kwargs):
-        super(MultiInput, self).__init__(
-            forward=multi_forward, initializer=multi_init, **kwargs
-        )
+        return self
 
 
 @pytest.fixture(scope="function")
@@ -289,30 +160,10 @@ def offline_node():
 
 
 @pytest.fixture(scope="function")
-def offline_node2():
-    return Offline2()
-
-
-@pytest.fixture(scope="function")
-def sum_node():
-    return Sum()
-
-
-@pytest.fixture(scope="function")
 def unsupervised_node():
     return Unsupervised()
 
 
 @pytest.fixture(scope="function")
 def online_node():
-    return OnlineNode()
-
-
-@pytest.fixture(scope="function")
-def basic_offline_node():
-    return BasicOffline()
-
-
-@pytest.fixture(scope="function")
-def multiinput():
-    return MultiInput()
+    return OnlineUnsupervised()
