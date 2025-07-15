@@ -80,6 +80,12 @@ class Node(ABC):
 
     def __call__(self, x: Optional[Timestep]) -> Timestep:
         return self.step(x)
+    
+    def __repr__(self):
+        if self.name is not None:
+            return self.name
+        else:
+            return self.__class__.__name__
 
 
 class TrainableNode(Node):
