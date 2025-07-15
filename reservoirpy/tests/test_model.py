@@ -8,41 +8,30 @@ from numpy.testing import assert_array_equal
 from reservoirpy.nodes.io import Input, Output
 
 from ..model import Model
-from ..node import Node
 from ..ops import merge
-from .dummy_nodes import Inverter, MinusNode, Offline, PlusNode
+from .dummy_nodes import Inverter, MinusNode, Offline, PlusNode, minus_node, plus_node
 
 
-def test_node_link(plus_node, minus_node):
-    model1 = plus_node >> minus_node
-    model2 = minus_node >> plus_node
+def test_node_initialize(plus_node, minus_node):
+    x = np.ones((10, 2))
+    # model1 = plus_node >> minus_node
+    model1 = Model([plus_node, minus_node], [(plus_node, minus_node)])
+    model1.initialize(x)
+    # model2 = minus_node >> plus_node
+    model2 = Model([plus_node, minus_node], [(minus_node, plus_node)])
+    model2.initialize(x)
 
-    model1._hypers["hyper1"] = "hyper1"
-    model1._params["param1"] = "param1"
-    assert model1.params["PlusNode-0"]["c"] is None
-    assert model1.hypers["PlusNode-0"]["h"] == 1
-    assert model1.hyper1 == "hyper1"
-    assert model1.param1 == "param1"
-    assert model1["PlusNode-0"].input_dim is None
-    assert model2.params["PlusNode-0"]["c"] is None
-    assert model2.hypers["PlusNode-0"]["h"] == 1
-    assert model2["PlusNode-0"].input_dim is None
-
-    assert model1.edges == [(plus_node, minus_node)]
-    assert model2.edges == [(minus_node, plus_node)]
     assert set(model1.nodes) == set(model2.nodes)
 
+    model3 = Model(
+        [plus_node, minus_node], [(minus_node, plus_node), (plus_node, minus_node)]
+    )
     with pytest.raises(RuntimeError):
-        model1 & model2
+        model3.initialize(x)
 
-    with pytest.raises(NameError):
-        _ = model1.get_param("fake_parameter")
-
+    model4 = Model([plus_node, minus_node], [(plus_node, plus_node)])
     with pytest.raises(RuntimeError):
-        plus_node >> minus_node >> plus_node
-
-    with pytest.raises(RuntimeError):
-        plus_node >> plus_node
+        model4.initialize(x)
 
 
 def test_complex_node_link():
