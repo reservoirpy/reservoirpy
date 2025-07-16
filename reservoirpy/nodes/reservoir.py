@@ -5,7 +5,7 @@ import numpy as np
 from ..activationsfunc import get_function, tanh
 from ..mat_gen import bernoulli, normal
 from ..node import Node
-from ..type import NodeInput, Timestep, Weights, is_array
+from ..type import NodeInput, State, Timestep, Weights, is_array
 from ..utils import random
 
 
@@ -28,7 +28,7 @@ class Reservoir(Node):
     rng: np.random.Generator
     name: Optional[str]
     # state
-    state: tuple[np.ndarray]
+    state: State
 
     def __init__(
         self,
@@ -119,19 +119,19 @@ class Reservoir(Node):
                 seed=bias_rng,
             )
 
-        self.state = (np.zeros((self.units,)),)
+        self.state = {"out": np.zeros((self.units,))}
 
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+    def _step(self, state: State, x: Timestep) -> State:
         W = self.W  # NxN
         Win = self.Win  # NxI
         bias = self.bias  # N or float
         f = self.activation
         lr = self.lr
-        (s,) = state
+        s = state["out"]
 
         next_state = f(W @ s + Win @ x + bias)
         next_state = (1 - lr) * s + lr * next_state
 
-        return (next_state,), next_state
+        return {"out": next_state}

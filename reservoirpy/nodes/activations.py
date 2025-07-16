@@ -6,13 +6,13 @@ from typing import Callable, Optional, Sequence, Tuple, Union
 
 from ..activationsfunc import identity, relu, sigmoid, softmax, softplus, tanh
 from ..node import Node
-from ..type import NodeInput, Timeseries, Timestep
+from ..type import NodeInput, State, Timeseries, Timestep
 
 
 class F(Node):
     def __init__(self, f: Callable, name: Optional[str] = None, **kwargs):
         self.f = partial(f, **kwargs)
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name
 
@@ -25,11 +25,12 @@ class F(Node):
         self.output_dim = self.input_dim
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        return (), self.f(x)
+    def _step(self, state: tuple, x: Timestep) -> State:
+        return {"out": self.f(x)}
 
-    def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
-        return (), self.f(x)
+    def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
+        out = self.f(x)
+        return {"out": out[-1]}, out
 
 
 class Softmax(F):
@@ -47,7 +48,7 @@ class Softmax(F):
 
     def __init__(self, beta=1.0, name: Optional[str] = None):
         self.f = partial(softmax, beta=beta)
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name
 
@@ -62,7 +63,7 @@ class Softplus(F):
 
     def __init__(self, name: Optional[str] = None):
         self.f = softplus
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name
 
@@ -77,7 +78,7 @@ class Sigmoid(F):
 
     def __init__(self, name: Optional[str] = None):
         self.f = sigmoid
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name
 
@@ -92,7 +93,7 @@ class Tanh(F):
 
     def __init__(self, name: Optional[str] = None):
         self.f = tanh
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name
 
@@ -109,7 +110,7 @@ class Identity(F):
 
     def __init__(self, name: Optional[str] = None):
         self.f = identity
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name
 
@@ -124,6 +125,6 @@ class ReLU(F):
 
     def __init__(self, name: Optional[str] = None):
         self.f = relu
-        self.state = ()
+        self.state = {}
         self.initialized = False
         self.name = name

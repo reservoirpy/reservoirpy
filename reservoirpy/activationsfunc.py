@@ -210,5 +210,5 @@ def relu(x: np.ndarray) -> np.ndarray:
         Activated vector.
     """
     if x < 0:
-        return np.zeros(x.shape)
+        return 0.0
     return x

@@ -4,7 +4,7 @@
 from typing import Optional, Sequence, Union
 
 from ..node import Node
-from ..type import NodeInput, Timeseries, Timestep
+from ..type import NodeInput, State, Timeseries, Timestep
 
 
 class Input(Node):
@@ -42,13 +42,12 @@ class Input(Node):
     """
 
     initialized: bool
-    state: tuple
-    name: Optional[str]
+    state: State
 
     def __init__(self, name: Optional[str] = None):
         self.initialized = False
         self.name = name
-        self.state = ()
+        self.state = {}
 
     def initialize(self, x: Union[NodeInput, Timestep]):
         dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -56,11 +55,11 @@ class Input(Node):
         self.output_dim = dim
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
-        return (), x
+    def _step(self, state: State, x: Timestep) -> State:
+        return {"out": x}
 
-    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
-        return (), x
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
+        return {"out": x[-1]}, x
 
 
 class Output(Node):
@@ -96,12 +95,12 @@ class Output(Node):
     """
 
     initialized: bool
-    state: tuple
+    state: State
 
     def __init__(self, name: Optional[str] = None):
         self.initialized = False
         self.name = name
-        self.state = ()
+        self.state = {}
 
     def initialize(self, x: Union[NodeInput, Timestep]):
         dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -109,8 +108,8 @@ class Output(Node):
         self.output_dim = dim
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
-        return (), x
+    def _step(self, state: State, x: Timestep) -> State:
+        return {"out": x}
 
-    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
-        return (), x
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
+        return {"out": x[-1]}, x

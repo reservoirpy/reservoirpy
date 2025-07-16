@@ -10,7 +10,15 @@ import numpy as np
 from ..activationsfunc import get_function
 from ..mat_gen import bernoulli, uniform
 from ..node import TrainableNode
-from ..type import NodeInput, Timeseries, Timestep, Weights, is_array, is_multiseries
+from ..type import (
+    NodeInput,
+    State,
+    Timeseries,
+    Timestep,
+    Weights,
+    is_array,
+    is_multiseries,
+)
 from ..utils.random import rand_generator
 
 
@@ -191,9 +199,6 @@ class IPReservoir(TrainableNode):
 
     """
 
-    # TODO: make it OnlineNode
-    state_type = namedtuple("state", ["internal", "outer"])
-
     def __init__(
         self,
         units: Optional[int] = None,
@@ -268,7 +273,7 @@ class IPReservoir(TrainableNode):
 
         self.a: np.ndarray
         self.b: np.ndarray
-        self.state: IPReservoir.state_type
+        self.state: State
         self.initialized = False
 
     def initialize(self, x: Optional[Union[NodeInput, Timestep]], y: None = None):
@@ -310,26 +315,26 @@ class IPReservoir(TrainableNode):
         self.a = np.ones((self.output_dim,))
         self.b = np.zeros((self.output_dim,))
 
-        self.state = IPReservoir.state_type(
-            internal=np.zeros((self.output_dim,)), outer=np.zeros((self.output_dim,))
+        self.state = dict(
+            internal=np.zeros((self.output_dim,)), out=np.zeros((self.output_dim,))
         )
 
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+    def _step(self, state: State, x: Timestep) -> State:
         W = self.W  # NxN
         Win = self.Win  # NxI
         bias = self.bias  # N or float
         f = self.activation
         lr = self.lr
-        (internal, external) = state
+        (internal, external) = state["internal"], state["out"]
 
         next_state = W @ external + Win @ x + bias
         next_state = (1 - lr) * internal + lr * next_state
 
         next_external = f(self.a * next_state + self.b)
 
-        return (next_state, next_external), next_external
+        return {"internal": next_external, "out": next_state}
 
     def fit(self, x: NodeInput, y: None = None) -> "IPReservoir":
         if not self.initialized:
@@ -346,7 +351,7 @@ class IPReservoir(TrainableNode):
 
     def partial_fit(self, x: Timeseries):
         for u in x:
-            (pre_state, _out) = self.state
+            pre_state = self.state["internal"]
             post_state = self.step(u)
 
             delta_a, delta_b = self.gradient(x=pre_state.T, y=post_state.T, a=self.a)

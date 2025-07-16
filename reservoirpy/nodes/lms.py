@@ -4,7 +4,7 @@ import numpy as np
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
-from ..type import NodeInput, Timeseries, Timestep, Weights
+from ..type import NodeInput, State, Timeseries, Timestep, Weights
 
 
 class LMS(OnlineNode):
@@ -25,14 +25,15 @@ class LMS(OnlineNode):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.initialized = False
-        self.state = ()
+        self.state = {}
         self.name = name
 
-    def _run(self, state: tuple, x: Timeseries) -> tuple[tuple, Timeseries]:
-        return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
+    def _run(self, state: tuple, x: Timeseries) -> tuple[State, Timeseries]:
+        out = x @ self.Wout + self.bias
+        return {"out": out[-1]}, out  # (len, in) @ (in, out) + (out,)
 
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
-        return (), x @ self.Wout + self.bias  # (in, ) @ (in, out) + (out,)
+    def _step(self, state: tuple, x: Timestep) -> State:
+        return {"out": x @ self.Wout + self.bias}  # (in, ) @ (in, out) + (out,)
 
     def initialize(
         self,
@@ -96,4 +97,5 @@ class LMS(OnlineNode):
 
         self.Wout = Wout
         self.bias = bias
+        self.state = {"out": y_pred_}
         return y_pred

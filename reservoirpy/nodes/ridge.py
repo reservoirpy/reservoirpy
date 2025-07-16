@@ -4,7 +4,7 @@ import numpy as np
 from scipy import linalg
 
 from ..node import ParallelNode
-from ..type import NodeInput, Timeseries, Timestep, Weights
+from ..type import NodeInput, State, Timeseries, Timestep, Weights
 
 
 class Ridge(ParallelNode):
@@ -35,7 +35,7 @@ class Ridge(ParallelNode):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.initialized = False
-        self.state = ()
+        self.state = {}
 
     def initialize(
         self,
@@ -62,11 +62,12 @@ class Ridge(ParallelNode):
 
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        return (), x @ self.Wout + self.bias
+    def _step(self, state: State, x: Timestep) -> State:
+        return {"out": x @ self.Wout + self.bias}
 
-    def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
-        return (), x @ self.Wout + self.bias
+    def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
+        out = x @ self.Wout + self.bias
+        return {"out": out[-1]}, out
 
     def worker(self, x: Timeseries, y: Timeseries):
         x_sum = np.sum(x, axis=0)

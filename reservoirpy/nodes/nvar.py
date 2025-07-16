@@ -8,7 +8,7 @@ from typing import Optional, Sequence, Union
 import numpy as np
 
 from ..node import Node
-from ..type import NodeInput, Timestep
+from ..type import NodeInput, State, Timestep
 
 
 class NVAR(Node):
@@ -137,7 +137,7 @@ class NVAR(Node):
         self.strides = strides
         self.name = name
         self.initialized = False
-        self.state = ()
+        self.state = {}
         self.input_dim = input_dim
         self.output_dim = None
 
@@ -180,7 +180,7 @@ class NVAR(Node):
             self.store = np.zeros((delay * strides, self.input_dim))
             self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+    def _step(self, state: tuple, x: Timestep) -> State:
         store = self.store
         strides = self.strides
         idxs = self._monomial_idx
@@ -202,4 +202,4 @@ class NVAR(Node):
         # select monomial terms and compute them
         output[linear_len:] = np.prod(linear_feats[idxs], axis=1)
 
-        return (), output
+        return {"out": output}

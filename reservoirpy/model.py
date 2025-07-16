@@ -218,7 +218,7 @@ class Model:
             else:
                 if self.inputs[0] == node:
                     inputs.append(x)
-            inputs += [new_state[parent]["state"] for parent in self.parents[node]]
+            inputs += [new_state[parent]["out"] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node] = node._step(state[node], node_input)
 
@@ -239,9 +239,9 @@ class Model:
             node.state = new_state[node]
 
         if len(self.outputs) == 1:
-            return new_state[self.outputs[0]]["state"]
+            return new_state[self.outputs[0]]["out"]
         else:
-            return {node.name: new_state[node]["state"] for node in self.outputs}
+            return {node.name: new_state[node]["out"] for node in self.outputs}
 
     def _run(
         self, state: dict[Node, State], x: Union[Timeseries, dict[str, Timeseries]]

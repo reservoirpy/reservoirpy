@@ -24,6 +24,7 @@ NodeInput = Union[Timeseries, MultiTimeseries]
 ModelInput = Union[NodeInput, dict[str, NodeInput]]
 MappedTimestep = dict[str, Timestep]
 ModelTimestep = Union[Timestep, MappedTimestep]
+State = dict[str, np.ndarray]
 
 Weights = Union[np.ndarray, spmatrix, sparray]
 Shape = TypeVar("Shape", int, tuple[int, ...])

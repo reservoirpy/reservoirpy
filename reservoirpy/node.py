@@ -5,14 +5,14 @@ from typing import Iterable, Optional, Union
 import numpy as np
 from joblib import Parallel, delayed
 
-from .type import NodeInput, Timeseries, Timestep, is_multiseries
+from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
 
 
 class Node(ABC):
     initialized: bool
     input_dim: int
     output_dim: int
-    state: tuple
+    state: State
     name: Optional[str] = None
 
     @abstractmethod
@@ -24,22 +24,24 @@ class Node(ABC):
         ...
 
     @abstractmethod
-    def _step(self, state: tuple, x: Timestep) -> tuple[tuple, Timestep]:
+    def _step(self, state: State, x: Timestep) -> State:
         ...
 
     def step(self, x: Optional[Timestep]) -> Timestep:
         # TODO: check input_dim==x.shape for all public functions
+        # TODO: stateful argument (for every step, run, fit, train, ...)
 
         # Auto-regressive mode
         if x is None:
-            x = np.empty((0,))
+            x: Timestep = np.empty((0,))
 
         if not self.initialized:
             self.initialize(x)
 
-        new_state, output = self._step(self.state, x)
+        new_state = self._step(self.state, x)
 
         self.state = new_state
+        return new_state["out"]
 
     def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
         current_state = state
@@ -48,7 +50,7 @@ class Node(ABC):
         output = np.empty((n_timesteps, self.output_dim))
         for i, x_step in enumerate(x):
             current_state = self._step(state=current_state, x=x_step)
-            output[i] = current_state["state"]
+            output[i] = current_state["out"]
 
         return current_state, output
 

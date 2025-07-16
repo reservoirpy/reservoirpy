@@ -4,7 +4,7 @@ import numpy as np
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
-from ..type import NodeInput, Timeseries, Timestep, Weights
+from ..type import NodeInput, State, Timeseries, Timestep, Weights
 
 
 class RLS(OnlineNode):
@@ -29,13 +29,14 @@ class RLS(OnlineNode):
         self.name = name
 
         self.initialized = False
-        self.state = ()
+        self.state = {}
 
-    def _run(self, state: tuple, x: Timeseries) -> Tuple[tuple, Timeseries]:
-        return (), x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
+    def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
+        out = x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
+        return {"out": out}, out[-1]
 
-    def _step(self, state: tuple, x: Timestep) -> Tuple[tuple, Timestep]:
-        return (), x @ self.Wout + self.bias  # (in, ) @ (in, out) + (out,)
+    def _step(self, state: State, x: Timestep) -> State:
+        return {"out": x @ self.Wout + self.bias}  # (in, ) @ (in, out) + (out,)
 
     def initialize(
         self,
@@ -114,11 +115,12 @@ class RLS(OnlineNode):
         out_dim = y.shape[-1]
         y_pred = np.empty((n_timesteps, out_dim))
         for i, (x_, y_) in enumerate(zip(x, y)):
-            (Wout, bias), y_pred_ = self._learning_step(
+            (Wout, bias, P), y_pred_ = self._learning_step(
                 Wout, bias, P, forgetting, x_, y_
             )
             y_pred[i] = y_pred_
 
         self.Wout = Wout
         self.bias = bias
+        self.state = {"out": y_pred_}
         return y_pred
