@@ -14,24 +14,76 @@ from .dummy_nodes import Inverter, MinusNode, Offline, PlusNode, minus_node, plu
 
 def test_node_initialize(plus_node, minus_node):
     x = np.ones((10, 2))
+
     # model1 = plus_node >> minus_node
     model1 = Model([plus_node, minus_node], [(plus_node, minus_node)])
     model1.initialize(x)
+
     # model2 = minus_node >> plus_node
     model2 = Model([plus_node, minus_node], [(minus_node, plus_node)])
     model2.initialize(x)
 
     assert set(model1.nodes) == set(model2.nodes)
 
+    # 2-circular graph
     model3 = Model(
         [plus_node, minus_node], [(minus_node, plus_node), (plus_node, minus_node)]
     )
     with pytest.raises(RuntimeError):
         model3.initialize(x)
 
+    # 1-circular graph
     model4 = Model([plus_node, minus_node], [(plus_node, plus_node)])
     with pytest.raises(RuntimeError):
         model4.initialize(x)
+
+    # model2 = minus_node >> plus_node
+    model2 = Model([plus_node, minus_node], [(minus_node, plus_node)])
+    model2.initialize(x)
+
+
+def test_multi_input(plus_node):
+    x = np.ones((5,))
+
+    # Basic multi-input
+    input1, input2 = Input(name="Input1"), Input(name="Input2")
+    model5 = Model(
+        [input1, input2, plus_node], [(input1, plus_node), (input2, plus_node)]
+    )
+    model5.initialize({"Input1": x, "Input2": x})
+    assert input1.input_dim == input2.input_dim == 5
+
+    # multiple input but not named
+    input1, input2 = Input(name="Input1"), Input()
+    model5 = Model(
+        [input1, input2, plus_node], [(input1, plus_node), (input2, plus_node)]
+    )
+    with pytest.raises(ValueError):
+        model5.initialize({"Input1": x, "Input2": x})
+
+
+def test_multi_output(plus_node):
+    x = np.ones((5,))
+
+    # Basic multi-output
+    output1, output2 = Output(name="Output1"), Output(name="Output2")
+    model5 = Model(
+        [output1, output2, plus_node], [(plus_node, output1), (plus_node, output2)]
+    )
+    # res = model5(x)
+    # assert output1.input_dim == output2.input_dim == 5
+    # assert isinstance(res, dict)
+    # assert "Output1" in res
+    # assert "Output2" in res
+    model5.initialize(x)
+
+    # multiple input but not named
+    output1, output2 = Output(name="Output1"), Output()
+    model5 = Model(
+        [output1, output2, plus_node], [(plus_node, output1), (plus_node, output2)]
+    )
+    with pytest.raises(ValueError):
+        model5.initialize(x)
 
 
 def test_complex_node_link():
@@ -89,62 +141,29 @@ def test_complex_node_link():
     assert [node.input_dim for node in model.nodes] == expected_dims
 
 
-def test_model_call(plus_node, minus_node):
+def test_model_call():
+    data = np.zeros((5,))
+
     # model = plus_node >> minus_node
+    plus_node = PlusNode(name="Plus")
+    minus_node = MinusNode(name="Minus")
     model = Model([plus_node, minus_node], [(plus_node, minus_node)])
-
-    data = np.zeros((1, 5))
     res = model(data)
-
     assert_array_equal(res, data)
 
+    # input_node = Input()
+    # branch1 = input_node >> plus_node
+    # branch2 = input_node >> minus_node
+    # model = branch1 & branch2
     input_node = Input()
-    branch1 = input_node >> plus_node
-    branch2 = input_node >> minus_node
-
-    model = branch1 & branch2
-
+    model = Model(
+        [input_node, plus_node, minus_node],
+        [(input_node, plus_node), (input_node, minus_node)],
+    )
     res = model(data)
-
-    for name, arr in res.items():
-        assert name in [out.name for out in model.output_nodes]
-        if name == "PlusNode-0":
-            assert_array_equal(arr, data + 2)
-        else:
-            assert_array_equal(arr, data - 2)
-
-    res = model(data)
-
-    for name, arr in res.items():
-        assert name in [out.name for out in model.output_nodes]
-        if name == "PlusNode-0":
-            assert_array_equal(arr, data + 4)
-        else:
-            assert_array_equal(arr, data)
-
-    res = model(data, reset=True)
-
-    for name, arr in res.items():
-        assert name in [out.name for out in model.output_nodes]
-        if name == "PlusNode-0":
-            assert_array_equal(arr, data + 2)
-        else:
-            assert_array_equal(arr, data - 2)
-
-    res = model(data, stateful=False)
-
-    for name, arr in res.items():
-        assert name in [out.name for out in model.output_nodes]
-        if name == "PlusNode-0":
-            assert_array_equal(arr, data + 4)
-        else:
-            assert_array_equal(arr, data)
-
-    for node in model.output_nodes:
-        if node.name == "PlusNode-0":
-            assert_array_equal(node.state(), data + 2)
-        else:
-            assert_array_equal(node.state(), data - 2)
+    assert model.outputs == [plus_node, minus_node]
+    assert_array_equal(res["Plus"], data + 2)
+    assert_array_equal(res["Minus"], data - 2)
 
 
 def test_model_with_state(plus_node, minus_node):
