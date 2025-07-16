@@ -14,8 +14,9 @@ class IdentityNode(Node):
     def __init__(self, name=None):
         self.name = name
         self.initialized = False
+        self.state = {}
 
-    def _step(self, x):
+    def _step(self, state, x):
         return x
 
     def initialize(self, x, y=None):
@@ -29,8 +30,9 @@ class PlusNode(Node):
         self.h = h
         self.name = name
         self.initialized = False
+        self.state = {}
 
-    def _step(self, x):
+    def _step(self, state, x):
         return x + self.h
 
     def initialize(self, x, y=None):
@@ -44,8 +46,9 @@ class MinusNode(Node):
         self.h = h
         self.name = name
         self.initialized = False
+        self.state = {}
 
-    def _step(self, x):
+    def _step(self, state, x):
         return x - self.h
 
     def initialize(self, x, y=None):
@@ -58,8 +61,9 @@ class Inverter(Node):
     def __init__(self, name=None):
         self.name = name
         self.initialized = False
+        self.state = {}
 
-    def _step(self, x):
+    def _step(self, state, x):
         return -x
 
     def initialize(self, x, y=None):
@@ -73,13 +77,14 @@ class Offline(TrainableNode):
         self.name = name
         self.b = 0
         self.initialized = False
+        self.state = {}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
 
-    def _step(self, x):
+    def _step(self, state, x):
         return x + self.b
 
     def fit(self, x, y):
@@ -97,6 +102,7 @@ class Unsupervised(TrainableNode):
         self.name = name
         self.b = 0
         self.initialized = False
+        self.state = {}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -121,13 +127,14 @@ class OnlineUnsupervised(OnlineNode):
         self.name = name
         self.b = 0
         self.initialized = False
+        self.state = {}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
 
-    def _step(self, x):
+    def _step(self, state, x):
         return x + self.b
 
     def partial_fit(self, x):
