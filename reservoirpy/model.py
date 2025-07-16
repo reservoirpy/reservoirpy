@@ -214,10 +214,10 @@ class Model:
             inputs = []
             if isinstance(x, dict):
                 if node.name in x:
-                    inputs += x[node.name]
+                    inputs.append(x[node.name])
             else:
                 if self.inputs[0] == node:
-                    inputs += x
+                    inputs.append(x)
             inputs += [new_state[parent]["state"] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node] = node._step(state[node], node_input)
@@ -277,7 +277,6 @@ class Model:
             self.initialize(x_)
 
         previous_states = {node: node.state for node in self.nodes}
-        # TODO: list[timeseries]
         if is_multiseries(x_):
             result: dict[Node, list[Timeseries]] = defaultdict(list)
             iterable_x = unfold_mapping(x_) if isinstance(x_, dict) else x_
