@@ -193,11 +193,11 @@ def check_unnamed_in_out(model):
     if len(model.inputs) > 1 and len(unnamed_inputs) > 0:
         raise ValueError(
             f"Model has multiple input nodes but at least one"
-            f"of them is not named: {', '.join(unnamed_inputs)}."
+            f"of them is not named: {unnamed_inputs[1:-1]}."
         )
     unnamed_outputs = [n for n in model.outputs if n.name is None]
     if len(model.outputs) > 1 and len(unnamed_outputs) > 0:
         raise ValueError(
             f"Model has multiple input nodes but at least one"
-            f"of them is not named: {', '.join(unnamed_outputs)}."
+            f"of them is not named: {unnamed_outputs[1:-1]}."
         )
