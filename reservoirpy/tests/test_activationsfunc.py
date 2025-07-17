@@ -8,9 +8,9 @@ from reservoirpy.activationsfunc import identity, relu, sigmoid, softmax, softpl
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ([1, 2, 3], np.exp([1, 2, 3]) / np.sum(np.exp([1, 2, 3]))),
-        (1, np.exp(1) / np.sum(np.exp(1))),
-        ([0, 0], [0.5, 0.5]),
+        (np.array([1, 2, 3]), np.exp([1, 2, 3]) / np.sum(np.exp([1, 2, 3]))),
+        (np.array(1), np.exp(1) / np.sum(np.exp(1))),
+        (np.array([0, 0]), np.array([0.5, 0.5])),
     ],
 )
 def test_softmax(value, expected):
@@ -23,9 +23,9 @@ def test_softmax(value, expected):
 @pytest.mark.parametrize(
     "value, expected",
     [
-        (0, np.log(1 + np.exp(0))),
-        ([0, 1, 2], np.log(1 + np.exp([0, 1, 2]))),
-        ([-2, -1], np.log(1 + np.exp([-2, -1]))),
+        (np.array(0), np.log(1 + np.exp(0))),
+        (np.array([0, 1, 2]), np.log(1 + np.exp([0, 1, 2]))),
+        (np.array([-2, -1]), np.log(1 + np.exp([-2, -1]))),
     ],
 )
 def test_softplus(value, expected):
@@ -38,10 +38,10 @@ def test_softplus(value, expected):
 @pytest.mark.parametrize(
     "value",
     [
-        ([1, 2, 3]),
-        ([1]),
-        (0),
-        ([0.213565165, 0.1, 1.064598495615132]),
+        (np.array([1, 2, 3])),
+        (np.array([1])),
+        (np.array(0)),
+        (np.array([0.213565165, 0.1, 1.064598495615132])),
     ],
 )
 def test_identity(value):
@@ -52,7 +52,7 @@ def test_identity(value):
 
 
 @pytest.mark.parametrize(
-    "value, expected", [([1, 2, 3], np.tanh([1, 2, 3])), (0, np.tanh(0))]
+    "value, expected", [(np.array([1, 2, 3]), np.tanh([1, 2, 3])), (0, np.tanh(0))]
 )
 def test_tanh(value, expected):
     result = tanh(value)
@@ -63,9 +63,9 @@ def test_tanh(value, expected):
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ([1, 2, 3], 1 / (1 + np.exp(-np.array([1, 2, 3])))),
-        (0, 1 / (1 + np.exp(0))),
-        ([-1000, -2], [0.0, 1.35e-1]),
+        (np.array([1, 2, 3]), 1 / (1 + np.exp(-np.array([1, 2, 3])))),
+        (np.array(0), 1 / (1 + np.exp(0))),
+        (np.array([-1000, -2]), np.array([0.0, 1.35e-1])),
     ],
 )
 def test_sigmoid(value, expected):
@@ -76,10 +76,10 @@ def test_sigmoid(value, expected):
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ([1, 2, 3], np.array([1, 2, 3])),
-        ([-1, -10, 5], np.array([0, 0, 5])),
-        (0, np.array(0)),
-        ([[1, 2, 3], [-1, 2, 3]], np.array([[1, 2, 3], [0, 2, 3]])),
+        (np.array([1, 2, 3]), np.array([1, 2, 3])),
+        (np.array([-1, -10, 5]), np.array([0, 0, 5])),
+        (np.array(0), np.array(0)),
+        (np.array([[1, 2, 3], [-1, 2, 3]]), np.array([[1, 2, 3], [0, 2, 3]])),
     ],
 )
 def test_relu(value, expected):
