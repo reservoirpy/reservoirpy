@@ -35,7 +35,7 @@ def _check_all_models(*operands):
             for model in operand:
                 if not (isinstance(model, Node) or isinstance(model, Model)):
                     raise TypeError(msg.format(model))
-        elif not (isinstance(operand, Node) or isinstance(model, Model)):
+        elif not (isinstance(operand, Node) or isinstance(operand, Model)):
             raise TypeError(msg.format(operand))
 
 
