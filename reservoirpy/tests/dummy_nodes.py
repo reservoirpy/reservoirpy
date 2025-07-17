@@ -17,7 +17,7 @@ class IdentityNode(Node):
         self.state = {}
 
     def _step(self, state, x):
-        return x
+        return {"out": x}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -33,11 +33,32 @@ class PlusNode(Node):
         self.state = {}
 
     def _step(self, state, x):
-        return x + self.h
+        return {"out": x + self.h}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
+        self.initialized = True
+
+
+class AccumulateNode(Node):
+    def __init__(self, h=0, name=None):
+        self.h = h
+        self.name = name
+        self.initialized = False
+        self.state = {}
+
+    def _step(self, state, x):
+        return {"out": x + state["out"] + self.h}
+
+    def initialize(self, x, y=None):
+        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self.output_dim = self.input_dim
+        self.state = {
+            "out": np.zeros(
+                self.output_dim,
+            )
+        }
         self.initialized = True
 
 
@@ -49,7 +70,7 @@ class MinusNode(Node):
         self.state = {}
 
     def _step(self, state, x):
-        return x - self.h
+        return {"out": x - self.h}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -64,7 +85,7 @@ class Inverter(Node):
         self.state = {}
 
     def _step(self, state, x):
-        return -x
+        return {"out": -x}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
@@ -85,7 +106,7 @@ class Offline(TrainableNode):
         self.initialized = True
 
     def _step(self, state, x):
-        return x + self.b
+        return {"out": x + self.b}
 
     def fit(self, x, y):
         if not self.initialized:
@@ -110,7 +131,7 @@ class Unsupervised(TrainableNode):
         self.initialized = True
 
     def _step(self, x):
-        return x + self.b
+        return {"out": x + self.b}
 
     def fit(self, x):
         if not self.initialized:
@@ -135,7 +156,7 @@ class OnlineUnsupervised(OnlineNode):
         self.initialized = True
 
     def _step(self, state, x):
-        return x + self.b
+        return {"out": x + self.b}
 
     def partial_fit(self, x):
         if not self.initialized:
