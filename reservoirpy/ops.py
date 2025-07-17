@@ -15,58 +15,49 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
    merge - Merge Models.
 """
 
-# Author: Nathan Trouvain at 25/10/2021 <nathan.trouvain@inria.fr>
-# Licence: MIT License
-# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from itertools import product
 from typing import Iterable, Sequence, Union
 
+# Author: Nathan Trouvain at 25/10/2021 <nathan.trouvain@inria.fr>
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from reservoirpy.node import Node
+
 from .model import Model
 from .node import Node
-from .utils.graphflow import find_parents_and_children
+from .utils.graphflow import unique_ordered
 
 
-def _check_all_nodes(*nodes):
+def _check_all_models(*operands):
     msg = "Impossible to link nodes: object {} is neither a Node nor a Model."
-    for nn in nodes:
-        if isinstance(nn, Iterable):
-            for n in nn:
-                if not isinstance(n, Node):
-                    raise TypeError(msg.format(n))
-        else:
-            if not isinstance(nn, Node):
-                raise TypeError(msg.format(nn))
+    for operand in operands:
+        if isinstance(operand, Sequence):
+            for model in operand:
+                if not (isinstance(model, Node) or isinstance(model, Model)):
+                    raise TypeError(msg.format(model))
+        elif not (isinstance(operand, Node) or isinstance(model, Model)):
+            raise TypeError(msg.format(operand))
 
 
-def _link_1to1(node1: Node, node2: Node):
+def _link_1to1(
+    left: Union[Node, Model], right: Union[Node, Model]
+) -> tuple[list[Node], list[tuple[Node, Node]]]:
     """Connects two nodes or models. See `link` doc for more info."""
     # fetch all nodes in the two subgraphs, if they are models.
-    all_nodes = []
-    for node in (node1, node2):
-        if isinstance(node, Model):
-            all_nodes += node.nodes
-        else:
-            all_nodes += [node]
+
+    nodes_left = [left] if isinstance(left, Node) else left.nodes
+    nodes_right = [right] if isinstance(right, Node) else right.nodes
+    all_nodes = unique_ordered(nodes_left + nodes_right)
 
     # fetch all edges in the two subgraphs, if they are models.
-    all_edges = []
-    for node in (node1, node2):
-        if isinstance(node, Model):
-            all_edges += node.edges
+    edges_left = left.edges if isinstance(left, Model) else []
+    edges_right = right.edges if isinstance(right, Model) else []
+    all_edges = unique_ordered(edges_left + edges_right)
 
     # create edges between output nodes of the
     # subgraph 1 and input nodes of the subgraph 2.
-    senders = []
-    if isinstance(node1, Model):
-        senders += node1.output_nodes
-    else:
-        senders += [node1]
-
-    receivers = []
-    if isinstance(node2, Model):
-        receivers += node2.input_nodes
-    else:
-        receivers += [node2]
+    senders = [left] if isinstance(left, Node) else left.outputs
+    receivers = [right] if isinstance(right, Node) else right.inputs
 
     new_edges = list(product(senders, receivers))
 
@@ -74,8 +65,8 @@ def _link_1to1(node1: Node, node2: Node):
     # check if connected dimensions are ok
     for sender, receiver in new_edges:
         if (
-            sender.is_initialized
-            and receiver.is_initialized
+            sender.initialized
+            and receiver.initialized
             and sender.output_dim != receiver.input_dim
         ):
             raise ValueError(
@@ -88,15 +79,12 @@ def _link_1to1(node1: Node, node2: Node):
 
     # all outputs from subgraph 1 are connected to
     # all inputs from subgraph 2.
-    all_edges += new_edges
-
-    return all_nodes, all_edges
+    return all_nodes, all_edges + new_edges
 
 
 def link(
-    node1: Union[Node, Sequence[Node]],
-    node2: Union[Node, Sequence[Node]],
-    name: str = None,
+    left: Union[Node, Model, Sequence[Union[Node, Model]]],
+    right: Union[Node, Model, Sequence[Union[Node, Model]]],
 ) -> Model:
     """Link two :py:class:`~.Node` instances to form a :py:class:`~.Model`
     instance. `node1` output will be used as input for `node2` in the
@@ -163,26 +151,27 @@ def link(
             model = node1 >> node2 >> node1  # raises! data would flow in
                                              # circles forever...
     """
+    # TODO: copy delay buffers
+    _check_all_models(left, right)
 
-    _check_all_nodes(node1, node2)
+    left_seq: Sequence = left if isinstance(left, Sequence) else [left]
+    right_seq: Sequence = right if isinstance(right, Sequence) else [right]
 
-    nodes = set()
-    edges = set()
-    if not isinstance(node1, Sequence):
-        node1 = [node1]
-    if not isinstance(node2, Sequence):
-        node2 = [node2]
+    nodes: list[Node] = []
+    edges: list[tuple[Node, Node]] = []
 
-    for left in node1:
-        for right in node2:
-            new_nodes, new_edges = _link_1to1(left, right)
-            nodes |= set(new_nodes)
-            edges |= set(new_edges)
+    for left_node in left_seq:
+        for right_node in right_seq:
+            new_nodes, new_edges = _link_1to1(left_node, right_node)
+            nodes += new_nodes
+            edges += new_edges
 
-    return Model(nodes=list(nodes), edges=list(edges), name=name)
+    return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
 
 
-def merge(model: Node, *models: Node, inplace: bool = False, name: str = None) -> Model:
+def merge(
+    *models: Union[Node, Model, Sequence[Union[Node, Model]]], inplace: bool = False
+) -> Model:
     """Merge different :py:class:`~.Model` or :py:class:`~.Node`
     instances into a single :py:class:`~.Model` instance.
 
@@ -232,36 +221,34 @@ def merge(model: Node, *models: Node, inplace: bool = False, name: str = None) -
         operation is impossible. In-place merging can only take place on a
         Model instance.
     """
-    msg = "Impossible to merge models: object {} is not a Model instance."
+    # TODO: type check
+    # TODO: copy delay buffers
+    # TODO: inplace
+    _check_all_models(*models)
 
-    if isinstance(model, Node):
-        all_nodes = set()
-        all_edges = set()
-        for m in models:
-            # fuse models nodes and edges (right side argument)
-            if isinstance(m, Model):
-                all_nodes |= set(m.nodes)
-                all_edges |= set(m.edges)
-            elif isinstance(m, Node):
-                all_nodes |= {m}
+    nodes: list[Node] = []
+    edges: list[tuple[Node, Node]] = []
 
-        if inplace:
-            if not isinstance(model, Model):
-                raise ValueError(
-                    f"Impossible to merge models in-place: "
-                    f"{model} is not a Model instance."
-                )
-            return model.update_graph(all_nodes, all_edges)
-
+    for model in models:
+        if isinstance(model, Sequence):
+            for element in model:
+                if isinstance(element, Node):
+                    nodes.append(element)
+                elif isinstance(element, Model):
+                    nodes += element.nodes
+                    edges += element.edges
+                else:
+                    TypeError(
+                        f"Impossible to merge models: object {type(model)} is not a Node or a Model."
+                    )
+        elif isinstance(model, Node):
+            nodes.append(model)
+        elif isinstance(model, Model):
+            nodes += model.nodes
+            edges += model.edges
         else:
-            # add left side model nodes
-            if isinstance(model, Model):
-                all_nodes |= set(model.nodes)
-                all_edges |= set(model.edges)
-            else:
-                all_nodes |= {model}
+            TypeError(
+                f"Impossible to merge models: object {type(model)} is not a Node or a Model."
+            )
 
-            return Model(nodes=list(all_nodes), edges=list(all_edges), name=name)
-
-    else:
-        raise TypeError(msg.format(type(model)))
+    return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))

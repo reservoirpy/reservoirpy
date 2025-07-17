@@ -76,6 +76,7 @@ import numpy as np
 from typing_extensions import assert_type
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
+from .ops import link, merge
 from .type import (
     ModelInput,
     ModelTimestep,
@@ -119,6 +120,10 @@ class Model:
     outputs: list[Node]
     named_nodes: dict[str, Node]
     trainable_nodes: list[Node]
+    execution_order: list[Node]
+    parents: dict[Node, list[Node]]
+    children: dict[Node, list[Node]]
+
     is_trainable: bool
     is_multi_input: bool
     is_multi_output: bool
@@ -146,10 +151,12 @@ class Model:
         self.is_parallel = all(
             [isinstance(n, ParallelNode) for n in self.trainable_nodes]
         )
+        self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
 
-        self.parents: dict[Node, list[Node]]
-        self.children: dict[Node, list[Node]]
-        self.execution_order: list[Node]
+        # execution order / cycle detection
+        self.execution_order = topological_sort(
+            self.nodes, self.edges, inputs=self.inputs
+        )
 
         self.initialized = False
 
@@ -174,12 +181,6 @@ class Model:
         """
         check_unnamed_in_out(self)
         check_input_output_connections(self.edges)
-
-        # execution order / cycle detection
-        self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
-        self.execution_order = topological_sort(
-            self.nodes, self.edges, inputs=self.inputs
-        )
 
         # TODO: y
         # nodes initialization
@@ -307,3 +308,33 @@ class Model:
 
     def __call__(self, x: Optional[ModelTimestep]) -> ModelTimestep:
         return self.step(x)
+
+    def __rshift__(
+        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
+    ) -> "Model":
+        return link(self, other)
+
+    def __rrshift__(
+        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
+    ) -> "Model":
+        return link(other, self)
+
+    def __lshift__(
+        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
+    ) -> "Model":
+        raise NotImplementedError()
+
+    def __rlshift__(
+        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
+    ) -> "Model":
+        raise NotImplementedError()
+
+    def __and__(
+        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
+    ) -> "Model":
+        return merge(self, other)
+
+    def __rand__(
+        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
+    ) -> "Model":
+        return merge(other, self)
