@@ -39,8 +39,8 @@ class Ridge(ParallelNode):
 
     def initialize(
         self,
-        x: Optional[Union[NodeInput, Timestep]],
-        y: Optional[Union[NodeInput, Timestep]] = None,
+        x: Union[NodeInput, Timestep],
+        y: Union[NodeInput, Timestep],
     ):
         # set input_dim
         if self.input_dim is None:
@@ -55,10 +55,9 @@ class Ridge(ParallelNode):
                 self.output_dim = self.Wout.shape[1]
             if self.bias is not None:
                 self.output_dim = self.bias.shape[0]
-            if y is not None:
-                self.output_dim = (
-                    y.shape[-1] if not isinstance(y, Sequence) else y[0].shape[-1]
-                )
+            self.output_dim = (
+                y.shape[-1] if not isinstance(y, Sequence) else y[0].shape[-1]
+            )
 
         self.initialized = True
 
