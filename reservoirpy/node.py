@@ -5,7 +5,6 @@ from typing import Iterable, Optional, Sequence, Union
 import numpy as np
 from joblib import Parallel, delayed
 
-from .ops import link, merge
 from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
 
 
@@ -22,7 +21,7 @@ class Node(ABC):
         x: Union[NodeInput, Timestep],
         y: Optional[Union[NodeInput, Timestep]] = None,
     ):
-        ...
+        ...  # TODO: make x Optional everywhere
 
     @abstractmethod
     def _step(self, state: State, x: Timestep) -> State:
@@ -54,36 +53,6 @@ class Node(ABC):
             output[i] = current_state["out"]
 
         return current_state, output
-
-    def __rshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
-        return link(self, other)
-
-    def __rrshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
-        return link(other, self)
-
-    def __lshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
-        raise NotImplementedError()
-
-    def __rlshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
-        raise NotImplementedError()
-
-    def __and__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
-        return merge(self, other)
-
-    def __rand__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
-        return merge(other, self)
 
     def run(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
         # Auto-regressive mode
@@ -118,6 +87,44 @@ class Node(ABC):
             return self.name
         else:
             return self.__class__.__name__
+
+    def __rshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Model":
+        from .ops import link
+
+        return link(self, other)
+
+    def __rrshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Model":
+        from .ops import link
+
+        return link(other, self)
+
+    def __lshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Model":
+        raise NotImplementedError()
+
+    def __rlshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Model":
+        raise NotImplementedError()
+
+    def __and__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Model":
+        from .ops import merge
+
+        return merge(self, other)
+
+    def __rand__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Model":
+        from .ops import merge
+
+        return merge(other, self)
 
 
 class TrainableNode(Node):

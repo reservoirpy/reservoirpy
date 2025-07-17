@@ -76,7 +76,6 @@ import numpy as np
 from typing_extensions import assert_type
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
-from .ops import link, merge
 from .type import (
     ModelInput,
     ModelTimestep,
@@ -198,7 +197,13 @@ class Model:
 
         for node in self.execution_order:
             node_input = node_inputs[node]
-            if not node.initialized:
+            if node.initialized:
+                if node_input.shape[-1] != node.input_dim:
+                    raise ValueError(
+                        f"{node} expects input of dimension {node.input_dim}"
+                        f"but receives input of dimension {node_input.shape[-1]}"
+                    )
+            else:
                 node.initialize(node_input)
             out = np.zeros((node.output_dim,))
             for child in self.children[node]:
@@ -301,7 +306,9 @@ class Model:
     def partial_fit(self, x: ModelInput, y: Optional[ModelInput]) -> ModelInput:
         ...
 
-    def fit(self, x: ModelInput, y: Optional[ModelInput], workers: int = 1) -> "Model":
+    def fit(
+        self, x: ModelInput, y: Optional[ModelInput], warmup: int, workers: int = 1
+    ) -> "Model":
         if not self.initialized:
             self.initialize(x, y)
         ...
@@ -312,11 +319,15 @@ class Model:
     def __rshift__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
     ) -> "Model":
+        from .ops import link
+
         return link(self, other)
 
     def __rrshift__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
     ) -> "Model":
+        from .ops import link
+
         return link(other, self)
 
     def __lshift__(
@@ -332,9 +343,13 @@ class Model:
     def __and__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
     ) -> "Model":
+        from .ops import merge
+
         return merge(self, other)
 
     def __rand__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
     ) -> "Model":
+        from .ops import merge
+
         return merge(other, self)
