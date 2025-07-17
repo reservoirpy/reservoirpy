@@ -3,9 +3,8 @@ from typing import Callable, Optional, Sequence, Union
 
 from ...mat_gen import uniform
 from ...node import Node
-from ...type import Weights
+from ...type import Weights, is_array
 from ...utils.random import rand_generator
-from ...utils.validation import is_array
 
 
 def forward(lif, x):
