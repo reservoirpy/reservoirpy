@@ -23,7 +23,8 @@ from reservoirpy.mat_gen import (
     ring,
     uniform,
     zeros,
-    cluster
+    cluster, 
+    small_world
 )
 
 
@@ -622,3 +623,31 @@ def test_cluster_matrix():
         current_cluster = w_cluster_check[i*n_c : i*n_c+n_c, i*n_c : i*n_c+n_c]
         cluster_density = (np.sum(current_cluster !=0)) / n_c*n_c
         assert cluster_density == (p_in * n_c*n_c)
+def test_watts_strogatz_matrix():
+    W1 = small_world(10, 10, seed=1)
+    W2 = small_world(10, 10, seed=1)
+
+    assert np.all(np.isclose(W1, W2))
+
+    nb_close_neighbours = 2
+    W3 = small_world(10, 10, seed=1, nb_close_neighbours=nb_close_neighbours, proba_rewire=0.0)
+
+    assert np.all(np.diag(W3) == 0)
+    n = W3.shape[0]
+
+    assert np.all(np.sum(W3, axis=0) == nb_close_neighbours)
+    assert np.all(np.sum(W3, axis=1) == nb_close_neighbours)
+
+
+    W4 = small_world(10, 10, seed=1, nb_close_neighbours=0)
+
+    assert np.all(np.sum(W4, axis=0) == 0)
+    assert np.all(np.sum(W4, axis=1) == 0)
+
+    with pytest.raises(ValueError):
+        _ = small_world(10, 2, seed=1)
+
+    with pytest.raises(ValueError):
+        _ = small_world(10, 10, 10, seed=1)
+
+

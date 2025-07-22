@@ -1481,3 +1481,73 @@ def _cluster(
 
 
 cluster = Initializer(_cluster)
+def _small_world(
+    *shape: int,
+    dtype: np.dtype = global_dtype,
+    seed: Union[int, np.random.Generator] = None,
+    nb_close_neighbours: int = 2,
+    proba_rewire: float = 0.1,
+    **kwargs,
+):
+    """
+    Create a small-world network using the Watts-Strogatz model.
+
+    Parameters
+    ----------
+    *shape : (int, int)
+        Shape of the matrix. Must be square.
+    nb_close_neighbours : int
+        Number of close neighbours per node (must be even).
+    proba_rewire : float
+        Probability of rewiring edges (between 0 and 1).
+    dtype : numpy.dtype
+        Output matrix dtype.
+    seed : int or np.random.Generator
+        Random seed or generator.
+    **kwargs : unused
+        For compatibility.
+
+    Returns
+    -------
+    numpy.ndarray
+        Adjacency matrix of the small-world network.
+    """
+    if len(shape) != 2 or shape[0] != shape[1]:
+        raise ValueError(
+            f"Shape of the small-world matrix must be (units, units), got {shape}."
+        )
+    units = shape[0]
+
+    if nb_close_neighbours % 2 != 0:
+        raise ValueError("nb_close_neighbours must be even.")
+    if not (0 <= proba_rewire <= 1):
+        raise ValueError("proba_rewire must be between 0 and 1.")
+
+    rg = rand_generator(seed)
+
+    matrix = np.zeros((units, units), dtype=dtype)
+    half_neighbours = nb_close_neighbours // 2
+    indices = np.arange(units)
+    # indices -> shape (units,1)
+    # tableau i -> shape (1,half_neighbours)
+    # sum des deux -> tableau (units, half_neighbours) -> tableau avec tous les indices -> matrix[tableau]=1 et matric[tableau.T]=1
+    for i in range(1,half_neighbours + 1):
+        neighbour = (indices + i) % units
+        matrix[indices, neighbour] = 1
+        matrix[neighbour, indices] = 1
+    # Vectoriser : ex générer un tableau de valeurs random directement 
+    for i in range(units) : 
+        neighbours = [(i + j) % units for j in range(1, half_neighbours + 1)]
+        for neighbour in neighbours: 
+            if rg.random() < proba_rewire:
+                possible = np.where((matrix[i] == 0) & (np.arange(units) != i))[0]
+                if possible.size > 0:
+                    new_neighbour = rg.choice(possible)
+                    matrix[i, neighbour] = 0
+                    matrix[neighbour, i] = 0
+                    matrix[i, new_neighbour] = 1
+                    matrix[new_neighbour, i] = 1
+    # Au lieu d'avoir des 1 : piocher dans des valeurs aléatoires cf julien (distrib uniform bernoulli etc)
+    return matrix
+
+small_world = Initializer(_small_world)
