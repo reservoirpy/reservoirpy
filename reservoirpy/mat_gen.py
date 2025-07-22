@@ -113,7 +113,7 @@ References
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
 """
-
+import random
 import sys
 
 if sys.version_info < (3, 8):
@@ -1394,3 +1394,90 @@ def _orthogonal(
 
 
 orthogonal = Initializer(_orthogonal)
+
+def _cluster(
+    *shape: int,
+    dtype: np.dtype = global_dtype,
+    seed: Union[int, np.random.Generator] = None,
+    p_in = 0.1,
+    p_out = 0.01,
+    cluster = 3,
+    distribution = "normal",
+    sparsity_type = "csr",
+    **kwargs,
+):
+    """
+    Create a clustered matrix with given distribution and p_in/p_out parameters.
+
+    Parameters
+    ----------
+    *shape : (int, int), optional
+        Shape (row, columns) of the array. Must be a square matrix, i.e. row == columns.
+    cluster : int, optional
+        Number of clusters to create within the matrix. Default is 3.
+    p_in : float, optional
+        Defines the connectivity within a cluster. Default is 0.1.
+    p_out : float, optional
+        Defines the connectivity between clusters. Default is 0.01.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        Format of the output matrix. "csr" and "csc" corresponds to the Scipy sparse
+        matrix formats, and "dense" corresponds to a regular Numpy array.
+    distribution: {"normal", "uniform", "random", "bernoulli"}, default to "normal"
+        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
+        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
+        functions as keyword arguments to this function. Usual distributions for
+        internal weights are :py:class:`scipy.stats.norm` with parameters `loc` and
+        `scale` to obtain weights following the standard normal distribution,
+        or :py:class:`scipy.stats.uniform` with parameters `loc=-1` and `scale=2`
+        to obtain weights uniformly distributed between -1 and 1.
+        Can also have the value "custom_bernoulli". In that case, weights will be drawn
+        from a Bernoulli discrete random variable alternating between -1 and 1 and
+        drawing 1 with a probability `p` (default `p` parameter to 0.5).
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+    **kwargs : optional
+        This argument is kept for compatibility reasons. This is not used.
+
+    Returns
+    -------
+    numpy array or callable
+
+    """
+
+    # Genere sparse matrix avec  mat_gen (normal, bern, etc) - inter cluster
+    seed = rand_generator(seed)
+
+    #create large sparse matrix
+    if distribution == "normal":
+        matrix = normal(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
+    elif distribution == "uniform":
+        matrix = uniform(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
+    elif distribution == "random":
+        matrix = random_sparse(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
+    elif distribution == "bernoulli":
+        matrix = bernoulli(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
+    else:
+        raise ValueError(f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'.")
+
+
+    #Define amount of neurons present in one cluster
+    if shape[0] % cluster != 0:
+        raise ValueError("Units must be a multiple of the amount of cluster.")
+
+    n_c = int(shape[0] / cluster)
+
+
+    #Create cluster matrix
+    for i in range(0, cluster):
+        c_matrix = normal(n_c, n_c, connectivity=p_in, dtype=dtype, seed=seed)
+        matrix[i*n_c : i*n_c+n_c, i*n_c : i*n_c+n_c] = c_matrix
+
+
+    return matrix
+
+
+
+cluster = Initializer(_cluster)
