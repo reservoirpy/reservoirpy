@@ -33,7 +33,7 @@ class RLS(OnlineNode):
 
     def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
         out = x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
-        return {"out": out}, out[-1]
+        return {"out": out[-1]}, out
 
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x @ self.Wout + self.bias}  # (in, ) @ (in, out) + (out,)
