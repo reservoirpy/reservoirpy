@@ -1395,15 +1395,16 @@ def _orthogonal(
 
 orthogonal = Initializer(_orthogonal)
 
+
 def _cluster(
     *shape: int,
     dtype: np.dtype = global_dtype,
     seed: Union[int, np.random.Generator] = None,
-    p_in = 0.1,
-    p_out = 0.01,
-    cluster = 3,
-    distribution = "normal",
-    sparsity_type = "csr",
+    p_in=0.1,
+    p_out=0.01,
+    cluster=3,
+    distribution="normal",
+    sparsity_type="csr",
     **kwargs,
 ):
     """
@@ -1452,36 +1453,41 @@ def _cluster(
     if shape[0] % cluster != 0:
         raise ValueError("Units must be a multiple of the amount of cluster.")
 
-
     rng = rand_generator(seed)
-
     # Define dictionary for corresponding weight distribution matrices
-    matrix_dict = dict(normal=normal,
-                       uniform= uniform,
-                       random=random_sparse,
-                       bernoulli=bernoulli)
+    matrix_dict = dict(
+        normal=normal, uniform=uniform, random=random_sparse, bernoulli=bernoulli
+    )
 
     # Check for valid distribution
     if distribution not in matrix_dict:
         raise ValueError(
-            f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'.")
+            f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'."
+        )
 
     # Define the global matrix
-    matrix = matrix_dict[distribution](shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=rng)
+    matrix = matrix_dict[distribution](
+        shape[0],
+        shape[1],
+        connectivity=p_out,
+        dtype=dtype,
+        sparsity_type=sparsity_type,
+        seed=rng,
+    )
 
     # Define the number of neurons inside each cluster
     n_c = shape[0] // cluster
 
     # Define the cluster matrix
-    c_matrix = matrix_dict[distribution](n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng)
+    c_matrix = matrix_dict[distribution](
+        n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng
+    )
 
     # Create the cluster matrix
     for i in range(0, cluster):
-        matrix[i*n_c : i*n_c+n_c, i*n_c : i*n_c+n_c] = c_matrix
-
+        matrix[i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c] = c_matrix
 
     return matrix
-
 
 
 cluster = Initializer(_cluster)
