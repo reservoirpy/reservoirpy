@@ -1407,7 +1407,8 @@ def _cluster(
     **kwargs,
 ):
     """
-    Create a clustered matrix with given distribution and p_in/p_out parameters.
+    Create a cluster matrix with given distribution and p_in/p_out parameters. Based on the Erdős-Rényi clustered matrix
+    algorithm.
 
     Parameters
     ----------
@@ -1447,32 +1448,35 @@ def _cluster(
 
     """
 
-    # Genere sparse matrix avec  mat_gen (normal, bern, etc) - inter cluster
-    seed = rand_generator(seed)
-
-    #create large sparse matrix
-    if distribution == "normal":
-        matrix = normal(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
-    elif distribution == "uniform":
-        matrix = uniform(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
-    elif distribution == "random":
-        matrix = random_sparse(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
-    elif distribution == "bernoulli":
-        matrix = bernoulli(shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=seed)
-    else:
-        raise ValueError(f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'.")
-
-
-    #Define amount of neurons present in one cluster
+    # Check that the shape is divisible by the amount of cluster
     if shape[0] % cluster != 0:
         raise ValueError("Units must be a multiple of the amount of cluster.")
 
-    n_c = int(shape[0] / cluster)
 
+    rng = rand_generator(seed)
 
-    #Create cluster matrix
+    # Define dictionary for corresponding weight distribution matrices
+    matrix_dict = dict(normal=normal,
+                       uniform= uniform,
+                       random=random_sparse,
+                       bernoulli=bernoulli)
+
+    # Check for valid distribution
+    if distribution not in matrix_dict:
+        raise ValueError(
+            f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'.")
+
+    # Define the global matrix
+    matrix = matrix_dict[distribution](shape[0], shape[1], connectivity=p_out, dtype=dtype, sparsity_type=sparsity_type,seed=rng)
+
+    # Define the number of neurons inside each cluster
+    n_c = shape[0] // cluster
+
+    # Define the cluster matrix
+    c_matrix = matrix_dict[distribution](n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng)
+
+    # Create the cluster matrix
     for i in range(0, cluster):
-        c_matrix = normal(n_c, n_c, connectivity=p_in, dtype=dtype, seed=seed)
         matrix[i*n_c : i*n_c+n_c, i*n_c : i*n_c+n_c] = c_matrix
 
 

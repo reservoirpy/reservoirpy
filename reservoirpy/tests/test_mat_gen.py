@@ -23,7 +23,7 @@ from reservoirpy.mat_gen import (
     ring,
     uniform,
     zeros,
-    cluster, 
+    cluster,
     small_world
 )
 
@@ -568,8 +568,8 @@ def test_cluster_matrix():
 
     shape = 100
     c = 10
-    p_in = 0.3
-    p_out = 0.2
+    p_in = 0.1
+    p_out = 0.01
 
     W1 = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal")
     W1 = W1.toarray()
@@ -580,17 +580,15 @@ def test_cluster_matrix():
 
     n_c = int(shape / c)
 
-    #check shape
+    # Check shape
     assert W1.shape == (shape, shape)
 
 
-    #2 matrix wuth same seed - check they are the same
+    # Assert that 2 matrices with same seed are equal
     assert_array_equal(W1, W2)
 
-    # check error - false distr, connectivy > 1
-    #false_W = cluster(10, 10, cluster=c, seed=1, p_in=0.1, p_out=0.01, distribution="oui bonsoir")
 
-    #test: check for good visibility of cluster
+    # Check for cluster concentration
     def diagonal_concentration(band, w):
         n = w.shape[0]
         total = np.sum(np.abs(w))
@@ -601,28 +599,40 @@ def test_cluster_matrix():
         return diag_concentration
 
     W1_diag = diagonal_concentration(n_c, W1)
+    np.random.seed(42)
     np.random.shuffle(W2)
     W2_diag = diagonal_concentration(n_c, W2)
-    #W 10x10, connectivty 0.1
 
     assert W1_diag > W2_diag
 
-    #Check connectivity test -
-    #p_in / p_out au max /min and check full 0s are 1s
+    # Connectivity test
+
+    # p_in & p_out are 0 --> matrix is full of 0
     w_min = cluster(shape, shape, cluster=c, seed=1, p_in=0, p_out=0)
     w_min = w_min.toarray()
-    assert np.all(w_min == 0) == True
+    assert np.all(w_min == 0)
 
+    # p_in & p_out are 1 --> no 0s in the matrix
     w_max = cluster(shape, shape, cluster=c, seed=1, p_in=1, p_out=1)
-    assert np.sum(w_max==0) == 0
+    assert np.all(w_max != 0)
 
-    #check cluster density
+    # Check cluster density
     w_cluster_check = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out)
     w_cluster_check = w_cluster_check.toarray()
     for i in range(0, c):
         current_cluster = w_cluster_check[i*n_c : i*n_c+n_c, i*n_c : i*n_c+n_c]
         cluster_density = (np.sum(current_cluster !=0)) / n_c*n_c
         assert cluster_density == (p_in * n_c*n_c)
+
+    # Check for incorrect distribution
+    with pytest.raises(ValueError):
+        _ = cluster(shape, shape, cluster=c, seed=1, p_in=1, p_out=1, distribution="not_a_distribution")
+
+    # Check for invalid cluster and shape size
+    with pytest.raises(ValueError):
+        _ = cluster(shape, shape, cluster=3, seed=1, p_in=1, p_out=1, distribution="normal")
+
+
 def test_watts_strogatz_matrix():
     W1 = small_world(10, 10, seed=1)
     W2 = small_world(10, 10, seed=1)
@@ -649,5 +659,4 @@ def test_watts_strogatz_matrix():
 
     with pytest.raises(ValueError):
         _ = small_world(10, 10, 10, seed=1)
-
 
