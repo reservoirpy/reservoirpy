@@ -84,11 +84,10 @@ class RLS(OnlineNode):
         x: np.ndarray (in,)
         y: np.ndarray (out,)
         """
-        # TODO: forgetting factor
 
         Px = P @ x  # (in,)
-        dP = -np.outer(Px, Px) / (1.0 + x @ Px)  # (in, in)
-        P_next = P + dP
+        dP = -np.outer(Px, Px) / (forgetting + x @ Px)  # (in, in)
+        P_next = (P + dP) / forgetting
 
         prediction = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
         error = prediction - y  # (out,)
