@@ -65,6 +65,7 @@ class RLS(OnlineNode):
         if isinstance(self.bias, Callable):
             self.bias = self.bias(self.output_dim)
         self.P = np.eye(self.input_dim) / self.alpha
+        self.S = 0
 
         self.initialized = True
 
@@ -74,6 +75,7 @@ class RLS(OnlineNode):
         bias: Weights,
         P: np.ndarray,
         forgetting: float,
+        S: float,
         x: Timestep,
         y: Timestep,
     ):
@@ -83,11 +85,14 @@ class RLS(OnlineNode):
         P: np.ndarray (in, in)
         x: np.ndarray (in,)
         y: np.ndarray (out,)
+        Returns
+        (Wout_next, bias_next, P_next, S_next), y_pred
         """
 
         Px = P @ x  # (in,)
         dP = -np.outer(Px, Px) / (forgetting + x @ Px)  # (in, in)
         P_next = (P + dP) / forgetting
+        S_next = forgetting * S + 1
 
         prediction = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
         error = prediction - y  # (out,)
@@ -95,12 +100,12 @@ class RLS(OnlineNode):
         Wout_next = Wout + dWout  # (in, out)
 
         if self.fit_bias:
-            ...  # TODO
+            bias_next = (S_next * bias - error) / S_next
         else:
-            bias_next = np.zeros((Wout.shape[1]))
-        y_pred = x @ Wout_next
+            bias_next = bias
+        y_pred = x @ Wout_next + bias
 
-        return (Wout_next, bias_next, P_next), y_pred
+        return (Wout_next, bias_next, P_next, S_next), y_pred
 
     def partial_fit(self, x: Timeseries, y: Timeseries):
         if not self.initialized:
@@ -113,13 +118,15 @@ class RLS(OnlineNode):
         n_timesteps = x.shape[-2]
         out_dim = y.shape[-1]
         y_pred = np.empty((n_timesteps, out_dim))
+        S = self.S
         for i, (x_, y_) in enumerate(zip(x, y)):
-            (Wout, bias, P), y_pred_ = self._learning_step(
-                Wout, bias, P, forgetting, x_, y_
+            (Wout, bias, P, S), y_pred_ = self._learning_step(
+                Wout, bias, P, forgetting, S, x_, y_
             )
             y_pred[i] = y_pred_
 
         self.Wout = Wout
         self.bias = bias
         self.state = {"out": y_pred_}
+        self.S = S
         return y_pred
