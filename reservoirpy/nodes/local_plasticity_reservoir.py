@@ -355,24 +355,19 @@ class LocalPlasticityReservoir(TrainableNode):
 
             If `synapse_normalization=True`, then each row of W is L2-normalized
             immediately after the local rule update.
-
-            This version supports both dense and sparse matrices. For sparse matrices,
-            the weight matrix is converted to LIL format for efficient row modifications.
             """
             for u in seq:
                 pre_state = self.state["internal"]  # (units,)
                 post_state = self._step(self.state, u)["internal"]  # (units,)
-
                 # Vectorized update of nonzero elements based on the chosen rule.
                 (rows, cols, data) = sp.find(self.W)
                 self.W[rows, cols] += increment(data, pre_state[cols], post_state[rows])
-
                 # Optionally normalize each row.
                 if do_norm:
                     # Compute the L2 norm per row for the updated data.
-                    row_norms = np.sqrt(np.sum(W**2, axis=1)).reshape(-1, 1)
+                    row_norms = np.sqrt(np.sum(self.W**2, axis=1)).reshape(-1, 1)
                     safe_norms = np.where(row_norms > 0, row_norms, 1)
-                    self.W /= safe_norms[rows]  # (units, units)
+                    self.W[:] /= safe_norms[:]
 
         for _epoch in range(self.epochs):
             if is_multiseries(x):
