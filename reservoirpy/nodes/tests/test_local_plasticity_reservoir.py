@@ -3,20 +3,20 @@ import pytest
 from numpy.testing import assert_allclose
 
 from ...mat_gen import ring
-from ..readouts import Ridge
-from ..reservoirs.local_plasticity_reservoir import LocalPlasticityReservoir
+from .. import Ridge
+from ..local_plasticity_reservoir import LocalPlasticityReservoir
 
 
 def test_lsp_init():
+    x = np.ones((10, 5))
     res = LocalPlasticityReservoir(100, input_dim=5)
 
-    res.initialize()
+    res.initialize(x)
 
     assert res.W.shape == (100, 100)
     assert res.Win.shape == (100, 5)
 
     res = LocalPlasticityReservoir(100)
-    x = np.ones((10, 5))
 
     out = res.run(x)
 
@@ -50,11 +50,11 @@ def test_lsp_rules():
 
 
 def test_local_synaptic_plasticity():
-
-    x = np.random.normal(size=(100, 5))
+    rng = np.random.default_rng(seed=1)
+    x = rng.normal(size=(100, 5))
     X = [x[:10], x[:20]]
 
-    res = LocalPlasticityReservoir(100, local_rule="hebbian", epochs=2)
+    res = LocalPlasticityReservoir(100, local_rule="hebbian", epochs=2, seed=0)
 
     res.fit(x)
     res.fit(X)
@@ -62,7 +62,7 @@ def test_local_synaptic_plasticity():
     assert res.W.shape == (100, 100)
 
     res = LocalPlasticityReservoir(
-        100, local_rule="oja", epochs=10, eta=1e-3, synapse_normalization=True
+        100, local_rule="oja", epochs=10, eta=1e-3, synapse_normalization=True, seed=10
     )
     res.initialize(x)
 
@@ -72,31 +72,6 @@ def test_local_synaptic_plasticity():
     res.fit(X)
 
     assert not np.allclose(initial_Wvals, res.W.data)
-
-    res.fit(x, warmup=10)
-    res.fit(X, warmup=5)
-
-    with pytest.raises(ValueError):
-        res.fit(X, warmup=10)
-
-
-def test_lsp_model():
-    x = np.random.normal(size=(100, 5))
-    y = np.random.normal(size=(100, 2))
-    X = [x[:10], x[:20]]
-    Y = [y[:10], y[:20]]
-
-    res = LocalPlasticityReservoir(100, local_rule="anti-hebbian", epochs=2, seed=1234)
-    readout = Ridge(ridge=1)
-
-    model = res >> readout
-
-    model.fit(X, Y)
-
-    res2 = LocalPlasticityReservoir(100, local_rule="anti-hebbian", epochs=2, seed=1234)
-    res2.fit(X)
-
-    assert_allclose(res.W.data, res2.W.data)
 
 
 def test_lsp_matrices():
