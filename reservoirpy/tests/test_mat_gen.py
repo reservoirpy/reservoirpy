@@ -154,11 +154,6 @@ def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
     ],
 )
 def test_random_sparse_types(shape, dtype, sparsity_type, kwargs, expects):
-    all_sparse_types = {
-        "csr": sparse.isspmatrix_csr,
-        "coo": sparse.isspmatrix_coo,
-        "csc": sparse.isspmatrix_csc,
-    }
 
     if expects == "sparse":
         init = random_sparse(
@@ -171,7 +166,7 @@ def test_random_sparse_types(shape, dtype, sparsity_type, kwargs, expects):
 
         assert_allclose(w1.toarray(), w0.toarray(), atol=1e-12)
         assert w0.dtype == dtype
-        assert all_sparse_types[sparsity_type](w0)
+        assert sparse.issparse(w0) and w0.format == sparsity_type
 
     if expects == "dense":
         init = random_sparse(
@@ -348,7 +343,7 @@ def test_ring_matrix():
     x = x0
     # loop all over the ring
     for i in range(10):
-        x = W * x
+        x = W @ x
 
     assert np.all(x == 2**10 * x0)
 
@@ -371,7 +366,7 @@ def test_line_matrix():
     x = x0
     # loop all over the line
     for i in range(10):
-        x = W * x
+        x = W @ x
 
     assert np.all(x == 0.0)
 

@@ -140,6 +140,6 @@ Cite
 
 Advanced features of ReservoirPy allow to improve computation time efficiency on a simple laptop compared to
 basic Python implementation. Some of its features are: offline and online training,
-parallel implementation, sparse matrix computation, fast spectral initialization, etc.
+parallel implementation, sparse array computation, fast spectral initialization, etc.
 Moreover, graphical tools are included to easily explore hyperparameters with the help
 of the `hyperopt` library.

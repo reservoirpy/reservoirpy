@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array
 
 from ..nodes import Reservoir, Ridge
 from ..observables import (
@@ -51,7 +51,7 @@ def test_spectral_radius():
 
     idxs = rng.random(size=(100, 100))
     w[idxs < 0.5] = 0
-    w = csr_matrix(w)
+    w = csr_array(w)
 
     rho = spectral_radius(w)
 

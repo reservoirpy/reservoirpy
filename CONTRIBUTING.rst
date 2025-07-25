@@ -516,7 +516,7 @@ In general, have the following in mind:
 
     3. For strings with multiple options, use brackets: input: {'log', 'squared', 'multinomial'}
 
-    4. 1D or 2D data can be a subset of {array-like, ndarray, sparse matrix}. Note that array-like can also be a list, while ndarray is explicitly only a numpy.ndarray.
+    4. 1D or 2D data can be a subset of {array-like, ndarray, sparse array}. Note that array-like can also be a list, while ndarray is explicitly only a numpy.ndarray.
 
     5. When specifying the data type of a list, use of as a delimiter: list of int. When the parameter supports arrays giving details about the shape and/or data type and a list of such arrays, you can use one of array-like of shape (n_samples,) or list of such arrays.
 

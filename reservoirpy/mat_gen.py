@@ -149,7 +149,7 @@ class Initializer:
     ----------
     func : callable
         Initializer function. Should have a `shape` argument and return a Numpy array
-        or Scipy sparse matrix.
+        or Scipy sparse array.
     allow_sr : bool, default to True
         Authorize spectral radius rescaling for this initializer.
     allow_input_scaling : bool, default to True
@@ -301,7 +301,7 @@ def _scale_spectral_radius(w_init, shape, sr, **kwargs):
 
     Returns
     -------
-    Numpy array or Scipy sparse matrix
+    Numpy array or Scipy sparse array
         Rescaled matrix.
     """
     convergence = False
@@ -347,7 +347,7 @@ def _scale_inputs(w_init, shape, input_scaling, **kwargs):
 
     Returns
     -------
-    Numpy array or Scipy sparse matrix
+    Numpy array or Scipy sparse array
         Rescaled matrix.
     """
     w = w_init(*shape, **kwargs)
@@ -367,14 +367,14 @@ def _random_degree(
     random_state: Union[None, int, np.random.Generator, np.random.RandomState] = None,
     data_rvs=None,
 ):
-    """Generate a sparse matrix of the given shape with randomly distributed values.
+    """Generate a sparse array of the given shape with randomly distributed values.
     - If `direction=out`, each column has `degree` non-zero values.
     - If `direction=in`, each line has `degree` non-zero values.
 
     Parameters
     ----------
     m, n : int
-        shape of the matrix
+        shape of the array
     degree : int, optional
         in-degree or out-degree of each node of the corresponding graph of the
         generated matrix:
@@ -400,14 +400,14 @@ def _random_degree(
         Samples a requested number of random values.
         This function should take a single argument specifying the length
         of the ndarray that it will return. The structurally nonzero entries
-        of the sparse random matrix will be taken from the array sampled
+        of the sparse random array will be taken from the array sampled
         by this function. By default, uniform [0, 1) random values will be
         sampled using the same random state as is used for sampling
         the sparsity structure.
 
     Returns
     -------
-    res : sparse matrix
+    res : sparse array
 
     Notes
     -----
@@ -432,7 +432,7 @@ def _random_degree(
 
     if mn > np.iinfo(tp).max:  # pragma: no cover
         msg = """\
-Trying to generate a random sparse matrix such as the product of dimensions is
+Trying to generate a random sparse array such as the product of dimensions is
 greater than %d - this is not supported on this machine
 """
         raise ValueError(msg % np.iinfo(tp).max)
@@ -465,7 +465,7 @@ greater than %d - this is not supported on this machine
         raise ValueError(f'\'direction\'={direction} must either be "out" or "in".')
 
     vals = data_rvs(len(i)).astype(dtype, copy=False)
-    return sparse.coo_matrix((vals, (i, j)), shape=(m, n)).asformat(format, copy=False)
+    return sparse.coo_array((vals, (i, j)), shape=(m, n)).asformat(format, copy=False)
 
 
 def _random_sparse(
@@ -479,7 +479,7 @@ def _random_sparse(
     direction: Literal["in", "out"] = "out",
     **kwargs,
 ):
-    """Create a random matrix.
+    """Create a random array.
 
     Parameters
     ----------
@@ -497,7 +497,7 @@ def _random_sparse(
         from a Bernoulli discrete random variable alternating between -1 and 1 and
         drawing 1 with a probability `p` (default `p` parameter to 0.5).
     connectivity: float, default to 1.0
-        Also called density of the sparse matrix. By default, creates dense arrays.
+        Also called density of the sparse array. By default, creates dense arrays.
     sr : float, optional
         If defined, then will rescale the spectral radius of the matrix to this value.
     input_scaling: float or array, optional
@@ -507,7 +507,7 @@ def _random_sparse(
         A Numpy numerical type.
     sparsity_type : {"csr", "csc", "dense"}, default to "csr"
         If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        function will try to use one of the Scipy sparse array format ("csr" or "csc").
         Else, a Numpy array ("dense") will be used.
     seed : optional
         Random generator seed. Default to the global value set with
@@ -561,13 +561,12 @@ def _random_sparse(
             if connectivity < 1.0:
                 matrix[rg.random(shape) > connectivity] = 0.0
         else:
-            matrix = sparse.random(
-                shape[0],
-                shape[1],
+            matrix = sparse.random_array(
+                shape,
                 density=connectivity,
                 format=sparsity_type,
-                random_state=rg,
-                data_rvs=rvs,
+                rng=rg,
+                data_sampler=rvs,
                 dtype=dtype,
             )
 
@@ -602,7 +601,7 @@ def _uniform(
     low, high : float, float, default to -1, 1
         Boundaries of the uniform distribution.
     connectivity: float, default to 1.0
-        Also called density of the sparse matrix. By default, creates dense arrays.
+        Also called density of the sparse array. By default, creates dense arrays.
     sr : float, optional
         If defined, then will rescale the spectral radius of the matrix to this value.
     input_scaling: float or array, optional
@@ -612,7 +611,7 @@ def _uniform(
         A Numpy numerical type.
     sparsity_type : {"csr", "csc", "dense"}, default to "csr"
         If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        function will try to use one of the Scipy sparse array format ("csr" or "csc").
         Else, a Numpy array ("dense") will be used.
     seed : optional
         Random generator seed. Default to the global value set with
@@ -674,7 +673,7 @@ def _normal(
     loc, scale : float, float, default to 0, 1
         Mean and scale of the Gaussian distribution.
     connectivity: float, default to 1.0
-        Also called density of the sparse matrix. By default, creates dense arrays.
+        Also called density of the sparse array. By default, creates dense arrays.
     sr : float, optional
         If defined, then will rescale the spectral radius of the matrix to this value.
     input_scaling: float or array, optional
@@ -684,7 +683,7 @@ def _normal(
         A Numpy numerical type.
     sparsity_type : {"csr", "csc", "dense"}, default to "csr"
         If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        function will try to use one of the Scipy sparse array format ("csr" or "csc").
         Else, a Numpy array ("dense") will be used.
     seed : optional
         Random generator seed. Default to the global value set with
@@ -744,7 +743,7 @@ def _bernoulli(
     p : float, default to 0.5
         Probability of success (to obtain 1).
     connectivity: float, default to 1.0
-        Also called density of the sparse matrix. By default, creates dense arrays.
+        Also called density of the sparse array. By default, creates dense arrays.
     sr : float, optional
         If defined, then will rescale the spectral radius of the matrix to this value.
     input_scaling: float or array, optional
@@ -754,7 +753,7 @@ def _bernoulli(
         A Numpy numerical type.
     sparsity_type : {"csr", "csc", "dense"}, default to "csr"
         If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        function will try to use one of the Scipy sparse array format ("csr" or "csc").
         Else, a Numpy array ("dense") will be used.
     seed : optional
         Random generator seed. Default to the global value set with
@@ -879,7 +878,7 @@ def _fast_spectral_initialization(
         Shape :math:`N \\times N` of the array.
         This function only builds square matrices.
     connectivity: float, default to 1.0
-        Also called density of the sparse matrix. By default, creates dense arrays.
+        Also called density of the sparse array. By default, creates dense arrays.
     sr : float, optional
         If defined, then will rescale the spectral radius of the matrix to this value.
     input_scaling: float or array, optional
@@ -889,7 +888,7 @@ def _fast_spectral_initialization(
         A Numpy numerical type.
     sparsity_type : {"csr", "csc", "dense"}, default to "csr"
         If connectivity is inferior to 1 and shape is only 2-dimensional, then the
-        function will try to use one of the Scipy sparse matrix format ("csr" or "csc").
+        function will try to use one of the Scipy sparse array format ("csr" or "csc").
         Else, a Numpy array ("dense") will be used.
     seed : optional
         Random generator seed. Default to the global value set with
@@ -1009,7 +1008,7 @@ def _ring(
     row = np.roll(np.arange(units, dtype=np.int32), shift=-1)
     col = np.arange(units, dtype=np.int32)
 
-    matrix = sparse.coo_matrix((weights, (row, col)), shape=(units, units)).asformat(
+    matrix = sparse.coo_array((weights, (row, col)), shape=(units, units)).asformat(
         sparsity_type, copy=False
     )
 
@@ -1074,7 +1073,7 @@ def _line(
     row = np.arange(1, units, dtype=np.int32)
     col = np.arange(units - 1, dtype=np.int32)
 
-    matrix = sparse.coo_matrix((weights, (row, col)), shape=(units, units)).asformat(
+    matrix = sparse.coo_array((weights, (row, col)), shape=(units, units)).asformat(
         sparsity_type, copy=False
     )
 

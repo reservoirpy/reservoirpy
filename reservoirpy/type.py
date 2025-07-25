@@ -4,7 +4,7 @@
 from typing import Any, Iterable, Sequence, TypeVar, Union
 
 import numpy as np
-from scipy.sparse import issparse, sparray, spmatrix
+from scipy.sparse import issparse, sparray
 
 global_dtype = np.float64
 
@@ -26,7 +26,7 @@ MappedTimestep = dict[str, Timestep]
 ModelTimestep = Union[Timestep, MappedTimestep]
 State = dict[str, np.ndarray]
 
-Weights = Union[np.ndarray, spmatrix, sparray]
+Weights = Union[np.ndarray, sparray]
 Shape = TypeVar("Shape", int, tuple[int, ...])
 Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
 
