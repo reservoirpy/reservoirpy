@@ -320,7 +320,10 @@ class LocalPlasticityReservoir(TrainableNode):
                 seed=bias_rng,
             )
 
-        self.state = {"out": np.zeros((self.units,))}
+        self.state = {
+            "out": np.zeros((self.units,)),
+            "internal": np.zeros((self.units,)),
+        }
 
         self.initialized = True
 
