@@ -4,60 +4,23 @@ from typing import Callable, Dict, Optional, Sequence, Union
 import numpy as np
 import scipy.sparse as sp
 
-from ..._base import check_xy
-from ...activationsfunc import get_function, identity, tanh
-from ...mat_gen import bernoulli, uniform
-from ...node import Unsupervised, _init_with_sequences
-from ...type import Weights
-from ...utils.random import noise, rand_generator
-from ...utils.validation import is_array
+from .._base import check_xy
+from ..activationsfunc import get_function, identity, tanh
+from ..mat_gen import bernoulli, uniform
+from ..node import OnlineNode, TrainableNode, _init_with_sequences
+from ..type import (
+    NodeInput,
+    State,
+    Timeseries,
+    Timestep,
+    Weights,
+    is_array,
+    is_multiseries,
+)
+from ..utils.random import noise, rand_generator
 from .base import forward_external
 from .base import initialize as initialize_base
 from .base import initialize_feedback
-
-
-def local_synaptic_plasticity(reservoir, pre_state, post_state):
-    """
-    Apply the local learning rule (Oja, Anti-Oja, Hebbian, Anti-Hebbian, BCM)
-    to update the recurrent weight matrix W.
-
-    If `synapse_normalization=True`, then each row of W is L2-normalized
-    immediately after the local rule update.
-
-    This version supports both dense and sparse matrices. For sparse matrices,
-    the weight matrix is converted to LIL format for efficient row modifications.
-    """
-
-    W = reservoir.W  # Expecting W to be in CSR format.
-    increment = reservoir.increment
-    do_norm = reservoir.synapse_normalization
-
-    # Extract presynaptic and postsynaptic vectors.
-    x = pre_state[0]  # shape: (units,)
-    y = post_state[0]  # shape: (units,)
-
-    # Ensure W is in CSR format.
-    if not sp.isspmatrix_csr(W):
-        W = sp.csr_matrix(W)
-
-    # Compute the row index for each nonzero element using np.repeat.
-    # np.diff(W.indptr) gives the count of nonzeros in each row.
-    rows = np.repeat(np.arange(W.shape[0]), np.diff(W.indptr))
-    cols = W.indices
-    data = W.data  # Update in place.
-
-    # Vectorized update of nonzero elements based on the chosen rule.
-    data += increment(data, x[cols], y[rows])
-
-    # Optionally normalize each row.
-    if do_norm:
-        # Compute the L2 norm per row for the updated data.
-        row_sums = np.bincount(rows, weights=data**2, minlength=W.shape[0])
-        row_norms = np.sqrt(row_sums)
-        safe_norms = np.where(row_norms > 0, row_norms, 1)
-        data /= safe_norms[rows]
-
-    return W
 
 
 def sp_backward(reservoir, X=None, *args, **kwargs):
@@ -75,16 +38,7 @@ def sp_backward(reservoir, X=None, *args, **kwargs):
                 reservoir.set_param("W", W_new)
 
 
-def initialize_synaptic_plasticity(reservoir, *args, **kwargs):
-    """
-    Custom initializer for the LocalRuleReservoir.
-    Reuses the ESN-like initialization and sets the reservoir internal state to zeros.
-    """
-
-    initialize_base(reservoir, *args, **kwargs)
-
-
-class LocalPlasticityReservoir(Unsupervised):
+class LocalPlasticityReservoir(TrainableNode):
     """
     A reservoir that learns its recurrent weights W through a local
     learning rule selected by the 'learning_rule' hyperparameter.
@@ -263,166 +217,183 @@ class LocalPlasticityReservoir(Unsupervised):
         synapse_normalization: bool = False,
         epochs: int = 1,
         # standard reservoir params
-        sr: Optional[float] = None,
+        sr: float = 1.0,
         lr: float = 1.0,
-        input_bias: bool = True,
-        noise_rc: float = 0.0,
-        noise_in: float = 0.0,
-        noise_fb: float = 0.0,
-        noise_type: str = "normal",
-        noise_kwargs: Optional[Dict] = None,
         input_scaling: Union[float, Sequence] = 1.0,
-        bias_scaling: float = 1.0,
-        fb_scaling: Union[float, Sequence] = 1.0,
         input_connectivity: Optional[float] = 0.1,
         rc_connectivity: Optional[float] = 0.1,
-        fb_connectivity: Optional[float] = 0.1,
         Win: Union[Weights, Callable] = bernoulli,
         W: Union[Weights, Callable] = uniform,
-        Wfb: Union[Weights, Callable] = bernoulli,
         bias: Union[Weights, Callable] = bernoulli,
-        feedback_dim: Optional[int] = None,
-        fb_activation: Union[str, Callable] = identity,
         activation: Union[str, Callable] = tanh,
-        name=None,
-        seed=None,
-        **kwargs,
+        input_dim: Optional[int] = None,
+        seed: Optional[Union[int, np.random.Generator]] = None,
+        dtype: type = np.float64,
+        name: Optional[str] = None,
     ):
+        self.units = units
+        self.eta = eta
+        self.bcm_theta = bcm_theta
+        self.synapse_normalization = synapse_normalization
+        self.epochs = epochs
+        self.lr = lr
+        self.sr = sr
+        self.input_scaling = input_scaling
+        self.input_connectivity = input_connectivity
+        self.rc_connectivity = rc_connectivity
+        self.Win = Win
+        self.W = W
+        self.bias = bias
+        self.activation = get_function(activation)
+        self.dtype = dtype
+        self.rng = rand_generator(seed=seed)
+        self.initialized = False
+        self.name = name
+
+        # set units / output_dim
         if units is None and not is_array(W):
             raise ValueError(
                 "'units' parameter must not be None if 'W' parameter is not a matrix."
             )
+        if units is not None and is_array(W) and W.shape[-1] != units:
+            raise ValueError(
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
+                f"{units} != {W.shape[-1]}."
+            )
+        self.units = units if units is not None else W.shape[-1]
+        self.output_dim = self.units
 
-        rng = rand_generator(seed=seed)
-        noise_kwargs = dict() if noise_kwargs is None else noise_kwargs
+        # set input_dim (if possible)
+        if input_dim is not None and is_array(Win) and Win.shape[-1] != input_dim:
+            raise ValueError(
+                f"Both 'input_dim' and 'Win' are set but their dimensions doesn't "
+                f"match: {input_dim} != {Win.shape[-1]}."
+            )
+        self.input_dim = Win.shape[-1] if is_array(Win) else input_dim
 
         # Validate local rule name
         local_rule = local_rule.lower()
 
-        if local_rule == "oja":
+        def oja(weights, pre_state, post_state):
+            return eta * post_state * (pre_state - post_state * weights)
 
-            def increment(weights, pre_state, post_state):
-                return eta * post_state * (pre_state - post_state * weights)
+        def anti_oja(weights, pre_state, post_state):
+            return -eta * post_state * (pre_state - post_state * weights)
 
-        elif local_rule == "anti-oja":
+        def hebbian(weights, pre_state, post_state):
+            return eta * post_state * pre_state
 
-            def increment(weights, pre_state, post_state):
-                return -eta * post_state * (pre_state - post_state * weights)
+        def anti_hebbian(weights, pre_state, post_state):
+            return -eta * post_state * pre_state
 
-        elif local_rule == "hebbian":
+        def bcm(weights, pre_state, post_state):
+            return eta * post_state * (post_state - bcm_theta) * pre_state
 
-            def increment(weights, pre_state, post_state):
-                return eta * post_state * pre_state
-
-        elif local_rule == "anti-hebbian":
-
-            def increment(weights, pre_state, post_state):
-                return -eta * post_state * pre_state
-
-        elif local_rule == "bcm":
-
-            def increment(weights, pre_state, post_state):
-                return eta * post_state * (post_state - bcm_theta) * pre_state
-
-        else:
+        rules = {
+            "oja": oja,
+            "anti-oja": anti_oja,
+            "hebbian": hebbian,
+            "anti-hebbian": anti_hebbian,
+            "bcm": bcm,
+        }
+        if not local_rule in rules:
             raise ValueError(
                 f"Unknown learning rule '{local_rule}'. Choose from: "
                 "['oja', 'anti-oja', 'hebbian', 'anti-hebbian', 'bcm']."
             )
 
-        self.increment = increment
+        self.increment = rules[local_rule]
 
-        super(LocalPlasticityReservoir, self).__init__(
-            fb_initializer=partial(
-                initialize_feedback,
-                Wfb_init=Wfb,
-                fb_scaling=fb_scaling,
-                fb_connectivity=fb_connectivity,
-                seed=seed,
-            ),
-            params={
-                "W": None,
-                "Win": None,
-                "Wfb": None,
-                "bias": None,
-                "internal_state": None,
-            },
-            hypers={
-                "local_rule": local_rule,
-                "bcm_theta": bcm_theta,
-                "eta": eta,
-                "synapse_normalization": synapse_normalization,
-                "sr": sr,
-                "lr": lr,
-                "epochs": epochs,
-                "input_bias": input_bias,
-                "input_scaling": input_scaling,
-                "fb_scaling": fb_scaling,
-                "rc_connectivity": rc_connectivity,
-                "input_connectivity": input_connectivity,
-                "fb_connectivity": fb_connectivity,
-                "noise_in": noise_in,
-                "noise_rc": noise_rc,
-                "noise_out": noise_fb,
-                "noise_type": noise_type,
-                "activation": get_function(activation)
-                if isinstance(activation, str)
-                else activation,
-                "fb_activation": get_function(fb_activation)
-                if isinstance(fb_activation, str)
-                else fb_activation,
-                "units": units,
-                "noise_generator": partial(noise, rng=rng, **noise_kwargs),
-            },
-            forward=forward_external,
-            initializer=partial(
-                initialize_synaptic_plasticity,
-                input_bias=input_bias,
-                bias_scaling=bias_scaling,
-                sr=sr,
-                input_scaling=input_scaling,
-                input_connectivity=input_connectivity,
-                rc_connectivity=rc_connectivity,
-                W_init=W,
-                Win_init=Win,
-                bias_init=bias,
-                seed=seed,
-            ),
-            backward=sp_backward,
-            output_dim=units,
-            feedback_dim=feedback_dim,
-            name=name,
-            **kwargs,
-        )
+    def initialize(self, x: Optional[Union[NodeInput, Timestep]]):
 
-    @property
-    def fitted(self) -> bool:
-        # For an unsupervised node that can always be updated,
-        # we set `fitted = True` after first initialization/training.
-        return True
+        # set input_dim
+        if self.input_dim is None:
+            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
 
-    def partial_fit(
-        self, X_batch, Y_batch=None, warmup=0, **kwargs
-    ) -> "LocalPlasticityReservoir":
-        """Partial offline fitting method (for batch training)."""
-        X, _ = check_xy(self, X_batch, allow_n_inputs=False)
-        X, _ = _init_with_sequences(self, X)
+        [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
 
-        self.initialize_buffers()
+        if callable(self.Win):
+            self.Win = self.Win(
+                self.units,
+                self.input_dim,
+                input_scaling=self.input_scaling,
+                connectivity=self.input_connectivity,
+                dtype=self.dtype,
+                seed=Win_rng,
+            )
 
-        for i in range(len(X)):
-            X_seq = X[i]
+        if callable(self.W):
+            self.W = self.W(
+                self.units,
+                self.units,
+                sr=self.sr,
+                connectivity=self.rc_connectivity,
+                dtype=self.dtype,
+                seed=W_rng,
+            )
 
-            if X_seq.shape[0] <= warmup:
-                raise ValueError(
-                    f"Warmup set to {warmup} timesteps, "
-                    f"but one timeseries is only {X_seq.shape[0]} long."
-                )
+        if callable(self.bias):
+            self.bias = self.bias(
+                self.units,
+                connectivity=1.0,
+                dtype=self.dtype,
+                seed=bias_rng,
+            )
 
-            # Run warmup if specified
-            if warmup > 0:
-                self.run(X_seq[:warmup])
+        self.state = {"out": np.zeros((self.units,))}
 
-            self._partial_backward(self, X_seq[warmup:])
+        self.initialized = True
 
+    def _step(self, state: State, x: Timestep) -> State:
+        W = self.W  # NxN
+        Win = self.Win  # NxI
+        bias = self.bias  # N or float
+        f = self.activation
+        lr = self.lr
+        s = state["out"]
+
+        next_state = W @ s + Win @ x + bias
+        next_state = (1 - lr) * s + lr * next_state
+
+        return {"internal": next_state, "out": f(next_state)}
+
+    def fit(self, x: NodeInput, y: None = None) -> "LocalPlasticityReservoir":
+        if not self.initialized:
+            self.initialize(x)
+
+        increment = self.increment
+        do_norm = self.synapse_normalization
+
+        def _local_synaptic_plasticity(seq: Timeseries):
+            """
+            Apply the local learning rule (Oja, Anti-Oja, Hebbian, Anti-Hebbian, BCM)
+            to update the recurrent weight matrix W.
+
+            If `synapse_normalization=True`, then each row of W is L2-normalized
+            immediately after the local rule update.
+
+            This version supports both dense and sparse matrices. For sparse matrices,
+            the weight matrix is converted to LIL format for efficient row modifications.
+            """
+            for u in seq:
+                pre_state = self.state["internal"]  # (units,)
+                post_state = self._step(self.state, u)["internal"]  # (units,)
+
+                # Vectorized update of nonzero elements based on the chosen rule.
+                (rows, cols, data) = sp.find(self.W)
+                self.W[rows, cols] += increment(data, pre_state[cols], post_state[rows])
+
+                # Optionally normalize each row.
+                if do_norm:
+                    # Compute the L2 norm per row for the updated data.
+                    row_norms = np.sqrt(np.sum(W**2, axis=1)).reshape(-1, 1)
+                    safe_norms = np.where(row_norms > 0, row_norms, 1)
+                    self.W /= safe_norms[rows]  # (units, units)
+
+        for _epoch in range(self.epochs):
+            if is_multiseries(x):
+                for seq in x:
+                    _local_synaptic_plasticity(seq)
+            else:
+                _local_synaptic_plasticity(seq)
         return self

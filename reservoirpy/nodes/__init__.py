@@ -85,12 +85,10 @@ Operators
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
-# from .esn import ESN
-# from .readouts import LMS, RLS, Ridge, ScikitLearnNode
-# from .reservoirs import NVAR, IPReservoir, LocalPlasticityReservoir
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .io import Input, Output
 from .lms import LMS
+from .local_plasticity_reservoir import LocalPlasticityReservoir
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
@@ -113,5 +111,5 @@ __all__ = [
     #  "ESN",
     #  "IPReservoir",
     #  "ScikitLearnNode",
-    #  "LocalPlasticityReservoir",
+    "LocalPlasticityReservoir",
 ]
