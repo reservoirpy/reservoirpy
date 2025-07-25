@@ -1,13 +1,11 @@
-from functools import partial
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
 import scipy.sparse as sp
 
-from .._base import check_xy
-from ..activationsfunc import get_function, identity, tanh
+from ..activationsfunc import get_function, tanh
 from ..mat_gen import bernoulli, uniform
-from ..node import OnlineNode, TrainableNode, _init_with_sequences
+from ..node import TrainableNode
 from ..type import (
     NodeInput,
     State,
@@ -17,25 +15,7 @@ from ..type import (
     is_array,
     is_multiseries,
 )
-from ..utils.random import noise, rand_generator
-from .base import forward_external
-from .base import initialize as initialize_base
-from .base import initialize_feedback
-
-
-def sp_backward(reservoir, X=None, *args, **kwargs):
-    """
-    Offline learning method for the local-rule-based reservoir.
-    """
-    for epoch in range(reservoir.epochs):
-        for seq in X:
-            for u in seq:
-                pre_state = reservoir.internal_state  # shape (1, units)
-                post_state = reservoir.call(u.reshape(1, -1))  # shape (1, units)
-
-                # Update W with the chosen local rule
-                W_new = local_synaptic_plasticity(reservoir, pre_state, post_state)
-                reservoir.set_param("W", W_new)
+from ..utils.random import rand_generator
 
 
 class LocalPlasticityReservoir(TrainableNode):
