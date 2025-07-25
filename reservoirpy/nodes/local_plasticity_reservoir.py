@@ -27,7 +27,8 @@ class LocalPlasticityReservoir(TrainableNode):
 
     .. math::
 
-        r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + Win u[t+1] + Wfb fb[t] + bias)
+        r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + W_{in} u[t+1] + bias)
+
         x[t+1] = activation(r[t+1])
 
     Then the local rule is applied each timestep to update W.
