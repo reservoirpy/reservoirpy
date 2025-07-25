@@ -307,7 +307,7 @@ class Model:
         ...
 
     def fit(
-        self, x: ModelInput, y: Optional[ModelInput], warmup: int, workers: int = 1
+        self, x: ModelInput, y: Optional[ModelInput], warmup: int = 0, workers: int = 1
     ) -> "Model":
         if not self.initialized:
             self.initialize(x, y)
