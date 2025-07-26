@@ -277,10 +277,10 @@ class Model:
             inputs = []
             if isinstance(x, dict):
                 if node.name in x:
-                    inputs += x[node.name]
+                    inputs.append(x[node.name])
             else:
                 if self.inputs == [node]:
-                    inputs += x
+                    inputs.append(x)
             inputs += [output_timeseries[parent] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node], output_timeseries[node] = node._run(
