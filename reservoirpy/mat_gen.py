@@ -310,9 +310,9 @@ def _scale_spectral_radius(w_init, shape, sr, **kwargs):
         seed = kwargs.pop("seed")
     else:
         seed = None
-    rg = rand_generator(seed)
+    rng = rand_generator(seed)
 
-    w = w_init(*shape, seed=seed, **kwargs)
+    w = w_init(*shape, seed=rng, **kwargs)
 
     while not convergence:
         # make sure the eigenvalues are reachable.
@@ -324,11 +324,8 @@ def _scale_spectral_radius(w_init, shape, sr, **kwargs):
             w *= sr / current_sr
             convergence = True
         except ArpackNoConvergence:  # pragma: no cover
-            if seed is None:
-                seed = rg.integers(1 << 16)
-            else:
-                seed += 1
-            w = w_init(*shape, seed=seed, **kwargs)
+            # as rng has been used before, a new matrix should be generated
+            w = w_init(*shape, seed=rng, **kwargs)
 
     return w
 
