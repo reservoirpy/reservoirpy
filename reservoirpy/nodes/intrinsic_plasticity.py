@@ -336,16 +336,16 @@ class IPReservoir(TrainableNode):
 
         return {"internal": next_external, "out": next_state}
 
-    def fit(self, x: NodeInput, y: None = None) -> "IPReservoir":
+    def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "IPReservoir":
         if not self.initialized:
             self.initialize(x, y)
 
         for _epoch in range(self.epochs):
             if is_multiseries(x):
                 for seq in x:
-                    self.partial_fit(seq)
+                    self.partial_fit(seq[warmup:])
             else:
-                self.partial_fit(x)
+                self.partial_fit(x[warmup:])
 
         return self
 

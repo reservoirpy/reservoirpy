@@ -341,7 +341,9 @@ class LocalPlasticityReservoir(TrainableNode):
 
         return {"internal": next_state, "out": f(next_state)}
 
-    def fit(self, x: NodeInput, y: None = None) -> "LocalPlasticityReservoir":
+    def fit(
+        self, x: NodeInput, y: None = None, warmup: int = 0
+    ) -> "LocalPlasticityReservoir":
         if not self.initialized:
             self.initialize(x)
 
@@ -372,7 +374,7 @@ class LocalPlasticityReservoir(TrainableNode):
         for _epoch in range(self.epochs):
             if is_multiseries(x):
                 for seq in x:
-                    _local_synaptic_plasticity(seq)
+                    _local_synaptic_plasticity(seq[warmup:])
             else:
-                _local_synaptic_plasticity(x)
+                _local_synaptic_plasticity(seq[warmup:])
         return self

@@ -108,12 +108,12 @@ class Offline(TrainableNode):
     def _step(self, state, x):
         return {"out": x + self.b}
 
-    def fit(self, x, y):
+    def fit(self, x, y, warmup):
         if not self.initialized:
             self.initialize(x, y)
         self.b = 0
 
-        for el in y:
+        for el in y[warmup:]:
             self.b += np.sum(el)
 
         return self
@@ -134,11 +134,11 @@ class Unsupervised(TrainableNode):
     def _step(self, x):
         return {"out": x + self.b}
 
-    def fit(self, x):
+    def fit(self, x, y=None, warmup=0):
         if not self.initialized:
             self.initialize(x)
 
-        for el in x:
+        for el in x[warmup:]:
             self.b += np.sum(el)
 
         return self

@@ -355,7 +355,7 @@ class Model:
             node_input = np.concatenate(inputs, axis=-1)  # TODO: handle multi-series
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
-                node.fit(node_input, node_target)
+                node.fit(node_input, node_target, warmup=warmup)
                 # TODO: handle Unsupervised has children
                 result[node] = node_target  # forced teacher
             else:
