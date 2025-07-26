@@ -320,6 +320,11 @@ class Model:
         else:
             return {node.name: result[node] for node in self.outputs}
 
+    def predict(
+        self, x: Optional[ModelInput], iters: Optional[int] = None
+    ) -> ModelInput:
+        return self.predict(x=x, iters=iters)
+
     def partial_fit(self, x: ModelInput, y: Optional[ModelInput]) -> ModelInput:
         ...
 

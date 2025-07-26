@@ -79,6 +79,9 @@ class Node(ABC):
         self.state = final_state
         return result
 
+    def predict(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
+        return self.run(x=x, iters=iters)
+
     def __call__(self, x: Optional[Timestep]) -> Timestep:
         return self.step(x)
 
