@@ -328,7 +328,35 @@ class Model:
     ) -> "Model":
         if not self.initialized:
             self.initialize(x, y)
-        ...
+
+        result: dict[Node, list[Timeseries]] = defaultdict(list)
+
+        # Turn y into a dict[Node, NodeInput]
+        if isinstance(y, Mapping):
+            y_ = {self.named_nodes[name]: val for name, val in y.items()}
+        else:
+            [trainable_node] = self.trainable_nodes
+            y_ = {trainable_node: y}
+
+        for node in self.execution_order:
+            inputs = []
+            if isinstance(x, dict):
+                if node.name in x:
+                    inputs.append(x[node.name])
+            else:
+                if self.inputs == [node]:
+                    inputs.append(x)
+            inputs += [result[parent] for parent in self.parents[node]]
+            node_input = np.concatenate(inputs, axis=-1)  # TODO: handle multi-series
+            if isinstance(node, TrainableNode):
+                node_target = y_.get(node, None)
+                node.fit(node_input, node_target)
+                # TODO: handle Unsupervised has children
+                result[node] = node_target  # forced teacher
+            else:
+                result[node] = node.run(node_input)
+
+        return self
 
     def __call__(self, x: Optional[ModelTimestep]) -> ModelTimestep:
         return self.step(x)
