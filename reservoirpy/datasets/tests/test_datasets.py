@@ -153,11 +153,11 @@ def test_japanese_vowels():
 
     assert Y_train[0].shape == (1, 9)
 
-    X_train, Y_train, X_test, Y_test = datasets.japanese_vowels(repeat_targets=True)
+    X_train, X_test, Y_train, Y_test = datasets.japanese_vowels(repeat_targets=True)
 
     assert Y_train[0].shape == (X_train[0].shape[0], 9)
 
-    X, Y, X_test, Y_test = datasets.japanese_vowels(one_hot_encode=False)
+    X, X_test, Y, Y_test = datasets.japanese_vowels(one_hot_encode=False)
 
     assert Y[0].shape == (1, 1)
 
