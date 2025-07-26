@@ -60,7 +60,7 @@ def test_generation_narma():
         (datasets.logistic_map, {"x0": 1}, ValueError),
         (datasets.mackey_glass, {"history": np.ones((20,))}, np.ndarray),
         (datasets.mackey_glass, {"history": np.ones((10,))}, ValueError),
-        (datasets.narma, {"seed": 1234}, np.ndarray),
+        (datasets.narma, {"seed": 1234}, tuple),
         (datasets.mackey_glass, {"seed": 1234}, np.ndarray),
         (datasets.mackey_glass, {"seed": None}, np.ndarray),
         (datasets.mackey_glass, {"tau": 0}, np.ndarray),
