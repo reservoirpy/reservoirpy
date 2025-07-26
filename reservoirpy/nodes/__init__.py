@@ -86,6 +86,7 @@ Operators
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
+from .intrinsic_plasticity import IPReservoir
 from .io import Input, Output
 from .lms import LMS
 from .local_plasticity_reservoir import LocalPlasticityReservoir
@@ -109,7 +110,7 @@ __all__ = [
     "ReLU",
     "NVAR",
     #  "ESN",
-    #  "IPReservoir",
+    "IPReservoir",
     #  "ScikitLearnNode",
     "LocalPlasticityReservoir",
 ]
