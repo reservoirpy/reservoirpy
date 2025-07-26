@@ -193,11 +193,23 @@ def check_unnamed_in_out(model):
     if len(model.inputs) > 1 and len(unnamed_inputs) > 0:
         raise ValueError(
             f"Model has multiple input nodes but at least one"
-            f"of them is not named: {unnamed_inputs[1:-1]}."
+            f" of them is not named: {unnamed_inputs[1:-1]}."
         )
     unnamed_outputs = [n for n in model.outputs if n.name is None]
     if len(model.outputs) > 1 and len(unnamed_outputs) > 0:
         raise ValueError(
             f"Model has multiple input nodes but at least one"
-            f"of them is not named: {unnamed_outputs[1:-1]}."
+            f" of them is not named: {unnamed_outputs[1:-1]}."
+        )
+
+
+def check_unnamed_trainable(model):
+    """Raise ValueError if the model has multiple trainable nodes but one of
+    them is not named.
+    """
+    unnamed_nodes = [n for n in model.trainable_nodes if n.name is None]
+    if len(model.trainable_nodes) > 1 and len(unnamed_nodes) > 0:
+        raise ValueError(
+            f"Model has multiple trainable nodes but at least one"
+            f" of them is not named: {unnamed_nodes[1:-1]}."
         )

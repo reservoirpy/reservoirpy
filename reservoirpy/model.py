@@ -97,6 +97,7 @@ from .utils.graphflow import (
 from .utils.model_utils import (
     check_input_output_connections,
     check_unnamed_in_out,
+    check_unnamed_trainable,
     unfold_mapping,
 )
 
@@ -180,6 +181,7 @@ class Model:
         """
         check_unnamed_in_out(self)
         check_input_output_connections(self.edges)
+        check_unnamed_trainable(self)
 
         # TODO: y
         # nodes initialization
