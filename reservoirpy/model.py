@@ -70,7 +70,7 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
 from typing_extensions import assert_type
@@ -183,8 +183,18 @@ class Model:
         check_input_output_connections(self.edges)
         check_unnamed_trainable(self)
 
-        # TODO: y
-        # nodes initialization
+        # Turn y into a dict[Node, NodeInput]
+
+        if isinstance(y, Mapping):
+            y_ = {self.named_nodes[name]: val for name, val in y.items()}
+        elif y is None:
+            y_ = {}
+        else:
+            [trainable_node] = self.trainable_nodes
+            y_ = {trainable_node: y}
+
+        # Initialize node_inputs from the model input
+
         node_inputs = {node: np.empty((0,)) for node in self.nodes}
 
         if isinstance(x, dict):
@@ -197,6 +207,8 @@ class Model:
             x = timestep_from_input(x)
             node_inputs[node] = np.concatenate((node_inputs[node], x), axis=-1)
 
+        # Initialize each node in execution_order
+
         for node in self.execution_order:
             node_input = node_inputs[node]
             if node.initialized:
@@ -206,7 +218,10 @@ class Model:
                         f"but receives input of dimension {node_input.shape[-1]}"
                     )
             else:
-                node.initialize(node_input)
+                if node in y_:
+                    node.initialize(x=node_input, y=y_[node])
+                else:
+                    node.initialize(x=node_input)
             out = np.zeros((node.output_dim,))
             for child in self.children[node]:
                 node_inputs[child] = np.concatenate((node_inputs[child], out), axis=-1)
