@@ -111,6 +111,7 @@ class Offline(TrainableNode):
     def fit(self, x, y):
         if not self.initialized:
             self.initialize(x, y)
+        self.b = 0
 
         for el in y:
             self.b += np.sum(el)
