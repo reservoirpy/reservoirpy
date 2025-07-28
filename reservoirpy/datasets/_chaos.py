@@ -15,7 +15,6 @@ from scipy.integrate import solve_ivp
 
 from .. import _TEMPDIR
 from ..utils.random import rand_generator
-from ..utils.validation import check_vector
 from ._seed import get_seed
 
 memory = Memory(os.path.join(_TEMPDIR, "datasets"), verbose=0)
@@ -752,7 +751,7 @@ def narma(
 
     y = np.zeros((n_timesteps + order, 1))
 
-    x0 = check_vector(np.atleast_2d(np.asarray(x0)))
+    x0 = np.atleast_2d(np.asarray(x0))
     y[: x0.shape[0], :] = x0
 
     if u is None:
