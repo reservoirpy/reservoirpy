@@ -2,15 +2,14 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Any, Iterable
+from typing import Iterable
 
 import numpy as np
 
-from reservoirpy.type import ModelInput, MultiTimeseries, Timeseries
+from reservoirpy.type import MultiTimeseries, Timeseries
 
 from ..node import Node
 from ..nodes import Input, Output
-from .validation import is_mapping
 
 
 def build_forward_submodels(nodes, edges, already_trained):
@@ -66,25 +65,6 @@ def allocate_returned_states(model, inputs, return_states=None):
     return states
 
 
-def build_mapping(nodes: list[Node], data: ModelInput, io_type="input") -> ModelInput:
-    """Map input/target data to input/trainable nodes in the model."""
-    if not is_mapping(data):
-        if io_type == "input":
-            data_map = {n.name: data for n in nodes}
-        elif io_type == "target":
-            # Remove unsupervised or already fitted nodes from the mapping
-            data_map = {n.name: data for n in nodes if not n.unsupervised}
-        else:
-            raise ValueError(
-                f"Unknown io_type: '{io_type}'. "
-                f"Accepted io_types are 'input' and 'target'."
-            )
-    else:
-        data_map = data.copy()
-
-    return data_map
-
-
 def unfold_mapping(data_map: dict[str, MultiTimeseries]) -> list[dict[str, Timeseries]]:
     """Convert a mapping of sequence lists into a list of sequence to nodes mappings."""
     # TODO: extensively test this
@@ -123,27 +103,6 @@ def fold_mapping(model, states, return_states):
         return states_map[model.output_nodes[0].name]
 
     return states_map
-
-
-def to_data_mapping(model, X, Y=None):
-    """Map dataset to input/target nodes in the model."""
-    X_map = build_mapping(model.input_nodes, X, io_type="input")
-
-    Y_map = None
-    if Y is not None:
-        Y_map = build_mapping(model.trainable_nodes, Y, io_type="target")
-
-    X_map, Y_map = check_xy(model, x=X_map, y=Y_map)
-
-    X_sequences = unfold_mapping(X_map)
-
-    if Y_map is None:
-        n_sequences = len(X_sequences)
-        Y_sequences = [None] * n_sequences
-    else:
-        Y_sequences = unfold_mapping(Y_map)
-
-    return X_sequences, Y_sequences
 
 
 def check_input_output_connections(edges: list[tuple[Node, Node]]):
