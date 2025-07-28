@@ -70,14 +70,6 @@ Input and Output
    Input - Input node, used to distribute input data to other nodes.
    Output - Output node, used to gather stated from hidden nodes.
 
-Operators
-=========
-
-.. autosummary::
-   :toctree: generated/
-   :template: autosummary/class.rst
-
-   Delay - Adds a discrete delay between input and output.
 """
 
 
@@ -88,12 +80,14 @@ Operators
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .intrinsic_plasticity import IPReservoir
 from .io import Input, Output
+from .lif import LIF
 from .lms import LMS
 from .local_plasticity_reservoir import LocalPlasticityReservoir
 from .nvar import NVAR
 from .reservoir import Reservoir
 from .ridge import Ridge
 from .rls import RLS
+from .sklearn_node import ScikitLearnNode
 
 __all__ = [
     "Reservoir",
@@ -111,6 +105,7 @@ __all__ = [
     "NVAR",
     #  "ESN",
     "IPReservoir",
-    #  "ScikitLearnNode",
+    "ScikitLearnNode",
+    "LIF",
     "LocalPlasticityReservoir",
 ]
