@@ -6,7 +6,6 @@ import pytest
 from numpy.testing import assert_allclose
 
 from ..intrinsic_plasticity import IPReservoir
-from ..readouts import Ridge
 
 
 def test_ip_init():

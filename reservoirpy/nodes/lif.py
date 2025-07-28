@@ -1,113 +1,10 @@
 from functools import partial
 from typing import Callable, Optional, Sequence, Union
 
-from ...mat_gen import uniform
-from ...node import Node
-from ...type import Weights, is_array
-from ...utils.random import rand_generator
-
-
-def forward(lif, x):
-    v = lif.get_param("internal_state").copy()
-    threshold = lif.get_param("threshold")
-    # leak
-    v *= 1 - lif.lr
-    # fire
-    spikes = (v > threshold).astype(lif.dtype)  # threshold
-    v[v > threshold] = 0.0
-    # integrate
-    v += (lif.W @ spikes.T).T
-    v += (lif.Win @ x.T).T
-
-    lif.set_param("internal_state", v)
-    # return spikes
-    return spikes
-
-
-def initialize(
-    lif,
-    x=None,
-    y=None,
-    seed=None,
-    input_scaling=None,
-    input_connectivity=None,
-    rc_connectivity=None,
-    inhibitory=None,
-    W_init=None,
-    Win_init=None,
-    sr=None,
-):
-    dtype = lif.dtype
-
-    lif.set_input_dim(x.shape[-1])
-
-    rng = rand_generator(seed)
-
-    if is_array(W_init):
-        W = W_init
-        if W.shape[0] != W.shape[1]:
-            raise ValueError(
-                "Dimension mismatch inside W: "
-                f"W is {W.shape} but should be "
-                f"a square matrix."
-            )
-
-        if W.shape[0] != lif.output_dim:
-            lif._output_dim = W.shape[0]
-            lif.hypers["units"] = W.shape[0]
-
-    elif callable(W_init):
-        W = W_init(
-            lif.output_dim,
-            lif.output_dim,
-            sr=sr,
-            connectivity=rc_connectivity,
-            dtype=dtype,
-            seed=rng,
-        )
-        n_inhibitory = int(inhibitory * lif.output_dim)
-        W[:, :n_inhibitory] *= -1
-
-    lif.set_param("units", W.shape[0])
-    lif.set_param("W", W.astype(dtype))
-
-    out_dim = lif.output_dim
-
-    if is_array(Win_init):
-        Win = Win_init
-
-        if Win.shape[1] != x.shape[1]:
-            raise ValueError(
-                f"Dimension mismatch in {lif.name}: Win input dimension is "
-                f"{Win.shape[1]} but input dimension is {x.shape[1]}."
-            )
-
-        if Win.shape[0] != out_dim:
-            raise ValueError(
-                f"Dimension mismatch in {lif.name}: Win internal dimension "
-                f"is {Win.shape[0]} but the liquid dimension is {out_dim}"
-            )
-
-    elif callable(Win_init):
-        Win = Win_init(
-            lif.output_dim,
-            x.shape[1],
-            input_scaling=input_scaling,
-            connectivity=input_connectivity,
-            dtype=dtype,
-            seed=seed,
-        )
-    else:
-        dtype = lif.dtype
-        dtype_msg = (
-            "Data type {} not understood in {}. {} should be an array or a "
-            "callable returning an array."
-        )
-        raise ValueError(dtype_msg.format(str(type(Win_init)), lif.name, "Win"))
-
-    lif.set_param("W", W.astype(dtype))
-    lif.set_param("Win", Win.astype(dtype))
-    lif.set_param("internal_state", lif.zero_state())
+from ..mat_gen import uniform
+from ..node import Node
+from ..type import Weights, is_array
+from ..utils.random import rand_generator
 
 
 class LIF(Node):
@@ -257,6 +154,7 @@ class LIF(Node):
         seed=None,
         **kwargs,
     ):
+        raise NotImplementedError()
         if units is None and not is_array(W):
             raise ValueError(
                 "'units' parameter must not be None if 'W' parameter is not "
@@ -295,3 +193,106 @@ class LIF(Node):
             output_dim=units,
             **kwargs,
         )
+
+    def _step(self, x):
+        raise NotImplementedError()
+        v = lif.get_param("internal_state").copy()
+        threshold = lif.get_param("threshold")
+        # leak
+        v *= 1 - lif.lr
+        # fire
+        spikes = (v > threshold).astype(lif.dtype)  # threshold
+        v[v > threshold] = 0.0
+        # integrate
+        v += (lif.W @ spikes.T).T
+        v += (lif.Win @ x.T).T
+
+        lif.set_param("internal_state", v)
+        # return spikes
+        return spikes
+
+    def initialize(
+        self,
+        x=None,
+        y=None,
+        seed=None,
+        input_scaling=None,
+        input_connectivity=None,
+        rc_connectivity=None,
+        inhibitory=None,
+        W_init=None,
+        Win_init=None,
+        sr=None,
+    ):
+        raise NotImplementedError()
+        dtype = lif.dtype
+
+        lif.set_input_dim(x.shape[-1])
+
+        rng = rand_generator(seed)
+
+        if is_array(W_init):
+            W = W_init
+            if W.shape[0] != W.shape[1]:
+                raise ValueError(
+                    "Dimension mismatch inside W: "
+                    f"W is {W.shape} but should be "
+                    f"a square matrix."
+                )
+
+            if W.shape[0] != lif.output_dim:
+                lif._output_dim = W.shape[0]
+                lif.hypers["units"] = W.shape[0]
+
+        elif callable(W_init):
+            W = W_init(
+                lif.output_dim,
+                lif.output_dim,
+                sr=sr,
+                connectivity=rc_connectivity,
+                dtype=dtype,
+                seed=rng,
+            )
+            n_inhibitory = int(inhibitory * lif.output_dim)
+            W[:, :n_inhibitory] *= -1
+
+        lif.set_param("units", W.shape[0])
+        lif.set_param("W", W.astype(dtype))
+
+        out_dim = lif.output_dim
+
+        if is_array(Win_init):
+            Win = Win_init
+
+            if Win.shape[1] != x.shape[1]:
+                raise ValueError(
+                    f"Dimension mismatch in {lif.name}: Win input dimension is "
+                    f"{Win.shape[1]} but input dimension is {x.shape[1]}."
+                )
+
+            if Win.shape[0] != out_dim:
+                raise ValueError(
+                    f"Dimension mismatch in {lif.name}: Win internal dimension "
+                    f"is {Win.shape[0]} but the liquid dimension is {out_dim}"
+                )
+
+        elif callable(Win_init):
+            Win = Win_init(
+                lif.output_dim,
+                x.shape[1],
+                input_scaling=input_scaling,
+                connectivity=input_connectivity,
+                dtype=dtype,
+                seed=seed,
+            )
+        else:
+            dtype = lif.dtype
+            dtype_msg = (
+                "Data type {} not understood in {}. {} should be an array or a "
+                "callable returning an array."
+            )
+            raise ValueError(dtype_msg.format(str(type(Win_init)), lif.name, "Win"))
+
+        lif.set_param("W", W.astype(dtype))
+        lif.set_param("Win", Win.astype(dtype))
+        lif.set_param("internal_state", lif.zero_state())

@@ -7,8 +7,8 @@ from functools import partial
 
 import numpy as np
 
-from ...node import Node
-from ...utils.random import rand_generator
+from ..node import Node
+from ..utils.random import rand_generator
 
 
 class ScikitLearnNode(Node):
