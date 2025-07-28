@@ -108,7 +108,7 @@ class Offline(TrainableNode):
     def _step(self, state, x):
         return {"out": x + self.b}
 
-    def fit(self, x, y, warmup):
+    def fit(self, x, y, warmup=0):
         if not self.initialized:
             self.initialize(x, y)
         self.b = 0
