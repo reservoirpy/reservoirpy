@@ -247,36 +247,18 @@ def test_online_train_simple():
     X = np.ones((5, 5)) * 0.5
     Y = np.ones((5, 5))
 
-    model.partial_fit(X, Y)
+    model.partial_fit(X)
 
-    assert_array_equal(online_node.b, np.array([42.5]))
+    assert online_node.b == 37.5
 
-    model.partial_fit(X, Y, reset=True)
+    model.partial_fit(X)
 
-    assert_array_equal(online_node.b, np.array([85]))
+    assert online_node.b == 75.0
 
+    # model.fit reinitializes variables
+    model.fit(X)
 
-def test_online_train_teacher_nodes():
-    plus_node = PlusNode()
-    online_node = OnlineUnsupervised(name="on")
-    minus_node = MinusNode(name="minus")
-    X = np.ones((5, 5)) * 0.5
-    model = plus_node >> online_node
-
-    with pytest.raises(RuntimeError):
-        model.train(X, minus_node)  # Impossible to init node nor infer shape
-
-    model = plus_node >> [minus_node, online_node]
-
-    minus_node.output_dim = 5
-
-    model.train(X, minus_node)
-
-    assert_array_equal(online_node.b, np.array([54.0]))
-
-    model.train(X, minus_node, reset=True)
-
-    assert_array_equal(online_node.b, np.array([108.0]))
+    assert online_node.b == 37.5
 
 
 def test_model_return_states():
