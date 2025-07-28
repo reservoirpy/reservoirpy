@@ -261,7 +261,7 @@ class Model:
         for node in new_state:
             node.state = new_state[node]
 
-        if len(self.outputs) == 1:
+        if not self.is_multi_output:
             return new_state[self.outputs[0]]["out"]
         else:
             return {node.name: new_state[node]["out"] for node in self.outputs}
@@ -315,7 +315,7 @@ class Model:
         for node in new_state:
             node.state = new_state[node]
 
-        if len(self.outputs) == 1:
+        if not self.is_multi_output:
             return result[self.outputs[0]]
         else:
             return {node.name: result[node] for node in self.outputs}
