@@ -1,4 +1,3 @@
-import logging
 import os
 import tempfile
 
@@ -8,8 +7,6 @@ from .model import Model
 from .node import Node
 from .utils import verbosity
 from .utils.random import set_seed
-
-logger = logging.getLogger(__name__)
 
 _TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp")
 if not os.path.exists(_TEMPDIR):  # pragma: no cover
