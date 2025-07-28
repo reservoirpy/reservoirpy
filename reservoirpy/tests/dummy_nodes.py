@@ -147,19 +147,23 @@ class Unsupervised(TrainableNode):
 class OnlineUnsupervised(OnlineNode):
     def __init__(self, name=None):
         self.name = name
-        self.b = 0
         self.initialized = False
         self.state = {}
 
     def initialize(self, x, y=None):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
+        self.b = 0
         self.initialized = True
 
     def _step(self, state, x):
         return {"out": x + self.b}
 
-    def partial_fit(self, x):
+    def _learning_step(self, x, y=None):
+        self.b += np.sum(x)
+        return x + self.b
+
+    def partial_fit(self, x, y=None):
         if not self.initialized:
             self.initialize(x)
 
