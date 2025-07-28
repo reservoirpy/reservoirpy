@@ -251,7 +251,7 @@ def test_train_supervised_by_teacher_node():
     assert_array_equal(online_node.b, np.array([4.0]))
 
 
-def test_node_bad_learning_method(online_node, plus_node, offline_node):
+def test_node_bad_learning_method():
     online_node = OnlineUnsupervised()
     plus_node = PlusNode()
     offline_node = Offline()

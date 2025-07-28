@@ -9,18 +9,12 @@ from reservoirpy.nodes.io import Input, Output
 
 from ..model import Model
 from ..ops import merge
-from .dummy_nodes import (
-    Inverter,
-    MinusNode,
-    Offline,
-    OnlineUnsupervised,
-    PlusNode,
-    minus_node,
-    plus_node,
-)
+from .dummy_nodes import Inverter, MinusNode, Offline, OnlineUnsupervised, PlusNode
 
 
-def test_node_initialize(plus_node, minus_node):
+def test_node_initialize():
+    plus_node = PlusNode()
+    minus_node = MinusNode()
     x = np.ones((10, 2))
 
     # model1 = plus_node >> minus_node
@@ -44,7 +38,8 @@ def test_node_initialize(plus_node, minus_node):
         _model4 = Model([plus_node, minus_node], [(plus_node, plus_node)])
 
 
-def test_multi_input(plus_node):
+def test_multi_input():
+    plus_node = PlusNode()
     x = np.ones((5,))
 
     # Basic multi-input
@@ -64,7 +59,8 @@ def test_multi_input(plus_node):
         model5.initialize({"Input1": x, "Input2": x})
 
 
-def test_multi_output(plus_node):
+def test_multi_output():
+    plus_node = PlusNode()
     x = np.ones((5,))
 
     # Basic multi-output
