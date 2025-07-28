@@ -148,6 +148,7 @@ class OnlineUnsupervised(OnlineNode):
     def __init__(self, name=None):
         self.name = name
         self.initialized = False
+        self.b = 0
         self.state = {}
 
     def initialize(self, x, y=None):
