@@ -1,16 +1,9 @@
 # Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from collections import deque, namedtuple
-from typing import Dict, List, Optional, Sequence, TypeVar
+from collections import deque
+from typing import Optional, Sequence, TypeVar
 
-import numpy as np
-
-from ..node import Node
-from . import safe_defaultdict_copy
-from .validation import is_mapping
-
-DataPoint = namedtuple("DataPoint", "x, y")
 T = TypeVar("T")
 
 
@@ -137,20 +130,6 @@ def _get_links(previous, nexts, children):
     return links
 
 
-# def find_entries_and_exits(nodes, edges):
-#     """Find outputs and inputs nodes of a directed acyclic graph."""
-#     nodes = set(nodes)
-#     senders = set([n for n, _ in edges])
-#     receivers = set([n for _, n in edges])
-
-#     lonely = nodes - senders - receivers
-
-#     entrypoints = senders - receivers | lonely
-#     endpoints = receivers - senders | lonely
-
-#     return list(entrypoints), list(endpoints)
-
-
 def find_inputs(nodes: list[T], edges: list[tuple[T, T]]) -> list[T]:
     """
     Find all nodes that are not receivers (without incoming connections).
@@ -169,117 +148,3 @@ def find_outputs(nodes: list[T], edges: list[tuple[T, T]]) -> list[T]:
     senders = set([n for n, _ in edges])
     sinks = [node for node in nodes if node not in senders]
     return sinks
-
-
-def dispatch(
-    X,
-    Y=None,
-    return_targets=False,
-    force_teachers=True,
-):
-    """Transform data from a dict of arrays
-    ([node], timesteps, dimension) to an iterator yielding
-    a node: data mapping for each timestep."""
-    X_map, Y_map = X, Y
-    current_node = list(X_map.keys())[0]
-    sequence_length = len(X_map[current_node])
-
-    for i in range(sequence_length):
-        x = {node: X_map[node][np.newaxis, i] for node in X_map.keys()}
-        if Y_map is not None:
-            y = None
-            if return_targets:
-                y = {node: Y_map[node][np.newaxis, i] for node in Y_map.keys()}
-        else:
-            y = None
-
-        yield x, y
-
-
-class DataDispatcher:
-    """A utility used to feed data to nodes in a Model."""
-
-    _inputs: List
-    _parents: Dict
-
-    def __init__(self, model):
-        self._nodes = model.nodes
-        self._trainables = model.trainable_nodes
-        self._inputs = model.input_nodes
-        self.__parents, _ = find_parents_and_children(model.nodes, model.edges)
-
-        self._parents = safe_defaultdict_copy(self.__parents)
-        self._teachers = dict()
-
-    def __getitem__(self, item):
-        return self.get(item)
-
-    def _check_inputs(self, input_mapping):
-        if is_mapping(input_mapping):
-            for node in self._inputs:
-                if input_mapping.get(type(node).__name__) is None:
-                    raise KeyError(
-                        f"Node {type(node).__name__} not found "
-                        f"in data mapping. This node requires "
-                        f"data to run."
-                    )
-
-    def _check_targets(self, target_mapping):
-        if is_mapping(target_mapping):
-            for node in self._nodes:
-                if (
-                    node in self._trainables
-                    and not node.fitted
-                    and target_mapping.get(node.name) is None
-                ):
-                    raise KeyError(
-                        f"Trainable node {type(node).__name__} not found "
-                        f"in target/feedback data mapping. This "
-                        f"node requires "
-                        f"target values."
-                    )
-
-    def get(self, item):
-        parents = self._parents.get(item, ())
-        teacher = self._teachers.get(item, None)
-
-        x = []
-        for parent in parents:
-            if isinstance(parent, Node):
-                x.append(parent.state)
-            else:
-                x.append(parent)
-
-        # in theory, only operators can support several incoming signal
-        # i.e. several operands, so unpack data if the list is unecessary
-        if len(x) == 1:
-            x = x[0]
-
-        return DataPoint(x=x, y=teacher)
-
-    def load(self, X=None, Y=None):
-        """Load input and target data for dispatch."""
-        self._parents = safe_defaultdict_copy(self.__parents)
-        self._teachers = dict()
-
-        if X is not None:
-            self._check_inputs(X)
-            if is_mapping(X):
-                for node in self._nodes:
-                    if X.get(node.name) is not None:
-                        self._parents[node] += [X[node.name]]
-
-            else:
-                for inp_node in self._inputs:
-                    self._parents[inp_node] += [X]
-
-        if Y is not None:
-            self._check_targets(Y)
-            for node in self._nodes:
-                if is_mapping(Y):
-                    if Y.get(node.name) is not None:
-                        self._teachers[node] = Y.get(node.name)
-                else:
-                    if node in self._trainables:
-                        self._teachers[node] = Y
-        return self
