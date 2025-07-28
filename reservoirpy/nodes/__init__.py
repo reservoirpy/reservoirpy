@@ -25,7 +25,6 @@ Offline readouts
    :template: autosummary/class.rst
 
    Ridge - Layer of neurons connected through offline linear regression.
-   ScikitLearnNode - Interface for linear models from the scikit-learn library.
 
 Online readouts
 ===============
@@ -36,15 +35,6 @@ Online readouts
 
    LMS - Layer of neurons connected through least mean squares learning rule.
    RLS - Layer of neurons connected through recursive least squares learning rule.
-
-Optimized ESN
-=============
-
-.. autosummary::
-   :toctree: generated/
-   :template: autosummary/class.rst
-
-   ESN - Echo State Network model with distributed offline learning.
 
 Activation functions
 ====================
@@ -103,7 +93,6 @@ __all__ = [
     "Sigmoid",
     "ReLU",
     "NVAR",
-    #  "ESN",
     "IPReservoir",
     "ScikitLearnNode",
     "LIF",
