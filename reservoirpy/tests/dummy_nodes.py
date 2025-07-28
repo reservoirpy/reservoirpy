@@ -170,33 +170,3 @@ class OnlineUnsupervised(OnlineNode):
         self.b += np.sum(x)
 
         return self
-
-
-@pytest.fixture(scope="function")
-def plus_node():
-    return PlusNode()
-
-
-@pytest.fixture(scope="function")
-def minus_node():
-    return MinusNode()
-
-
-@pytest.fixture(scope="function")
-def inverter_node():
-    return Inverter()
-
-
-@pytest.fixture(scope="function")
-def offline_node():
-    return Offline()
-
-
-@pytest.fixture(scope="function")
-def unsupervised_node():
-    return Unsupervised()
-
-
-@pytest.fixture(scope="function")
-def online_node():
-    return OnlineUnsupervised()

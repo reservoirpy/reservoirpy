@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from .dummy_nodes import AccumulateNode, Inverter, PlusNode
+from .dummy_nodes import AccumulateNode, Offline, OnlineUnsupervised, PlusNode
 
 
 def test_pickling():
@@ -97,7 +97,8 @@ def test_node_run():
     # assert_array_equal(res[-1][np.newaxis, :], plus_node.state["out"])
 
 
-def test_offline_fit(offline_node):
+def test_offline_fit():
+    offline_node = Offline()
     X = np.ones((10, 5)) * 0.5
     Y = np.ones((10, 5))
 
@@ -130,7 +131,8 @@ def test_offline_fit(offline_node):
     assert_array_equal(offline_node.get_buffer("b"), np.array([3.0]))
 
 
-def test_unsupervised_fit(unsupervised_node):
+def test_unsupervised_fit():
+    unsupervised_node = OnlineUnsupervised()
     X = np.ones((10, 5))
 
     assert unsupervised_node.b == 0
@@ -160,7 +162,8 @@ def test_unsupervised_fit(unsupervised_node):
     assert_array_equal(unsupervised_node.get_buffer("b"), np.array([6.0]))
 
 
-def test_train_unsupervised(online_node):
+def test_train_unsupervised():
+    online_node = OnlineUnsupervised()
     X = np.ones((10, 5))
 
     assert online_node.b == 0
@@ -181,7 +184,8 @@ def test_train_unsupervised(online_node):
         online_node.train(X)
 
 
-def test_train(online_node):
+def test_train():
+    online_node = OnlineUnsupervised()
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -203,7 +207,8 @@ def test_train(online_node):
         online_node.train(X, Y)
 
 
-def test_train_raise(online_node):
+def test_train_raise():
+    online_node = OnlineUnsupervised()
     X = [np.ones((10, 5)) * 2.0] * 3
     Y = [np.ones((10, 5)) * 2.0] * 3
 
@@ -211,7 +216,8 @@ def test_train_raise(online_node):
         online_node.train(X, Y)
 
 
-def test_train_learn_every(online_node):
+def test_train_learn_every():
+    online_node = OnlineUnsupervised()
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -228,7 +234,10 @@ def test_train_learn_every(online_node):
     assert_array_equal(online_node.b, np.array([25.0]))
 
 
-def test_train_supervised_by_teacher_node(online_node, plus_node):
+def test_train_supervised_by_teacher_node():
+    online_node = OnlineUnsupervised()
+    plus_node = PlusNode()
+
     X = np.ones((1, 5))
 
     # using not initialized node
@@ -243,6 +252,10 @@ def test_train_supervised_by_teacher_node(online_node, plus_node):
 
 
 def test_node_bad_learning_method(online_node, plus_node, offline_node):
+    online_node = OnlineUnsupervised()
+    plus_node = PlusNode()
+    offline_node = Offline()
+
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -262,7 +275,8 @@ def test_node_bad_learning_method(online_node, plus_node, offline_node):
         plus_node.train(X, Y)
 
 
-def test_offline_node_bad_warmup(offline_node):
+def test_offline_node_bad_warmup():
+    offline_node = Offline()
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
@@ -270,7 +284,8 @@ def test_offline_node_bad_warmup(offline_node):
         offline_node.fit(X, Y, warmup=10)
 
 
-def test_offline_node_default_partial(basic_offline_node):
+def test_offline_node_default_partial():
+    basic_offline_node = Offline()
     X = np.ones((10, 5))
     Y = np.ones((10, 5))
 
