@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Iterable
+from typing import Any, Iterable
 
 import numpy as np
 
@@ -10,7 +10,7 @@ from reservoirpy.type import ModelInput, MultiTimeseries, Timeseries
 
 from ..node import Node
 from ..nodes import Input, Output
-from .validation import is_mapping, is_sequence_set
+from .validation import is_mapping
 
 
 def build_forward_submodels(nodes, edges, already_trained):
@@ -66,35 +66,8 @@ def allocate_returned_states(model, inputs, return_states=None):
     return states
 
 
-def to_ragged_seq_set(data: ModelInput):
-    """Convert dataset from mapping/array of sequences
-    to lists of mappings of sequences."""
-    # data is a dict
-    if isinstance(data, dict):
-        new_data = {}
-        for name, datum in data.items():
-            if not is_sequence_set(datum):
-                # all sequences must at least be 2D (seq length, num features)
-                # 1D sequences are converted to (1, num features) by default.
-                new_datum = [np.atleast_2d(datum)]
-            else:
-                new_datum = datum
-            new_data[name] = new_datum
-        return new_data
-    # data is an array or a list
-    else:
-        if not is_sequence_set(data):
-            if data.ndim < 3:
-                return [np.atleast_2d(data)]
-            else:
-                return data
-        else:
-            return data
-
-
-def build_mapping(nodes: list[Node], data: ModelInput, io_type="input"):
+def build_mapping(nodes: list[Node], data: ModelInput, io_type="input") -> ModelInput:
     """Map input/target data to input/trainable nodes in the model."""
-    data = to_ragged_seq_set(data)
     if not is_mapping(data):
         if io_type == "input":
             data_map = {n.name: data for n in nodes}
