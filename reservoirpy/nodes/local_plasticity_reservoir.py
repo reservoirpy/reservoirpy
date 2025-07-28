@@ -376,5 +376,5 @@ class LocalPlasticityReservoir(TrainableNode):
                 for seq in x:
                     _local_synaptic_plasticity(seq[warmup:])
             else:
-                _local_synaptic_plasticity(seq[warmup:])
+                _local_synaptic_plasticity(x[warmup:])
         return self
