@@ -115,22 +115,12 @@ class RLS(OnlineNode):
         if not self.initialized:
             self.initialize(x, y)
 
-        Wout = self.Wout
-        bias = self.bias
-        forgetting = self.forgetting
-        P = self.P
         n_timesteps = x.shape[-2]
         out_dim = y.shape[-1]
         y_pred = np.empty((n_timesteps, out_dim))
-        S = self.S
         for i, (x_, y_) in enumerate(zip(x, y)):
-            (Wout, bias, P, S), y_pred_ = self._learning_step(
-                Wout, bias, P, forgetting, S, x_, y_
-            )
+            y_pred_ = self._learning_step(x_, y_)
             y_pred[i] = y_pred_
 
-        self.Wout = Wout
-        self.bias = bias
         self.state = {"out": y_pred_}
-        self.S = S
         return y_pred
