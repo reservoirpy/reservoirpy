@@ -85,7 +85,6 @@ All modules
    reservoirpy.observables
    reservoirpy.datasets
    reservoirpy.hyper
-   reservoirpy.experimental
    reservoirpy.node
    reservoirpy.model
    reservoirpy.ops
