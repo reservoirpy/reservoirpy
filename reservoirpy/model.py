@@ -70,6 +70,7 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
+from itertools import repeat
 from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
@@ -325,11 +326,79 @@ class Model:
     ) -> ModelInput:
         return self.predict(x=x, iters=iters)
 
-    def partial_fit(self, x: ModelInput, y: Optional[ModelInput]) -> ModelInput:
-        ...
+    def _learning_step(
+        self, state: dict[Node, State], x: dict[Node, Timestep], y: dict[Node, Timestep]
+    ) -> dict[Node, State]:
+
+        new_state: dict[Node, State] = {}
+
+        for node in self.execution_order:
+            inputs = []
+            if node in x:
+                inputs.append(x[node])
+            inputs += [new_state[parent]["out"] for parent in self.parents[node]]
+            node_input = np.concatenate(inputs, axis=-1)
+            if isinstance(node, OnlineNode):
+                node_target = y.get(node, None)
+                new_state[node] = {"out": node._learning_step(node_input, node_target)}
+            else:
+                new_state[node] = node._step(state[node], node_input)
+
+        return new_state
+
+    def partial_fit(
+        self,
+        x: Union[Timeseries, dict[str, Timeseries]],
+        y: Optional[Union[Timeseries, dict[str, Timeseries]]] = None,
+    ) -> ModelInput:
+        if not self.initialized:
+            self.initialize(x, y)
+
+        # Turn y into a dict[Node, NodeInput]
+        if isinstance(x, Mapping):
+            x_ = {self.named_nodes[node]: value for node, value in x.items()}
+        else:
+            [input_node] = self.inputs
+            x_ = {input_node: x}
+
+        # Turn y into a dict[Node, NodeInput]
+        if y is None:
+            y_ = {None: repeat(None)}
+        elif isinstance(y, Mapping):
+            y_ = {self.named_nodes[name]: val for name, val in y.items()}
+        else:
+            [trainable_node] = self.trainable_nodes
+            y_ = {trainable_node: y}
+
+        n_timesteps = x_[list(x_.keys())[0]].shape[0]
+        output_timeseries: dict[Node, Timeseries] = {
+            node: np.zeros((n_timesteps, node.output_dim)) for node in self.nodes
+        }
+
+        states = {node: node.state for node in self.nodes}
+        for i, (xs, ys) in enumerate(
+            zip(zip(*x_.values()), zip(*y_.values()))
+        ):  # TODO: strict=True for Py3.10
+            x_timestep = dict(zip(x_.keys(), xs))
+            y_timestep = dict(zip(y_.keys(), ys))
+            states = self._learning_step(states, x_timestep, y_timestep)
+            for node in self.nodes:
+                output_timeseries[node][i] = states[node]["out"]
+
+        for node in states:
+            node.state = states[node]
+
+        if not self.is_multi_output:
+            return output_timeseries[self.outputs[0]]
+        else:
+            return {node.name: output_timeseries[node] for node in self.outputs}
 
     def fit(
-        self, x: ModelInput, y: Optional[ModelInput], warmup: int = 0, workers: int = 1
+        self,
+        x: ModelInput,
+        y: Optional[ModelInput] = None,
+        warmup: int = 0,
+        workers: int = 1,
     ) -> "Model":
         if not self.initialized:
             self.initialize(x, y)
@@ -337,7 +406,9 @@ class Model:
         result: dict[Node, list[Timeseries]] = defaultdict(list)
 
         # Turn y into a dict[Node, NodeInput]
-        if isinstance(y, Mapping):
+        if y is None:
+            y_ = {None: repeat(None)}
+        elif isinstance(y, Mapping):
             y_ = {self.named_nodes[name]: val for name, val in y.items()}
         else:
             [trainable_node] = self.trainable_nodes
