@@ -141,6 +141,10 @@ class TrainableNode(Node):
 
 class OnlineNode(TrainableNode):
     @abstractmethod
+    def _learning_step(self, x: Timestep, y: Optional[Timestep]) -> Timestep:
+        ...
+
+    @abstractmethod
     def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
         ...
 

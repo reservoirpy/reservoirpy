@@ -71,11 +71,6 @@ class RLS(OnlineNode):
 
     def _learning_step(
         self,
-        Wout: Weights,
-        bias: Weights,
-        P: np.ndarray,
-        forgetting: float,
-        S: float,
         x: Timestep,
         y: Timestep,
     ):
@@ -88,6 +83,11 @@ class RLS(OnlineNode):
         Returns
         (Wout_next, bias_next, P_next, S_next), y_pred
         """
+        Wout: Weights = self.Wout
+        bias: Weights = self.bias
+        P: np.ndarray = self.P
+        forgetting: float = self.forgetting
+        S: float = self.S
 
         Px = P @ x  # (in,)
         dP = -np.outer(Px, Px) / (forgetting + x @ Px)  # (in, in)
@@ -105,7 +105,11 @@ class RLS(OnlineNode):
             bias_next = bias
         y_pred = x @ Wout_next + bias
 
-        return (Wout_next, bias_next, P_next, S_next), y_pred
+        self.Wout = Wout_next
+        self.bias = bias_next
+        self.P = P_next
+        self.S = S_next
+        return y_pred
 
     def partial_fit(self, x: Timeseries, y: Timeseries):
         if not self.initialized:
