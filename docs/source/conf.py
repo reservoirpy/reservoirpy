@@ -75,7 +75,7 @@ plot_include_source = False
 plot_formats = [("png", 90)]
 plot_html_show_formats = False
 plot_html_show_source_link = False
-plot_pre_code = """import numpy as np;import matplotlib.pyplot as plt;from reservoirpy import set_seed, verbosity;set_seed(42);verbosity(0);"""
+plot_pre_code = """import numpy as np;import matplotlib.pyplot as plt;from reservoirpy import set_seed;set_seed(42);"""
 plot_rcparams = {
     "axes.prop_cycle": cycler(
         color=[
@@ -144,9 +144,7 @@ header = f"""\
    import numpy as np
    import matplotlib.pyplot as plt
    from reservoirpy import set_seed
-   from reservoirpy import verbosity
 
-   verbosity(0)
    set_seed(42)
    np.set_printoptions(precision=4, suppress=True)
    import os
