@@ -134,7 +134,7 @@ class TrainableNode(Node):
     # TODO: warmup
     @abstractmethod
     def fit(
-        self, x: NodeInput, y: Optional[NodeInput], warmup: int = 0
+        self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
     ) -> "TrainableNode":
         ...
 
@@ -149,7 +149,7 @@ class OnlineNode(TrainableNode):
         ...
 
     def fit(
-        self, x: NodeInput, y: Optional[NodeInput], warmup: int = 0
+        self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
     ) -> "OnlineNode":
         # Re-initialize in any case
         self.initialize(x, y)
@@ -157,11 +157,12 @@ class OnlineNode(TrainableNode):
         if is_multiseries(x):
             if y is None:
                 y = repeat(None)
-
             for x_ts, y_ts in zip(x, y):
-                _y_pred_current = self.partial_fit(x_ts[:warmup], y_ts[:warmup])
+                _y_pred_current = self.partial_fit(
+                    x_ts[warmup:], None if y_ts is None else y_ts[warmup:]
+                )
         else:
-            _y_pred = self.partial_fit(x[:warmup], y[:warmup])
+            _y_pred = self.partial_fit(x[warmup:], None if y is None else y[warmup:])
 
         return self
 
@@ -176,7 +177,11 @@ class ParallelNode(TrainableNode, ABC):
         ...
 
     def fit(
-        self, x: NodeInput, y: Optional[NodeInput], warmup: int = 0, workers: int = 1
+        self,
+        x: NodeInput,
+        y: Optional[NodeInput] = None,
+        warmup: int = 0,
+        workers: int = 1,
     ) -> "ParallelNode":
         if not self.initialized:
             self.initialize(x, y)
@@ -188,13 +193,13 @@ class ParallelNode(TrainableNode, ABC):
                 results = parallel_operator(delayed(self.worker)(x_ts) for x_ts in x)
             else:
                 results = parallel_operator(
-                    delayed(self.worker)(x_ts[:warmup], y_ts[:warmup])
+                    delayed(self.worker)(x_ts[warmup:], y_ts[warmup:])
                     for x_ts, y_ts in zip(x, y)
                 )
 
         # Single timeseries
         else:
-            results = (self.worker(x[:warmup], y[:warmup]) for _ in range(1))
+            results = (self.worker(x[warmup:], y[warmup:]) for _ in range(1))
 
         self.master(results)
 
