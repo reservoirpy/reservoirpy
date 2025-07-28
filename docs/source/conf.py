@@ -167,6 +167,7 @@ ipython_execlines = [
 
 numfig = True
 
+maximum_signature_line_length = 80
 
 # -----------------------------------------------------------------------------
 # Autosummary
