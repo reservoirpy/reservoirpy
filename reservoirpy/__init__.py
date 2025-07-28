@@ -5,7 +5,6 @@ from . import activationsfunc, hyper, mat_gen, nodes, observables, type
 from ._version import __version__
 from .model import Model
 from .node import Node
-from .utils import verbosity
 from .utils.random import set_seed
 
 _TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp")
@@ -22,10 +21,8 @@ __all__ = [
     "observables",
     "hyper",
     "nodes",
-    "load",
     "Node",
     "Model",
     "set_seed",
     "type",
-    "verbosity",
 ]
