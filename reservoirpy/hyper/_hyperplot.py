@@ -60,7 +60,7 @@ DARKGRID_STYLE = {
     "lines.solid_capstyle": "round",
     "patch.edgecolor": "w",
     "patch.force_edgecolor": True,
-    "image.cmap": "rocket",
+    "image.cmap": "magma",
     "xtick.top": False,
     "ytick.right": False,
     "axes.grid": True,
