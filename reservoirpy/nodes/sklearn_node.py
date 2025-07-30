@@ -4,8 +4,12 @@
 
 from copy import deepcopy
 from functools import partial
+from typing import Optional, Sequence, Union
 
 import numpy as np
+
+from reservoirpy.type import NodeInput, State, Timeseries, Timestep, is_array
+from reservoirpy.utils.data_validation import check_node_input
 
 from ..node import Node
 from ..utils.random import rand_generator
@@ -63,9 +67,13 @@ class ScikitLearnNode(Node):
     >>> model = reservoir >> readout
     """
 
-    def __init__(self, model, model_hypers=None, output_dim=None, **kwargs):
-        raise NotImplementedError()
-
+    def __init__(
+        self,
+        model,
+        output_dim: Optional[int] = None,
+        name: Optional[str] = None,
+        **kwargs,
+    ):
         if not hasattr(model, "fit"):
             model_name = model.__name__
             raise AttributeError(
@@ -80,11 +88,11 @@ class ScikitLearnNode(Node):
         # Ensure reproducibility
         # scikit-learn currently only supports RandomState
         if (
-            model_hypers.get("random_state") is None
+            not "random_state" in kwargs
             and "random_state" in model.__init__.__kwdefaults__
         ):
             generator = rand_generator()
-            model_hypers.update(
+            kwargs.update(
                 {
                     "random_state": np.random.RandomState(
                         seed=generator.integers(1 << 32)
@@ -92,74 +100,92 @@ class ScikitLearnNode(Node):
                 }
             )
 
-        super(ScikitLearnNode, self).__init__(
-            hypers={"model": model, "model_hypers": model_hypers},
-            params={"instances": None},
-            forward=forward,
-            backward=backward,
-            output_dim=output_dim,
-            initializer=partial(initialize, model_hypers=model_hypers),
-            **kwargs,
-        )
+        self.model = model
+        self.name = name
+        self.model_kwargs = kwargs
+        self.state = {"out": None}
+        self.initialized = False
 
-    def _step(readout: Node, X):
-        raise NotImplementedError()
-        instances = readout.params.get("instances")
-        if type(instances) is not list:
-            return instances.predict(X)
+    def initialize(
+        self,
+        x: Union[NodeInput, Timestep],
+        y: Optional[Union[NodeInput, Timestep]] = None,
+    ):
+        if self.input_dim is None:
+            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+
+        if self.output_dim is None:
+            if y is not None:
+                self.output_dim = (
+                    y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
+                )
+
+        first_instance = self.model(**deepcopy(self.model_kwargs))
+        # If there are multiple output but the specified model doesn't support
+        # multiple outputs, we create an instance of the model for each output.
+        if self.output_dim > 1 and not first_instance._get_tags().get("multioutput"):
+            self.instances = [
+                self.model(**deepcopy(self.model_kwargs))
+                for i in range(self.output_dim)
+            ]
         else:
-            return np.concatenate(
-                [instance.predict(X) for instance in instances], axis=-1
+            self.instances = first_instance
+        self.state = {"out": np.zeros((self.output_dim,))}
+        self.initialized = True
+
+    def _step(self, state: State, x: Timestep):
+        instances = self.instances
+        if not isinstance(instances, list):
+            res = instances.predict(x)
+        else:
+            res = np.concatenate(
+                [instance.predict(x) for instance in instances], axis=-1
             )
+        return {"out": res}
 
-    def fit(readout: Node, X, Y):
-        raise NotImplementedError()
-        # Concatenate all the batches as one np.ndarray
-        # of shape (timeseries*timesteps, features)
-        X_ = np.concatenate(X, axis=0)
-        Y_ = np.concatenate(Y, axis=0)
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
+        instances = self.instances
+        if not isinstance(instances, list):
+            res = instances.predict(x)
+        else:
+            res = np.concatenate(
+                [instance.predict(x) for instance in instances], axis=-1
+            )
+        return {"out": res[-1]}, res
 
-        instances = readout.params.get("instances")
-        if type(instances) is not list:
-            if readout.output_dim > 1:
+    def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0):
+        check_node_input(x, expected_dim=self.input_dim)
+        if y is not None:
+            check_node_input(y, expected_dim=self.output_dim)
+
+        if not self.initialized:
+            self.initialize(x, y)
+
+        if isinstance(x, Sequence):
+            # Concatenate all the batches as one np.ndarray
+            # of shape (timeseries*timesteps, features)
+            x = np.concatenate(x, axis=0)
+        if is_array(x) and x.ndim == 3:
+            x = x.reshape(-1, x.shape[-1])
+
+        if isinstance(y, Sequence):
+            # Concatenate all the batches as one np.ndarray
+            # of shape (timeseries*timesteps, features)
+            y = np.concatenate(y, axis=0)
+        if is_array(y) and y.ndim == 3:
+            y = y.reshape(-1, y.shape[-1])
+
+        instances = self.instances
+        if not isinstance(instances, list):
+            if self.output_dim > 1:
                 # Multi-output node and multi-output sklearn model
-                instances.fit(X_, Y_)
+                instances.fit(x, y)
             else:
                 # Y_ should have 1 feature so we reshape to
                 # (timeseries, ) to avoid scikit-learn's DataConversionWarning
-                instances.fit(X_, Y_[..., 0])
+                instances.fit(x, y[..., 0])
         else:
             for i, instance in enumerate(instances):
-                instance.fit(X_, Y_[..., i])
+                instance.fit(x, y[..., i])
 
-    def initialize(readout: Node, x=None, y=None, model_hypers=None):
-        raise NotImplementedError()
-
-        if x is not None:
-            in_dim = x.shape[1]
-            if readout.output_dim is not None:
-                out_dim = readout.output_dim
-            elif y is not None:
-                out_dim = y.shape[1]
-            else:
-                raise RuntimeError(
-                    f"Impossible to initialize {type(readout).__name__}: "
-                    f"output dimension was not specified at "
-                    f"creation, and no teacher vector was given."
-                )
-
-            readout.input_dim = in_dim
-            readout.output_dim = out_dim
-
-            first_instance = readout.model(**deepcopy(model_hypers))
-            # If there are multiple output but the specified model doesn't support
-            # multiple outputs, we create an instance of the model for each output.
-            if out_dim > 1 and not first_instance._get_tags().get("multioutput"):
-                instances = [
-                    readout.model(**deepcopy(model_hypers)) for i in range(out_dim)
-                ]
-                readout.set_param("instances", instances)
-            else:
-                readout.set_param("instances", first_instance)
-
-            return
+        return self
