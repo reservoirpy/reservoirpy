@@ -1,3 +1,77 @@
+"""
+====================================
+Node API (:class:`reservoirpy.Node`)
+====================================
+
+Note
+----
+
+See the following guides to:
+
+- **Learn more about how to work with ReservoirPy Nodes**: :ref:`node`
+- **Learn more about how to combine nodes within a Model**: :ref:`model`
+- **Learn how to subclass Node to make your own**: :ref:`create_new_node`
+
+
+**Simple tools for complex reservoir computing architectures.**
+
+The Node API features a simple implementation of computational graphs, similar
+to what can be found in other popular deep learning and differentiable calculus
+libraries. It is however simplified and made the most flexible possible by
+discarding the useless "fully differentiable operations" functionalities. If
+you wish to use learning rules making use of chain rule and full
+differentiability of all operators, ReservoirPy may not be the tool you need
+(actually, the whole paradigm of reservoir computing might arguably not be the
+tool you need).
+
+The Node API is composed of a base :py:class:`Node` class that can be described
+as a stateful recurrent operator able to manipulate streams of data. A
+:py:class:`Node` applies a `_step` function on some data, and then stores the
+result in its `state` attribute. The `_step` operation can be a function
+depending on the data, on the current `state` vector of the Node and on the Node
+parameters.
+
+Nodes can also be connected together to form a :py:class:`Model`. Models hold
+references to the connected nodes and make data flow from one node to
+the next, allowing to create *deep* models and other more complex
+architectures and computational graphs.
+:py:class:`Model` is essentially a subclass of :py:class:`Node`,
+that can also be connected to other nodes and models.
+
+See the following guides to:
+
+- **Learn more about how to work with ReservoirPy Nodes**: :ref:`node`
+- **Learn more about how to combine nodes within a Model**: :ref:`model`
+- **Learn how to subclass Node to make your own**: :ref:`create_new_node`
+
+.. currentmodule:: reservoirpy.node
+
+.. autoclass:: Node
+
+   .. rubric:: Methods
+
+   .. autosummary::
+
+      ~Node.step
+      ~Node.run
+      ~Node.predict
+      ~Node.fit
+      ~Node.initialize
+      ~Node.partial_fit
+      ~Node.reset
+
+   .. rubric:: Attributes
+
+   .. autosummary::
+
+      ~Node.initialized
+      ~Node.input_dim
+      ~Node.output_dim
+      ~Node.state
+      ~Node.name
+
+"""
+
 from abc import ABC, abstractmethod
 from itertools import repeat
 from typing import Iterable, Optional, Sequence, Union
