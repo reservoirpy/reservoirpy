@@ -14,6 +14,14 @@ def check_timestep(x, *, expected_dim=None):
         raise TypeError(f"Expected input of shape {(expected_dim,)}, got {x.shape}.")
 
 
+def is_timestep(x):
+    try:
+        check_timestep(x)
+        return True
+    except:
+        return False
+
+
 def check_timeseries(x, *, expected_dim=None, expected_length=None):
     if not is_array(x):
         raise TypeError(f"Input but be an array, got a {type(x)}.")
@@ -29,6 +37,14 @@ def check_timeseries(x, *, expected_dim=None, expected_length=None):
         raise TypeError(
             f"Expected feature dimension to be {expected_dim}, got {x.shape[1]}."
         )
+
+
+def is_timeseries(x):
+    try:
+        check_timeseries(x)
+        return True
+    except:
+        return False
 
 
 def check_multiseries(x, *, expected_dim=None, expected_length=None):
@@ -58,6 +74,14 @@ def check_multiseries(x, *, expected_dim=None, expected_length=None):
         )
 
 
+def is_multiseries(x):
+    try:
+        check_multiseries(x)
+        return True
+    except:
+        return False
+
+
 def check_node_input(x, *, expected_dim=None, expected_length=None):
     if isinstance(x, Sequence):
         for ts in x:
@@ -85,6 +109,14 @@ def check_node_input(x, *, expected_dim=None, expected_length=None):
         raise TypeError(f"Expected an array or a sequence of array, got {type(x)}.")
 
 
+def is_node_input(x):
+    try:
+        check_node_input(x)
+        return True
+    except:
+        return False
+
+
 def check_model_timestep(x, *, expected_inputs=None, expected_dim=None):
     if isinstance(x, Mapping):
         if expected_inputs is not None and set(expected_inputs) != set(x.keys()):
@@ -102,6 +134,14 @@ def check_model_timestep(x, *, expected_inputs=None, expected_dim=None):
             check_timestep(x, expected_dim=expected_dim)
     else:
         raise TypeError(f"Expected an array or a mapping of arrays, but got {type(x)}")
+
+
+def is_model_timestep(x):
+    try:
+        check_model_timestep(x)
+        return True
+    except:
+        return False
 
 
 def check_model_input(x, *, expected_dim=None, expected_length=None):
@@ -122,3 +162,11 @@ def check_model_input(x, *, expected_dim=None, expected_length=None):
         check_node_input(x, expected_dim=expected_dim, expected_length=expected_length)
     else:
         raise TypeError(f"Expected an array or a mapping of arrays, but got {type(x)}")
+
+
+def is_model_input(x):
+    try:
+        check_model_input(x)
+        return True
+    except:
+        return False
