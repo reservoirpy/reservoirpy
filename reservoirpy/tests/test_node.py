@@ -7,6 +7,9 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
+from reservoirpy.node import _filter_where_na_target
+
+from ..nodes import Reservoir
 from .dummy_nodes import *
 
 
@@ -503,3 +506,57 @@ def test_feedback_init_deep_distant_model(
     inv_state = inverter_node.state()
 
     assert_array_equal(inv_state, fb)
+
+
+def test_filter_na_target():
+
+    # Generate fake x and y
+    x = np.ones(10).reshape(5, 2)
+    y = np.ones(5).reshape(5, 1)
+    # Replace last y by nan
+    y[-1, -1] = np.nan
+
+    # Filter the data
+    x, y = _filter_where_na_target(x, y)
+
+    # Assert axis 0 of x and y match
+    assert x.shape[0] == y.shape[0]
+
+    # Assert no occurences of NaN values in target y
+    assert not np.isnan(y).any()
+
+
+def test_fit_no_nan(plus_node, offline_node):
+
+    # Define X, Y, Y_na
+    X = np.ones((10, 5))
+    Y = np.ones((10, 5))
+    Y_na = Y
+    Y_na[-1] = np.nan
+
+    # Get predictions with target NaN (last row)
+    esn_na = plus_node >> offline_node
+    esn_na.fit(X, Y_na)
+    pred_na = esn_na.run(X)
+
+    # Get predictions with classic X and Y
+    esn_classic = plus_node >> offline_node
+    esn_classic.fit(X, Y)
+    pred_classic = esn_classic.run(X)
+
+    # Assert that both predictions are equal | same inputs should yield same outputs
+    assert_array_equal(pred_na, pred_classic)
+
+    # Filtered the NaN data and get the predictions | Last row removed from X and Y
+    X_filtered, Y_filtered = _filter_where_na_target(X, Y_na)
+    esn_filtered = plus_node >> offline_node
+    esn_filtered.fit(X_filtered, Y_filtered)
+    pred_filtered = esn_filtered.run(X_filtered)
+
+    # Manually deleted the last row of the classic inputs
+    esn_classic = plus_node >> offline_node
+    esn_classic.fit(X[:-1, :], Y[:-1, :])
+    pred_classic = esn_classic.run(X[:-1, :])
+
+    # Assert that those predictions are equal
+    assert_array_equal(pred_filtered, pred_classic)
