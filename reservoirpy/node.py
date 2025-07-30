@@ -10,8 +10,8 @@ from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
 
 class Node(ABC):
     initialized: bool
-    input_dim: int
-    output_dim: int
+    input_dim: int = None
+    output_dim: int = None
     state: State
     name: Optional[str] = None
 
