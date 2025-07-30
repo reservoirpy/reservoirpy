@@ -42,8 +42,8 @@ def test_node_link():
     with pytest.raises(RuntimeError):
         _ = plus_node >> plus_node
 
-    x = np.ones((1, 5))
-    x2 = np.ones((1, 6))
+    x = np.ones((5,))
+    x2 = np.ones((6,))
     plus_node(x)
     minus_node(x2)
 

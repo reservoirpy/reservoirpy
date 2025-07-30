@@ -20,9 +20,9 @@ def test_input():
 
 def test_output():
     output = Output()
-    x = np.ones((1, 10))
+    x = np.ones((10,))
     out = output(x)
     assert_equal(out, x)
-    x = np.ones((10, 10))
+    x = np.ones((100, 10))
     out = output.run(x)
     assert_equal(out, x)

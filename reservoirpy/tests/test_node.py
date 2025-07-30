@@ -22,7 +22,7 @@ def test_pickling():
 
 def test_node_init():
     plus_node = PlusNode()
-    data = np.zeros((1, 5))
+    data = np.zeros((5,))
 
     res = plus_node(data)
 
@@ -34,14 +34,13 @@ def test_node_init():
 
     data = np.zeros((1, 8))
 
-    # TODO: uncomment when input check is implemented
-    # with pytest.raises(ValueError):
-    #     plus_node(data)
+    with pytest.raises(ValueError):
+        plus_node(data)
 
 
 def test_node_call():
     plus_node = PlusNode(h=2)
-    data = np.zeros((1, 5))
+    data = np.zeros((5,))
     res = plus_node(data)
 
     assert_array_equal(res, data + 2)
