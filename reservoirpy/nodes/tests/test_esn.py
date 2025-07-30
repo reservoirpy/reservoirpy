@@ -3,9 +3,10 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 import pytest
-from numpy.testing import assert_equal
+from numpy.testing import assert_array_almost_equal, assert_equal
 
 from reservoirpy import set_seed
+from reservoirpy.node import _filter_where_na_target
 from reservoirpy.nodes import ESN, Reservoir, Ridge
 
 
@@ -198,3 +199,48 @@ def test_hierarchical_esn_forbidden():
     # FrozenModel can't be linked (for now).
     with pytest.raises(TypeError):
         model = esn1 >> esn2
+
+
+def test_na():
+
+    # Define X, Y, Y_na
+    X = np.ones((10, 5))
+    Y = np.ones((10, 5))
+    Y_na = Y
+    Y_na[-1] = np.nan
+
+    esn1 = ESN(
+        units=100,
+        lr=0.8,
+        sr=0.4,
+        ridge=1e-5,
+        seed=1,
+        workers=-1,
+        feedback=True,
+        backend="loky",
+        name="E1",
+    )
+
+    esn2 = ESN(
+        units=100,
+        lr=0.8,
+        sr=0.4,
+        ridge=1e-5,
+        seed=1,
+        workers=-1,
+        feedback=True,
+        backend="loky",
+        name="E2",
+    )
+
+    # Filtered the NaN data and get the predictions | Last row removed from X and Y
+    X_filtered, Y_filtered = _filter_where_na_target(X, Y_na)
+    esn1.fit(X_filtered, Y_filtered)
+    pred_filtered = esn1.run(X_filtered)
+
+    # Manually deleted the last row of the classic inputs
+    esn2.fit(X[:-1, :], Y[:-1, :])
+    pred_classic = esn2.run(X[:-1, :])
+
+    # Assert that those predictions are equal
+    assert_array_almost_equal(pred_filtered, pred_classic)

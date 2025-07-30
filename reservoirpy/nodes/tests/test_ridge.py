@@ -11,6 +11,7 @@ import numpy as np
 from joblib import Parallel, delayed
 from numpy.testing import assert_array_almost_equal
 
+from reservoirpy.node import _filter_where_na_target
 from reservoirpy.nodes import Reservoir, Ridge
 
 
@@ -158,3 +159,25 @@ def test_parallel():
 
     for result in results:
         assert np.all(result == results[0])
+
+
+def test_na():
+    # Define X, Y, Y_na
+    X = np.ones((10, 5))
+    Y = np.ones((10, 5))
+    Y_na = Y
+    Y_na[-1] = np.nan
+
+    readout = Ridge(ridge=1e-7)
+
+    # Filtered the NaN data and get the predictions | Last row removed from X and Y
+    X_filtered, Y_filtered = _filter_where_na_target(X, Y_na)
+    readout.fit(X_filtered, Y_filtered)
+    pred_filtered = readout.run(X_filtered)
+
+    # Manually deleted the last row of the classic inputs
+    readout.fit(X[:-1, :], Y[:-1, :])
+    pred_classic = readout.run(X[:-1, :])
+
+    # Assert that those predictions are equal
+    assert_array_almost_equal(pred_filtered, pred_classic)
