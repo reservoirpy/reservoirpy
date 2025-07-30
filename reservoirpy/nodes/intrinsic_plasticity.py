@@ -7,6 +7,8 @@ from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
 
+from reservoirpy.utils.data_validation import check_node_input
+
 from ..activationsfunc import get_function
 from ..mat_gen import bernoulli, uniform
 from ..node import TrainableNode
@@ -337,6 +339,8 @@ class IPReservoir(TrainableNode):
         return {"internal": next_external, "out": next_state}
 
     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "IPReservoir":
+        check_node_input(x, expected_dim=self.input_dim)
+
         if not self.initialized:
             self.initialize(x, y)
 

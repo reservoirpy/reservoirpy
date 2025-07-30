@@ -5,6 +5,8 @@ from typing import Iterable, Optional, Sequence, Union
 import numpy as np
 from joblib import Parallel, delayed
 
+from reservoirpy.utils.data_validation import check_node_input, check_timestep
+
 from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
 
 
@@ -28,12 +30,11 @@ class Node(ABC):
         ...
 
     def step(self, x: Optional[Timestep]) -> Timestep:
-        # TODO: check input_dim==x.shape for all public functions
         # TODO: stateful argument (for every step, run, fit, train, ...)
-
         # Auto-regressive mode
         if x is None:
             x: Timestep = np.empty((0,))
+        check_timestep(x, expected_dim=self.input_dim)
 
         if not self.initialized:
             self.initialize(x)
@@ -58,6 +59,7 @@ class Node(ABC):
         # Auto-regressive mode
         if x is None:
             x = np.empty((iters, 0))
+        check_node_input(x, expected_dim=self.input_dim)
 
         if not self.initialized:
             self.initialize(x)
@@ -153,6 +155,9 @@ class OnlineNode(TrainableNode):
     ) -> "OnlineNode":
         # Re-initialize in any case
         self.initialize(x, y)
+        check_node_input(x, expected_dim=self.input_dim)
+        if y is not None:
+            check_node_input(y)
 
         if is_multiseries(x):
             if y is None:
@@ -183,6 +188,10 @@ class ParallelNode(TrainableNode, ABC):
         warmup: int = 0,
         workers: int = 1,
     ) -> "ParallelNode":
+        check_node_input(x, expected_dim=self.input_dim)
+        if y is not None:
+            check_node_input(y)
+
         if not self.initialized:
             self.initialize(x, y)
 

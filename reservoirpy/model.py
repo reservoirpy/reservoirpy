@@ -74,14 +74,13 @@ from itertools import repeat
 from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
-from typing_extensions import assert_type
+
+from reservoirpy.utils.data_validation import check_model_input, check_model_timestep
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
 from .type import (
     ModelInput,
     ModelTimestep,
-    MultiTimeseries,
-    NodeInput,
     State,
     Timeseries,
     Timestep,
@@ -252,6 +251,7 @@ class Model:
         # Auto-regressive mode
         if x is None:
             x = np.zeros((0,))
+        check_model_timestep(x)
 
         if not self.initialized:
             self.initialize(x)
@@ -296,6 +296,7 @@ class Model:
             x_: ModelInput = np.zeros((iters, 0))
         else:
             x_ = x
+        check_model_input(x_)
 
         if not self.initialized:
             self.initialize(x_)
@@ -351,6 +352,10 @@ class Model:
         x: Union[Timeseries, dict[str, Timeseries]],
         y: Optional[Union[Timeseries, dict[str, Timeseries]]] = None,
     ) -> ModelInput:
+        check_model_input(x)
+        if y is not None:
+            check_model_input(y)
+
         if not self.initialized:
             self.initialize(x, y)
 
@@ -400,6 +405,10 @@ class Model:
         warmup: int = 0,
         workers: int = 1,
     ) -> "Model":
+        check_model_input(x)
+        if y is not None:
+            check_model_input(y)
+
         if not self.initialized:
             self.initialize(x, y)
 

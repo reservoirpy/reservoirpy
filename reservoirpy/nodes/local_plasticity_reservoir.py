@@ -3,6 +3,8 @@ from typing import Callable, Optional, Sequence, Union
 import numpy as np
 import scipy.sparse as sp
 
+from reservoirpy.utils.data_validation import check_node_input
+
 from ..activationsfunc import get_function, tanh
 from ..mat_gen import bernoulli, uniform
 from ..node import TrainableNode
@@ -344,6 +346,8 @@ class LocalPlasticityReservoir(TrainableNode):
     def fit(
         self, x: NodeInput, y: None = None, warmup: int = 0
     ) -> "LocalPlasticityReservoir":
+        check_node_input(x, expected_dim=self.input_dim)
+
         if not self.initialized:
             self.initialize(x)
 

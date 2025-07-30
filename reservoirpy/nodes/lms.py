@@ -1,6 +1,8 @@
-from typing import Callable, Optional, Sequence, Tuple, Union
+from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
+
+from reservoirpy.utils.data_validation import check_node_input
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
@@ -87,6 +89,10 @@ class LMS(OnlineNode):
         return y_pred
 
     def partial_fit(self, x: Timeseries, y: Timeseries):
+        check_node_input(x, expected_dim=self.input_dim)
+        if y is not None:
+            check_node_input(y)
+
         if not self.initialized:
             self.initialize(x, y)
 
