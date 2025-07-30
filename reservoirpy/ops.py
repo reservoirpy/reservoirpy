@@ -16,7 +16,7 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 """
 
 from itertools import product
-from typing import Iterable, Sequence, Union
+from typing import Sequence, Union
 
 # Author: Nathan Trouvain at 25/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
@@ -41,7 +41,7 @@ def _check_all_models(*operands):
 
 def _link_1to1(
     left: Union[Node, Model], right: Union[Node, Model]
-) -> tuple[list[Node], list[tuple[Node, Node]]]:
+) -> tuple[list[Node], list[tuple[Node, int, Node]]]:
     """Connects two nodes or models. See `link` doc for more info."""
     # fetch all nodes in the two subgraphs, if they are models.
 
@@ -59,11 +59,11 @@ def _link_1to1(
     senders = [left] if isinstance(left, Node) else left.outputs
     receivers = [right] if isinstance(right, Node) else right.inputs
 
-    new_edges = list(product(senders, receivers))
+    new_edges = list(product(senders, [0], receivers))
 
     # maybe nodes are already initialized?
     # check if connected dimensions are ok
-    for sender, receiver in new_edges:
+    for sender, _, receiver in new_edges:
         if (
             sender.initialized
             and receiver.initialized
@@ -158,7 +158,7 @@ def link(
     right_seq: Sequence = right if isinstance(right, Sequence) else [right]
 
     nodes: list[Node] = []
-    edges: list[tuple[Node, Node]] = []
+    edges: list[tuple[Node, int, Node]] = []
 
     for left_node in left_seq:
         for right_node in right_seq:
@@ -227,7 +227,7 @@ def merge(
     _check_all_models(*models)
 
     nodes: list[Node] = []
-    edges: list[tuple[Node, Node]] = []
+    edges: list[tuple[Node, int, Node]] = []
 
     for model in models:
         if isinstance(model, Sequence):

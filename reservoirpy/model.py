@@ -106,7 +106,7 @@ class Model:
     """
 
     nodes: list[Node]
-    edges: list[tuple[Node, Node]]
+    edges: list[tuple[Node, int, Node]]
     inputs: list[Node]
     outputs: list[Node]
     named_nodes: dict[str, Node]
@@ -125,7 +125,7 @@ class Model:
     def __init__(
         self,
         nodes: Sequence[Node],
-        edges: Sequence[tuple[Node, Node]],
+        edges: Sequence[tuple[Node, int, Node]],
     ):
         # convert to List[Node], removes duplicates, use dict to preserve order
         self.nodes = unique_ordered(nodes)

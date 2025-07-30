@@ -18,11 +18,11 @@ def test_node_initialize():
     x = np.ones((10, 2))
 
     # model1 = plus_node >> minus_node
-    model1 = Model([plus_node, minus_node], [(plus_node, minus_node)])
+    model1 = Model([plus_node, minus_node], [(plus_node, 0, minus_node)])
     model1.initialize(x)
 
     # model2 = minus_node >> plus_node
-    model2 = Model([plus_node, minus_node], [(minus_node, plus_node)])
+    model2 = Model([plus_node, minus_node], [(minus_node, 0, plus_node)])
     model2.initialize(x)
 
     assert set(model1.nodes) == set(model2.nodes)
@@ -30,12 +30,13 @@ def test_node_initialize():
     # 2-circular graph
     with pytest.raises(RuntimeError):
         _model3 = Model(
-            [plus_node, minus_node], [(minus_node, plus_node), (plus_node, minus_node)]
+            [plus_node, minus_node],
+            [(minus_node, 0, plus_node), (plus_node, 0, minus_node)],
         )
 
     # 1-circular graph
     with pytest.raises(RuntimeError):
-        _model4 = Model([plus_node, minus_node], [(plus_node, plus_node)])
+        _model4 = Model([plus_node, minus_node], [(plus_node, 0, plus_node)])
 
 
 def test_multi_input():
@@ -45,7 +46,7 @@ def test_multi_input():
     # Basic multi-input
     input1, input2 = Input(name="Input1"), Input(name="Input2")
     model5 = Model(
-        [input1, input2, plus_node], [(input1, plus_node), (input2, plus_node)]
+        [input1, input2, plus_node], [(input1, 0, plus_node), (input2, 0, plus_node)]
     )
     model5.initialize({"Input1": x, "Input2": x})
     assert input1.input_dim == input2.input_dim == 5
@@ -53,7 +54,7 @@ def test_multi_input():
     # multiple input but not named
     input1, input2 = Input(name="Input1"), Input()
     model5 = Model(
-        [input1, input2, plus_node], [(input1, plus_node), (input2, plus_node)]
+        [input1, input2, plus_node], [(input1, 0, plus_node), (input2, 0, plus_node)]
     )
     with pytest.raises(ValueError):
         model5.initialize({"Input1": x, "Input2": x})
@@ -66,7 +67,8 @@ def test_multi_output():
     # Basic multi-output
     output1, output2 = Output(name="Output1"), Output(name="Output2")
     model5 = Model(
-        [output1, output2, plus_node], [(plus_node, output1), (plus_node, output2)]
+        [output1, output2, plus_node],
+        [(plus_node, 0, output1), (plus_node, 0, output2)],
     )
     # res = model5(x)
     # assert output1.input_dim == output2.input_dim == 5
@@ -78,7 +80,8 @@ def test_multi_output():
     # multiple input but not named
     output1, output2 = Output(name="Output1"), Output()
     model5 = Model(
-        [output1, output2, plus_node], [(plus_node, output1), (plus_node, output2)]
+        [output1, output2, plus_node],
+        [(plus_node, 0, output1), (plus_node, 0, output2)],
     )
     with pytest.raises(ValueError):
         model5.initialize(x)

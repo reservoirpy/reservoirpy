@@ -16,8 +16,8 @@ def test_node_link():
     model1 = plus_node >> minus_node
     model2 = minus_node >> plus_node
 
-    assert model1.edges == [(plus_node, minus_node)]
-    assert model2.edges == [(minus_node, plus_node)]
+    assert model1.edges == [(plus_node, 0, minus_node)]
+    assert model2.edges == [(minus_node, 0, plus_node)]
     assert set(model1.nodes) == set(model2.nodes)
 
     model3 = plus_node >> offline1
@@ -26,9 +26,9 @@ def test_node_link():
     model = model3 >> model4
 
     assert model.edges == [
-        (plus_node, offline1),
-        (minus_node, offline2),
-        (offline1, minus_node),
+        (plus_node, 0, offline1),
+        (minus_node, 0, offline2),
+        (offline1, 0, minus_node),
     ]
     assert set(model.nodes) == set(model3.nodes) | set(model4.nodes)
 
@@ -73,7 +73,7 @@ def test_node_link_several():
     model = plus_node >> [offline_node, minus_node]
 
     assert model.nodes == [plus_node, offline_node, minus_node]
-    assert model.edges == [(plus_node, offline_node), (plus_node, minus_node)]
+    assert model.edges == [(plus_node, 0, offline_node), (plus_node, 0, minus_node)]
 
 
 def test_model_merge():
@@ -88,14 +88,14 @@ def test_model_merge():
 
     assert set(model.nodes) == {plus_node, minus_node, offline_node}
     assert set(model.edges) == {
-        (plus_node, minus_node),
-        (plus_node, offline_node),
+        (plus_node, 0, minus_node),
+        (plus_node, 0, offline_node),
     }
 
     branch1 &= branch2
 
     assert set(branch1.nodes) == {plus_node, minus_node, offline_node}
     assert set(branch1.edges) == {
-        (plus_node, minus_node),
-        (plus_node, offline_node),
+        (plus_node, 0, minus_node),
+        (plus_node, 0, offline_node),
     }

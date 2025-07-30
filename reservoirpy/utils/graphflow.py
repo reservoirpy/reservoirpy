@@ -12,21 +12,22 @@ def unique_ordered(x: Sequence[T]) -> list[T]:
     return list(dict.fromkeys(x))
 
 
-def find_parents_and_children(nodes: list[T], edges: list[tuple[T, T]]):
+def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     """Returns two dicts linking nodes to their parents and children in the graph."""
     # TODO: more efficient method, not in O(#nodes * #edges)
     parents = {
-        child: unique_ordered([p for p, c in edges if c is child]) for child in nodes
+        child: unique_ordered([p for p, _, c in edges if c is child]) for child in nodes
     }
     children = {
-        parent: unique_ordered([c for p, c in edges if p is parent]) for parent in nodes
+        parent: unique_ordered([c for p, _, c in edges if p is parent])
+        for parent in nodes
     }
 
     return parents, children
 
 
 def topological_sort(
-    nodes: list[T], edges: list[tuple[T, T]], inputs: Optional[list[T]] = None
+    nodes: list[T], edges: list[tuple[T, int, T]], inputs: Optional[list[T]] = None
 ) -> list[T]:
     """Topological sort of nodes in a Model, to determine execution order."""
     if inputs is None:
@@ -42,7 +43,7 @@ def topological_sort(
         n = inputs_deque.pop()
         ordered_nodes.append(n)
         for m in children.get(n, ()):
-            edges_set.remove((n, m))
+            edges_set.remove((n, 0, m))
             parents[m].remove(n)
             if parents.get(m) is None or len(parents[m]) < 1:
                 inputs_deque.append(m)
@@ -82,7 +83,7 @@ def get_offline_subgraphs(nodes, edges):
                     included.add(node)
 
         subedges = [
-            edge for edge in edges if edge[0] in subnodes and edge[1] in subnodes
+            edge for edge in edges if edge[0] in subnodes and edge[2] in subnodes
         ]
         subgraphs.append((subnodes, subedges))
         _nodes = [n for n in nodes if n not in included]
@@ -130,21 +131,21 @@ def _get_links(previous, nexts, children):
     return links
 
 
-def find_inputs(nodes: list[T], edges: list[tuple[T, T]]) -> list[T]:
+def find_inputs(nodes: list[T], edges: list[tuple[T, int, T]]) -> list[T]:
     """
     Find all nodes that are not receivers (without incoming connections).
     Guaranteed to preserve order.
     """
-    receivers: set[T] = set([n for _, n in edges])
+    receivers: set[T] = set([n for _, _, n in edges])
     sources = [node for node in nodes if node not in receivers]
     return sources
 
 
-def find_outputs(nodes: list[T], edges: list[tuple[T, T]]) -> list[T]:
+def find_outputs(nodes: list[T], edges: list[tuple[T, int, T]]) -> list[T]:
     """
     Find all nodes that are not senders (no out-going connections).
     Guaranteed to preserve order.
     """
-    senders = set([n for n, _ in edges])
+    senders = set([n for n, _, _ in edges])
     sinks = [node for node in nodes if node not in senders]
     return sinks
