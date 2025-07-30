@@ -27,42 +27,33 @@ a :py:class:`Model`.
 
    .. autosummary::
 
-      ~Model.call
-      ~Model.fit
-      ~Model.get_node
       ~Model.initialize
-      ~Model.initialize_buffers
-      ~Model.reset
+      ~Model.step
       ~Model.run
-      ~Model.train
-      ~Model.update_graph
-      ~Model.with_state
+      ~Model.predict
+      ~Model.fit
+      ~Model.partial_fit
 
 
    .. rubric:: Attributes
 
    .. autosummary::
 
-      ~Model.data_dispatcher
-      ~Model.edges
-      ~Model.fitted
-      ~Model.hypers
-      ~Model.input_dim
-      ~Model.input_nodes
-      ~Model.is_empty
-      ~Model.is_initialized
-      ~Model.is_trainable
-      ~Model.is_trained_offline
-      ~Model.is_trained_online
-      ~Model.name
-      ~Model.node_names
-      ~Model.nodes
-      ~Model.output_dim
-      ~Model.output_nodes
-      ~Model.params
-      ~Model.trainable_nodes
+    ~Model.nodes
+    ~Model.edges
+    ~Model.inputs
+    ~Model.outputs
+    ~Model.named_nodes
+    ~Model.trainable_nodes
+    ~Model.execution_order
+    ~Model.parents
+    ~Model.children
+    ~Model.is_trainable
+    ~Model.is_multi_input
+    ~Model.is_multi_output
+    ~Model.is_parallel
+    ~Model.initialized
 
-.. autoclass:: FrozenModel
 
 """
 
