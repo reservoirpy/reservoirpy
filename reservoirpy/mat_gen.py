@@ -113,7 +113,7 @@ References
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
 """
-import random
+
 import sys
 
 if sys.version_info < (3, 8):
@@ -1449,7 +1449,52 @@ def _cluster(
 
     """
 
-    # Check that the shape is divisible by the amount of cluster
+    # Genere sparse matrix avec  mat_gen (normal, bern, etc) - inter cluster
+    seed = rand_generator(seed)
+
+    # create large sparse matrix
+    if distribution == "normal":
+        matrix = normal(
+            shape[0],
+            shape[1],
+            connectivity=p_out,
+            dtype=dtype,
+            sparsity_type=sparsity_type,
+            seed=seed,
+        )
+    elif distribution == "uniform":
+        matrix = uniform(
+            shape[0],
+            shape[1],
+            connectivity=p_out,
+            dtype=dtype,
+            sparsity_type=sparsity_type,
+            seed=seed,
+        )
+    elif distribution == "random":
+        matrix = random_sparse(
+            shape[0],
+            shape[1],
+            connectivity=p_out,
+            dtype=dtype,
+            sparsity_type=sparsity_type,
+            seed=seed,
+        )
+    elif distribution == "bernoulli":
+        matrix = bernoulli(
+            shape[0],
+            shape[1],
+            connectivity=p_out,
+            dtype=dtype,
+            sparsity_type=sparsity_type,
+            seed=seed,
+        )
+    else:
+        raise ValueError(
+            f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'."
+        )
+
+    # Define amount of neurons present in one cluster
     if shape[0] % cluster != 0:
         raise ValueError("Units must be a multiple of the amount of cluster.")
 
@@ -1491,16 +1536,27 @@ def _cluster(
 
 
 cluster = Initializer(_cluster)
+
+
 def _small_world(
     *shape: int,
     dtype: np.dtype = global_dtype,
     seed: Union[int, np.random.Generator] = None,
     nb_close_neighbours: int = 2,
     proba_rewire: float = 0.1,
+    distribution: Literal["normal", "uniform", "random_sparse", "bernoulli"] = "normal",
+    sparsity_type: str = "csr",
     **kwargs,
 ):
     """
     Create a small-world network using the Watts-Strogatz model.
+    This function generates a small-world network adjacency matrix with a specified
+    number of close neighbours and a probability of rewiring edges.
+    The small-world network is characterized by a high clustering coefficient and
+    a short average path length, making it suitable for modeling complex networks.
+    Small-world networks are often used in various fields such as sociology,
+    neuroscience, and computer science to represent systems with local connections.
+    See : Watts, D. J.; Strogatz, S. H. (1998). "Collective dynamics of 'small-world' networks"
 
     Parameters
     ----------
@@ -1514,6 +1570,10 @@ def _small_world(
         Output matrix dtype.
     seed : int or np.random.Generator
         Random seed or generator.
+    distribution : Literal["normal", "uniform", "random_sparse", "bernoulli"], default to "normal"
+        Distribution to use for the weights of the connections.
+    sparsity_type : {"csr", "csc", "dense"}, default to "csr"
+        Format of the output matrix. "csr" and "csc" corresponds to the Scipy sparse
     **kwargs : unused
         For compatibility.
 
@@ -1522,42 +1582,62 @@ def _small_world(
     numpy.ndarray
         Adjacency matrix of the small-world network.
     """
+
     if len(shape) != 2 or shape[0] != shape[1]:
         raise ValueError(
             f"Shape of the small-world matrix must be (units, units), got {shape}."
         )
-    units = shape[0]
-
     if nb_close_neighbours % 2 != 0:
         raise ValueError("nb_close_neighbours must be even.")
     if not (0 <= proba_rewire <= 1):
         raise ValueError("proba_rewire must be between 0 and 1.")
 
+    units = shape[0]
     rg = rand_generator(seed)
-
     matrix = np.zeros((units, units), dtype=dtype)
     half_neighbours = nb_close_neighbours // 2
+    matrix_distribution = dict(
+        normal=normal, uniform=uniform, random_sparse=random_sparse, bernoulli=bernoulli
+    )
+
+    if distribution not in matrix_distribution:
+        raise ValueError(
+            f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random_sparse', 'bernoulli'."
+        )
+    distribution_matrix_1 = matrix_distribution[distribution](
+        units, units, dtype=dtype, seed=seed, sparsity_type=sparsity_type, **kwargs
+    )
+    distribution_matrix_2 = matrix_distribution[distribution](
+        units, units, dtype=dtype, seed=seed, sparsity_type=sparsity_type, **kwargs
+    )
+
+    # Branching nb_close_neighbours nodes to each node (creating the ring lattice)
     indices = np.arange(units)
-    # indices -> shape (units,1)
-    # tableau i -> shape (1,half_neighbours)
-    # sum des deux -> tableau (units, half_neighbours) -> tableau avec tous les indices -> matrix[tableau]=1 et matric[tableau.T]=1
-    for i in range(1,half_neighbours + 1):
-        neighbour = (indices + i) % units
-        matrix[indices, neighbour] = 1
-        matrix[neighbour, indices] = 1
-    # Vectoriser : ex générer un tableau de valeurs random directement 
-    for i in range(units) : 
-        neighbours = [(i + j) % units for j in range(1, half_neighbours + 1)]
-        for neighbour in neighbours: 
-            if rg.random() < proba_rewire:
-                possible = np.where((matrix[i] == 0) & (np.arange(units) != i))[0]
-                if possible.size > 0:
-                    new_neighbour = rg.choice(possible)
-                    matrix[i, neighbour] = 0
-                    matrix[neighbour, i] = 0
-                    matrix[i, new_neighbour] = 1
-                    matrix[new_neighbour, i] = 1
-    # Au lieu d'avoir des 1 : piocher dans des valeurs aléatoires cf julien (distrib uniform bernoulli etc)
+    offsets = np.arange(1, half_neighbours + 1).reshape(-1, 1)
+    i = (indices + offsets) % units
+    j = np.broadcast_to(indices, i.shape)
+    matrix[i, j] = distribution_matrix_1[i, j]
+    matrix[j, i] = distribution_matrix_2[j, i]
+
+    # Rewiring edges with probability proba_rewire
+    # We only consider the upper triangle of the matrix to avoid double connections
+    triu_i, triu_j = np.triu_indices(units, k=1)
+    connected_mask = matrix[triu_i, triu_j] != 0
+    edges = np.vstack((triu_i[connected_mask], triu_j[connected_mask])).T
+
+    rewire_mask = rg.random(len(edges)) < proba_rewire
+    edges_to_rewire = edges[rewire_mask]
+
+    for i, j in edges_to_rewire:
+        matrix[i, j] = 0
+        matrix[j, i] = 0
+        possible_nodes = np.where((matrix[i] == 0) & (np.arange(units) != i))[0]
+        if len(possible_nodes) == 0:
+            continue
+        new_j = rg.choice(possible_nodes)
+        matrix[i, new_j] = distribution_matrix_1[i, j]
+        matrix[new_j, i] = distribution_matrix_2[j, i]
     return matrix
+
 
 small_world = Initializer(_small_world)

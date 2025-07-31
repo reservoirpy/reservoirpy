@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-import matplotlib.pyplot as plt
 from numpy.random import default_rng
 from numpy.testing import (
     assert_allclose,
@@ -12,6 +11,7 @@ from scipy import linalg, sparse
 
 from reservoirpy.mat_gen import (
     bernoulli,
+    cluster,
     fast_spectral_initialization,
     generate_input_weights,
     generate_internal_weights,
@@ -21,10 +21,9 @@ from reservoirpy.mat_gen import (
     orthogonal,
     random_sparse,
     ring,
+    small_world,
     uniform,
     zeros,
-    cluster,
-    small_world
 )
 
 
@@ -571,22 +570,23 @@ def test_cluster_matrix():
     p_in = 0.1
     p_out = 0.01
 
-    W1 = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal")
+    W1 = cluster(
+        shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal"
+    )
     W1 = W1.toarray()
 
-    W2 = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal")
+    W2 = cluster(
+        shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal"
+    )
     W2 = W2.toarray()
-
 
     n_c = int(shape / c)
 
     # Check shape
     assert W1.shape == (shape, shape)
 
-
     # Assert that 2 matrices with same seed are equal
     assert_array_equal(W1, W2)
-
 
     # Check for cluster concentration
     def diagonal_concentration(band, w):
@@ -595,7 +595,7 @@ def test_cluster_matrix():
         band_mask = np.abs(np.subtract.outer(np.arange(n), np.arange(n))) <= band
         diag_sum = np.sum(np.abs(w[band_mask]))
         diag_concentration = diag_sum / total
-        #diagonal concentration ratio
+        # diagonal concentration ratio
         return diag_concentration
 
     W1_diag = diagonal_concentration(n_c, W1)
@@ -620,17 +620,29 @@ def test_cluster_matrix():
     w_cluster_check = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out)
     w_cluster_check = w_cluster_check.toarray()
     for i in range(0, c):
-        current_cluster = w_cluster_check[i*n_c : i*n_c+n_c, i*n_c : i*n_c+n_c]
-        cluster_density = (np.sum(current_cluster !=0)) / n_c*n_c
-        assert cluster_density == (p_in * n_c*n_c)
+        current_cluster = w_cluster_check[
+            i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c
+        ]
+        cluster_density = (np.sum(current_cluster != 0)) / n_c * n_c
+        assert cluster_density == (p_in * n_c * n_c)
 
     # Check for incorrect distribution
     with pytest.raises(ValueError):
-        _ = cluster(shape, shape, cluster=c, seed=1, p_in=1, p_out=1, distribution="not_a_distribution")
+        _ = cluster(
+            shape,
+            shape,
+            cluster=c,
+            seed=1,
+            p_in=1,
+            p_out=1,
+            distribution="not_a_distribution",
+        )
 
     # Check for invalid cluster and shape size
     with pytest.raises(ValueError):
-        _ = cluster(shape, shape, cluster=3, seed=1, p_in=1, p_out=1, distribution="normal")
+        _ = cluster(
+            shape, shape, cluster=3, seed=1, p_in=1, p_out=1, distribution="normal"
+        )
 
 
 def test_watts_strogatz_matrix():
@@ -639,15 +651,20 @@ def test_watts_strogatz_matrix():
 
     assert np.all(np.isclose(W1, W2))
 
+    W1_big = small_world(10000, 10000, seed=1)
+    W2_big = small_world(10000, 10000, seed=1)
+    assert np.all(np.isclose(W1_big, W2_big))
+    assert W1_big.shape == (10000, 10000)
+
     nb_close_neighbours = 2
-    W3 = small_world(10, 10, seed=1, nb_close_neighbours=nb_close_neighbours, proba_rewire=0.0)
+    W3 = small_world(
+        10, 10, seed=1, nb_close_neighbours=nb_close_neighbours, proba_rewire=0.0
+    )
 
     assert np.all(np.diag(W3) == 0)
-    n = W3.shape[0]
 
-    assert np.all(np.sum(W3, axis=0) == nb_close_neighbours)
-    assert np.all(np.sum(W3, axis=1) == nb_close_neighbours)
-
+    assert np.all(np.sum(W3 != 0, axis=0) == nb_close_neighbours)
+    assert np.all(np.sum(W3 != 0, axis=1) == nb_close_neighbours)
 
     W4 = small_world(10, 10, seed=1, nb_close_neighbours=0)
 
@@ -659,4 +676,3 @@ def test_watts_strogatz_matrix():
 
     with pytest.raises(ValueError):
         _ = small_world(10, 10, 10, seed=1)
-
