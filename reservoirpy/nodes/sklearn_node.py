@@ -103,6 +103,7 @@ class ScikitLearnNode(Node):
         self.model = model
         self.name = name
         self.model_kwargs = kwargs
+        self.output_dim = output_dim
         self.state = {"out": None}
         self.initialized = False
 
@@ -120,6 +121,7 @@ class ScikitLearnNode(Node):
                     y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
                 )
 
+        # TODO: Use https://scikit-learn.org/stable/modules/generated/sklearn.multioutput.MultiOutputRegressor.html instead
         first_instance = self.model(**deepcopy(self.model_kwargs))
         # If there are multiple output but the specified model doesn't support
         # multiple outputs, we create an instance of the model for each output.
@@ -147,10 +149,10 @@ class ScikitLearnNode(Node):
         instances = self.instances
         if not isinstance(instances, list):
             res = instances.predict(x)
+            if res.ndim == 1:
+                res = res[..., np.newaxis]
         else:
-            res = np.concatenate(
-                [instance.predict(x) for instance in instances], axis=-1
-            )
+            res = np.column_stack([instance.predict(x) for instance in instances])
         return {"out": res[-1]}, res
 
     def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0):
@@ -183,9 +185,9 @@ class ScikitLearnNode(Node):
             else:
                 # Y_ should have 1 feature so we reshape to
                 # (timeseries, ) to avoid scikit-learn's DataConversionWarning
-                instances.fit(x, y[..., 0])
+                instances.fit(x, y[..., [0]])
         else:
             for i, instance in enumerate(instances):
-                instance.fit(x, y[..., i])
+                instance.fit(x, y[..., [i]])
 
         return self
