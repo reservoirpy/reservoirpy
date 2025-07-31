@@ -41,21 +41,20 @@ def test_fail_non_predictors():
 
 def test_scikitlearn_initializer():
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         _ = ScikitLearnNode(LinearRegression).initialize()
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         _ = ScikitLearnNode(LinearRegression).initialize(np.ones((100, 2)))
 
     _ = ScikitLearnNode(LinearRegression).initialize(
         np.ones((100, 2)), np.ones((100, 2))
     )
 
-    linear_regressor = ScikitLearnNode(
-        LinearRegression, output_dim=2, model_hypers={"positive": False}
-    ).initialize(np.ones((100, 2)))
+    linear_regressor = ScikitLearnNode(LinearRegression, output_dim=2, positive=False)
+    linear_regressor.initialize(np.ones((100, 2)))
 
-    assert linear_regressor.model_hypers == {"positive": False}
+    assert linear_regressor.model_kwargs == {"positive": False}
 
 
 # Note that a different seed may fail the tests
@@ -78,7 +77,7 @@ def test_scikitlearn_classifiers(model, model_hypers):
     X_test = rng.normal(0, 1, size=(100, 2))
     y_test = (X_test[:, 0:1] > 0.0).astype(np.float16)
 
-    scikit_learn_node = ScikitLearnNode(model=model, model_hypers=model_hypers)
+    scikit_learn_node = ScikitLearnNode(model=model, **model_hypers)
 
     scikit_learn_node.fit(X_train, y_train)
     y_pred = scikit_learn_node.run(X_test)
@@ -89,7 +88,7 @@ def test_scikitlearn_classifiers(model, model_hypers):
 @pytest.mark.parametrize(
     "model, model_hypers",
     [
-        (LinearRegression, None),
+        (LinearRegression, {}),
         (Ridge, {"random_state": 2341}),
         (SGDRegressor, {"random_state": 2341}),
         (ElasticNet, {"alpha": 1e-4, "random_state": 2341}),
@@ -107,7 +106,7 @@ def test_scikitlearn_regressors_monooutput(model, model_hypers):
     X_test = rng.normal(0, 1, size=(100, 2))
     y_test = (X_test[:, 0:1] + X_test[:, 1:2]).astype(np.float16)
 
-    scikit_learn_node = ScikitLearnNode(model=model, model_hypers=model_hypers)
+    scikit_learn_node = ScikitLearnNode(model=model, **model_hypers)
 
     scikit_learn_node.fit(X_train, y_train)
     y_pred = scikit_learn_node.run(X_test)
@@ -122,25 +121,23 @@ def test_scikitlearn_multioutput():
     y_train = X_train @ np.array([[0, 1, 0], [0, 1, 1], [-1, 0, 1]])
     X_test = rng.normal(0, 1, size=(100, 3))
 
-    lasso = ScikitLearnNode(model=LassoCV, model_hypers={"random_state": 2341}).fit(
-        X_train, y_train
-    )
+    lasso = ScikitLearnNode(model=LassoCV, random_state=2341).fit(X_train, y_train)
     lasso_pred = lasso.run(X_test)
 
-    mt_lasso = ScikitLearnNode(
-        model=MultiTaskLassoCV, model_hypers={"random_state": 2341}
-    ).fit(X_train, y_train)
+    mt_lasso = ScikitLearnNode(model=MultiTaskLassoCV, random_state=2341).fit(
+        X_train, y_train
+    )
     mt_lasso_pred = mt_lasso.run(X_test)
 
-    assert type(lasso.params["instances"]) is list
-    assert type(mt_lasso.params["instances"]) is not list
+    assert type(lasso.instances) is list
+    assert type(mt_lasso.instances) is not list
 
     coef_single = [
-        lasso.params["instances"][0].coef_,
-        lasso.params["instances"][1].coef_,
-        lasso.params["instances"][2].coef_,
+        lasso.instances[0].coef_,
+        lasso.instances[1].coef_,
+        lasso.instances[2].coef_,
     ]
-    coef_multitask = mt_lasso.params["instances"].coef_
+    coef_multitask = mt_lasso.instances.coef_
     assert np.linalg.norm(coef_single[0] - coef_multitask[0]) < 1e-3
     assert np.linalg.norm(coef_single[1] - coef_multitask[1]) < 1e-3
     assert np.linalg.norm(coef_single[2] - coef_multitask[2]) < 1e-3
@@ -158,14 +155,14 @@ def test_scikitlearn_reproductibility_random_state():
     # Different scikit-learn random_states
     reservoirpy.set_seed(0)
     y_pred1 = (
-        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 1})
+        ScikitLearnNode(model=SGDRegressor, random_state=1)
         .fit(X_train, y_train)
         .run(X_test)
     )
 
     reservoirpy.set_seed(0)
     y_pred2 = (
-        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 2})
+        ScikitLearnNode(model=SGDRegressor, random_state=2)
         .fit(X_train, y_train)
         .run(X_test)
     )
@@ -175,14 +172,14 @@ def test_scikitlearn_reproductibility_random_state():
     # Same scikit-learn random_states
     reservoirpy.set_seed(0)
     y_pred1 = (
-        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 1})
+        ScikitLearnNode(model=SGDRegressor, random_state=1)
         .fit(X_train, y_train)
         .run(X_test)
     )
 
     reservoirpy.set_seed(0)
     y_pred2 = (
-        ScikitLearnNode(model=SGDRegressor, model_hypers={"random_state": 1})
+        ScikitLearnNode(model=SGDRegressor, random_state=1)
         .fit(X_train, y_train)
         .run(X_test)
     )
