@@ -31,6 +31,8 @@ seed.
     ring
     line
     orthogonal
+    cluster
+    small_world
     zeros
     ones
     generate_internal_weights
@@ -113,7 +115,6 @@ References
            Deep Learning, Cham, 2020, pp. 380–390,
            doi: 10.1007/978-3-030-16841-4_39.
 """
-
 import sys
 
 if sys.version_info < (3, 8):
@@ -1449,52 +1450,7 @@ def _cluster(
 
     """
 
-    # Genere sparse matrix avec  mat_gen (normal, bern, etc) - inter cluster
-    seed = rand_generator(seed)
-
-    # create large sparse matrix
-    if distribution == "normal":
-        matrix = normal(
-            shape[0],
-            shape[1],
-            connectivity=p_out,
-            dtype=dtype,
-            sparsity_type=sparsity_type,
-            seed=seed,
-        )
-    elif distribution == "uniform":
-        matrix = uniform(
-            shape[0],
-            shape[1],
-            connectivity=p_out,
-            dtype=dtype,
-            sparsity_type=sparsity_type,
-            seed=seed,
-        )
-    elif distribution == "random":
-        matrix = random_sparse(
-            shape[0],
-            shape[1],
-            connectivity=p_out,
-            dtype=dtype,
-            sparsity_type=sparsity_type,
-            seed=seed,
-        )
-    elif distribution == "bernoulli":
-        matrix = bernoulli(
-            shape[0],
-            shape[1],
-            connectivity=p_out,
-            dtype=dtype,
-            sparsity_type=sparsity_type,
-            seed=seed,
-        )
-    else:
-        raise ValueError(
-            f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random', 'bernoulli'."
-        )
-
-    # Define amount of neurons present in one cluster
+    # Check that the shape is divisible by the amount of cluster
     if shape[0] % cluster != 0:
         raise ValueError("Units must be a multiple of the amount of cluster.")
 
