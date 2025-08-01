@@ -108,11 +108,11 @@ def fold_mapping(model, states, return_states):
 def check_input_output_connections(edges: list[tuple[Node, int, Node]]):
     """Raise a warning if an Input node has an incoming connection or if an
     Output node has an outgoing connection."""
-    output_children = [c for p, _, c in edges if isinstance(p, Output)]
+    output_children = [c for p, d, c in edges if d == 0 and isinstance(p, Output)]
     if len(output_children) > 0:
         raise ValueError("An Output node is connected to another Node.")
 
-    input_children = [p for p, _, c in edges if isinstance(c, Input)]
+    input_children = [p for p, d, c in edges if d == 0 and isinstance(c, Input)]
     if len(input_children) > 0:
         raise ValueError("A Node is connected to an Input node.")
 

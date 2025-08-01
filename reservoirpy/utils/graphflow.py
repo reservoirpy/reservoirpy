@@ -16,10 +16,11 @@ def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     """Returns two dicts linking nodes to their parents and children in the graph."""
     # TODO: more efficient method, not in O(#nodes * #edges)
     parents = {
-        child: unique_ordered([p for p, _, c in edges if c is child]) for child in nodes
+        child: unique_ordered([p for p, d, c in edges if c is child and d == 0])
+        for child in nodes
     }
     children = {
-        parent: unique_ordered([c for p, _, c in edges if p is parent])
+        parent: unique_ordered([c for p, d, c in edges if p is parent and d == 0])
         for parent in nodes
     }
 
@@ -133,19 +134,19 @@ def _get_links(previous, nexts, children):
 
 def find_inputs(nodes: list[T], edges: list[tuple[T, int, T]]) -> list[T]:
     """
-    Find all nodes that are not receivers (without incoming connections).
+    Find all nodes that are not receivers (without direct incoming connections).
     Guaranteed to preserve order.
     """
-    receivers: set[T] = set([n for _, _, n in edges])
+    receivers: set[T] = set([n for _, d, n in edges if d == 0])
     sources = [node for node in nodes if node not in receivers]
     return sources
 
 
 def find_outputs(nodes: list[T], edges: list[tuple[T, int, T]]) -> list[T]:
     """
-    Find all nodes that are not senders (no out-going connections).
+    Find all nodes that are not senders (no direct out-going connections).
     Guaranteed to preserve order.
     """
-    senders = set([n for n, _, _ in edges])
+    senders = set([n for n, d, _ in edges if d == 0])
     sinks = [node for node in nodes if node not in senders]
     return sinks

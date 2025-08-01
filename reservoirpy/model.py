@@ -70,6 +70,7 @@ from reservoirpy.utils.data_validation import check_model_input, check_model_tim
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
 from .type import (
+    FeedbackBuffers,
     ModelInput,
     ModelTimestep,
     State,
@@ -107,6 +108,7 @@ class Model:
 
     nodes: list[Node]
     edges: list[tuple[Node, int, Node]]
+    feedback_buffers: FeedbackBuffers
     inputs: list[Node]
     outputs: list[Node]
     named_nodes: dict[str, Node]
@@ -148,6 +150,7 @@ class Model:
         self.execution_order = topological_sort(
             self.nodes, self.edges, inputs=self.inputs
         )
+        self.feedback_buffers = None
 
         self.initialized = False
 
@@ -217,10 +220,17 @@ class Model:
             for child in self.children[node]:
                 node_inputs[child] = np.concatenate((node_inputs[child], out), axis=-1)
 
+        self.feedback_buffers = {
+            (p, d, c): np.zeros((d, p.output_dim)) for p, d, c in self.edges if d > 0
+        }
+
         # TODO: Jax compilation
         self.initialized = True
 
-    def _step(self, state: dict[Node, State], x: ModelTimestep) -> dict[Node, State]:
+    def _step(
+        self, state: tuple[FeedbackBuffers, dict[Node, State]], x: ModelTimestep
+    ) -> tuple[FeedbackBuffers, dict[Node, State]]:
+        buffers, node_states = state
 
         new_state: dict[Node, State] = {}
 
@@ -234,9 +244,9 @@ class Model:
                     inputs.append(x)
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
-            new_state[node] = node._step(state[node], node_input)
+            new_state[node] = node._step(node_states[node], node_input)
 
-        return new_state
+        return buffers, new_state  # TODO: buffers
 
     def step(self, x: Optional[ModelTimestep]) -> ModelTimestep:
         # Auto-regressive mode
@@ -248,10 +258,12 @@ class Model:
             self.initialize(x)
 
         state = {node: node.state for node in self.nodes}
-        new_state = self._step(state, x)
+        buffer = self.feedback_buffers
+        new_buffer, new_state = self._step((buffer, state), x)
 
         for node in new_state:
             node.state = new_state[node]
+        self.feedback_buffers = new_buffer
 
         if not self.is_multi_output:
             return new_state[self.outputs[0]]["out"]
@@ -259,8 +271,12 @@ class Model:
             return {node.name: new_state[node]["out"] for node in self.outputs}
 
     def _run(
-        self, state: dict[Node, State], x: Union[Timeseries, dict[str, Timeseries]]
-    ) -> tuple[dict[Node, State], dict[Node, Timeseries]]:
+        self,
+        state: tuple[FeedbackBuffers, dict[Node, State]],
+        x: Union[Timeseries, dict[str, Timeseries]],
+    ) -> tuple[tuple[FeedbackBuffers, dict[Node, State]], dict[Node, Timeseries]]:
+
+        buffers, node_states = state
 
         output_timeseries: dict[Node, Timeseries] = {}
         new_state: dict[Node, State] = {}
@@ -276,10 +292,10 @@ class Model:
             inputs += [output_timeseries[parent] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node], output_timeseries[node] = node._run(
-                state[node], node_input
+                node_states[node], node_input
             )
 
-        return new_state, output_timeseries
+        return (buffers, new_state), output_timeseries  # TODO: buffer
 
     def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
         # Auto-regressive mode
@@ -293,20 +309,26 @@ class Model:
             self.initialize(x_)
 
         previous_states = {node: node.state for node in self.nodes}
+        previous_buffers = self.feedback_buffers
         if is_multiseries(x_):
             result: dict[Node, list[Timeseries]] = defaultdict(list)
             iterable_x = unfold_mapping(x_) if isinstance(x_, dict) else x_
 
-            for timeseries in iterable_x:
-                new_state, output = self._run(previous_states, timeseries)
+            for timeseries in iterable_x:  # TODO: parallel
+                (new_buffers, new_state), output = self._run(
+                    (previous_buffers, previous_states), timeseries
+                )
                 for node in output:
                     result[node].append(output[node])
 
         else:
-            new_state, result = self._run(previous_states, x_)
+            (new_buffers, new_state), result = self._run(
+                (previous_buffers, previous_states), x_
+            )
 
         for node in new_state:
             node.state = new_state[node]
+        self.feedback_buffers = new_buffers
 
         if not self.is_multi_output:
             return result[self.outputs[0]]
@@ -316,12 +338,15 @@ class Model:
     def predict(
         self, x: Optional[ModelInput], iters: Optional[int] = None
     ) -> ModelInput:
-        return self.predict(x=x, iters=iters)
+        return self.run(x=x, iters=iters)
 
     def _learning_step(
-        self, state: dict[Node, State], x: dict[Node, Timestep], y: dict[Node, Timestep]
-    ) -> dict[Node, State]:
-
+        self,
+        state: tuple[FeedbackBuffers, dict[Node, State]],
+        x: dict[Node, Timestep],
+        y: dict[Node, Timestep],
+    ) -> tuple[FeedbackBuffers, dict[Node, State]]:
+        buffers, node_states = state
         new_state: dict[Node, State] = {}
 
         for node in self.execution_order:
@@ -334,9 +359,9 @@ class Model:
                 node_target = y.get(node, None)
                 new_state[node] = {"out": node._learning_step(node_input, node_target)}
             else:
-                new_state[node] = node._step(state[node], node_input)
+                new_state[node] = node._step(node_states[node], node_input)
 
-        return new_state
+        return buffers, new_state
 
     def partial_fit(
         self,
@@ -372,17 +397,21 @@ class Model:
         }
 
         states = {node: node.state for node in self.nodes}
+        buffers = self.feedback_buffers
         for i, (xs, ys) in enumerate(
             zip(zip(*x_.values()), zip(*y_.values()))
-        ):  # TODO: strict=True for Py3.10
+        ):  # TODO: add strict=True for Py3.10
             x_timestep = dict(zip(x_.keys(), xs))
             y_timestep = dict(zip(y_.keys(), ys))
-            states = self._learning_step(states, x_timestep, y_timestep)
+            buffers, states = self._learning_step(
+                (buffers, states), x_timestep, y_timestep
+            )
             for node in self.nodes:
                 output_timeseries[node][i] = states[node]["out"]
 
         for node in states:
             node.state = states[node]
+        self.feedback_buffers = buffers
 
         if not self.is_multi_output:
             return output_timeseries[self.outputs[0]]
@@ -423,6 +452,7 @@ class Model:
                 if self.inputs == [node]:
                     inputs.append(x)
             inputs += [result[parent] for parent in self.parents[node]]
+            # TODO: buffers
             node_input = np.concatenate(inputs, axis=-1)  # TODO: handle multi-series
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)

@@ -25,10 +25,12 @@ ModelInput = Union[NodeInput, dict[str, NodeInput]]
 MappedTimestep = dict[str, Timestep]
 ModelTimestep = Union[Timestep, MappedTimestep]
 State = dict[str, np.ndarray]
+Edge = tuple["Node", int, "Node"]
+Buffer = np.ndarray[Shape2D, np.dtype[np.floating]]
 
 Weights = Union[np.ndarray, sparray]
 Shape = TypeVar("Shape", int, tuple[int, ...])
-Data = TypeVar("Data", Iterable[np.ndarray], np.ndarray)
+FeedbackBuffers = dict[Edge, Buffer]
 
 
 def is_array(obj: Any) -> bool:
