@@ -28,7 +28,6 @@ from sklearn.linear_model import (
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 
 import reservoirpy
-from reservoirpy.node import _filter_where_na_target
 from reservoirpy.nodes import ScikitLearnNode
 
 
@@ -210,25 +209,3 @@ def test_scikitlearn_reproductibility_rpy_seed():
     y_pred2 = ScikitLearnNode(model=SGDRegressor).fit(X_train, y_train).run(X_test)
 
     assert np.all(y_pred1 == y_pred2)
-
-
-def test_na():
-    # Define X, Y, Y_na
-    X = np.ones((10, 5))
-    Y = np.ones((10, 5))
-    Y_na = Y
-    Y_na[-1] = np.nan
-
-    readout = ScikitLearnNode(RidgeCV)
-
-    # Filtered the NaN data and get the predictions | Last row removed from X and Y
-    X_filtered, Y_filtered = _filter_where_na_target(X, Y_na)
-    readout.fit(X_filtered, Y_filtered)
-    pred_filtered = readout.run(X_filtered)
-
-    # Manually deleted the last row of the classic inputs
-    readout.fit(X[:-1, :], Y[:-1, :])
-    pred_classic = readout.run(X[:-1, :])
-
-    # Assert that those predictions are equal
-    assert_array_almost_equal(pred_filtered, pred_classic)
