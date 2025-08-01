@@ -645,7 +645,7 @@ def test_cluster_matrix():
         )
 
 
-def test_watts_strogatz_matrix():
+def test_small_world_matrix():
     W1 = small_world(10, 10, seed=1)
     W2 = small_world(10, 10, seed=1)
 
@@ -676,3 +676,11 @@ def test_watts_strogatz_matrix():
 
     with pytest.raises(ValueError):
         _ = small_world(10, 10, 10, seed=1)
+    with pytest.raises(ValueError):
+        _ = small_world(10, 10, seed=1, nb_close_neighbours=3)
+    with pytest.raises(ValueError):
+        _ = small_world(10, 10, seed=1, proba_rewire=1.5)
+    with pytest.raises(ValueError):
+        _ = small_world(10, 10, seed=1, proba_rewire=-0.5)
+    with pytest.raises(ValueError):
+        _ = small_world(10, 10, seed=1, distribution="not_a_distribution")
