@@ -258,12 +258,12 @@ class Model:
             self.initialize(x)
 
         state = {node: node.state for node in self.nodes}
-        buffer = self.feedback_buffers
-        new_buffer, new_state = self._step((buffer, state), x)
+        buffers = self.feedback_buffers
+        new_buffers, new_state = self._step((buffers, state), x)
 
         for node in new_state:
             node.state = new_state[node]
-        self.feedback_buffers = new_buffer
+        self.feedback_buffers = new_buffers
 
         if not self.is_multi_output:
             return new_state[self.outputs[0]]["out"]
