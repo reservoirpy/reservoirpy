@@ -243,10 +243,18 @@ class Model:
                 if self.inputs[0] == node:
                     inputs.append(x)
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
+            inputs += [
+                buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
+            ]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node] = node._step(node_states[node], node_input)
 
-        return buffers, new_state  # TODO: buffers
+        new_buffers = {edge: buffer.copy() for edge, buffer in buffers.items()}
+        for (p, d, c), buffer in new_buffers.items():
+            buffer[-1] = new_state[p]["out"]
+            new_buffers[(p, d, c)] = np.roll(buffer, 1, axis=0)
+
+        return new_buffers, new_state
 
     def step(self, x: Optional[ModelTimestep]) -> ModelTimestep:
         # Auto-regressive mode
