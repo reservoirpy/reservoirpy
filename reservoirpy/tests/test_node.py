@@ -560,3 +560,9 @@ def test_fit_no_nan(plus_node, offline_node):
 
     # Assert that those predictions are equal
     assert_array_equal(pred_filtered, pred_classic)
+
+    # Test for correct ValueError raised
+    X = np.ones((10, 5, 3))
+    Y = np.ones((10, 5, 3))
+    with pytest.raises(ValueError):
+        X, Y = _filter_where_na_target(X, Y)
