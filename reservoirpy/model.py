@@ -73,6 +73,7 @@ from .type import (
     FeedbackBuffers,
     ModelInput,
     ModelTimestep,
+    NodeInput,
     State,
     Timeseries,
     Timestep,
@@ -280,9 +281,9 @@ class Model:
 
     def _run(
         self,
-        state: tuple[FeedbackBuffers, dict[Node, State]],
-        x: Union[Timeseries, dict[str, Timeseries]],
-    ) -> tuple[tuple[FeedbackBuffers, dict[Node, State]], dict[Node, Timeseries]]:
+        state: tuple[FeedbackBuffers, Mapping[Node, State]],
+        x: Mapping[Node, Timeseries],
+    ) -> tuple[tuple[FeedbackBuffers, Mapping[Node, State]], Mapping[Node, Timeseries]]:
 
         buffers, node_states = state
 
@@ -291,12 +292,8 @@ class Model:
 
         for node in self.execution_order:
             inputs = []
-            if isinstance(x, dict):
-                if node.name in x:
-                    inputs.append(x[node.name])
-            else:
-                if self.inputs == [node]:
-                    inputs.append(x)
+            if node in x:
+                inputs.append(x[node])
             inputs += [output_timeseries[parent] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node], output_timeseries[node] = node._run(
@@ -308,19 +305,25 @@ class Model:
     def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
         # Auto-regressive mode
         if x is None:
-            x_: ModelInput = np.zeros((iters, 0))
-        else:
-            x_ = x
-        check_model_input(x_)
+            x = np.zeros((iters, 0))
+        check_model_input(x)
 
         if not self.initialized:
-            self.initialize(x_)
+            self.initialize(x)
+
+        if isinstance(x, Mapping):
+            x_mapping: dict[Node, NodeInput] = {
+                self.named_nodes[name]: val for name, val in x.items()
+            }
+        else:
+            [input_node] = self.inputs
+            x_mapping = {input_node: x}
 
         previous_states = {node: node.state for node in self.nodes}
         previous_buffers = self.feedback_buffers
-        if is_multiseries(x_):
+        if is_multiseries(x_mapping):
             result: dict[Node, list[Timeseries]] = defaultdict(list)
-            iterable_x = unfold_mapping(x_) if isinstance(x_, dict) else x_
+            iterable_x = unfold_mapping(x_mapping)
 
             for timeseries in iterable_x:  # TODO: parallel
                 (new_buffers, new_state), output = self._run(
@@ -331,7 +334,7 @@ class Model:
 
         else:
             (new_buffers, new_state), result = self._run(
-                (previous_buffers, previous_states), x_
+                (previous_buffers, previous_states), x_mapping
             )
 
         for node in new_state:

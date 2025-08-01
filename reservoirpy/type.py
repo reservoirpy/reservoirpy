@@ -1,7 +1,7 @@
 # Author: Nathan Trouvain at 22/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from typing import Any, Iterable, Sequence, TypeVar, Union
+from typing import Any, Mapping, Sequence, TypeVar, Union
 
 import numpy as np
 from scipy.sparse import issparse, sparray
@@ -37,7 +37,7 @@ def is_array(obj: Any) -> bool:
     return obj is not None and isinstance(obj, np.ndarray) or issparse(obj)
 
 
-def is_multiseries(x: ModelInput) -> bool:
+def is_multiseries(x: Union[NodeInput, Mapping[Any, NodeInput]]) -> bool:
     if isinstance(x, dict):
         return is_multiseries(x[list(x)[0]])
     return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)

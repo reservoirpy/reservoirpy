@@ -65,7 +65,9 @@ def allocate_returned_states(model, inputs, return_states=None):
     return states
 
 
-def unfold_mapping(data_map: dict[str, MultiTimeseries]) -> list[dict[str, Timeseries]]:
+def unfold_mapping(
+    data_map: dict[Node, MultiTimeseries]
+) -> list[dict[Node, Timeseries]]:
     """Convert a mapping of sequence lists into a list of sequence to nodes mappings."""
     # TODO: extensively test this
     seq_numbers = [len(data_map[n]) for n in data_map.keys()]
