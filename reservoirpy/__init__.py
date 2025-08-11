@@ -1,5 +1,7 @@
 import logging
 import os
+import random
+import string
 import tempfile
 
 from . import activationsfunc, compat, hyper, mat_gen, nodes, observables, type
@@ -14,7 +16,8 @@ from .utils.random import set_seed
 
 logger = logging.getLogger(__name__)
 
-_TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp")
+# Generate a unique temporary directory to prevent permission errors
+_TEMPDIR = os.path.join(tempfile.gettempdir(), "reservoirpy-temp-" + "".join(random.choices(string.ascii_letters + string.digits, k=8)))
 if not os.path.exists(_TEMPDIR):  # pragma: no cover
     try:
         os.mkdir(_TEMPDIR)
