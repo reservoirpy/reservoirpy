@@ -153,32 +153,32 @@ class NVAR(Node):
                 x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
             )
 
-            order = self.order
-            delay = self.delay
-            strides = self.strides
+        order = self.order
+        delay = self.delay
+        strides = self.strides
 
-            linear_dim = delay * self.input_dim
-            # number of non linear components is (d + n - 1)! / (d - 1)! n!
-            # i.e. number of all unique monomials of order n made from the
-            # linear components.
-            nonlinear_dim = comb(linear_dim + order - 1, order)
+        linear_dim = delay * self.input_dim
+        # number of non linear components is (d + n - 1)! / (d - 1)! n!
+        # i.e. number of all unique monomials of order n made from the
+        # linear components.
+        nonlinear_dim = comb(linear_dim + order - 1, order)
 
-            output_dim = int(linear_dim + nonlinear_dim)
+        output_dim = int(linear_dim + nonlinear_dim)
 
-            self.output_dim = output_dim
+        self.output_dim = output_dim
 
-            # for each monomial created in the non linear part, indices
-            # of the n components involved, n being the order of the
-            # monomials. Pre-compute them to improve efficiency.
-            idx = np.array(
-                list(it.combinations_with_replacement(np.arange(linear_dim), order))
-            )
+        # for each monomial created in the non linear part, indices
+        # of the n components involved, n being the order of the
+        # monomials. Pre-compute them to improve efficiency.
+        idx = np.array(
+            list(it.combinations_with_replacement(np.arange(linear_dim), order))
+        )
 
-            self._monomial_idx = idx
+        self._monomial_idx = idx
 
-            # to store the k*s last inputs, k being the delay and s the strides
-            self.store = np.zeros((delay * strides, self.input_dim))
-            self.initialized = True
+        # to store the k*s last inputs, k being the delay and s the strides
+        self.store = np.zeros((delay * strides, self.input_dim))
+        self.initialized = True
 
     def _step(self, state: tuple, x: Timestep) -> State:
         store = self.store
