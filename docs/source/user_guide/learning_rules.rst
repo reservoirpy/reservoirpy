@@ -9,7 +9,7 @@ In ReservoirPy, these learning rules are sorted in two categories: **offline** l
 and **online** learning rules.
 
 Nodes can be equipped with such learning rules, and learning can be triggered by using their,
-:py:meth:`~.Node.fit` (offline learning) and :py:meth:`~.Node.train` (online learning) methods.
+:py:meth:`~.Node.fit` (offline learning) and :py:meth:`~.Node.partial_fit` (online learning) methods.
 
 Offline learning rules - Linear regression
 ------------------------------------------
@@ -156,10 +156,10 @@ convergence, Reservoir Computing algorithms can use this kind of rules. Indeed, 
 trained. A single layer of neurons can be trained using only local information (no need for gradients coming from
 upper layers in the models and averaged over several runs).
 
-Online learning with :py:meth:`~.Node.train`
+Online learning with :py:meth:`~.Node.partial_fit`
 --------------------------------------------
 
-Online learning can be performed using the :py:meth:`~.Node.train` method.
+Online learning can be performed using the :py:meth:`~.Node.partial_fit` method.
 In the following example, we will use the :py:class:`~.RLS` node, a single layer of neurons equipped with
 an online learning rule called the Recursive Least Square (RLS) algorithm.
 
@@ -179,24 +179,24 @@ node. ReservoirPy will infer it from the shape of the target data.
 
     rls = RLS()
 
-The :py:meth:`~.Node.train` method can be used as the call method of a Node. Every time the method is called, it updates
+The :py:meth:`~.Node.partial_fit` method can be used as the call method of a Node. Every time the method is called, it updates
 the parameter of the node along with its internal state, and return the state.
 
 .. ipython:: python
 
-    s_t1 = rls.train(X[0], Y[0])
+    s_t1 = rls.partial_fit(X[0], Y[0])
     print("Parameters after first update:", rls.Wout, rls.bias)
-    s_t1 = rls.train(X[1], Y[1])
+    s_t1 = rls.partial_fit(X[1], Y[1])
     print("Parameters after second update:", rls.Wout, rls.bias)
 
-The :py:meth:`~.Node.train` method can also be called on a timeseries of variables and targets, in a similar way to
+The :py:meth:`~.Node.partial_fit` method can also be called on a timeseries of variables and targets, in a similar way to
 what can be done with the :py:meth:`~.Node.run` function. All states computed during the training will be returned
 by the node.
 
 .. ipython:: python
 
     rls = RLS()
-    S = rls.train(X, Y)
+    S = rls.partial_fit(X, Y)
 
 As the parameters are updated incrementally, we can see convergence of the model throughout training, as opposed
 to offline learning where parameters can only be updated once, and evaluated at the end of the training phase.
@@ -208,7 +208,7 @@ We can see that convergence is really fast. Only the first timesteps of output d
     X = np.arange(100)[:, np.newaxis]
     Y = np.arange(100)[:, np.newaxis]
     rls = RLS()
-    S = rls.train(X, Y)
+    S = rls.partial_fit(X, Y)
     plt.plot(S, label="Predicted")
     plt.plot(Y, label="Training targets")
     plt.title("Activation of RLS readout during training")
@@ -226,16 +226,16 @@ We can access the learned parameters looking at the ``Wout`` and ``bias`` parame
 As ``X`` and ``Y`` where the same timeseries, we can see learning was successful: the node has learned the identity
 function, with a weight of 1 and a bias close to 0.
 
-Online learning with :py:meth:`~.Model.train`
+Online learning with :py:meth:`~.Model.partial_fit`
 ---------------------------------------------
 
-Models also have a :py:meth:`~.Model.train` method, working similarly to the one of the Node class presented above.
-The :py:meth:`~.Model.train` method can only be used if all nodes in the model are online nodes, or are not trainable.
-If all nodes are online, then the :py:meth:`~.Node.train` methods of all online nodes in the model will be called in the
+Models also have a :py:meth:`~.Model.partial_fit` method, working similarly to the one of the Node class presented above.
+The :py:meth:`~.Model.partial_fit` method can only be used if all nodes in the model are online nodes, or are not trainable.
+If all nodes are online, then the :py:meth:`~.Node.partial_fit` methods of all online nodes in the model will be called in the
 topological order of the graph defined by the model. At each timesteps, online nodes are trained, called, and their
 updated states are given to the next nodes in the graph.
 
-As an example, we will train the readout layer of an ESN using RLS learning. We first create some toy dataset: the
+As an example, we will partially fit the readout layer of an ESN using RLS learning. We first create some toy dataset: the
 task we need the ESN to perform is to predict the cosine form of a wave given its sine form.
 
 .. ipython:: python
@@ -246,7 +246,7 @@ task we need the ESN to perform is to predict the cosine form of a wave given it
 Then, we create an ESN model by linking a :py:class:`~.Reservoir` node with an :py:class:`~.RLS` node. The
 :py:class:`~.RLS` node will be used as readout and trained to learn a mapping between reservoir states
 and targeted outputs. We will tune some of the reservoir hyperparameters to obtain better results.
-We can then train the model using :py:meth:`~.Model.train`.
+We can then train the model using :py:meth:`~.Model.partial_fit`.
 
 .. ipython:: python
 
@@ -254,7 +254,7 @@ We can then train the model using :py:meth:`~.Model.train`.
 
     reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), RLS()
     esn = reservoir >> readout
-    predictions = esn.train(X, Y)
+    predictions = esn.partial_fit(X, Y)
 
 During that step, the reservoir has been trained on the whole timeseries using online learning. We can have a look at
 the outputs produced by the model during training to evaluate convergence:
@@ -266,7 +266,7 @@ the outputs produced by the model during training to evaluate convergence:
     from reservoirpy.nodes import Reservoir, RLS
     reservoir, readout = Reservoir(100, lr=0.2, sr=1.0), RLS()
     esn = reservoir >> readout
-    S = esn.train(X, Y)
+    S = esn.partial_fit(X, Y)
     plt.plot(S, label="Predicted")
     plt.plot(Y, label="Training targets")
     plt.title("Activation of RLS readout during training")
@@ -288,7 +288,7 @@ We can then run the model to evaluate its predictions:
     esn = reservoir >> readout
     X = np.sin(np.linspace(0, 20, 100))[:, np.newaxis]
     Y = np.cos(np.linspace(0, 20, 100))[:, np.newaxis]
-    esn.train(X, Y)
+    esn.partial_fit(X, Y)
     X_test = np.sin(np.linspace(20, 40, 100))[:, np.newaxis]
     Y_test = np.cos(np.linspace(20, 40, 100))[:, np.newaxis]
     S = esn.run(X_test)
@@ -298,35 +298,3 @@ We can then run the model to evaluate its predictions:
     plt.xlabel("Timestep $t$")
     plt.legend()
     plt.show()
-
-Partial fitting with :py:meth:`~.Node.partial_fit`
---------------------------------------------------
-
-In cases where the dataset is too large to be stored in memory, or to take advantage of parallel computation,
-some :py:class:`~.Node`s have a :py:meth:`~.Node.partial_fit` method. Training data can be fed in different batches
-or in parallel to a model, and intermediate results of the training phase will be stored in a buffer. When the
-:py:meth:`~.Node.fit` method is called, those intermediate results are used to fit the node. This is automatically used
-under the hood by the :py:class:`~.nodes.ESN` node for parallel computation of multiple timeseries with the :py:class:`~.Ridge`
-node.
-
-Two ReservoirPy nodes currently supports this feature: :py:class:`~.Ridge` and :py:class:`~.IPReservoir`.
-
-As an example, we will gradually fit the readout layer of an ESN. We first create some toy dataset: the
-task we need the ESN to perform is classification on the Japanese vowels dataset.
-
-.. ipython:: python
-
-    from reservoirpy.datasets import japanese_vowels
-
-    X_train, Y_train, X_test, Y_test = japanese_vowels(
-        one_hot_encode=True, repeat_targets=True
-    )
-    reservoir = Reservoir(100, lr=0.8, sr=0.9)
-    readout = Ridge(ridge=1e-6)
-
-    for i in range(len(X_train)):
-        states = reservoir.run(X_train[i])
-        readout.partial_fit(states, Y_train[i])
-    readout.fit()
-
-    model = reservoir >> readout

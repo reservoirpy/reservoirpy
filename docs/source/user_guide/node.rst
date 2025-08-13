@@ -87,7 +87,7 @@ In ReservoirPy, a node internal state is accessible through the :py:meth:`~.Node
 
 .. code-block:: python
 
-    s_t0 = node.state()
+    s_t0 = node.state["out"]
 
 The state is always a :py:class:`~.numpy.ndarray` vector, of shape ``(1, ndim)``, where ``ndim`` is the dimension of the
 node internal state.
@@ -112,7 +112,7 @@ This operation automatically triggers the update of the node internal state (:nu
 .. code-block:: python
 
     # node internal state have been updated from s_t0 to s_t1
-    assert node.state() == s_t1
+    assert node.state["out"] == s_t1
 
 To learn how to modify this automatic update, see :ref:`/user_guide/quickstart.ipynb#Reset-or-modify-reservoir-state`.
 
@@ -277,7 +277,7 @@ Reservoir state is accessible using its :py:meth:`~.Reservoir.state` method.
 .. ipython:: python
 
     s_t1 = reservoir(X[0])
-    assert np.all(s_t1 == reservoir.state())
+    assert np.all(s_t1 == reservoir.state["out"])
 
 .. _res_t1:
 .. figure:: ../_static/user_guide/node/res_t1_update.svg

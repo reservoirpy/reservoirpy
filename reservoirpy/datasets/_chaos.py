@@ -719,15 +719,14 @@ def narma(
     >>> model = Reservoir(100) >> Ridge()
     >>> n_timesteps, order = 2000, 30
     >>> rng = np.random.default_rng(seed=2341)
-    >>> u = rng.uniform(0, 0.5, size=(n_timesteps + order, 1))
-    >>> y = narma(n_timesteps=n_timesteps, order=order, u=u)
-    >>> model = model.fit(u[order:], y)
+    >>> u, y = narma(n_timesteps=n_timesteps, order=order)
+    >>> model = model.fit(u, y)
 
     .. plot::
 
         from reservoirpy.datasets import narma
         plt.figure(figsize=(12, 3))
-        timeseries = narma(100, order=30)
+        _x, timeseries = narma(100, order=30)
         plt.plot(timeseries)
         plt.show()
 

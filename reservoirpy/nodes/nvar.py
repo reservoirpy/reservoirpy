@@ -96,7 +96,7 @@ class NVAR(Node):
     >>> import numpy as np
     >>> from reservoirpy.nodes import NVAR, Ridge
     >>> nvar = NVAR(delay=2, order=2, strides=1)
-    >>> readout = Ridge(3, ridge=2.5e-6)
+    >>> readout = Ridge(ridge=2.5e-6, output_dim=3)
     >>> model = nvar >> readout
 
     Using the :py:func:`~reservoirpy.datasets.lorenz` timeseries and learning to

@@ -94,7 +94,7 @@ class LIF(Node):
     Example
     -------
 
-    >>> from reservoirpy.experimental import LIF
+    >>> from reservoirpy.nodes import LIF
     >>> liquid = LIF(
     ...     units=100,
     ...     inhibitory=0.1,
@@ -114,7 +114,7 @@ class LIF(Node):
 
     .. plot::
 
-        from reservoirpy.experimental import LIF
+        from reservoirpy.nodes import LIF
         liquid = LIF(
             units=100,
             inhibitory=0.1,

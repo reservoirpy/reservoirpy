@@ -9,7 +9,7 @@ from reservoirpy.datasets import narma
 from reservoirpy.nodes import IPReservoir
 
 steps = 1000
-X = narma(steps)
+_, X = narma(steps)
 X = (X - X.min()) / np.ptp(X)
 sigma = 0.1
 

@@ -1,7 +1,6 @@
 # Author: Nathan Trouvain at 16/08/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from collections import namedtuple
 from functools import partial
 from typing import Callable, Literal, Optional, Sequence, Union
 

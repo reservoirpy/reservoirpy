@@ -252,3 +252,11 @@ def merge(
             )
 
     return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
+
+
+def link_feedback(
+    node: Union[Node, Model, Sequence[Union[Node, Model]]],
+    feedback: Union[Node, Model, Sequence[Union[Node, Model]]],
+    inplace: bool = False,
+) -> Model:
+    raise NotImplementedError()  # TODO
