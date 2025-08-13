@@ -57,20 +57,6 @@ class NVAR(Node):
         \\mathbb{O}_{total} = \\mathbb{O}_{lin}[t] \\oplus \\mathbb{O}_{nonlin}^n[t]
 
 
-    :py:attr:`NVAR.params` **list:**
-
-    ================== ===================================================================
-    ``store``          Time window over the inputs (of shape (delay * strides, features)).
-    ================== ===================================================================
-
-    :py:attr:`NVAR.hypers` **list:**
-
-    ================== =================================================================
-    ``delay``          Maximum delay of inputs (:math:`k`).
-    ``order``          Order of the non-linear monomials (:math:`n`).
-    ``strides``        Strides between delayed inputs, by default 1 (:math:`s`).
-    ================== =================================================================
-
     Parameters
     ----------
     delay : int
@@ -121,6 +107,15 @@ class NVAR(Node):
     .. plot:: ./api/nvar_example.py
 
     """
+
+    #: Time window over the inputs (of shape (delay * strides, features)).
+    store: np.ndarray
+    #: Maximum delay of inputs (:math:`k`).
+    delay: int
+    #: Order of the non-linear monomials (:math:`n`).
+    order: int
+    #: Strides between delayed inputs, by default 1 (:math:`s`).
+    strides: int
 
     def __init__(
         self,
