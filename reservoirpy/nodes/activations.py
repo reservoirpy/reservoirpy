@@ -10,6 +10,21 @@ from ..type import NodeInput, State, Timeseries, Timestep
 
 
 class F(Node):
+    """Generic elementwise and stateless Node
+
+    This Node takes a function f: array -> array that can take both timeseries
+    and timesteps.
+
+    Parameters
+    ----------
+    f: callable
+        Beta parameter of softmax.
+    name : str, optional
+        Node name.
+    **kwargs :
+        Additional arguments passed to f.
+    """
+
     def __init__(self, f: Callable, name: Optional[str] = None, **kwargs):
         self.f = partial(f, **kwargs)
         self.state = {}
@@ -44,6 +59,8 @@ class Softmax(F):
     ----------
     beta: float, default to 1.0
         Beta parameter of softmax.
+    name : str, optional
+        Node name.
     """
 
     def __init__(self, beta=1.0, name: Optional[str] = None):
@@ -59,6 +76,11 @@ class Softplus(F):
     .. math::
 
         f(x) = \\mathrm{ln}(1 + e^{x})
+
+    Parameters
+    ----------
+    name : str, optional
+        Node name.
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -74,6 +96,11 @@ class Sigmoid(F):
     .. math::
 
         f(x) = \\frac{1}{1 + e^{-x}}
+
+    Parameters
+    ----------
+    name : str, optional
+        Node name.
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -89,6 +116,11 @@ class Tanh(F):
     .. math::
 
         f(x) = \\frac{e^x - e^{-x}}{e^x + e^{-x}}
+
+    Parameters
+    ----------
+    name : str, optional
+        Node name.
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -106,6 +138,11 @@ class Identity(F):
         f(x) = x
 
     Provided for convenience.
+
+    Parameters
+    ----------
+    name : str, optional
+        Node name.
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -121,6 +158,11 @@ class ReLU(F):
     .. math::
 
         f(x) = x ~~ \\mathrm{if} ~~ x > 0 ~~ \\mathrm{else} ~~ 0
+
+    Parameters
+    ----------
+    name : str, optional
+        Node name.
     """
 
     def __init__(self, name: Optional[str] = None):
