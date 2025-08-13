@@ -85,10 +85,15 @@ from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
 
 
 class Node(ABC):
+    #: True if the Node has been initialized
     initialized: bool
+    #: Expected dimension of the Node input. Can be None before initialization
     input_dim: int = None
+    #: Expected dimension of the Node input. Can be None before initialization
     output_dim: int = None
+    #: Current state of the Node. Must have "out" as one of the keys.
     state: State
+    #: Optional name of the Node.
     name: Optional[str] = None
 
     @abstractmethod
@@ -104,6 +109,20 @@ class Node(ABC):
         ...
 
     def step(self, x: Optional[Timestep]) -> Timestep:
+        """Call the Node function on a single step of data and update
+        the state of the Node.
+
+        Parameters
+        ----------
+        x : array of shape (input_dim,), optional
+            One single step of input data. If None, an empty array is used
+            instead and the Node is assumed to have an input_dim of 0
+
+        Returns
+        -------
+        array of shape (output_dim,)
+            An output vector.
+        """
         # TODO: stateful argument (for every step, run, fit, train, ...)
         # Auto-regressive mode
         if x is None:
@@ -207,7 +226,6 @@ class Node(ABC):
 
 
 class TrainableNode(Node):
-    # TODO: warmup
     @abstractmethod
     def fit(
         self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
