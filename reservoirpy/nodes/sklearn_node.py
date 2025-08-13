@@ -3,8 +3,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from copy import deepcopy
-from functools import partial
-from typing import Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 
@@ -33,30 +32,17 @@ class ScikitLearnNode(Node):
     please visit scikit-learn linear model API reference
     <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
 
-    :py:attr:`ScikitLearnNode.params` **list**
-
-    ================== =================================================================
-    ``instances``      Instance(s) of the model class used to fit and predict. If
-                       :py:attr:`ScikitLearnNode.output_dim` > 1 and the model doesn't
-                       support multi-outputs, `instances` is a list of instances, one
-                       for each output feature.
-    ================== =================================================================
-
-    :py:attr:`ScikitLearnNode.hypers` **list**
-
-    ================== =================================================================
-    ``model``          (class) Underlying scikit-learn model.
-    ``model_hypers``   (dict) Keyword arguments for the scikit-learn model.
-    ================== =================================================================
 
     Parameters
     ----------
+    model : class, scikit-learn model
+        scikit-learn class to be wrapped by the Node.
     output_dim : int, optional
         Number of units in the readout, can be inferred at first call.
-    model : str, optional
+    name : str, optional
         Node name.
-    model_hypers
-        (dict) Additional keyword arguments for the scikit-learn model.
+    **kwargs
+        Additional keyword arguments passed to the scikit-learn model.
 
     Example
     -------
@@ -66,6 +52,14 @@ class ScikitLearnNode(Node):
     >>> readout = ScikitLearnNode(model=Lasso, model_hypers={"alpha":1e-5})
     >>> model = reservoir >> readout
     """
+
+    #: scikit-learn class to be wrapped by the Node.
+    model: type["sklearn.base.BaseEstimator"]
+    #: Additional keyword arguments passed to the scikit-learn model.
+    model_kwargs: dict[str, Any]
+    #: Model instance or list of model instances if multiple output are expected
+    #: and the scikit-learn model doesn't support it.
+    instances: Union["sklearn.base.BaseEstimator", list["sklearn.base.BaseEstimator"]]
 
     def __init__(
         self,
