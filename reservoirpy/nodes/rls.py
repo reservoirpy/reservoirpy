@@ -10,6 +10,79 @@ from ..type import NodeInput, State, Timeseries, Timestep, Weights
 
 
 class RLS(OnlineNode):
+    """Single layer of neurons learning connections using Recursive Least Squares
+    algorithm.
+
+    The learning rules is well described in [1]_.
+    The forgetting factor version of the RLS algorithm used here is described in [2]_.
+
+    Parameters
+    ----------
+    alpha : float or Python generator or iterable, default to 1e-6
+        Diagonal value of matrix P.
+    Wout : callable or array-like of shape (units, targets), default to :py:func:`~rpy3.mat_gen.zeros`
+        Output weights matrix or initializer. If a callable (like a function) is
+        used, then this function should accept any keywords
+        parameters and at least two parameters that will be used to define the shape of
+        the returned weight matrix.
+    bias : callable or array-like of shape (units, 1), default to :py:func:`~rpy3.mat_gen.zeros`
+        Bias weights vector or initializer. If a callable (like a function) is
+        used, then this function should accept any keywords
+        parameters and at least two parameters that will be used to define the shape of
+        the returned weight matrix.
+    fit_bias : bool, default to True
+        If True, then a bias parameter will be learned along with output weights.
+    forgetting : float, default to 1.0
+        The forgetting factor controls the weight given to past observations in the RLS update.
+        A value less than 1.0 gives more weight to recent observations.
+    input_dim : int, optional
+        Input dimension. Can be inferred at first call.
+    output_dim : int, optional
+        Number of units in the readout, can be inferred at first call.
+    name : str, optional
+        Node name.
+
+    References
+    ----------
+
+    .. [1] Sussillo, D., & Abbott, L. F. (2009). Generating Coherent Patterns of
+           Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557.
+           https://doi.org/10.1016/j.neuron.2009.07.018
+
+    .. [2] Waegeman, T., Wyffels, F., & Schrauwen, B. (2012). Feedback Control by Online
+           Learning an Inverse Model. IEEE Transactions on Neural Networks and Learning
+           Systems, 23(10), 1637–1648. https://doi.org/10.1109/TNNLS.2012.2208655
+
+    Examples
+    --------
+    >>> x = np.random.normal(size=(100, 3))
+    >>> noise = np.random.normal(scale=0.1, size=(100, 1))
+    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+
+    >>> from rpy3.nodes import RLS
+    >>> rls_node = RLS(alpha=1e-1)
+
+    >>> _ = rls_node.train(x[:5], y[:5])
+    >>> print(rls_node.Wout.T, rls_node.bias)
+    [[ 9.90731641 -0.06884784  6.87944632]] [[12.07802068]]
+    >>> _ = rls_node.train(x[5:], y[5:])
+    >>> print(rls_node.Wout.T, rls_node.bias)
+    [[ 9.99223366 -0.20499636  6.98924066]] [[12.01128622]]
+    """
+
+    #: Learned output weights (:math:`\\mathbf{W}_{out}`).
+    Wout: Weights
+    #: Learned bias (:math:`\\mathbf{b}`).
+    bias: Weights
+    #: Matrix :math:`\\mathbf{P}` of RLS rule.
+    P: Weights
+    #: Diagonal value of matrix P (:math:`\\alpha`) (:math:`1\\cdot 10^{-6}` by default).
+    alpha: float
+    #: If True, learn a bias term (True by default).
+    fit_bias: bool
+    #: Forgetting factor (:math:`\\lambda`) (:math:`1` by default).
+    forgetting: float
+
     def __init__(
         self,
         alpha: float = 1e-6,
