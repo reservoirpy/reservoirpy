@@ -10,6 +10,75 @@ from ..type import NodeInput, State, Timeseries, Timestep, Weights
 
 
 class LMS(OnlineNode):
+    """Single layer of neurons learning connections using Least Mean Squares
+    algorithm.
+
+    The learning rules is well described in [1]_.
+
+    :py:attr:`LMS.params` **list**
+
+    ================== =================================================================
+    ``Wout``           Learned output weights (:math:`\\mathbf{W}_{out}`).
+    ``bias``           Learned bias (:math:`\\mathbf{b}`).
+    ``P``              Matrix :math:`\\mathbf{P}` of RLS rule.
+    ================== =================================================================
+
+    :py:attr:`LMS.hypers` **list**
+
+    ================== =================================================================
+    ``alpha``          Learning rate (:math:`\\alpha`) (:math:`1\\cdot 10^{-6}` by default).
+    ``input_bias``     If True, learn a bias term (True by default).
+    ================== =================================================================
+
+    Parameters
+    ----------
+    learning_rate : float or Python generator or iterable, default to 1e-6
+        Learning rate. If an iterable or a generator is provided, the learning rate can
+        be changed at each timestep of training. A new learning rate will be drawn from
+        the iterable or generator at each timestep.
+    Wout : callable or array-like of shape (units, targets), default to :py:func:`~reservoirpy.mat_gen.zeros`
+        Output weights matrix or initializer. If a callable (like a function) is
+        used, then this function should accept any keywords
+        parameters and at least two parameters that will be used to define the shape of
+        the returned weight matrix.
+    bias : callable or array-like of shape (units, 1), default to :py:func:`~reservoirpy.mat_gen.zeros`
+        Bias weights vector or initializer. If a callable (like a function) is
+        used, then this function should accept any keywords
+        parameters and at least two parameters that will be used to define the shape of
+        the returned weight matrix.
+    fit_bias : bool, default to True
+        If True, then a bias parameter will be learned along with output weights.
+    input_dim : int, optional
+        Number of input dimensions in the readout, can be inferred at first call.
+    output_dim : int, optional
+        Number of units in the readout, can be inferred at first call.
+    name : str, optional
+        Node name.
+
+    Examples
+    --------
+    >>> x = np.random.normal(size=(100, 3))
+    >>> noise = np.random.normal(scale=0.01, size=(100, 1))
+    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+
+    >>> from reservoirpy.nodes import LMS
+    >>> lms_node = LMS(alpha=1e-1)
+
+    >>> lms_node.train(x[:50], y[:50])
+    >>> print(lms_node.Wout.T, lms_node.bias)
+    [[ 9.156 -0.967   6.411]] [[11.564]]
+    >>> lms_node.train(x[50:], y[50:])
+    >>> print(lms_node.Wout.T, lms_node.bias)
+    [[ 9.998 -0.202  7.001]] [[12.005]]
+
+    References
+    ----------
+
+    .. [1] Sussillo, D., & Abbott, L. F. (2009). Generating Coherent Patterns of
+           Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557.
+           https://doi.org/10.1016/j.neuron.2009.07.018
+    """
+
     def __init__(
         self,
         learning_rate: float = 1e-6,
