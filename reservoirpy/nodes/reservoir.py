@@ -122,7 +122,7 @@ class Reservoir(Node):
     # params
     #: Number of neuronal units in the reservoir.
     units: int
-    #: Leaking rate (1.0 by default) (:math:`\\mathrm{lr}`).
+    #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
     lr: Union[float, np.ndarray]
     #: Spectral radius of ``W`` (optional).
     sr: float
@@ -132,12 +132,12 @@ class Reservoir(Node):
     input_connectivity: float
     #: Connectivity (or density) of ``Wfb`` (0.1 by default).
     rc_connectivity: float
-    #: Input weights matrix (:math:`\\mathbf{W}_{in}`).
-    Win: Union[Weights, Callable]
-    #: Recurrent weights matrix (:math:`\\mathbf{W}`).
-    W: Union[Weights, Callable]
-    #: Bias vector (:math:`\\mathbf{b}`).
-    bias: Union[Weights, Callable, float]
+    #: Input weights matrix (:math:`\mathbf{W}_{in}`).
+    Win: Union["Weights", Callable]
+    #: Recurrent weights matrix (:math:`\mathbf{W}`).
+    W: Union["Weights", Callable]
+    #: Bias vector (:math:`\mathbf{b}`).
+    bias: Union["Weights", Callable, float]
     #: Activation of the reservoir units (tanh by default) (:math:`f`).
     activation: Callable
     #: A random state generator. Used for generating Win and W.
@@ -151,9 +151,9 @@ class Reservoir(Node):
         input_scaling: Union[float, Sequence] = 1.0,
         input_connectivity: float = 0.1,
         rc_connectivity: float = 0.1,
-        Win: Union[Weights, Callable] = bernoulli,
-        W: Union[Weights, Callable] = normal,
-        bias: Union[Weights, Callable, float] = 0.0,
+        Win: Union["Weights", Callable] = bernoulli,
+        W: Union["Weights", Callable] = normal,
+        bias: Union["Weights", Callable, float] = 0.0,
         activation: Union[str, Callable] = tanh,
         input_dim: Optional[int] = None,
         dtype: type = np.float64,
