@@ -36,13 +36,13 @@ class IPReservoir(TrainableNode):
 
 
         \\mathbf{r}[t+1] = (1 - \\mathrm{lr}) * \\mathbf{r}[t] + \\mathrm{lr}
-        * (\\mathbf{W}_{in} \\cdot (\\mathbf{u}[t+1]+c_{in}*\\xi)
+        * (\\mathbf{W}_{in} \\cdot \\mathbf{u}[t+1]
          + \\mathbf{W} \\cdot \\mathbf{x}[t]
         + \\mathbf{b}_{in})
 
     .. math::
 
-        \\mathbf{x}[t+1] = f(\\mathbf{a}*\\mathbf{r}[t+1]+\\mathbf{b}) + c * \\xi
+        \\mathbf{x}[t+1] = f(\\mathbf{a}*\\mathbf{r}[t+1]+\\mathbf{b})
 
     Parameters :math:`\\mathbf{a}` and :math:`\\mathbf{b}` are updated following two
     different rules:
@@ -63,7 +63,6 @@ class IPReservoir(TrainableNode):
         - :math:`\\mathbf{x}` is the output activation vector of the reservoir;
         - :math:`\\mathbf{r}` is the internal activation vector of the reservoir;
         - :math:`\\mathbf{u}` is the input timeseries;
-        - :math:`\\xi` is a random noise;
         - :math:`f` and :math:`g` are activation functions.
 
     :py:attr:`IPReservoir.params` **list:**
@@ -102,10 +101,10 @@ class IPReservoir(TrainableNode):
     units : int, optional
         Number of reservoir units. If None, the number of units will be inferred from
         the ``W`` matrix shape.
-    lr : float or array-like of shape (units,), default to 1.0
-        Neurons leak rate. Must be in :math:`[0, 1]`.
     sr : float, optional
         Spectral radius of recurrent weight matrix.
+    lr : float or array-like of shape (units,), default to 1.0
+        Neurons leak rate. Must be in :math:`[0, 1]`.
     mu : float, default to 0.0
         Mean of the target distribution.
     sigma : float, default to 1.0
@@ -114,23 +113,9 @@ class IPReservoir(TrainableNode):
         Learning rate.
     epochs : int, default to 1
         Number of training iterations.
-    input_bias : bool, default to True
-        If False, no bias is added to inputs.
-    noise_rc : float, default to 0.0
-        Gain of noise applied to reservoir activations.
-    noise_in : float, default to 0.0
-        Gain of noise applied to input inputs.
-    noise_type : str, default to "normal"
-        Distribution of noise. Must be a Numpy random variable generator
-        distribution (see :py:class:`numpy.random.Generator`).
-    noise_kwargs : dict, optional
-        Keyword arguments to pass to the noise generator, such as `low` and `high`
-        values of uniform distribution.
     input_scaling : float or array-like of shape (features,), default to 1.0.
         Input gain. An array of the same dimension as the inputs can be used to
         set up different input scaling for each feature.
-    bias_scaling: float, default to 1.0
-        Bias gain.
     input_connectivity : float, default to 0.1
         Connectivity of input neurons, i.e. ratio of input neurons connected
         to reservoir neurons. Must be in :math:`]0, 1]`.
@@ -161,12 +146,12 @@ class IPReservoir(TrainableNode):
         Reservoir units activation function.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
-    name : str, optional
-        Node name.
     dtype : Numpy dtype, default to np.float64
         Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
+    name : str, optional
+        Node name.
 
     References
     ----------
