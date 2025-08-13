@@ -16,9 +16,7 @@ class Input(Node):
 
     Parameters
     ----------
-    input_dim : int
-        Input dimension. Can be inferred at first call.
-    name : str
+    name : str, optional
         Node name.
 
     Example
@@ -70,7 +68,7 @@ class Output(Node):
 
     Parameters
     ----------
-    name : str
+    name : str, optional
         Node name.
 
     Example
