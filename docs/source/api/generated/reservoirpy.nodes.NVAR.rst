@@ -28,6 +28,10 @@ reservoirpy.nodes.NVAR
       ~NVAR.input_dim
       ~NVAR.name
       ~NVAR.output_dim
+      ~NVAR.store
+      ~NVAR.delay
+      ~NVAR.order
+      ~NVAR.strides
       ~NVAR.initialized
       ~NVAR.state
    

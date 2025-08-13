@@ -30,6 +30,12 @@ reservoirpy.nodes.RLS
       ~RLS.input_dim
       ~RLS.name
       ~RLS.output_dim
+      ~RLS.Wout
+      ~RLS.bias
+      ~RLS.P
+      ~RLS.alpha
+      ~RLS.fit_bias
+      ~RLS.forgetting
       ~RLS.initialized
       ~RLS.state
    

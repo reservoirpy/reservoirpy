@@ -29,6 +29,7 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.name
       ~Reservoir.output_dim
       ~Reservoir.initialized
+      ~Reservoir.state
       ~Reservoir.units
       ~Reservoir.lr
       ~Reservoir.sr
@@ -40,6 +41,5 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.bias
       ~Reservoir.activation
       ~Reservoir.rng
-      ~Reservoir.state
    
    
