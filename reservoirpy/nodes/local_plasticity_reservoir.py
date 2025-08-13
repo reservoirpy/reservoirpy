@@ -76,32 +76,13 @@ class LocalPlasticityReservoir(TrainableNode):
         If True, L2-normalize each row of W after its update.
     epochs : int, default to 1
         Number of training iterations.
-    sr : float, optional
+    sr : float, default to 1.0
         Spectral radius of recurrent weight matrix.
     lr : float or array-like of shape (units,), default to 1.0
         Neurons leak rate. Must be in :math:`[0, 1]`.
-    input_bias : bool, default to True
-        If False, no bias is added to inputs.
-    noise_rc : float, default to 0.0
-        Gain of noise applied to reservoir activations.
-    noise_in : float, default to 0.0
-        Gain of noise applied to input inputs.
-    noise_fb : float, default to 0.0
-        Gain of noise applied to feedback signal.
-    noise_type : str, default to "normal"
-        Distribution of noise. Must be a Numpy random variable generator
-        distribution (see :py:class:`numpy.random.Generator`).
-    noise_kwargs : dict, optional
-        Keyword arguments to pass to the noise generator, such as `low` and `high`
-        values of uniform distribution.
     input_scaling : float or array-like of shape (features,), default to 1.0.
         Input gain. An array of the same dimension as the inputs can be used to
         set up different input scaling for each feature.
-    bias_scaling: float, default to 1.0
-        Bias gain.
-    fb_scaling : float or array-like of shape (features,), default to 1.0
-        Feedback gain. An array of the same dimension as the feedback can be used to
-        set up different feedback scaling for each feature.
     input_connectivity : float, default to 0.1
         Connectivity of input neurons, i.e. ratio of input neurons connected
         to reservoir neurons. Must be in :math:`]0, 1]`.
@@ -109,9 +90,6 @@ class LocalPlasticityReservoir(TrainableNode):
         Connectivity of recurrent weight matrix, i.e. ratio of reservoir
         neurons connected to other reservoir neurons, including themselves.
         Must be in :math:`]0, 1]`.
-    fb_connectivity : float, default to 0.1
-        Connectivity of feedback neurons, i.e. ratio of feedback neurons
-        connected to reservoir neurons. Must be in :math:`]0, 1]`.
     Win : callable or array-like of shape (units, features), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
         Input weights matrix or initializer. If a callable (like a function) is
         used,
@@ -125,35 +103,22 @@ class LocalPlasticityReservoir(TrainableNode):
         parameters and at least two parameters that will be used to define the
         shape of
         the returned weight matrix.
-    Wfb : callable or array-like of shape (units, feedback), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
-        Feedback weights matrix or initializer. If a callable (like a function) is
-        used, then this function should accept any keywords
-        parameters and at least two parameters that will be used to define the
-        shape of
-        the returned weight matrix.
     bias : callable or array-like of shape (units, 1), default to :py:func:`~reservoirpy.mat_gen.bernoulli`
         Bias weights vector or initializer. If a callable (like a function) is
         used, then this function should accept any keywords
         parameters and at least two parameters that will be used to define the
         shape of
         the returned weight matrix.
-    feedback_dim : int, optional
-        Feedback dimension. Can be inferred at first call.
-    fb_activation : str or callable, default to :py:func:`~reservoirpy.activationsfunc.identity`
-        Feedback activation function.
-        - If a str, should be a :py:mod:`~reservoirpy.activationsfunc`
-        function name.
-        - If a callable, should be an element-wise operator on arrays.
     activation : {"tanh", "sigmoid"}, default to "tanh"
         Reservoir units activation function.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
-    name : str, optional
-        Node name.
-    dtype : Numpy dtype, default to np.float64
-        Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
+    dtype : Numpy dtype, default to np.float64
+        Numerical type for node parameters.
+    name : str, optional
+        Node name.
 
 
     References
