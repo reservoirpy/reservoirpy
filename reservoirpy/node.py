@@ -102,6 +102,18 @@ class Node(ABC):
         x: Union[NodeInput, Timestep],
         y: Optional[Union[NodeInput, Timestep]] = None,
     ):
+        """Define input and output dimensions, and instantiate variables.
+
+        Only called once, before fitting or running the node.
+
+        Parameters
+        ----------
+        x : array of shape (input_dim,) or (timestep, input_dim)
+            Input data to the node.
+        y : None
+            Training data to the node. As it is not a trainable node, ``y`` is
+            expected to be ``None``.
+        """
         ...  # TODO: make x Optional everywhere
 
     @abstractmethod
@@ -149,6 +161,24 @@ class Node(ABC):
         return current_state, output
 
     def run(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
+        """Run the Node on a sequence of data.
+        Can update the state of the
+        Node several times.
+
+        Parameters
+        ----------
+        x : array-like of shape ([n_inputs,] timesteps, input_dim) or list of
+                arrays of shape (timesteps, input_dim), optional
+            A sequence of data of shape (timesteps, features).
+        iters : int, optional
+            If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
+            is used instead.
+
+        Returns
+        -------
+        array of shape ([n_inputs,] timesteps, output_dim) or list of arrays
+            A sequence of output vectors.
+        """
         # Auto-regressive mode
         if x is None:
             x = np.empty((iters, 0))
@@ -175,6 +205,26 @@ class Node(ABC):
         return result
 
     def predict(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
+        """Alias for :py:meth:`~.Node.run`
+
+        Run the Node on a sequence of data.
+        Can update the state of the
+        Node several times.
+
+        Parameters
+        ----------
+        x : array-like of shape ([n_inputs,] timesteps, input_dim) or list of
+                arrays of shape (timesteps, input_dim), optional
+            A sequence of data of shape (timesteps, features).
+        iters : int, optional
+            If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
+            is used instead.
+
+        Returns
+        -------
+        array of shape ([n_inputs,] timesteps, output_dim) or list of arrays
+            A sequence of output vectors.
+        """
         return self.run(x=x, iters=iters)
 
     def __call__(self, x: Optional[Timestep]) -> Timestep:
@@ -230,6 +280,24 @@ class TrainableNode(Node):
     def fit(
         self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
     ) -> "TrainableNode":
+        """Offline fitting method of a Node.
+
+        Parameters
+        ----------
+        x : list or array-like of shape ([series, ] timesteps, input_dim), optional
+            Input sequences dataset.
+        y : list or array-like of shape ([series], timesteps, output_dim), optional
+            Teacher signals dataset. If None, the method will try to fit the
+            Node in an unsupervised way, if possible.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the beginning of each timeseries before training.
+
+        Returns
+        -------
+        Node
+            Node trained offline.
+        """
         ...
 
 
@@ -240,6 +308,25 @@ class OnlineNode(TrainableNode):
 
     @abstractmethod
     def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
+        """Fit the Node in an online fashion.
+
+        This method both trains the Node parameters and produce predictions on
+        the run. Calling :py:meth:`partial_fit` updates the Node without
+        resetting the parameters, unlike :py:meth:`fit`.
+
+        Parameters
+        ----------
+        x : array-like of shape (timesteps, input_dim)
+            Input sequence of data.
+        y : array-like of shape (timesteps, output_dim), optional.
+            Target sequence of data. If None, the Node will train in an
+            unsupervised way, if possible.
+
+        Returns
+        -------
+        array of shape (timesteps, output_dim)
+            All outputs computed during the training.
+        """
         ...
 
     def fit(
