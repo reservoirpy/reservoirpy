@@ -25,10 +25,10 @@ reservoirpy.nodes.Sigmoid
 
    .. autosummary::
    
-      ~Sigmoid.name
-      ~Sigmoid.initialized
       ~Sigmoid.input_dim
+      ~Sigmoid.name
       ~Sigmoid.output_dim
+      ~Sigmoid.initialized
       ~Sigmoid.state
    
    

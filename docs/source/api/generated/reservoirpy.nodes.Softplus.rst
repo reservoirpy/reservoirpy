@@ -25,10 +25,10 @@ reservoirpy.nodes.Softplus
 
    .. autosummary::
    
-      ~Softplus.name
-      ~Softplus.initialized
       ~Softplus.input_dim
+      ~Softplus.name
       ~Softplus.output_dim
+      ~Softplus.initialized
       ~Softplus.state
    
    

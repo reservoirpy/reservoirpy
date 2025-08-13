@@ -25,10 +25,10 @@ reservoirpy.nodes.Softmax
 
    .. autosummary::
    
-      ~Softmax.name
-      ~Softmax.initialized
       ~Softmax.input_dim
+      ~Softmax.name
       ~Softmax.output_dim
+      ~Softmax.initialized
       ~Softmax.state
    
    

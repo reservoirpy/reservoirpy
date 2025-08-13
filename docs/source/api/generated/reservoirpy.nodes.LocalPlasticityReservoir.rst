@@ -26,10 +26,10 @@ reservoirpy.nodes.LocalPlasticityReservoir
 
    .. autosummary::
    
-      ~LocalPlasticityReservoir.name
-      ~LocalPlasticityReservoir.initialized
       ~LocalPlasticityReservoir.input_dim
+      ~LocalPlasticityReservoir.name
       ~LocalPlasticityReservoir.output_dim
+      ~LocalPlasticityReservoir.initialized
       ~LocalPlasticityReservoir.state
    
    

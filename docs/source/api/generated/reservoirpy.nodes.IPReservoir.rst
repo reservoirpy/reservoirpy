@@ -29,10 +29,10 @@ reservoirpy.nodes.IPReservoir
 
    .. autosummary::
    
-      ~IPReservoir.name
-      ~IPReservoir.initialized
       ~IPReservoir.input_dim
+      ~IPReservoir.name
       ~IPReservoir.output_dim
+      ~IPReservoir.initialized
       ~IPReservoir.state
    
    

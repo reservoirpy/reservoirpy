@@ -28,14 +28,14 @@ reservoirpy.nodes.Ridge
 
    .. autosummary::
    
+      ~Ridge.input_dim
       ~Ridge.name
+      ~Ridge.output_dim
       ~Ridge.ridge
       ~Ridge.fit_bias
       ~Ridge.Wout
       ~Ridge.bias
       ~Ridge.initialized
-      ~Ridge.input_dim
-      ~Ridge.output_dim
       ~Ridge.state
    
    

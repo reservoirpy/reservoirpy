@@ -25,10 +25,10 @@ reservoirpy.nodes.ReLU
 
    .. autosummary::
    
-      ~ReLU.name
-      ~ReLU.initialized
       ~ReLU.input_dim
+      ~ReLU.name
       ~ReLU.output_dim
+      ~ReLU.initialized
       ~ReLU.state
    
    

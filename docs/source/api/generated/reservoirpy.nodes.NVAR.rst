@@ -25,10 +25,10 @@ reservoirpy.nodes.NVAR
 
    .. autosummary::
    
-      ~NVAR.name
-      ~NVAR.initialized
       ~NVAR.input_dim
+      ~NVAR.name
       ~NVAR.output_dim
+      ~NVAR.initialized
       ~NVAR.state
    
    

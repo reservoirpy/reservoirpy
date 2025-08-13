@@ -27,10 +27,10 @@ reservoirpy.nodes.RLS
 
    .. autosummary::
    
-      ~RLS.name
-      ~RLS.initialized
       ~RLS.input_dim
+      ~RLS.name
       ~RLS.output_dim
+      ~RLS.initialized
       ~RLS.state
    
    

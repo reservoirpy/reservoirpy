@@ -25,10 +25,10 @@ reservoirpy.nodes.Tanh
 
    .. autosummary::
    
-      ~Tanh.name
-      ~Tanh.initialized
       ~Tanh.input_dim
+      ~Tanh.name
       ~Tanh.output_dim
+      ~Tanh.initialized
       ~Tanh.state
    
    

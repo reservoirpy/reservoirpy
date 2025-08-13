@@ -27,10 +27,10 @@ reservoirpy.nodes.LMS
 
    .. autosummary::
    
-      ~LMS.name
-      ~LMS.initialized
       ~LMS.input_dim
+      ~LMS.name
       ~LMS.output_dim
+      ~LMS.initialized
       ~LMS.state
    
    
