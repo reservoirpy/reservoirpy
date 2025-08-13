@@ -8,11 +8,77 @@ from ..type import NodeInput, State, Timeseries, Timestep, Weights
 
 
 class Ridge(ParallelNode):
+    """A single layer of neurons learning with Tikhonov linear regression.
+
+    Output weights of the layer are computed following:
+
+    .. math::
+
+        \\hat{\\mathbf{W}}_{out} = \\mathbf{YX}^\\top ~ (\\mathbf{XX}^\\top +
+        \\lambda\\mathbf{Id})^{-1}
+
+    Outputs :math:`\\mathbf{y}` of the node are the result of:
+
+    .. math::
+
+        \\mathbf{y} = \\mathbf{W}_{out}^\\top \\mathbf{x} + \\mathbf{b}
+
+    where:
+        - :math:`\\mathbf{X}` is the accumulation of all inputs during training;
+        - :math:`\\mathbf{Y}` is the accumulation of all targets during training;
+        - :math:`\\mathbf{b}` is the first row of :math:`\\hat{\\mathbf{W}}_{out}`;
+        - :math:`\\mathbf{W}_{out}` is the rest of :math:`\\hat{\\mathbf{W}}_{out}`.
+
+    If ``fit_bias`` is True, then :math:`\\mathbf{b}` is non-zero, and a constant
+    term is added to :math:`\\mathbf{X}` to compute it.
+
+
+    Parameters
+    ----------
+    ridge: float, default to 0.0
+        L2 regularization parameter.
+    fit_bias : bool, default to True
+        If True, then a bias parameter will be learned along with output weights.
+    Wout : callable or array-like of shape (input_dim, units), optional
+        Output weights matrix or initializer. If a callable (like a function) is
+        used, then this function should accept any keywords
+        parameters and at least two parameters that will be used to define the shape of
+        the returned weight matrix.
+    bias : callable or array-like of shape (units,), optional
+        Bias weights vector or initializer. If a callable (like a function) is
+        used, then this function should accept any keywords
+        parameters and at least two parameters that will be used to define the shape of
+        the returned weight matrix.
+    input_dim : int, optional
+        Input dimension. Can be inferred at first call.
+    output_dim : int, optional
+        Number of units in the readout, can be inferred at first call.
+    name : str, optional
+        Node name.
+
+    Example
+    -------
+
+    >>> x = np.random.normal(size=(100, 3))
+    >>> noise = np.random.normal(scale=0.1, size=(100, 1))
+    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+    >>>
+    >>> from rpy3.nodes import Ridge
+    >>> ridge_regressor = Ridge(ridge=0.001)
+    >>>
+    >>> ridge_regressor.fit(x, y)
+    >>> ridge_regressor.Wout, ridge_regressor.bias
+    array([[ 9.992, -0.205,  6.989]]).T, array([[12.011]])
+    """
+
+    #: Regularization parameter (:math:`\\lambda`) (0.0 by default).
     ridge: float
+    #: If True, learn a bias term (True by default).
     fit_bias: bool
+    #: Learned output weights (:math:`\\mathbf{W}_{out}`).
     Wout: Weights
+    #: Learned bias (:math:`\\mathbf{b}`).
     bias: Weights
-    name: Optional[str]
 
     def __init__(
         self,
