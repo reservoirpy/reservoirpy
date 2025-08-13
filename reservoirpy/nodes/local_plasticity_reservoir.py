@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
 import scipy.sparse as sp
@@ -23,15 +23,16 @@ from ..utils.random import rand_generator
 class LocalPlasticityReservoir(TrainableNode):
     """
     A reservoir that learns its recurrent weights W through a local
-    learning rule selected by the 'learning_rule' hyperparameter.
+    learning rule selected by the ``learning_rule`` hyperparameter.
 
     Reservoir states are updated with the external equation:
 
     .. math::
 
-        r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + W_{in} u[t+1] + bias)
+        & r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + W_{in} u[t+1] + bias) \\\\
+        & x[t+1] = f(r[t+1])
 
-        x[t+1] = activation(r[t+1])
+    Where :math:`f` is the activation function.
 
     Then the local rule is applied each timestep to update W.
 
@@ -40,23 +41,23 @@ class LocalPlasticityReservoir(TrainableNode):
         W_{ij} \\leftarrow W_{ij} + \\Delta W_{ij}
 
     Supported rules:
-      `oja`:
+      ``oja``:
         :math:`\\Delta W_{ij} = \\eta y (x - y W_{ij})`
-      `anti-oja` [1]_ [2]_ [3]_ :
+      ``anti-oja`` [1]_ [2]_ [3]_ :
         :math:`\\Delta W_{ij} = - \\eta y (x - y W_{ij})`
-      `hebbian` [4]_ :
+      ``hebbian`` [4]_ :
         :math:`\\Delta W_{ij} = \\eta x y`
-      `anti-hebbian`:
+      ``anti-hebbian``:
         :math:`\\Delta W_{ij} = - \\eta x y`
-      `bcm` [2]_ :
+      ``bcm`` [2]_ :
         :math:`\\Delta W_{ij} = \\eta x y (y - \\theta_{BCM})`
 
     Where :math:`x` represents the pre-synaptic state and :math:`y` represents
     the post-synaptic state of the neuron.
 
-    For "bcm", you can set a threshold 'bcm_theta' (default `0.0`).
+    For "`bcm`", you can set a threshold ``bcm_theta`` (default `0.0`).
 
-    If `synapse_normalization=True`, then after each local-rule update
+    If ``synapse_normalization=True``, then after each local-rule update
     on a row i of W, the row is rescaled to unit L2 norm. [4]_
 
 
@@ -159,7 +160,9 @@ class LocalPlasticityReservoir(TrainableNode):
         self,
         units: Optional[int] = None,
         # local rule choice
-        local_rule: str = "oja",
+        local_rule: Literal[
+            "oja", "anti-oja", "hebbian", "anti-hebbian", "bcm"
+        ] = "oja",
         eta: float = 1e-3,
         bcm_theta: float = 0.0,
         synapse_normalization: bool = False,
