@@ -106,14 +106,8 @@ class ScikitLearnNode(Node):
         x: Union[NodeInput, Timestep],
         y: Optional[Union[NodeInput, Timestep]] = None,
     ):
-        if self.input_dim is None:
-            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
-
-        if self.output_dim is None:
-            if y is not None:
-                self.output_dim = (
-                    y.shape[-1] if not isinstance(y, list) else y[0].shape[-1]
-                )
+        self._set_input_dim(x)
+        self._set_output_dim(y)
 
         # TODO: Use https://scikit-learn.org/stable/modules/generated/sklearn.multioutput.MultiOutputRegressor.html instead
         first_instance = self.model(**deepcopy(self.model_kwargs))

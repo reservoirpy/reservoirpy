@@ -48,9 +48,8 @@ class Input(Node):
         self.state = {}
 
     def initialize(self, x: Union[NodeInput, Timestep]):
-        dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
-        self.input_dim = dim
-        self.output_dim = dim
+        self._set_input_dim(x)
+        self.output_dim = self.input_dim
         self.initialized = True
 
     def _step(self, state: State, x: Timestep) -> State:

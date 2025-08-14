@@ -4,7 +4,7 @@ import numpy as np
 from scipy import linalg
 
 from ..node import ParallelNode
-from ..type import NodeInput, State, Timeseries, Timestep, Weights
+from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array
 
 
 class Ridge(ParallelNode):
@@ -95,38 +95,46 @@ class Ridge(ParallelNode):
         self.Wout = Wout
         self.bias = bias
         self.name = name
-
-        # TODO: dimension checks
-
-        self.input_dim = input_dim
-        self.output_dim = output_dim
         self.initialized = False
         self.state = {}
+
+        # set input_dim/output_dim (if possible)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        if is_array(Wout):
+            if input_dim is not None and Wout.shape[0] != input_dim:
+                raise ValueError(
+                    f"Both 'input_dim' and 'Wout' are set but their dimensions doesn't "
+                    f"match: {input_dim} != {Wout.shape[0]}."
+                )
+            self.input_dim = Wout.shape[0]
+            if output_dim is not None and Wout.shape[1] != output_dim:
+                raise ValueError(
+                    f"Both 'output_dim' and 'Wout' are set but their dimensions doesn't "
+                    f"match: {output_dim} != {Wout.shape[1]}."
+                )
+            self.output_dim = Wout.shape[1]
+        if is_array(bias):
+            if output_dim is not None and bias.shape[0] != output_dim:
+                raise ValueError(
+                    f"Both 'output_dim' and 'Wout' are set but their dimensions doesn't "
+                    f"match: {output_dim} != {bias.shape[0]}."
+                )
+            self.output_dim = bias.shape[0]
 
     def initialize(
         self,
         x: Union[NodeInput, Timestep],
         y: Optional[Union[NodeInput, Timestep]] = None,
     ):
-        # set input_dim
-        if self.input_dim is None:
-            if self.Wout is not None:
-                self.input_dim = self.Wout.shape[0]
-            self.input_dim = (
-                x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
-            )
-        # set output_dim
-        if self.output_dim is None:
-            if y is not None:
-                self.output_dim = (
-                    y.shape[-1] if not isinstance(y, Sequence) else y[0].shape[-1]
-                )
-            elif self.Wout is not None:
-                self.output_dim = self.Wout.shape[1]
-            elif self.bias is not None:
-                self.output_dim = self.bias.shape[0]
-            else:
-                raise ValueError("Could not infer output_dim at initialization.")
+        self._set_input_dim(x)
+        self._set_output_dim(y)
+
+        # initialize matrices
+        if isinstance(self.Wout, Callable):
+            self.Wout = self.Wout(self.input_dim, self.output_dim)
+        if isinstance(self.bias, Callable):
+            self.bias = self.bias(self.output_dim)
 
         self.initialized = True
 

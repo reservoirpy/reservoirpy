@@ -34,9 +34,9 @@ class F(Node):
     def initialize(
         self,
         x: Union[NodeInput, Timestep],
-        y: Optional[Union[NodeInput, Timestep]] = None,
+        y: None = None,
     ):
-        self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
+        self._set_input_dim(x)
         self.output_dim = self.input_dim
         self.initialized = True
 

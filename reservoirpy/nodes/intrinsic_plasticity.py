@@ -206,16 +206,6 @@ class IPReservoir(TrainableNode):
         seed: Optional[Union[int, np.random.Generator]] = None,
         name=None,
     ):
-        if units is None and not is_array(W):
-            raise ValueError(
-                "'units' parameter must not be None if 'W' parameter is not "
-                "a matrix."
-            )
-        if units is not None and is_array(W) and W.shape[-1] != units:
-            raise ValueError(
-                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
-                f"{units} != {W.shape[-1]}."
-            )
 
         self.units = units
         self.sr = sr
@@ -250,9 +240,26 @@ class IPReservoir(TrainableNode):
                 f"Both 'input_dim' and 'Win' are set but their dimensions doesn't "
                 f"match: {input_dim} != {Win.shape[-1]}."
             )
-        self.input_dim = np.shape(Win)[-1] if is_array(Win) else input_dim
+        self.input_dim = input_dim
+        if is_array(Win):
+            self.input_dim = np.shape(Win)[-1]
 
+        # set output_dim
+        if units is None and not is_array(W):
+            raise ValueError(
+                "'units' parameter must not be None if 'W' parameter is not "
+                "a matrix."
+            )
+        if units is not None and is_array(W) and W.shape[-1] != units:
+            raise ValueError(
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
+                f"{units} != {W.shape[-1]}."
+            )
         self.output_dim = units
+        if is_array(W):
+            self.output_dim = W.shape[-1]
+            self.units = W.shape[-1]
+
         self.dtype = dtype
         self.rng = rand_generator(seed=seed)
         self.name = name
@@ -262,11 +269,9 @@ class IPReservoir(TrainableNode):
         self.state: State
         self.initialized = False
 
-    def initialize(self, x: Optional[Union[NodeInput, Timestep]], y: None = None):
+    def initialize(self, x: Union[NodeInput, Timestep], y: None = None):
 
-        # set input_dim
-        if self.input_dim is None:
-            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        self._set_input_dim(x)
 
         [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
 

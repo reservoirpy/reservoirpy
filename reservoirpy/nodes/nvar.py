@@ -136,17 +136,10 @@ class NVAR(Node):
         self.input_dim = input_dim
         self.output_dim = None
 
-    def initialize(
-        self,
-        x: Union[NodeInput, Timestep],
-        y: Optional[Union[NodeInput, Timestep]] = None,
-    ):
+    def initialize(self, x: Union[NodeInput, Timestep]):
 
         # set input_dim
-        if self.input_dim is None:
-            self.input_dim = (
-                x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
-            )
+        self._set_input_dim(x)
 
         order = self.order
         delay = self.delay

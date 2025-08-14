@@ -228,6 +228,36 @@ class Node(ABC):
         """
         return self.run(x=x, iters=iters)
 
+    def _set_input_dim(self, x: Optional[Union[NodeInput, Timestep]]):
+        if x is None:
+            return
+        if isinstance(x, Sequence):
+            if len(x) == 0:
+                return
+            input_dim = x[0].shape[-1]
+        else:
+            input_dim = x.shape[-1]  # works for both timesteps & timeseries
+        if self.input_dim is not None and self.input_dim != input_dim:
+            raise ValueError(
+                f"Trying to set {self} input_dim to {input_dim} while it has already been set to {self.input_dim}"
+            )
+        self.input_dim = input_dim
+
+    def _set_output_dim(self, y: Optional[Union[NodeInput, Timestep]]):
+        if y is None:
+            return
+        if isinstance(y, Sequence):
+            if len(y) == 0:
+                return
+            output_dim = y[0].shape[-1]
+        else:
+            output_dim = y.shape[-1]
+        if self.output_dim is not None and self.output_dim != output_dim:
+            raise ValueError(
+                f"Trying to set {self} input_dim to {output_dim} while it has already been set to {self.output_dim}"
+            )
+        self.output_dim = output_dim
+
     def __call__(self, x: Optional[Timestep]) -> Timestep:
         return self.step(x)
 

@@ -258,8 +258,7 @@ class LocalPlasticityReservoir(TrainableNode):
     def initialize(self, x: Optional[Union[NodeInput, Timestep]]):
 
         # set input_dim
-        if self.input_dim is None:
-            self.input_dim = x.shape[-1] if not isinstance(x, list) else x[0].shape[-1]
+        self._set_input_dim(x)
 
         [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
 
