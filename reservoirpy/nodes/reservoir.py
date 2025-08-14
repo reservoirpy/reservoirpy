@@ -138,6 +138,8 @@ class Reservoir(Node):
     W: Union["Weights", Callable]
     #: Bias vector (:math:`\mathbf{b}`).
     bias: Union["Weights", Callable, float]
+    #: Type of matrices elements. By default, ``np.float64``.
+    dtype: type
     #: Activation of the reservoir units (tanh by default) (:math:`f`).
     activation: Callable
     #: A random state generator. Used for generating Win and W.
