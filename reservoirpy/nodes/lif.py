@@ -1,9 +1,12 @@
 from functools import partial
 from typing import Callable, Optional, Sequence, Union
 
+import numpy as np
+from numpy.random import Generator
+
 from ..mat_gen import uniform
 from ..node import Node
-from ..type import Weights, is_array
+from ..type import NodeInput, State, Timestep, Weights, is_array
 from ..utils.random import rand_generator
 
 
@@ -13,30 +16,6 @@ class LIF(Node):
     This node is similar to a reservoir (large pool of recurrent, randomly connected neurons),
     but the neurons follows a leaky integrate and fire activity rule.
 
-    This is a first version of a Liquid State Machine implementation. More models are expected
-    to come in future versions of ReservoirPy.
-
-
-    :py:attr:`LIF.params` **list:**
-
-    ================== ===================================================================
-    ``W``              Recurrent weights matrix (:math:`\\mathbf{W}`).
-    ``Win``            Input weights matrix (:math:`\\mathbf{W}_{in}`).
-    ``internal_state`` Internal state of the neurons.
-    ================== ===================================================================
-
-    :py:attr:`LIF.hypers` **list:**
-
-    ======================= ========================================================
-    ``lr``                  Leaking rate (1.0 by default) (:math:`\\mathrm{lr}`).
-    ``sr``                  Spectral radius of ``W`` (optional).
-    ``input_scaling``       Input scaling (float or array) (1.0 by default).
-    ``rc_connectivity``     Connectivity (or density) of ``W`` (0.1 by default).
-    ``input_connectivity``  Connectivity (or density) of ``Win`` (0.1 by default).
-    ``units``               Number of neuronal units in the liquid.
-    ``inhibitory``          Proportion of inhibitory neurons. (0.0 by default)
-    ``threshold``           Spike threshold. (1.0 by default)
-    ======================= ========================================================
 
     Parameters
     ----------
@@ -50,18 +29,18 @@ class LIF(Node):
         Limits above which the neurons spikes and returns to zero.
     lr : float or array-like of shape (units,), default to 1.0
         Neurons leak rate. Must be in :math:`[0, 1]`.
-    sr : float, optional
+    sr : float, defaults to 1.0
         Spectral radius of recurrent weight matrix.
     input_scaling : float or array-like of shape (features,), default to 1.0.
         Input gain. An array of the same dimension as the inputs can be used to
         set up different input scaling for each feature.
-    input_connectivity : float, default to 0.1
-        Connectivity of input neurons, i.e. ratio of input neurons connected
-        to reservoir neurons. Must be in :math:`]0, 1]`.
     rc_connectivity : float, defaults to 0.1
         Connectivity of recurrent weight matrix, i.e. ratio of reservoir
         neurons connected to other reservoir neurons, including themselves.
         Must be in :math:`]0, 1]`.
+    input_connectivity : float, default to 0.1
+        Connectivity of input neurons, i.e. ratio of input neurons connected
+        to reservoir neurons. Must be in :math:`]0, 1]`.
     Win : callable or array-like of shape (units, features), default to :py:func:`~reservoirpy.mat_gen.uniform` with a
         lower bound of 0.0.
         Input weights matrix or initializer. If a callable (like a function) is used,
@@ -76,12 +55,12 @@ class LIF(Node):
         the returned weight matrix.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
-    name : str, optional
-        Node name.
     dtype : Numpy dtype, default to np.float64
         Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
+    name : str, optional
+        Node name.
 
     Note
     ----
@@ -138,161 +117,142 @@ class LIF(Node):
         ax[-1].set_xlabel("Timesteps")
     """
 
+    #: Number of neuronal units in the reservoir.
+    units: int
+    #: Proportion of inhibitory neurons. (0.0 by default)
+    inhibitory: float
+    #: Spike threshold. (1.0 by default)
+    threshold: float
+    #: Type of matrices elements. By default, ``np.float64``.
+    dtype: type
+    #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
+    lr: Union[float, np.ndarray]
+    #: Spectral radius of ``W`` (optional).
+    sr: float
+    #: Input scaling (float or array) (1.0 by default).
+    input_scaling: Union[float, Sequence]
+    #: Connectivity (or density) of ``Win`` (0.1 by default).
+    input_connectivity: float
+    #: Connectivity (or density) of ``Wfb`` (0.1 by default).
+    rc_connectivity: float
+    #: Input weights matrix (:math:`\mathbf{W}_{in}`).
+    Win: Union["Weights", Callable]
+    #: Recurrent weights matrix (:math:`\mathbf{W}`).
+    W: Union["Weights", Callable]
+    #: A random state generator. Used for generating Win and W.
+    rng: np.random.Generator
+
     def __init__(
         self,
         units: Optional[int] = None,
         inhibitory: float = 0.0,
         threshold: float = 1.0,
-        input_dim: Optional[int] = None,
-        sr: Optional[float] = None,
-        input_scaling: Union[float, Sequence] = 1.0,
         lr: float = 0.0,
+        sr: float = 1.0,
+        input_scaling: Union[float, Sequence] = 1.0,
         rc_connectivity: float = 0.1,
         input_connectivity: float = 0.1,
         Win: Union[Weights, Callable] = partial(uniform, low=0.0),
         W: Union[Weights, Callable] = partial(uniform, low=0.0),
-        seed=None,
-        **kwargs,
+        input_dim: Optional[int] = None,
+        dtype: type = np.float64,
+        seed: Optional[Union[int, Generator]] = None,
+        name: Optional[str] = None,
     ):
-        raise NotImplementedError()
+        self.inhibitory = inhibitory
+        self.threshold = threshold
+        self.sr = sr
+        self.input_scaling = input_scaling
+        self.lr = lr
+        self.rc_connectivity = rc_connectivity
+        self.input_connectivity = input_connectivity
+        self.Win = Win
+        self.W = W
+        self.dtype = dtype
+        self.rng = rand_generator(seed=seed)
+        self.name = name
+        self.initialized = False
+
+        # set units / output_dim
         if units is None and not is_array(W):
             raise ValueError(
-                "'units' parameter must not be None if 'W' parameter is not "
-                "a matrix."
+                "'units' parameter must not be None if 'W' parameter is not a matrix."
             )
+        if units is not None and is_array(W) and W.shape[-1] != units:
+            raise ValueError(
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
+                f"{units} != {W.shape[-1]}."
+            )
+        self.units = units if units is not None else W.shape[-1]
+        self.output_dim = self.units
 
-        super(LIF, self).__init__(
-            params={
-                "W": None,
-                "Win": None,
-                "internal_state": None,
-            },
-            hypers={
-                "units": units,
-                "inhibitory": inhibitory,
-                "threshold": threshold,
-                "lr": lr,
-                "rc_connectivity": rc_connectivity,
-                "input_connectivity": input_connectivity,
-                "input_scaling": input_scaling,
-                "sr": sr,
-            },
-            forward=forward,
-            initializer=partial(
-                initialize,
-                sr=sr,
-                input_scaling=input_scaling,
-                input_connectivity=input_connectivity,
-                rc_connectivity=rc_connectivity,
-                inhibitory=inhibitory,
-                W_init=W,
-                Win_init=Win,
-                seed=seed,
-            ),
-            input_dim=input_dim,
-            output_dim=units,
-            **kwargs,
-        )
+        # set input_dim (if possible)
+        if input_dim is not None and is_array(Win) and Win.shape[-1] != input_dim:
+            raise ValueError(
+                f"Both 'input_dim' and 'Win' are set but their dimensions doesn't "
+                f"match: {input_dim} != {Win.shape[-1]}."
+            )
+        self.input_dim = Win.shape[-1] if is_array(Win) else input_dim
 
-    def _step(self, x):
-        raise NotImplementedError()
-        v = lif.get_param("internal_state").copy()
-        threshold = lif.get_param("threshold")
+    def _step(self, state: State, x: Timestep):
+        v = state["internal"].copy()
+        threshold = self.threshold
+        lr = self.lr
+        W = self.W
+        Win = self.Win
         # leak
-        v *= 1 - lif.lr
+        v *= 1 - lr
         # fire
-        spikes = (v > threshold).astype(lif.dtype)  # threshold
+        spikes = (v > threshold).astype(self.dtype)  # threshold
         v[v > threshold] = 0.0
         # integrate
-        v += (lif.W @ spikes.T).T
-        v += (lif.Win @ x.T).T
+        v += (W @ spikes.T).T
+        v += (Win @ x.T).T
 
-        lif.set_param("internal_state", v)
         # return spikes
-        return spikes
+        return {"internal": v, "out": spikes}
 
     def initialize(
         self,
-        x=None,
-        y=None,
-        seed=None,
-        input_scaling=None,
-        input_connectivity=None,
-        rc_connectivity=None,
-        inhibitory=None,
-        W_init=None,
-        Win_init=None,
-        sr=None,
+        x: Optional[Union[NodeInput, Timestep]],
     ):
-        raise NotImplementedError()
-        dtype = lif.dtype
+        self._set_input_dim(x)
 
-        lif.set_input_dim(x.shape[-1])
+        [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
 
-        rng = rand_generator(seed)
-
-        if is_array(W_init):
-            W = W_init
-            if W.shape[0] != W.shape[1]:
-                raise ValueError(
-                    "Dimension mismatch inside W: "
-                    f"W is {W.shape} but should be "
-                    f"a square matrix."
-                )
-
-            if W.shape[0] != lif.output_dim:
-                lif._output_dim = W.shape[0]
-                lif.hypers["units"] = W.shape[0]
-
-        elif callable(W_init):
-            W = W_init(
-                lif.output_dim,
-                lif.output_dim,
-                sr=sr,
-                connectivity=rc_connectivity,
-                dtype=dtype,
-                seed=rng,
+        if callable(self.Win):
+            self.Win = self.Win(
+                self.units,
+                self.input_dim,
+                input_scaling=self.input_scaling,
+                connectivity=self.input_connectivity,
+                dtype=self.dtype,
+                seed=Win_rng,
             )
-            n_inhibitory = int(inhibitory * lif.output_dim)
-            W[:, :n_inhibitory] *= -1
 
-        lif.set_param("units", W.shape[0])
-        lif.set_param("W", W.astype(dtype))
-
-        out_dim = lif.output_dim
-
-        if is_array(Win_init):
-            Win = Win_init
-
-            if Win.shape[1] != x.shape[1]:
-                raise ValueError(
-                    f"Dimension mismatch in {lif.name}: Win input dimension is "
-                    f"{Win.shape[1]} but input dimension is {x.shape[1]}."
-                )
-
-            if Win.shape[0] != out_dim:
-                raise ValueError(
-                    f"Dimension mismatch in {lif.name}: Win internal dimension "
-                    f"is {Win.shape[0]} but the liquid dimension is {out_dim}"
-                )
-
-        elif callable(Win_init):
-            Win = Win_init(
-                lif.output_dim,
-                x.shape[1],
-                input_scaling=input_scaling,
-                connectivity=input_connectivity,
-                dtype=dtype,
-                seed=seed,
+        if callable(self.W):
+            self.W = self.W(
+                self.units,
+                self.units,
+                sr=self.sr,
+                connectivity=self.rc_connectivity,
+                dtype=self.dtype,
+                seed=W_rng,
             )
-        else:
-            dtype = lif.dtype
-            dtype_msg = (
-                "Data type {} not understood in {}. {} should be an array or a "
-                "callable returning an array."
-            )
-            raise ValueError(dtype_msg.format(str(type(Win_init)), lif.name, "Win"))
+            n_inhibitory = int(self.inhibitory * self.units)
+            self.W[:, :n_inhibitory] *= -1
 
-        lif.set_param("W", W.astype(dtype))
-        lif.set_param("Win", Win.astype(dtype))
-        lif.set_param("internal_state", lif.zero_state())
+        if callable(self.bias):
+            self.bias = self.bias(
+                self.units,
+                connectivity=1.0,
+                dtype=self.dtype,
+                seed=bias_rng,
+            )
+
+        self.state = {
+            "internal": np.zeros((self.units,)),
+            "out": np.zeros((self.units,)),
+        }
+
+        self.initialized = True
