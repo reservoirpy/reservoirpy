@@ -1,6 +1,8 @@
 # Author: Nathan Trouvain at 22/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+from __future__ import annotations
+
 from typing import Any, Mapping, Sequence, TypeVar, Union
 
 import numpy as np
@@ -8,25 +10,25 @@ from scipy.sparse import issparse, sparray
 
 global_dtype = np.float64
 
-Shape1D = tuple[int]
-Shape2D = tuple[int, int]
-Shape3D = tuple[int, int, int]
-NodeName = str
+# Creating a real type alias (Array1D) and then using it in another alias (Timestep)
+# as a str is a trick to both benefits from type checks from pyright and the like
+# and also have type aliases in documentation.
+# See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_type_aliases
+# See also ../docs/source/conf.py:184
+Array1D = np.ndarray[tuple[int], np.dtype[np.floating]]
+Array2D = np.ndarray[tuple[int, int], np.dtype[np.floating]]
+Array3D = np.ndarray[tuple[int, int, int], np.dtype[np.floating]]
 
-Timestep = np.ndarray[Shape1D, np.dtype[np.floating]]
-Timeseries = np.ndarray[Shape2D, np.dtype[np.floating]]
-MultiTimeseries = Union[
-    np.ndarray[Shape3D, np.dtype[np.floating]],
-    Sequence[Timeseries],
-]
-
+Timestep = Union["Array1D"]
+Timeseries = Union["Array2D"]
+MultiTimeseries = Union["Array3D", "Sequence[Timeseries]"]
 NodeInput = Union[Timeseries, MultiTimeseries]
 ModelInput = Union[NodeInput, dict[str, NodeInput]]
 MappedTimestep = dict[str, Timestep]
 ModelTimestep = Union[Timestep, MappedTimestep]
 State = dict[str, np.ndarray]
 Edge = tuple["Node", int, "Node"]
-Buffer = np.ndarray[Shape2D, np.dtype[np.floating]]
+Buffer = np.ndarray[tuple[int, int], np.dtype[np.floating]]
 
 Weights = Union[np.ndarray, sparray]
 Shape = TypeVar("Shape", int, tuple[int, ...])

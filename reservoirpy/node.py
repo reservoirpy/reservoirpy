@@ -167,9 +167,10 @@ class Node(ABC):
 
         Parameters
         ----------
-        x : array-like of shape ([n_inputs,] timesteps, input_dim) or list of
+        x : array-like of shape ([n_inputs,] timesteps, input_dim) or list of \
                 arrays of shape (timesteps, input_dim), optional
-            A sequence of data of shape (timesteps, features).
+            A timeseries, array of shape (timesteps, features), or a sequence of
+            timeseries. Input of the Node.
         iters : int, optional
             If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
             is used instead.
