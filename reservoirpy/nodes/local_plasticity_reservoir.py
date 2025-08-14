@@ -2,6 +2,7 @@ from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
 import scipy.sparse as sp
+from numpy.random import Generator
 
 from reservoirpy.utils.data_validation import check_node_input
 
@@ -156,6 +157,39 @@ class LocalPlasticityReservoir(TrainableNode):
     >>> states = reservoir.run(X_data)
     """
 
+    #: Number of neuronal units in the reservoir.
+    units: int
+    #: Local learning rate for the weight update.
+    eta: float
+    #: The threshold used in the "bcm" rule.
+    bcm_theta: float
+    #: If True, L2-normalize each row of W after its update.
+    synapse_normalization: bool
+    #: Number of training iterations.
+    epochs: int
+    #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
+    lr: float
+    #: Spectral radius of ``W`` (optional).
+    sr: float
+    #: Input scaling (float or array) (1.0 by default).
+    input_scaling: Union[float, Sequence]
+    #: Connectivity (or density) of ``Win`` (0.1 by default).
+    input_connectivity: float
+    #: Connectivity (or density) of ``Wfb`` (0.1 by default).
+    rc_connectivity: float
+    #: Input weights matrix (:math:`\mathbf{W}_{in}`).
+    Win: Weights
+    #: Recurrent weights matrix (:math:`\mathbf{W}`).
+    W: Weights
+    #: Bias vector (:math:`\mathbf{b}`).
+    bias: Weights
+    #: Activation of the reservoir units (tanh by default) (:math:`f`).
+    activation: Callable
+    #: Type of matrices elements. By default, ``np.float64``.
+    dtype: type
+    #: A random state generator. Used for generating Win and W.
+    rng: Generator
+
     def __init__(
         self,
         units: Optional[int] = None,
@@ -171,8 +205,8 @@ class LocalPlasticityReservoir(TrainableNode):
         sr: float = 1.0,
         lr: float = 1.0,
         input_scaling: Union[float, Sequence] = 1.0,
-        input_connectivity: Optional[float] = 0.1,
-        rc_connectivity: Optional[float] = 0.1,
+        input_connectivity: float = 0.1,
+        rc_connectivity: float = 0.1,
         Win: Union[Weights, Callable] = bernoulli,
         W: Union[Weights, Callable] = uniform,
         bias: Union[Weights, Callable] = bernoulli,

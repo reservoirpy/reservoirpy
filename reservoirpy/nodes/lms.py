@@ -6,7 +6,7 @@ from reservoirpy.utils.data_validation import check_node_input
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
-from ..type import NodeInput, State, Timeseries, Timestep, Weights
+from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array
 
 
 class LMS(OnlineNode):
@@ -14,21 +14,6 @@ class LMS(OnlineNode):
     algorithm.
 
     The learning rules is well described in [1]_.
-
-    :py:attr:`LMS.params` **list**
-
-    ================== =================================================================
-    ``Wout``           Learned output weights (:math:`\\mathbf{W}_{out}`).
-    ``bias``           Learned bias (:math:`\\mathbf{b}`).
-    ``P``              Matrix :math:`\\mathbf{P}` of RLS rule.
-    ================== =================================================================
-
-    :py:attr:`LMS.hypers` **list**
-
-    ================== =================================================================
-    ``alpha``          Learning rate (:math:`\\alpha`) (:math:`1\\cdot 10^{-6}` by default).
-    ``input_bias``     If True, learn a bias term (True by default).
-    ================== =================================================================
 
     Parameters
     ----------
@@ -78,6 +63,15 @@ class LMS(OnlineNode):
            Activity from Chaotic Neural Networks. Neuron, 63(4), 544–557.
            https://doi.org/10.1016/j.neuron.2009.07.018
     """
+
+    #: Learned output weights (:math:`\mathbf{W}_{out}`).
+    Wout: Weights
+    #: Learned bias (:math:`\mathbf{b}`).
+    bias: Weights
+    #: Learning rate (:math:`\alpha`) (:math:`1\cdot 10^{-6}` by default).
+    learning_rate: float
+    #: If True, learn a bias term (True by default).
+    fit_bias: bool
 
     def __init__(
         self,

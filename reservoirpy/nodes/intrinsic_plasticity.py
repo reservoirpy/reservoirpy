@@ -5,6 +5,7 @@ from functools import partial
 from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
+from numpy.random import Generator
 
 from reservoirpy.utils.data_validation import check_node_input
 
@@ -64,37 +65,6 @@ class IPReservoir(TrainableNode):
         - :math:`\\mathbf{r}` is the internal activation vector of the reservoir;
         - :math:`\\mathbf{u}` is the input timeseries;
         - :math:`f` and :math:`g` are activation functions.
-
-    :py:attr:`IPReservoir.params` **list:**
-
-    ================== =================================================================
-    ``W``              Recurrent weights matrix (:math:`\\mathbf{W}`).
-    ``Win``            Input weights matrix (:math:`\\mathbf{W}_{in}`).
-    ``bias``           Input bias vector (:math:`\\mathbf{b}_{in}`).
-    ``internal_state``  Internal state (:math:`\\mathbf{r}`).
-    ``a``              Gain of reservoir activation (:math:`\\mathbf{a}`).
-    ``b``              Bias of reservoir activation (:math:`\\mathbf{b}`).
-    ================== =================================================================
-
-    :py:attr:`IPReservoir.hypers` **list:**
-
-    ======================= ========================================================
-    ``lr``                  Leaking rate (1.0 by default) (:math:`\\mathrm{lr}`).
-    ``sr``                  Spectral radius of ``W`` (optional).
-    ``mu``                  Mean of the target distribution (0.0 by default) (:math:`\\mu`).
-    ``sigma``               Variance of the target distribution (1.0 by default) (:math:`\\sigma`).
-    ``learning_rate``       Learning rate (5e-4 by default).
-    ``epochs``              Number of epochs for training (1 by default).
-    ``input_scaling``       Input scaling (float or array) (1.0 by default).
-    ``rc_connectivity``     Connectivity (or density) of ``W`` (0.1 by default).
-    ``input_connectivity``  Connectivity (or density) of ``Win`` (0.1 by default).
-    ``noise_in``            Input noise gain (0 by default) (:math:`c_{in} * \\xi`).
-    ``noise_rc``            Reservoir state noise gain (0 by default) (:math:`c*\\xi`).
-    ``noise_type``          Distribution of noise (normal by default) (:math:`\\xi\\sim\\mathrm{Noise~type}`).
-    ``activation``          Activation of the reservoir units (tanh by default) (:math:`f`).
-    ``units``               Number of neuronal units in the reservoir.
-    ``noise_generator``     A random state generator.
-    ======================= ========================================================
 
     Parameters
     ----------
@@ -185,18 +155,53 @@ class IPReservoir(TrainableNode):
 
     """
 
+    #: Recurrent weights matrix (:math:`\mathbf{W}`).
+    W: Weights
+    #: Input weights matrix (:math:`\mathbf{W}_{in}`).
+    Win: Weights
+    #: Bias vector (:math:`\mathbf{bias}`).
+    bias: Weights
+    #: Gain of reservoir activation (:math:`\mathbf{a}`).
+    a: float
+    #: Bias of reservoir activation (:math:`\mathbf{b}`).
+    b: float
+    #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
+    lr: Union[float, np.ndarray]
+    #: Spectral radius of W.
+    sr: float
+    #: Mean of the target distribution (0.0 by default) (:math:`\mu`).
+    mu: float
+    #: Variance of the target distribution (1.0 by default) (:math:`\sigma`).
+    sigma: float
+    #: Learning rate (5e-4 by default).
+    learning_rate: float
+    #: Number of epochs for training (1 by default).
+    epochs: int
+    #: Input scaling (float or array) (1.0 by default).
+    input_scaling: Union[float, Sequence]
+    #: Connectivity (or density) of W (0.1 by default).
+    rc_connectivity: float
+    #: Connectivity (or density) of Win (0.1 by default).
+    input_connectivity: float
+    #: Activation of the reservoir units (tanh by default) (:math:`f`).
+    activation: Literal["tanh", "sigmoid"]
+    #: Number of neuronal units in the reservoir.
+    units: int
+    #: A random state generator.
+    rng: Generator
+
     def __init__(
         self,
         units: Optional[int] = None,
         sr: Optional[float] = None,
-        lr: float = 1.0,
+        lr: Union[float, np.ndarray] = 1.0,
         mu: float = 0.0,
         sigma: float = 1.0,
         learning_rate: float = 5e-4,
         epochs: int = 1,
         input_scaling: Union[float, Sequence] = 1.0,
-        input_connectivity: Optional[float] = 0.1,
-        rc_connectivity: Optional[float] = 0.1,
+        input_connectivity: float = 0.1,
+        rc_connectivity: float = 0.1,
         Win: Union[Weights, Callable] = bernoulli,
         W: Union[Weights, Callable] = uniform,
         bias: Union[Weights, Callable] = bernoulli,
