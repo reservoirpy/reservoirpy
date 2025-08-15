@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import deque
-from typing import Optional, Sequence, TypeVar
+from typing import Any, Optional, Sequence, TypeVar
 
 T = TypeVar("T")
 
@@ -130,6 +130,20 @@ def _get_links(previous, nexts, children):
             links[n.name] = next_children
 
     return links
+
+
+def find_pseudo_inputs(
+    nodes: list[T], edges: list[tuple[T, int, T]], y_mapping: dict[T, Any]
+) -> list[T]:
+    """
+    Find all nodes that are not receivers or that only receive forced feedback.
+    Guaranteed to preserve order.
+    """
+    unsupervised_receivers: set[T] = set(
+        [n for c, d, n in edges if d == 0 and c not in y_mapping.keys()]
+    )
+    sources = [node for node in nodes if node not in unsupervised_receivers]
+    return sources
 
 
 def find_inputs(nodes: list[T], edges: list[tuple[T, int, T]]) -> list[T]:
