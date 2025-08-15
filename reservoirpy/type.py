@@ -45,6 +45,17 @@ def is_multiseries(x: Union[NodeInput, Mapping[Any, NodeInput]]) -> bool:
     return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)
 
 
+def get_data_dimension(x: Union[Timestep, Timeseries, MultiTimeseries]) -> int:
+    if isinstance(x, Sequence):
+        if len(x) == 0:
+            raise ValueError("Can't get dimension of an empty list.")
+        dim = x[0].shape[-1]
+    else:
+        dim = x.shape[-1]  # works for both timesteps & timeseries
+
+    return dim
+
+
 def timestep_from_input(x: Union[NodeInput, Timestep]):
     if isinstance(x, Sequence):
         return np.zeros((x[0].shape[-1],))
