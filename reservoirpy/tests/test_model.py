@@ -223,15 +223,24 @@ def test_offline_fit_simple_model():
 def test_offline_fit_complex():
     plus_node = PlusNode()
     minus_node = MinusNode()
-    basic_offline_node = Offline(name="off1")
+    offline_node1 = Offline(name="off1")
     offline_node2 = Offline(name="off2")
-    model = [plus_node >> basic_offline_node, plus_node] >> minus_node >> offline_node2
+    model = [plus_node >> offline_node1, plus_node] >> minus_node >> offline_node2
 
     X = np.ones((5, 5, 5)) * 0.5
     Y_1 = np.ones((5, 5, 5))
     Y_2 = np.ones((5, 5, 10))  # after concat
 
     model.fit(X, y={"off1": Y_1, "off2": Y_2})
+
+    assert plus_node.input_dim == 5
+    assert plus_node.output_dim == 5
+    assert minus_node.input_dim == 10
+    assert minus_node.output_dim == 10
+    assert offline_node1.input_dim == 5
+    assert offline_node1.output_dim == 5
+    assert offline_node2.input_dim == 10
+    assert offline_node2.output_dim == 10
 
     res = model.run(X[0])
 
