@@ -114,7 +114,7 @@ class Node(ABC):
             Training data to the node. As it is not a trainable node, ``y`` is
             expected to be ``None``.
         """
-        ...  # TODO: make x Optional everywhere
+        ...
 
     @abstractmethod
     def _step(self, state: State, x: Timestep) -> State:
