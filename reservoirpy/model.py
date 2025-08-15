@@ -66,6 +66,8 @@ from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
 
+from reservoirpy.node import Node
+from reservoirpy.type import NodeInput, Timestep
 from reservoirpy.utils.data_validation import check_model_input, check_model_timestep
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
@@ -77,13 +79,14 @@ from .type import (
     State,
     Timeseries,
     Timestep,
+    get_data_dimension,
     is_multiseries,
-    timestep_from_input,
 )
 from .utils.graphflow import (
     find_inputs,
     find_outputs,
     find_parents_and_children,
+    find_pseudo_inputs,
     topological_sort,
     unique_ordered,
 )
@@ -181,45 +184,57 @@ class Model:
         # Turn y into a dict[Node, NodeInput]
 
         if isinstance(y, Mapping):
-            y_ = {self.named_nodes[name]: val for name, val in y.items()}
+            y_: dict[Node, Union[NodeInput, Timestep]] = {
+                self.named_nodes[name]: val for name, val in y.items()
+            }
         elif y is None:
             y_ = {}
         else:
             [trainable_node] = self.trainable_nodes
             y_ = {trainable_node: y}
 
-        # Initialize node_inputs from the model input
+        # Infer node input dimensions from the input they receive
 
-        node_inputs = {node: np.empty((0,)) for node in self.nodes}
+        node_input_dims = {node: 0 for node in self.nodes}
 
         if isinstance(x, dict):
             for node_name, val in x.items():
                 node = self.named_nodes[node_name]
-                val = timestep_from_input(val)
-                node_inputs[node] = np.concatenate((node_inputs[node], val), axis=-1)
+                node_input_dims[node] += get_data_dimension(val)
         else:
             [node] = self.inputs
-            x = timestep_from_input(x)
-            node_inputs[node] = np.concatenate((node_inputs[node], x), axis=-1)
+            node_input_dims[node] += get_data_dimension(x)
+
+        # also use y as forced teachers. Useful for models with feedback
+        for supervised_node, y_teacher in y_.items():
+            for child in self.children[supervised_node]:
+                node_input_dims[child] += get_data_dimension(y_teacher)
 
         # Initialize each node in execution_order
-
-        for node in self.execution_order:
-            node_input = node_inputs[node]
+        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
+        execution_order = topological_sort(self.nodes, self.edges, inputs=pseudo_inputs)
+        for node in execution_order:
+            node_input_dim = node_input_dims[node]
             if node.initialized:
-                if node_input.shape[-1] != node.input_dim:
+                if node_input_dim != node.input_dim:
                     raise ValueError(
                         f"{node} expects input of dimension {node.input_dim}"
-                        f"but receives input of dimension {node_input.shape[-1]}"
+                        f"but receives input of dimension {node_input_dim}"
                     )
             else:
                 if node in y_:
-                    node.initialize(x=node_input, y=y_[node])
+                    node.initialize(x=np.zeros((node_input_dim,)), y=y_[node])
                 else:
-                    node.initialize(x=node_input)
-            out = np.zeros((node.output_dim,))
-            for child in self.children[node]:
-                node_inputs[child] = np.concatenate((node_inputs[child], out), axis=-1)
+                    node.initialize(x=np.zeros((node_input_dim,)))
+            if node in y_.keys():
+                if get_data_dimension(y_[node]) != node.output_dim:
+                    raise ValueError(
+                        f"{node} expects training data of dimension {node.output_dim}"
+                        f"but receives data of dimension {get_data_dimension(y_[node])}"
+                    )
+            else:
+                for child in self.children[node]:
+                    node_input_dims[child] += node.output_dim
 
         self.feedback_buffers = {
             (p, d, c): np.zeros((d, p.output_dim)) for p, d, c in self.edges if d > 0
