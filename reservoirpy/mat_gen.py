@@ -1219,13 +1219,13 @@ def _cluster(
     n_c = shape[0] // cluster
 
     # Define the cluster matrix
-    c_matrix = matrix_dict[distribution](
-        n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng
+    c_matrices = matrix_dict[distribution](
+        cluster, n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng
     )
 
     # Create the cluster matrix
-    for i in range(0, cluster):
-        matrix[i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c] = c_matrix
+    for i in range(cluster):
+        matrix[i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c] = c_matrices[i]
 
     return matrix
 
