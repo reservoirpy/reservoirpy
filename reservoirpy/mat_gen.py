@@ -1285,7 +1285,7 @@ def _small_world(
         raise ValueError("proba_rewire must be between 0 and 1.")
 
     units = shape[0]
-    rg = rand_generator(seed)
+    rng = rand_generator(seed)
     matrix = np.zeros((units, units), dtype=dtype)
     half_neighbours = nb_close_neighbours // 2
     matrix_distribution = dict(
@@ -1296,39 +1296,46 @@ def _small_world(
         raise ValueError(
             f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random_sparse', 'bernoulli'."
         )
-    distribution_matrix_1 = matrix_distribution[distribution](
-        units, units, dtype=dtype, seed=seed, sparsity_type=sparsity_type, **kwargs
+    lower_diag_vals = matrix_distribution[distribution](
+        units * half_neighbours,
+        dtype=dtype,
+        seed=seed,
+        sparsity_type=sparsity_type,
+        **kwargs,
     )
-    distribution_matrix_2 = matrix_distribution[distribution](
-        units, units, dtype=dtype, seed=seed, sparsity_type=sparsity_type, **kwargs
+    upper_diag_vals = matrix_distribution[distribution](
+        units * half_neighbours,
+        dtype=dtype,
+        seed=seed,
+        sparsity_type=sparsity_type,
+        **kwargs,
     )
 
     # Branching nb_close_neighbours nodes to each node (creating the ring lattice)
-    indices = np.arange(units)
-    offsets = np.arange(1, half_neighbours + 1).reshape(-1, 1)
-    i = (indices + offsets) % units
-    j = np.broadcast_to(indices, i.shape)
-    matrix[i, j] = distribution_matrix_1[i, j]
-    matrix[j, i] = distribution_matrix_2[j, i]
+    indices = np.arange(units)  # (units,)
+    offsets = np.arange(1, half_neighbours + 1).reshape(-1, 1)  # (half_neigh, 1)
+    i = (indices + offsets) % units  # (units, half_neighbours)
+    j = np.tile(indices, (1, half_neighbours))
+    i, j = i.flatten(), j.flatten()
+    matrix[i, j] = lower_diag_vals
+    matrix[j, i] = upper_diag_vals
 
     # Rewiring edges with probability proba_rewire
     # We only consider the upper triangle of the matrix to avoid double connections
-    triu_i, triu_j = np.triu_indices(units, k=1)
-    connected_mask = matrix[triu_i, triu_j] != 0
-    edges = np.vstack((triu_i[connected_mask], triu_j[connected_mask])).T
+    edges = np.vstack((i, j)).T
 
-    rewire_mask = rg.random(len(edges)) < proba_rewire
-    edges_to_rewire = edges[rewire_mask]
+    rewire_mask = rng.random(units * half_neighbours) < proba_rewire
+    rewired_edges = edges[rewire_mask]
 
-    for i, j in edges_to_rewire:
-        matrix[i, j] = 0
-        matrix[j, i] = 0
+    for i, j in rewired_edges:
         possible_nodes = np.where((matrix[i] == 0) & (np.arange(units) != i))[0]
         if len(possible_nodes) == 0:
             continue
-        new_j = rg.choice(possible_nodes)
-        matrix[i, new_j] = distribution_matrix_1[i, j]
-        matrix[new_j, i] = distribution_matrix_2[j, i]
+        new_j = rng.choice(possible_nodes)
+        matrix[i, new_j] = matrix[i, j]
+        matrix[new_j, i] = matrix[j, i]
+        matrix[i, j] = 0
+        matrix[j, i] = 0
     return matrix
 
 
