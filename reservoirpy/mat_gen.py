@@ -554,9 +554,12 @@ def _random_sparse(
             raise ValueError("'connectivity' must be >0 and <1.")
 
         if connectivity >= 1.0 or len(shape) != 2:
-            matrix = rvs(size=shape).astype(dtype)
-            if connectivity < 1.0:
-                matrix[rg.random(shape) > connectivity] = 0.0
+            matrix = np.zeros(shape, dtype=dtype)
+            non_zeros_count = int(connectivity * np.prod(shape))
+            non_zero_weights = rvs(size=non_zeros_count).astype(dtype)
+            raveled_indices = rg.choice(matrix.size, non_zeros_count, replace=False)
+            indices = np.unravel_index(raveled_indices, matrix.shape)
+            matrix[indices] = non_zero_weights
         else:
             matrix = sparse.random_array(
                 shape,

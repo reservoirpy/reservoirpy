@@ -394,7 +394,7 @@ def test_orthogonal_matrix():
 
 def test_cluster_matrix():
 
-    shape = 100
+    shape = 1000
     c = 10
     p_in = 0.1
     p_out = 0.01
@@ -448,12 +448,14 @@ def test_cluster_matrix():
     # Check cluster density
     w_cluster_check = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out)
     w_cluster_check = w_cluster_check.toarray()
+
+    non_zeros_in_clusters = 0
     for i in range(0, c):
         current_cluster = w_cluster_check[
             i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c
         ]
-        cluster_density = (np.sum(current_cluster != 0)) / n_c * n_c
-        assert cluster_density == (p_in * n_c * n_c)
+        non_zeros_in_clusters += np.sum(current_cluster != 0)
+    assert non_zeros_in_clusters == (p_in * n_c * n_c * c)
 
     # Check for incorrect distribution
     with pytest.raises(ValueError):
