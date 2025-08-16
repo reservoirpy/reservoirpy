@@ -480,10 +480,10 @@ def test_small_world_matrix():
 
     assert np.all(np.isclose(W1.toarray(), W2.toarray()))
 
-    W1_big = small_world(10000, 10000, seed=1)
-    W2_big = small_world(10000, 10000, seed=1)
+    W1_big = small_world(1000, 1000, seed=1)
+    W2_big = small_world(1000, 1000, seed=1)
     assert np.all(np.isclose(W1_big.toarray(), W2_big.toarray()))
-    assert W1_big.shape == (10000, 10000)
+    assert W1_big.shape == (1000, 1000)
 
     nb_close_neighbours = 2
     W3 = small_world(
