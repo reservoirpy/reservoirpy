@@ -73,7 +73,6 @@ def one_hot_encode(y: Union[np.ndarray, List]):
         series_split_indices = np.cumsum(series_lengths)[:-1]
         concatenated_series = np.concatenate(y)
         concatenated_encoded, classes = one_hot_encode(concatenated_series)
-        print(concatenated_encoded.shape, len(series_lengths))
         encoded = np.split(concatenated_encoded, series_split_indices)
         return encoded, classes
 
