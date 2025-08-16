@@ -1286,28 +1286,27 @@ def _small_world(
 
     units = shape[0]
     rng = rand_generator(seed)
-    matrix = np.zeros((units, units), dtype=dtype)
     half_neighbours = nb_close_neighbours // 2
-    matrix_distribution = dict(
+
+    matrix = sparse.lil_array((units, units), dtype=dtype)
+
+    weight_distribution = dict(
         normal=normal, uniform=uniform, random_sparse=random_sparse, bernoulli=bernoulli
     )
-
-    if distribution not in matrix_distribution:
+    if distribution not in weight_distribution:
         raise ValueError(
             f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random_sparse', 'bernoulli'."
         )
-    lower_diag_vals = matrix_distribution[distribution](
+    lower_diag_weights = weight_distribution[distribution](
         units * half_neighbours,
         dtype=dtype,
         seed=seed,
-        sparsity_type=sparsity_type,
         **kwargs,
     )
-    upper_diag_vals = matrix_distribution[distribution](
+    upper_diag_weights = weight_distribution[distribution](
         units * half_neighbours,
         dtype=dtype,
         seed=seed,
-        sparsity_type=sparsity_type,
         **kwargs,
     )
 
@@ -1317,8 +1316,8 @@ def _small_world(
     i = (indices + offsets) % units  # (units, half_neighbours)
     j = np.tile(indices, (1, half_neighbours))
     i, j = i.flatten(), j.flatten()
-    matrix[i, j] = lower_diag_vals
-    matrix[j, i] = upper_diag_vals
+    matrix[i, j] = lower_diag_weights
+    matrix[j, i] = upper_diag_weights
 
     # Rewiring edges with probability proba_rewire
     # We only consider the upper triangle of the matrix to avoid double connections
@@ -1328,7 +1327,9 @@ def _small_world(
     rewired_edges = edges[rewire_mask]
 
     for i, j in rewired_edges:
-        possible_nodes = np.where((matrix[i] == 0) & (np.arange(units) != i))[0]
+        possible_nodes = np.where(
+            np.logical_and(matrix[i].toarray() == 0, np.arange(units) != i)
+        )[0]
         if len(possible_nodes) == 0:
             continue
         new_j = rng.choice(possible_nodes)
@@ -1336,7 +1337,7 @@ def _small_world(
         matrix[new_j, i] = matrix[j, i]
         matrix[i, j] = 0
         matrix[j, i] = 0
-    return matrix
+    return matrix.asformat(sparsity_type, copy=False)
 
 
 small_world = Initializer(_small_world)

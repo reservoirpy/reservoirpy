@@ -478,16 +478,21 @@ def test_small_world_matrix():
     W1 = small_world(10, 10, seed=1)
     W2 = small_world(10, 10, seed=1)
 
-    assert np.all(np.isclose(W1, W2))
+    assert np.all(np.isclose(W1.toarray(), W2.toarray()))
 
     W1_big = small_world(10000, 10000, seed=1)
     W2_big = small_world(10000, 10000, seed=1)
-    assert np.all(np.isclose(W1_big, W2_big))
+    assert np.all(np.isclose(W1_big.toarray(), W2_big.toarray()))
     assert W1_big.shape == (10000, 10000)
 
     nb_close_neighbours = 2
     W3 = small_world(
-        10, 10, seed=1, nb_close_neighbours=nb_close_neighbours, proba_rewire=0.0
+        10,
+        10,
+        seed=1,
+        sparsity_type="dense",
+        nb_close_neighbours=nb_close_neighbours,
+        proba_rewire=0.0,
     )
 
     assert np.all(np.diag(W3) == 0)
@@ -513,3 +518,9 @@ def test_small_world_matrix():
         _ = small_world(10, 10, seed=1, proba_rewire=-0.5)
     with pytest.raises(ValueError):
         _ = small_world(10, 10, seed=1, distribution="not_a_distribution")
+
+
+def test_small_world_sparsity_type():
+    W1 = small_world(100, 100, seed=1, sparsity_type="csr")
+    assert isinstance(W1, sparse.sparray)
+    assert W1.format == "csr"
