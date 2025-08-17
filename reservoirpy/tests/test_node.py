@@ -53,26 +53,25 @@ def test_node_dimensions():
     data = np.zeros((5,))
     res = plus_node(data)
 
-    # TODO: uncomment after type check
-    # # input size mismatch
-    # with pytest.raises(ValueError):
-    #     data = np.zeros((6,))
-    #     plus_node(data)
+    # input size mismatch
+    with pytest.raises(ValueError):
+        data = np.zeros((6,))
+        plus_node(data)
 
-    # # input size mismatch in run,
-    # # no matter how many timesteps are given
-    # with pytest.raises(ValueError):
-    #     data = np.zeros((5, 6))
-    #     plus_node.run(data)
+    # input size mismatch in run,
+    # no matter how many timesteps are given
+    with pytest.raises(ValueError):
+        data = np.zeros((5, 6))
+        plus_node.run(data)
 
-    # with pytest.raises(ValueError):
-    #     data = np.zeros((1, 6))
-    #     plus_node.run(data)
+    with pytest.raises(ValueError):
+        data = np.zeros((1, 6))
+        plus_node.run(data)
 
-    # # no timespans in call, only single timesteps
-    # with pytest.raises(ValueError):
-    #     data = np.zeros((2, 5))
-    #     plus_node(data)
+    # no timespans in call, only single timesteps
+    with pytest.raises(ValueError):
+        data = np.zeros((2, 5))
+        plus_node(data)
 
 
 def test_node_run():
@@ -169,9 +168,6 @@ def test_partial_fit_unsupervised():
     assert_allclose(online_node.b, 150.0)
 
     X = [np.ones((10, 5)) * 2.0] * 3
-
-    # with pytest.raises(TypeError):  # TODO
-    #     online_node.partial_fit(X)
 
 
 # def test_train_raise():
