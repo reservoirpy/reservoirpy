@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Any, Generator, Iterable, TypeVar
+from typing import Any, Generator, Iterable, Mapping, TypeVar
 
 import numpy as np
 
@@ -111,7 +111,7 @@ T = TypeVar("T")
 
 
 def mapping_iterator(
-    *x: dict[T, Timeseries]
+    *x: Mapping[T, Timeseries]
 ) -> Generator[list[dict[T, Timestep]], Any, None]:
     n_timesteps = x[0][list(x[0].keys())[0]].shape[0]
 

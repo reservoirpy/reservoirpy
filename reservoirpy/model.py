@@ -245,7 +245,7 @@ class Model:
 
     def _step(
         self,
-        state: tuple[FeedbackBuffers, dict[Node, State]],
+        state: tuple[FeedbackBuffers, Mapping[Node, State]],
         x: Mapping[Node, Timestep],
     ) -> tuple[FeedbackBuffers, dict[Node, State]]:
         buffers, node_states = state
@@ -307,21 +307,36 @@ class Model:
     ) -> tuple[tuple[FeedbackBuffers, Mapping[Node, State]], Mapping[Node, Timeseries]]:
 
         buffers, node_states = state
+        # can be run offline (can be faster) if there is no (buffer) feedback
+        can_be_run_offline = len(buffers) == 0
 
-        output_timeseries: dict[Node, Timeseries] = {}
         new_state: dict[Node, State] = {}
 
-        for node in self.execution_order:
-            inputs = []
-            if node in x:
-                inputs.append(x[node])
-            inputs += [output_timeseries[parent] for parent in self.parents[node]]
-            node_input = np.concatenate(inputs, axis=-1)
-            new_state[node], output_timeseries[node] = node._run(
-                node_states[node], node_input
-            )
+        if can_be_run_offline:
+            output_timeseries: dict[Node, Timeseries] = {}
+            # "offline" run: Node by Node
+            for node in self.execution_order:
+                inputs = []
+                if node in x:
+                    inputs.append(x[node])
+                inputs += [output_timeseries[parent] for parent in self.parents[node]]
+                node_input = np.concatenate(inputs, axis=-1)
+                new_state[node], output_timeseries[node] = node._run(
+                    node_states[node], node_input
+                )
+        else:
+            # "online" run: step by step
+            n_timesteps = x[list(x.keys())[0]].shape[0]
+            output_timeseries: dict[Node, Timeseries] = {
+                node: np.zeros((n_timesteps, node.output_dim)) for node in self.nodes
+            }
+            for i, (timestep,) in enumerate(mapping_iterator(x)):
+                buffers, node_states = self._step((buffers, node_states), timestep)
 
-        return (buffers, new_state), output_timeseries  # TODO: buffer
+                for node in self.nodes:
+                    output_timeseries[node][i] = node_states[node]["out"]
+
+        return (buffers, new_state), output_timeseries
 
     def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
         # Auto-regressive mode
