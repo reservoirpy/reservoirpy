@@ -244,7 +244,9 @@ class Model:
         self.initialized = True
 
     def _step(
-        self, state: tuple[FeedbackBuffers, dict[Node, State]], x: ModelTimestep
+        self,
+        state: tuple[FeedbackBuffers, dict[Node, State]],
+        x: Mapping[Node, Timestep],
     ) -> tuple[FeedbackBuffers, dict[Node, State]]:
         buffers, node_states = state
 
@@ -252,12 +254,8 @@ class Model:
 
         for node in self.execution_order:
             inputs = []
-            if isinstance(x, dict):
-                if node.name in x:
-                    inputs.append(x[node.name])
-            else:
-                if self.inputs[0] == node:
-                    inputs.append(x)
+            if node in x:
+                inputs.append(x[node])
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
             inputs += [
                 buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
@@ -281,9 +279,17 @@ class Model:
         if not self.initialized:
             self.initialize(x)
 
+        if isinstance(x, Mapping):
+            x_mapping: dict[Node, Timestep] = {
+                self.named_nodes[name]: val for name, val in x.items()
+            }
+        else:
+            [input_node] = self.inputs
+            x_mapping = {input_node: x}
+
         state = {node: node.state for node in self.nodes}
         buffers = self.feedback_buffers
-        new_buffers, new_state = self._step((buffers, state), x)
+        new_buffers, new_state = self._step((buffers, state), x_mapping)
 
         for node in new_state:
             node.state = new_state[node]
@@ -401,7 +407,7 @@ class Model:
         if not self.initialized:
             self.initialize(x, y)
 
-        # Turn y into a dict[Node, NodeInput]
+        # Turn x into a dict[Node, NodeInput]
         if isinstance(x, Mapping):
             x_ = {self.named_nodes[node]: value for node, value in x.items()}
         else:
@@ -426,7 +432,7 @@ class Model:
         buffers = self.feedback_buffers
         for i, (xs, ys) in enumerate(
             zip(zip(*x_.values()), zip(*y_.values()))
-        ):  # TODO: add strict=True for Py3.10
+        ):  # TODO: add strict=True when Py3.9 support drops
             x_timestep = dict(zip(x_.keys(), xs))
             y_timestep = dict(zip(y_.keys(), ys))
             buffers, states = self._learning_step(
