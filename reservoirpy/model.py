@@ -61,7 +61,6 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from itertools import repeat
 from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
@@ -94,6 +93,7 @@ from .utils.model_utils import (
     check_input_output_connections,
     check_unnamed_in_out,
     check_unnamed_trainable,
+    mapping_iterator,
     unfold_mapping,
 )
 
@@ -416,7 +416,7 @@ class Model:
 
         # Turn y into a dict[Node, NodeInput]
         if y is None:
-            y_ = {None: repeat(None)}
+            y_ = {}
         elif isinstance(y, Mapping):
             y_ = {self.named_nodes[name]: val for name, val in y.items()}
         else:
@@ -430,11 +430,7 @@ class Model:
 
         states = {node: node.state for node in self.nodes}
         buffers = self.feedback_buffers
-        for i, (xs, ys) in enumerate(
-            zip(zip(*x_.values()), zip(*y_.values()))
-        ):  # TODO: add strict=True when Py3.9 support drops
-            x_timestep = dict(zip(x_.keys(), xs))
-            y_timestep = dict(zip(y_.keys(), ys))
+        for i, (x_timestep, y_timestep) in enumerate(mapping_iterator(x_, y_)):
             buffers, states = self._learning_step(
                 (buffers, states), x_timestep, y_timestep
             )
@@ -468,7 +464,7 @@ class Model:
 
         # Turn y into a dict[Node, NodeInput]
         if y is None:
-            y_ = {None: repeat(None)}
+            y_ = {}
         elif isinstance(y, Mapping):
             y_ = {self.named_nodes[name]: val for name, val in y.items()}
         else:

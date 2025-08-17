@@ -2,11 +2,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Iterable
+from typing import Any, Generator, Iterable, TypeVar
 
 import numpy as np
 
-from reservoirpy.type import MultiTimeseries, Timeseries
+from reservoirpy.type import MultiTimeseries, Timeseries, Timestep
 
 from ..node import Node
 from ..nodes import Input, Output
@@ -105,6 +105,18 @@ def fold_mapping(model, states, return_states):
         return states_map[model.output_nodes[0].name]
 
     return states_map
+
+
+T = TypeVar("T")
+
+
+def mapping_iterator(
+    *x: dict[T, Timeseries]
+) -> Generator[list[dict[T, Timestep]], Any, None]:
+    n_timesteps = x[0][list(x[0].keys())[0]].shape[0]
+
+    for i in range(n_timesteps):
+        yield [{k: v[i] for k, v in data.items()} for data in x]
 
 
 def check_input_output_connections(edges: list[tuple[Node, int, Node]]):
