@@ -218,7 +218,6 @@ class Model:
         # execution order / cycle detection (with teacher forcing)
         pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
         pseudo_edges = [edge for edge in self.edges if edge[0] not in y_]
-        print("pseudo_execution_order")
         self.pseudo_execution_order = topological_sort(
             self.nodes, pseudo_edges, inputs=pseudo_inputs
         )
