@@ -11,8 +11,9 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
    :toctree: generated/
    :template: autosummary/class.rst
 
-   link - Link Nodes into a Model.
+   link - Link Nodes or Model with a direct connection.
    merge - Merge Models.
+   link_feedback - Link Nodes or Models with a feedback connection.
 """
 
 from itertools import product

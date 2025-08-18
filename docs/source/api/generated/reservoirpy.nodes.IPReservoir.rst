@@ -32,6 +32,23 @@ reservoirpy.nodes.IPReservoir
       ~IPReservoir.input_dim
       ~IPReservoir.name
       ~IPReservoir.output_dim
+      ~IPReservoir.W
+      ~IPReservoir.Win
+      ~IPReservoir.bias
+      ~IPReservoir.a
+      ~IPReservoir.b
+      ~IPReservoir.lr
+      ~IPReservoir.sr
+      ~IPReservoir.mu
+      ~IPReservoir.sigma
+      ~IPReservoir.learning_rate
+      ~IPReservoir.epochs
+      ~IPReservoir.input_scaling
+      ~IPReservoir.rc_connectivity
+      ~IPReservoir.input_connectivity
+      ~IPReservoir.activation
+      ~IPReservoir.units
+      ~IPReservoir.rng
       ~IPReservoir.initialized
       ~IPReservoir.state
    

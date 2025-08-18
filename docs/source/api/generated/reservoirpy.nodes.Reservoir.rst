@@ -39,6 +39,7 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.Win
       ~Reservoir.W
       ~Reservoir.bias
+      ~Reservoir.dtype
       ~Reservoir.activation
       ~Reservoir.rng
    

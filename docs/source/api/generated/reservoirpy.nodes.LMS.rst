@@ -30,6 +30,10 @@ reservoirpy.nodes.LMS
       ~LMS.input_dim
       ~LMS.name
       ~LMS.output_dim
+      ~LMS.Wout
+      ~LMS.bias
+      ~LMS.learning_rate
+      ~LMS.fit_bias
       ~LMS.initialized
       ~LMS.state
    
