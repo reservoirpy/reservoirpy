@@ -123,6 +123,19 @@ def test_complex_node_link():
     assert [node.input_dim for node in model.nodes] == expected_dims
 
 
+def test_model_complex():
+    from ..nodes import Reservoir, Ridge
+
+    r1 = Reservoir(10)
+    r2 = Reservoir(10)
+    read1 = Ridge()
+    read2 = Ridge()
+    read3 = Ridge()
+
+    model = r1 >> read1 >> r2 >> read2 >> read3
+    model &= (r1 << r2) & (r1 << read1) & (r2 << read2)
+
+
 def test_model_call():
     data = np.zeros((5,))
 
