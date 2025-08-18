@@ -14,7 +14,6 @@ def unique_ordered(x: Sequence[T]) -> list[T]:
 
 def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     """Returns two dicts linking nodes to their parents and children in the graph."""
-    # TODO: more efficient method, not in O(#nodes * #edges)
     parents = {
         child: unique_ordered([p for p, d, c in edges if c is child and d == 0])
         for child in nodes
@@ -25,6 +24,17 @@ def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     }
 
     return parents, children
+
+
+def find_indirect_children(nodes: list[T], edges: list[tuple[T, int, T]]):
+    """Returns two dicts linking nodes to their children in the graph."""
+
+    children = {
+        parent: unique_ordered([c for p, d, c in edges if p is parent])
+        for parent in nodes
+    }
+
+    return children
 
 
 def topological_sort(
