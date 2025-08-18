@@ -556,12 +556,16 @@ class Model:
     def __lshift__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
     ) -> "Model":
-        raise NotImplementedError()
+        from .ops import link_feedback
+
+        return link_feedback(sender=other, receiver=self)
 
     def __rlshift__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
     ) -> "Model":
-        raise NotImplementedError()
+        from .ops import link_feedback
+
+        return link_feedback(sender=self, receiver=other)
 
     def __and__(
         self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]

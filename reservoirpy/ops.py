@@ -40,7 +40,7 @@ def _check_all_models(*operands):
 
 
 def _link_1to1(
-    left: Union[Node, Model], right: Union[Node, Model]
+    left: Union[Node, Model], right: Union[Node, Model], delay=0
 ) -> tuple[list[Node], list[tuple[Node, int, Node]]]:
     """Connects two nodes or models. See `link` doc for more info."""
     # fetch all nodes in the two subgraphs, if they are models.
@@ -59,7 +59,7 @@ def _link_1to1(
     senders = [left] if isinstance(left, Node) else left.outputs
     receivers = [right] if isinstance(right, Node) else right.inputs
 
-    new_edges = list(product(senders, [0], receivers))
+    new_edges = list(product(senders, [delay], receivers))
 
     # maybe nodes are already initialized?
     # check if connected dimensions are ok
@@ -221,9 +221,7 @@ def merge(
         operation is impossible. In-place merging can only take place on a
         Model instance.
     """
-    # TODO: type check
     # TODO: copy delay buffers
-    # TODO: inplace
     _check_all_models(*models)
 
     nodes: list[Node] = []
@@ -255,8 +253,60 @@ def merge(
 
 
 def link_feedback(
-    node: Union[Node, Model, Sequence[Union[Node, Model]]],
-    feedback: Union[Node, Model, Sequence[Union[Node, Model]]],
-    inplace: bool = False,
+    sender: Union[Node, Model, Sequence[Union[Node, Model]]],
+    receiver: Union[Node, Model, Sequence[Union[Node, Model]]],
 ) -> Model:
-    raise NotImplementedError()  # TODO
+    """Create a feedback connection from the ``sender`` to the ``receiver``.
+    Feedback connections are regular node-to-node connections with a delay of
+    one timestep.
+
+    If ``sender`` or ``receiver`` is a Model or a list of Nodes or Models, all
+    outputs of ``sender`` will be connected as feedback to ``receiver``.
+
+     You can also perform this operation using the ``<<`` operator::
+
+        node1 = node1 << node2
+        # with feedback from a Model
+        node1 = node1 << (fbnode1 >> fbnode2)
+        # with feedback from a list of nodes or models
+        node1 = node1 << [fbnode1, fbnode2, ...]
+
+    You can also use this function to define feedback::
+
+        node1 = link_feedback(node1, node2)
+
+    Parameters
+    ----------
+    sender : Node, Model, or list of Nodes or Models
+        Node(s) or Model(s) sending feedback.
+    receiver : Node, Model, or list of Nodes or Models
+        Node(s) or Model(s) receiving feedback.
+
+    Returns
+    -------
+        Model
+            A model instance with all node and connections from ``sender`` and
+            ``receiver`` and with feedback connections from ``sender`` to
+            ``receiver``.
+
+    Raises
+    ------
+        TypeError
+            If any of the senders or receivers are not Nodes or Models.
+    """
+    # TODO: copy delay buffers
+    _check_all_models(sender, receiver)
+
+    left_seq: Sequence = sender if isinstance(sender, Sequence) else [sender]
+    right_seq: Sequence = receiver if isinstance(receiver, Sequence) else [receiver]
+
+    nodes: list[Node] = []
+    edges: list[tuple[Node, int, Node]] = []
+
+    for sender_element in left_seq:
+        for receiver_element in right_seq:
+            new_nodes, new_edges = _link_1to1(sender_element, receiver_element, delay=1)
+            nodes += new_nodes
+            edges += new_edges
+
+    return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
