@@ -93,6 +93,7 @@ from .utils.model_utils import (
     check_input_output_connections,
     check_unnamed_in_out,
     check_unnamed_trainable,
+    data_from_buffer,
     join_data,
     mapping_iterator,
     unfold_mapping,
@@ -151,7 +152,7 @@ class Model:
         )
         self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
 
-        # execution order / cycle detection
+        # execution order / cycle detection (without teacher forcing)
         self.execution_order = topological_sort(
             self.nodes, self.edges, inputs=self.inputs
         )
@@ -211,10 +212,13 @@ class Model:
             for child in self.children[supervised_node]:
                 node_input_dims[child] += get_data_dimension(y_teacher)
 
-        # Initialize each node in execution_order
+        # execution order / cycle detection (with teacher forcing)
         pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
-        execution_order = topological_sort(self.nodes, self.edges, inputs=pseudo_inputs)
-        for node in execution_order:
+        self.pseudo_execution_order = topological_sort(
+            self.nodes, self.edges, inputs=pseudo_inputs
+        )
+        # Initialize each node in execution_order
+        for node in self.pseudo_execution_order:
             node_input_dim = node_input_dims[node]
             if node.initialized:
                 if node_input_dim != node.input_dim:
@@ -484,7 +488,16 @@ class Model:
         if not self.initialized:
             self.initialize(x, y)
 
-        result: dict[Node, list[Timeseries]] = defaultdict(list)
+        # TODO: try removing the default list
+        result: dict[Node, NodeInput] = defaultdict(list)
+        buffers = self.feedback_buffers
+
+        # Turn x into a dict[Node, NodeInput]
+        if isinstance(x, Mapping):
+            x_ = {self.named_nodes[node]: value for node, value in x.items()}
+        else:
+            [input_node] = self.inputs
+            x_ = {input_node: x}
 
         # Turn y into a dict[Node, NodeInput]
         if y is None:
@@ -495,22 +508,30 @@ class Model:
             [trainable_node] = self.trainable_nodes
             y_ = {trainable_node: y}
 
-        for node in self.execution_order:
+        # forced teaching
+        for supervised in y_:
+            # TODO: handle Unsupervised has children
+            result[supervised] = y_[supervised]
+
+        for node in self.pseudo_execution_order:
             inputs: list[NodeInput] = []
-            if isinstance(x, dict):
-                if node.name in x:
-                    inputs.append(x[node.name])
-            else:
-                if self.inputs == [node]:
-                    inputs.append(x)
+            if node in x_:
+                inputs.append(x_[node])
             inputs += [result[parent] for parent in self.parents[node]]
-            # TODO: buffers
+            for (p, _d, c), buffer in buffers.items():
+                if c == node:
+                    new_buffer, data = data_from_buffer(buffer, result[p])
+                    buffers[(p, _d, c)] = new_buffer
+                    inputs.append(data)
+
+            inputs += [
+                buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
+            ]
+            print("inputs:", node, inputs)
             node_input = join_data(*inputs)
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
                 node.fit(node_input, node_target, warmup=warmup)
-                # TODO: handle Unsupervised has children
-                result[node] = node_target  # forced teacher
             else:
                 result[node] = node.run(node_input)
 

@@ -132,6 +132,20 @@ def join_data(*xs: NodeInput) -> NodeInput:
         return np.concatenate(xs, axis=-1)
 
 
+def data_from_buffer(buffer: np.ndarray, x: NodeInput) -> tuple[np.ndarray, NodeInput]:
+    delay = buffer.shape[0]
+    if isinstance(x, Sequence):
+        buffer_and_x = [np.concatenate((buffer, series), axis=0) for series in x]
+        return buffer_and_x[-1][delay:], [ts[-delay:] for ts in buffer_and_x]
+    if x.ndim == 3:
+        duplicated_buffer = np.tile(buffer, (x.shape[0], 1, 1))
+        buffer_and_x = np.concatenate((duplicated_buffer, x), axis=1)
+        return buffer_and_x[0][delay:], buffer_and_x[:, -delay:]
+    else:
+        buffer_and_x = np.concatenate((buffer, x), axis=0)
+        return buffer_and_x[delay:], buffer_and_x[-delay:]
+
+
 def check_input_output_connections(edges: list[tuple[Node, int, Node]]):
     """Raise a warning if an Input node has an incoming connection or if an
     Output node has an outgoing connection."""
