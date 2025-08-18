@@ -400,6 +400,9 @@ class Model:
             inputs = []
             if node in x:
                 inputs.append(x[node])
+            inputs += [
+                buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
+            ]
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             if isinstance(node, OnlineNode):
@@ -408,7 +411,12 @@ class Model:
             else:
                 new_state[node] = node._step(node_states[node], node_input)
 
-        return buffers, new_state
+        new_buffers = {edge: buffer.copy() for edge, buffer in buffers.items()}
+        for (p, d, c), buffer in new_buffers.items():
+            buffer[-1] = new_state[p]["out"]
+            new_buffers[(p, d, c)] = np.roll(buffer, 1, axis=0)
+
+        return new_buffers, new_state
 
     def partial_fit(
         self,
