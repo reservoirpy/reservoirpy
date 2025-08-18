@@ -82,6 +82,7 @@ from .type import (
     is_multiseries,
 )
 from .utils.graphflow import (
+    find_indirect_children,
     find_inputs,
     find_outputs,
     find_parents_and_children,
@@ -153,8 +154,9 @@ class Model:
         self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
 
         # execution order / cycle detection (without teacher forcing)
+        direct_edges = [edge for edge in self.edges if edge[1] == 0]
         self.execution_order = topological_sort(
-            self.nodes, self.edges, inputs=self.inputs
+            self.nodes, direct_edges, inputs=self.inputs
         )
         self.feedback_buffers = None
 
@@ -208,14 +210,17 @@ class Model:
             node_input_dims[node] += get_data_dimension(x)
 
         # also use y as forced teachers. Useful for models with feedback
+        indirect_children = find_indirect_children(nodes=self.nodes, edges=self.edges)
         for supervised_node, y_teacher in y_.items():
-            for child in self.children[supervised_node]:
+            for child in indirect_children[supervised_node]:
                 node_input_dims[child] += get_data_dimension(y_teacher)
 
         # execution order / cycle detection (with teacher forcing)
         pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
+        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_]
+        print("pseudo_execution_order")
         self.pseudo_execution_order = topological_sort(
-            self.nodes, self.edges, inputs=pseudo_inputs
+            self.nodes, pseudo_edges, inputs=pseudo_inputs
         )
         # Initialize each node in execution_order
         for node in self.pseudo_execution_order:
@@ -523,10 +528,6 @@ class Model:
                     new_buffer, data = data_from_buffer(buffer, result[p])
                     buffers[(p, _d, c)] = new_buffer
                     inputs.append(data)
-
-            inputs += [
-                buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
-            ]
             node_input = join_data(*inputs)
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
