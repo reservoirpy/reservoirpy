@@ -20,12 +20,12 @@ class RLS(OnlineNode):
     ----------
     alpha : float or Python generator or iterable, default to 1e-6
         Diagonal value of matrix P.
-    Wout : callable or array-like of shape (units, targets), default to :py:func:`~rpy3.mat_gen.zeros`
+    Wout : callable or array-like of shape (units, targets), default to :py:func:`~reservoirpy.mat_gen.zeros`
         Output weights matrix or initializer. If a callable (like a function) is
         used, then this function should accept any keywords
         parameters and at least two parameters that will be used to define the shape of
         the returned weight matrix.
-    bias : callable or array-like of shape (units, 1), default to :py:func:`~rpy3.mat_gen.zeros`
+    bias : callable or array-like of shape (units, 1), default to :py:func:`~reservoirpy.mat_gen.zeros`
         Bias weights vector or initializer. If a callable (like a function) is
         used, then this function should accept any keywords
         parameters and at least two parameters that will be used to define the shape of
@@ -59,7 +59,7 @@ class RLS(OnlineNode):
     >>> noise = np.random.normal(scale=0.1, size=(100, 1))
     >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
 
-    >>> from rpy3.nodes import RLS
+    >>> from reservoirpy.nodes import RLS
     >>> rls_node = RLS(alpha=1e-1)
 
     >>> _ = rls_node.train(x[:5], y[:5])

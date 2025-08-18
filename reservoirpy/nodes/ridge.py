@@ -63,7 +63,7 @@ class Ridge(ParallelNode):
     >>> noise = np.random.normal(scale=0.1, size=(100, 1))
     >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
     >>>
-    >>> from rpy3.nodes import Ridge
+    >>> from reservoirpy.nodes import Ridge
     >>> ridge_regressor = Ridge(ridge=0.001)
     >>>
     >>> ridge_regressor.fit(x, y)
