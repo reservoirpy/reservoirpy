@@ -527,7 +527,6 @@ class Model:
             inputs += [
                 buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
             ]
-            print("inputs:", node, inputs)
             node_input = join_data(*inputs)
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
