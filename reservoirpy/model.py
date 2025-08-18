@@ -61,7 +61,7 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional, Sequence, Union
 
 import numpy as np
 
@@ -93,6 +93,7 @@ from .utils.model_utils import (
     check_input_output_connections,
     check_unnamed_in_out,
     check_unnamed_trainable,
+    join_data,
     mapping_iterator,
     unfold_mapping,
 )
@@ -495,7 +496,7 @@ class Model:
             y_ = {trainable_node: y}
 
         for node in self.execution_order:
-            inputs = []
+            inputs: list[NodeInput] = []
             if isinstance(x, dict):
                 if node.name in x:
                     inputs.append(x[node.name])
@@ -504,7 +505,7 @@ class Model:
                     inputs.append(x)
             inputs += [result[parent] for parent in self.parents[node]]
             # TODO: buffers
-            node_input = np.concatenate(inputs, axis=-1)  # TODO: handle multi-series
+            node_input = join_data(*inputs)
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
                 node.fit(node_input, node_target, warmup=warmup)

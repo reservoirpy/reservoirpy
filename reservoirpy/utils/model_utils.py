@@ -2,11 +2,17 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Any, Generator, Iterable, Mapping, TypeVar
+from typing import Any, Generator, Iterable, Mapping, Sequence, TypeVar
 
 import numpy as np
 
-from reservoirpy.type import MultiTimeseries, Timeseries, Timestep
+from reservoirpy.type import (
+    FeedbackBuffers,
+    MultiTimeseries,
+    NodeInput,
+    Timeseries,
+    Timestep,
+)
 
 from ..node import Node
 from ..nodes import Input, Output
@@ -117,6 +123,13 @@ def mapping_iterator(
 
     for i in range(n_timesteps):
         yield [{k: v[i] for k, v in data.items()} for data in x]
+
+
+def join_data(*xs: NodeInput) -> NodeInput:
+    if isinstance(xs[0], Sequence):
+        return [np.concatenate(elements, axis=-1) for elements in zip(xs)]
+    else:
+        return np.concatenate(xs, axis=-1)
 
 
 def check_input_output_connections(edges: list[tuple[Node, int, Node]]):
