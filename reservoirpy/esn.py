@@ -1,359 +1,104 @@
-# # Author: Nathan Trouvain at 27/10/2021 <nathan.trouvain@inria.fr>
-# # Licence: MIT License
-# # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-# from copy import deepcopy
-# from multiprocessing import Manager
+from typing import Optional
+
+from reservoirpy.node import Node, TrainableNode
+from reservoirpy.nodes.io import Input
+from reservoirpy.nodes.reservoir import Reservoir
+from reservoirpy.nodes.ridge import Ridge
+from reservoirpy.type import Edge
+
+from .model import Model
+from .utils.model_utils import _obj_from_kwargs
+
+
+class ESN(Model):
+    """Simple Echo State Network.
+
+    This class is provided as a wrapper for a simple reservoir connected to a
+    readout.
+
+    Parameters
+    ----------
+    units : int, optional
+        Number of reservoir units. If None, the number of units will be inferred from
+        the ``W`` matrix shape.
+    reservoir : Node, optional
+        A Node instance to use as a reservoir,
+        such as a :py:class:`~reservoirpy.nodes.Reservoir` node.
+    readout : Node, optional
+        A Node instance to use as a readout,
+        such as a :py:class:`~reservoirpy.nodes.Ridge` node
+        (only this one is supported).
+    feedback : bool, defaults to False
+        If True, the readout is connected to the reservoir through
+        a feedback connection.
+    input_to_readout : bool, defaults to False
+        If True, the input is directly fed to the readout. See
+        :ref:`/user_guide/advanced_demo.ipynb#Input-to-readout-connections`.
+    **kwargs
+        Arguments passed to the reservoir and readout.
+
+    See Also
+    --------
+    Reservoir
+    Ridge
+
+    Example
+    -------
+    >>> from reservoirpy.nodes import Reservoir, Ridge, ESN
+    >>>
+    >>> reservoir, readout = Reservoir(100, sr=0.9), Ridge(ridge=1e-6)
+    >>> model = ESN(reservoir=reservoir, readout=readout)
+    """
+
+    #: A :py:class:`~reservoirpy.nodes.Reservoir` or a :py:class:`~reservoirpy.nodes.NVAR` instance.
+    reservoir: Node
+    #: A :py:class:`~reservoirpy.nodes.Ridge` instance.
+    readout: TrainableNode
+    #: Is readout connected to reservoir through feedback (False by default).
+    feedback: bool
+    #: Does the readout directly receives the input (False by default).
+    input_to_readout: bool
+    #: Input node, if ``input_to_readout`` is set to True
+    input_node: Optional[Input] = None
+
+    def __init__(
+        self,
+        reservoir: Optional[Reservoir] = None,
+        readout: Optional[Ridge] = None,
+        feedback=False,
+        input_to_readout=False,
+        **kwargs,
+    ):
+        if reservoir is None:
+            reservoir = _obj_from_kwargs(Reservoir, kwargs)
+
+        if readout is None:
+            # avoid argument name collision
+            if "bias" in kwargs:
+                kwargs.pop("bias")
+            if "readout_bias" in kwargs:
+                kwargs["bias"] = kwargs["readout_bias"]
+                kwargs.pop("readout_bias")
+            if "input_dim" in kwargs:
+                kwargs.pop("input_dim")
+            readout = _obj_from_kwargs(Ridge, kwargs)
+
+        nodes: list[Node] = [reservoir, readout]
+        edges: list[Edge] = [(reservoir, 0, readout)]
+
+        if feedback:
+            edges.append((readout, 1, reservoir))
+
+        if input_to_readout:
+            input_node = Input()
+            nodes.append(input_node)
+            edges.append((input_node, 0, reservoir))
+            edges.append((input_node, 0, readout))
+            self.input_node = input_node
+
+        self.reservoir = reservoir
+        self.readout = readout
+        self.feedback = feedback
+        self.input_to_readout = input_to_readout
 
-# import numpy as np
-# from joblib import Parallel, delayed
-
-# from .._base import call
-# from ..model import FrozenModel
-# from ..node import Node
-# from ..utils import _obj_from_kwargs, progress, verbosity
-# from ..utils.graphflow import dispatch
-# from ..utils.model_utils import to_data_mapping
-# from ..utils.parallel import get_joblib_backend
-# from ..utils.validation import is_mapping
-# from .io import Input
-# from .readouts import Ridge
-# from .reservoirs import NVAR, Reservoir
-
-# _LEARNING_METHODS = {"ridge": Ridge}
-
-# _RES_METHODS = {"reservoir": Reservoir, "nvar": NVAR}
-
-
-# def _run_partial_fit_fn(esn, x, y, lock, warmup):
-#     # the 'loky' and 'multiprocessing' backends already deep-copies the ESN. See
-#     # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-#     _esn = deepcopy(esn)
-#     _esn.reservoir.reset()
-
-#     seq_len = len(x[list(x)[0]])
-#     states = np.zeros((seq_len, esn.reservoir.output_dim))
-
-#     for i, (x, _) in enumerate(dispatch(x, y)):
-#         states[i, :] = call(_esn.reservoir, x[original_reservoir_name])
-
-#     esn.readout.partial_fit(states, y[original_readout_name], warmup=warmup, lock=lock)
-
-#     return states[-1]
-
-
-# def _run_fn(esn, idx, x, return_states, from_state, stateful, reset):
-#     _esn = deepcopy(esn)
-
-#     X = {_esn.reservoir.name: x[original_reservoir_name]}
-
-#     states = _allocate_returned_states(_esn, X, return_states)
-
-#     with _esn.with_state(from_state, stateful=stateful, reset=reset):
-#         for i, (x_step, _) in enumerate(dispatch(X)):
-#             state = _esn._call(x_step, return_states=return_states)
-
-#             if is_mapping(state):
-#                 for name, value in state.items():
-#                     states[name][i, :] = value
-#             else:
-#                 states["readout"][i, :] = state
-
-#     return idx, states
-
-
-# def _allocate_returned_states(model, inputs, return_states=None):
-#     """Create empty placeholders for model outputs."""
-#     seq_len = inputs[list(inputs.keys())[0]].shape[0]
-#     vulgar_names = {"reservoir": model.reservoir, "readout": model.readout}
-
-#     # pre-allocate states
-#     if return_states == "all":
-#         states = {
-#             name: np.zeros((seq_len, n.output_dim)) for name, n in vulgar_names.items()
-#         }
-#     elif isinstance(return_states, (list, tuple)):
-#         states = {
-#             name: np.zeros((seq_len, n.output_dim))
-#             for name, n in {name: vulgar_names[name] for name in return_states}.items()
-#         }
-#     else:
-#         states = {"readout": np.zeros((seq_len, model.readout.output_dim))}
-
-#     return states
-
-
-# def _sort_and_unpack(states, return_states=None):
-#     """Maintain input order (even with parallelization on)"""
-#     states = sorted(states, key=lambda s: s[0])
-#     states = {n: [s[1][n] for s in states] for n in states[0][1].keys()}
-
-#     for n, s in states.items():
-#         if len(s) == 1:
-#             states[n] = s[0]
-
-#     if len(states) == 1 and return_states is None:
-#         states = states["readout"]
-
-#     return states
-
-
-# class ESN(FrozenModel):
-#     """Echo State Networks as a Node, with parallelization of state update.
-
-#     This Node is provided as a wrapper for reservoir and readout nodes. Execution
-#     is distributed over several workers when:
-
-#     - the ``workers`` parameters is equal to `n>1` (using `n` workers) or
-#       `n<=-1` (using `max_available_workers - n` workers)
-#     - Several independent sequences of inputs are fed to the model at runtime.
-
-#     When parallelization is enabled, internal states of the reservoir will be reset
-#     to 0 at the beginning of every independent sequence of inputs.
-
-#     Note
-#     ----
-#         This node can not be connected to other nodes. It is only provided as a
-#         convenience Node to speed up processing of large datasets with "vanilla"
-#         Echo State Networks.
-
-#     :py:attr:`ESN.params` **list**:
-
-#     ================== =================================================================
-#     ``reservoir``      A :py:class:`~reservoirpy.nodes.Reservoir` or a :py:class:`~reservoirpy.nodes.NVAR` instance.
-#     ``readout``        A :py:class:`~reservoirpy.nodes.Ridge` instance.
-#     ================== =================================================================
-
-#     :py:attr:`ESN.hypers` **list**:
-
-#     ==================== ===============================================================
-#     ``workers``          Number of workers for parallelization (1 by default).
-#     ``backend``          :py:mod:`joblib` backend to use for parallelization  (``loky`` by default,).
-#     ``reservoir_method`` Type of reservoir, may be "reservoir" or "nvar" ("reservoir" by default).
-#     ``learning_method``  Type of readout, by default "ridge".
-#     ``feedback``         Is readout connected to reservoir through feedback (False by default).
-#     ==================== ===============================================================
-
-#     Parameters
-#     ----------
-#     reservoir_method : {"reservoir", "nvar"}, default to "reservoir"
-#         Type of reservoir, either a :py:class:`~reservoirpy.nodes.Reservoir` or
-#         a :py:class:`~reservoirpy.nodes.NVAR`.
-#     learning_method : {"ridge"}, default to "ridge"
-#         Type of readout. The only method supporting parallelization for now is the
-#         :py:class:`~reservoirpy.nodes.Ridge` readout.
-#     reservoir : Node, optional
-#         A Node instance to use as a reservoir,
-#         such as a :py:class:`~reservoirpy.nodes.Reservoir` node.
-#     readout : Node, optional
-#         A Node instance to use as a readout,
-#         such as a :py:class:`~reservoirpy.nodes.Ridge` node
-#         (only this one is supported).
-#     feedback : bool, defaults to False
-#         If True, the readout is connected to the reservoir through
-#         a feedback connection.
-#     use_raw_inputs : bool, defaults to False
-#         If True, the input is directly fed to the readout. See
-#         :ref:`/user_guide/advanced_demo.ipynb#Input-to-readout-connections`.
-#     Win_bias : bool, default to True
-#         If True, add an input bias to the reservoir.
-#     Wout_bias : bool, default to True
-#         If True, add a bias term to the reservoir states entering the readout.
-#     workers : int, default to 1
-#         Number of workers used for parallelization. If set to -1, all available workers
-#         (threads or processes) are used.
-#     backend : a :py:mod:`joblib` backend, default to "loky"
-#         A parallelization backend.
-#     name : str, optional
-#         Node name.
-
-#     See Also
-#     --------
-#     Reservoir
-#     Ridge
-#     NVAR
-
-#     Example
-#     -------
-#     >>> from reservoirpy.nodes import Reservoir, Ridge, ESN
-#     >>> reservoir, readout = Reservoir(100, sr=0.9), Ridge(ridge=1e-6)
-#     >>> model = ESN(reservoir=reservoir, readout=readout, workers=-1)
-#     """
-
-#     def __init__(
-#         self,
-#         reservoir_method="reservoir",
-#         learning_method="ridge",
-#         reservoir: Node = None,
-#         readout: Node = None,
-#         feedback=False,
-#         Win_bias=True,
-#         Wout_bias=True,
-#         workers=1,
-#         backend=None,
-#         name=None,
-#         use_raw_inputs=False,
-#         **kwargs,
-#     ):
-#         msg = "'{}' is not a valid method. Available methods for {} are {}."
-
-#         if reservoir is None:
-#             if reservoir_method not in _RES_METHODS:
-#                 raise ValueError(
-#                     msg.format(reservoir_method, "reservoir", list(_RES_METHODS.keys()))
-#                 )
-#             else:
-#                 klas = _RES_METHODS[reservoir_method]
-#                 kwargs["input_bias"] = Win_bias
-#                 reservoir = _obj_from_kwargs(klas, kwargs)
-
-#         if readout is None:
-#             if learning_method not in _LEARNING_METHODS:
-#                 raise ValueError(
-#                     msg.format(
-#                         learning_method, "readout", list(_LEARNING_METHODS.keys())
-#                     )
-#                 )
-#             else:
-#                 klas = _LEARNING_METHODS[learning_method]
-#                 kwargs["input_bias"] = Wout_bias
-#                 readout = _obj_from_kwargs(klas, kwargs)
-
-#         if feedback:
-#             reservoir <<= readout
-
-#         if use_raw_inputs:
-#             source = Input()
-#             super(ESN, self).__init__(
-#                 nodes=[reservoir, readout, source],
-#                 edges=[(source, reservoir), (reservoir, readout), (source, readout)],
-#                 name=name,
-#             )
-#         else:
-#             super(ESN, self).__init__(
-#                 nodes=[reservoir, readout], edges=[(reservoir, readout)], name=name
-#             )
-
-#         self._hypers.update(
-#             {
-#                 "workers": workers,
-#                 "backend": backend,
-#                 "reservoir_method": reservoir_method,
-#                 "learning_method": learning_method,
-#                 "feedback": feedback,
-#             }
-#         )
-
-#         self._params.update({"reservoir": reservoir, "readout": readout})
-
-#         self._trainable = True
-
-#     @property
-#     def is_trained_offline(self) -> bool:
-#         return True
-
-#     @property
-#     def is_trained_online(self) -> bool:
-#         return False
-
-#     @property
-#     def has_feedback(self):
-#         """Always returns False, ESNs are not supposed to receive external
-#         feedback. Feedback between reservoir and readout must be defined
-#         at ESN creation."""
-#         return False
-
-#     def _call(self, x=None, return_states=None, *args, **kwargs):
-#         data = x[self.reservoir.name]
-
-#         state = call(self.reservoir, data)
-#         call(self.readout, state)
-
-#         state = {}
-#         if return_states == "all":
-#             for node in ["reservoir", "readout"]:
-#                 state[node] = getattr(self, node).state()
-#         elif isinstance(return_states, (list, tuple)):
-#             for name in return_states:
-#                 state[name] = getattr(self, name).state()
-#         else:
-#             state = self.readout.state()
-
-#         return state
-
-#     def state(self, which="reservoir"):
-#         if which == "reservoir":
-#             return self.reservoir.state()
-#         elif which == "readout":
-#             return self.readout.state()
-#         else:
-#             raise ValueError(
-#                 f"'which' parameter of {type(self).__name__} "
-#                 f"'state' function must be "
-#                 f"one of 'reservoir' or 'readout'."
-#             )
-
-#     def run(
-#         self,
-#         X=None,
-#         forced_feedbacks=None,
-#         from_state=None,
-#         stateful=True,
-#         reset=False,
-#         return_states=None,
-#     ):
-#         X = to_data_mapping(self, X)
-
-#         self._initialize_on_sequence(X[0])
-
-#         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
-
-#         seq = progress(X, f"Running {type(self).__name__}")
-
-#         with self.with_state(from_state, reset=reset, stateful=stateful):
-#             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-#                 states = parallel(
-#                     delayed(_run_fn)(
-#                         self,
-#                         idx,
-#                         x,
-#                         return_states,
-#                         from_state,
-#                         stateful,
-#                         reset,
-#                     )
-#                     for idx, x in enumerate(seq)
-#                 )
-
-#         return _sort_and_unpack(states, return_states=return_states)
-
-#     def fit(
-#         self, X=None, Y=None, warmup=0, from_state=None, stateful=True, reset=False
-#     ):
-#         X, Y = to_data_mapping(self, X, Y)
-#         self._initialize_on_sequence(X[0], Y[0])
-
-#         self.initialize_buffers()
-
-#         if (self.workers > 1 or self.workers < 0) and self.backend != "sequential":
-#             lock = Manager().Lock()
-#         else:
-#             lock = None
-
-#         backend = get_joblib_backend(workers=self.workers, backend=self.backend)
-
-#         seq = progress(X, f"Running {type(self).__name__}")
-#         with self.with_state(from_state, reset=reset, stateful=stateful):
-#             with Parallel(n_jobs=self.workers, backend=backend) as parallel:
-#                 last_states = parallel(
-#                     delayed(_run_partial_fit_fn)(self, x, y, lock, warmup)
-#                     for x, y in zip(seq, Y)
-#                 )
-
-#             if verbosity():  # pragma: no cover
-#                 print(f"Fitting {type(self).__name__}...")
-
-#             # setting the reservoir state from the last timeseries
-#             self.reservoir._state = last_states[-1]
-#             self.readout.fit()
-
-#         return self
+        super(ESN, self).__init__(nodes=nodes, edges=edges)

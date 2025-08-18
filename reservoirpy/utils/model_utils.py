@@ -2,6 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
+from inspect import signature
 from typing import Any, Generator, Iterable, Mapping, Sequence, TypeVar
 
 import numpy as np
@@ -186,3 +187,10 @@ def check_unnamed_trainable(model):
             f"Model has multiple trainable nodes but at least one"
             f" of them is not named: {unnamed_nodes[1:-1]}."
         )
+
+
+def _obj_from_kwargs(klas, kwargs):
+    sig = signature(klas.__init__)
+    params = list(sig.parameters.keys())
+    klas_kwargs = {n: v for n, v in kwargs.items() if n in params}
+    return klas(**klas_kwargs)
