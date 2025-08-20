@@ -182,9 +182,9 @@ autodoc_default_options = {
 }
 autodoc_typehints = "both"
 autodoc_type_aliases: dict[str, str] = {
-    "Array1D": "array(dims,)",  # Timestep
-    "Array2D": "array(steps, dims)",  # Timeseries
-    "Array3D": "array(series, steps, dims)",  # Multiseries as 3D arrays
+    "Array1D": "array(d,)",  # Timestep
+    "Array2D": "array(t, d)",  # Timeseries
+    "Array3D": "array(s, t, d)",  # Multiseries as 3D arrays
 }
 # none of those two options seems to work
 # autodoc_typehints_format = "short"
