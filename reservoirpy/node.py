@@ -114,11 +114,11 @@ class Node(ABC):
             Training data to the node. As it is not a trainable node, ``y`` is
             expected to be ``None``.
         """
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def _step(self, state: State, x: Timestep) -> State:
-        ...
+        ...  # pragma: no cover
 
     def step(self, x: Optional[Timestep]) -> Timestep:
         """Call the Node function on a single step of data and update
@@ -333,13 +333,13 @@ class TrainableNode(Node):
         Node
             Node trained offline.
         """
-        ...
+        ...  # pragma: no cover
 
 
 class OnlineNode(TrainableNode):
     @abstractmethod
     def _learning_step(self, x: Timestep, y: Optional[Timestep]) -> Timestep:
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
@@ -362,7 +362,7 @@ class OnlineNode(TrainableNode):
         array of shape (timesteps, output_dim)
             All outputs computed during the training.
         """
-        ...
+        ...  # pragma: no cover
 
     def fit(
         self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
@@ -389,11 +389,11 @@ class OnlineNode(TrainableNode):
 class ParallelNode(TrainableNode, ABC):
     @abstractmethod
     def worker(self, x: Timeseries, y: Optional[Timeseries]):
-        ...
+        ...  # pragma: no cover
 
     @abstractmethod
     def master(self, generator: Iterable):
-        ...
+        ...  # pragma: no cover
 
     def fit(
         self,
