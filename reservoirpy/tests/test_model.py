@@ -166,6 +166,19 @@ def test_model_complex():
 
     assert set(model.edges) == {(r1, 0, read1), (read1, 1, r1)}
 
+    model = [r2] & (r1 >> read1)
+    model = (r2 >> read1) & [r1]
+    model = r2 & (r1 >> read1)
+    model = (r2 >> read1) & r1
+    model = [r2] >> (r1 >> read1)
+    model = (r2 >> read1) >> [r1]
+    model = r2 >> (r1 >> read1)
+    model = (r2 >> read1) >> r1
+    model = [r2] << (r1 >> read1)
+    model = (r2 >> read1) << [r1]
+    model = r2 << (r1 >> read1)
+    model = (r2 >> read1) << r1
+
 
 def test_model_call():
     data = np.zeros((5,))
@@ -324,6 +337,30 @@ def test_online_train_simple():
     model.fit(X)
 
     assert online_node.b == 37.5
+
+
+def test_model_online():
+    from reservoirpy.nodes import RLS, Output, Reservoir
+
+    reservoir1 = Reservoir(10, name="r1")
+    reservoir2 = Reservoir(10, name="r2")
+    output = Output(name="out")
+    readout = RLS(alpha=1e-4, name="rls")
+    model = [reservoir1, reservoir2] >> readout & reservoir1 >> output
+
+    X = np.ones((5, 5)) * 0.5
+    Y = np.ones((5, 5))
+
+    model.partial_fit({"r1": X, "r2": X}, Y)
+    Wout1 = readout.Wout
+
+    model_output = model.partial_fit({"r1": X, "r2": X}, Y)
+    Wout2 = readout.Wout
+    assert np.any(Wout1 != Wout2)
+
+    assert len(model_output) == 2
+    assert model_output["out"].shape == (5, 10)
+    assert model_output["rls"].shape == (5, 5)
 
 
 def test_model_return_states():
