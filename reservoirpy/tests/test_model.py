@@ -133,7 +133,38 @@ def test_model_complex():
     read3 = Ridge()
 
     model = r1 >> read1 >> r2 >> read2 >> read3
-    model &= (r1 << r2) & (r1 << read1) & (r2 << read2)
+    model &= r2 & [(r1 << r2), (r1 << read1), read1] & (r2 << read2) & r2
+
+    assert set(model.edges) == {
+        (r1, 0, read1),
+        (read1, 0, r2),
+        (r2, 0, read2),
+        (read2, 0, read3),
+        (r2, 1, r1),
+        (read1, 1, r1),
+        (read2, 1, r2),
+    }
+
+    r1 = Reservoir(10)
+    r2 = Reservoir(10)
+    read1 = Ridge()
+    read2 = Ridge()
+
+    model = (r1 >> read1) & (r2 >> read2)
+    model &= [r1, r2] << read1
+
+    assert set(model.edges) == {
+        (r1, 0, read1),
+        (r2, 0, read2),
+        (read1, 1, r1),
+        (read1, 1, r2),
+    }
+
+    r1 = Reservoir(10)
+    read1 = Ridge()
+    model = r1 << (r1 >> read1)
+
+    assert set(model.edges) == {(r1, 0, read1), (read1, 1, r1)}
 
 
 def test_model_call():
@@ -153,6 +184,19 @@ def test_model_call():
     assert model.outputs == [plus_node, minus_node]
     assert_array_equal(res["Plus"], data + 2)
     assert_array_equal(res["Minus"], data - 2)
+
+    plus_node = PlusNode(h=2, name="Plus")
+    minus_node = MinusNode(h=2, name="Minus")
+    model = plus_node >> minus_node
+    res = model(None)
+    assert res.shape == (0,)
+
+    plus_node1 = PlusNode(h=1, name="Plus1")
+    plus_node2 = PlusNode(h=2, name="Plus2")
+    minus_node = MinusNode(h=2, name="Minus")
+    model = (plus_node1 >> minus_node) & (plus_node2 >> minus_node)
+    res = model({"Plus1": data, "Plus2": data})
+    assert res.shape == (10,)
 
 
 def test_model_run():
