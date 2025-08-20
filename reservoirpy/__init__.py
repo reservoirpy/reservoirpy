@@ -4,6 +4,7 @@ import uuid
 
 from . import activationsfunc, hyper, mat_gen, nodes, observables, type
 from ._version import __version__
+from .esn import ESN
 from .model import Model
 from .node import Node
 from .utils.random import set_seed
@@ -25,5 +26,6 @@ __all__ = [
     "Node",
     "Model",
     "set_seed",
+    "ESN",
     "type",
 ]

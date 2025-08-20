@@ -7,7 +7,7 @@ from reservoirpy.nodes.ridge import Ridge
 from reservoirpy.type import Edge
 
 from .model import Model
-from .utils.model_utils import _obj_from_kwargs
+from .utils.model_utils import obj_from_kwargs
 
 
 class ESN(Model):
@@ -44,10 +44,10 @@ class ESN(Model):
 
     Example
     -------
-    >>> from reservoirpy.nodes import Reservoir, Ridge, ESN
+    >>> from reservoirpy import ESN
     >>>
-    >>> reservoir, readout = Reservoir(100, sr=0.9), Ridge(ridge=1e-6)
-    >>> model = ESN(reservoir=reservoir, readout=readout)
+    >>> model = ESN(units=100, sr=0.9, ridge=1e-6)
+    >>>
     """
 
     #: A :py:class:`~reservoirpy.nodes.Reservoir` or a :py:class:`~reservoirpy.nodes.NVAR` instance.
@@ -70,7 +70,7 @@ class ESN(Model):
         **kwargs,
     ):
         if reservoir is None:
-            reservoir = _obj_from_kwargs(Reservoir, kwargs)
+            reservoir = obj_from_kwargs(Reservoir, kwargs)
 
         if readout is None:
             # avoid argument name collision
@@ -81,7 +81,7 @@ class ESN(Model):
                 kwargs.pop("readout_bias")
             if "input_dim" in kwargs:
                 kwargs.pop("input_dim")
-            readout = _obj_from_kwargs(Ridge, kwargs)
+            readout = obj_from_kwargs(Ridge, kwargs)
 
         nodes: list[Node] = [reservoir, readout]
         edges: list[Edge] = [(reservoir, 0, readout)]

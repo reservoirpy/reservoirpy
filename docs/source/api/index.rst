@@ -4,6 +4,9 @@
 ReservoirPy API reference
 =========================
 
+.. autosummary::
+
+    reservoirpy.ESN - Simple Echo State Network.
 
 .. grid:: 1 3 3 2
 
@@ -88,3 +91,4 @@ All modules
    reservoirpy.node
    reservoirpy.model
    reservoirpy.ops
+   reservoirpy.ESN

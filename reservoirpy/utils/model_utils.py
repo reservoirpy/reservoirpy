@@ -189,7 +189,7 @@ def check_unnamed_trainable(model):
         )
 
 
-def _obj_from_kwargs(klas, kwargs):
+def obj_from_kwargs(klas, kwargs):
     sig = signature(klas.__init__)
     params = list(sig.parameters.keys())
     klas_kwargs = {n: v for n, v in kwargs.items() if n in params}
