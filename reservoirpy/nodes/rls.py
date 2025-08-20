@@ -197,8 +197,7 @@ class RLS(OnlineNode):
 
     def partial_fit(self, x: Timeseries, y: Timeseries):
         check_node_input(x, expected_dim=self.input_dim)
-        if y is not None:
-            check_node_input(y)
+        check_node_input(y)
 
         if not self.initialized:
             self.initialize(x, y)

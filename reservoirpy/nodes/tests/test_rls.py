@@ -2,9 +2,10 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
+import pytest
 from numpy.testing import assert_array_almost_equal
 
-from reservoirpy.nodes import RLS, Reservoir
+from reservoirpy.nodes import RLS
 
 
 def test_rls_init():
@@ -21,6 +22,23 @@ def test_rls_init():
     data = np.ones((10000, 100))
     res = node.run(data)
     assert res.shape == (10000, 3)
+
+    # with initialized Wout and bias
+    Wout = np.ones((100, 3))
+    bias = np.ones((3,))
+    data = np.ones((100,))
+    # unspecified dimensions
+    node = RLS(10, Wout=Wout, bias=bias)
+    res = node(data)
+    # correct specified dimensions
+    node = RLS(10, Wout=Wout, bias=bias, input_dim=100, output_dim=3)
+    res = node(data)
+    # incorrect specified dimensions
+    with pytest.raises(ValueError):
+        node = RLS(10, Wout=Wout, bias=bias, input_dim=101, output_dim=1)
+    with pytest.raises(ValueError):
+        bias = np.ones((10,))
+        node = RLS(bias=bias, output_dim=1)
 
 
 def test_rls_train_one_step():
