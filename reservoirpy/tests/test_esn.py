@@ -3,17 +3,18 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal, assert_equal
 
-from reservoirpy import set_seed
-from reservoirpy.node import _filter_where_na_target
-from reservoirpy.nodes import ESN, Reservoir, Ridge
+from reservoirpy import ESN
+from reservoirpy.mat_gen import normal
+from reservoirpy.nodes import Reservoir, Ridge
 
 
 def test_esn_init():
-    esn = ESN(units=100, output_dim=1, lr=0.8, sr=0.4, ridge=1e-5, Win_bias=False)
+    esn = ESN(units=100, lr=0.8, sr=0.4, ridge=1e-5)
 
-    data = np.ones((1, 10))
+    data = np.ones((1000, 10))
+    res = esn.fit(data, data)
+    data = np.ones((10,))
     res = esn(data)
 
     assert esn.reservoir.W.shape == (100, 100)
@@ -21,222 +22,122 @@ def test_esn_init():
     assert esn.reservoir.lr == 0.8
     assert esn.reservoir.units == 100
 
-    data = np.ones((10000, 10))
+    data = np.ones((1000, 10))
     res = esn.run(data)
+    assert res.shape == (1000, 10)
 
-    assert res.shape == (10000, 1)
-
+    esn = ESN(units=100, lr=0.8, sr=0.4, ridge=1e-5, output_dim=7)
     with pytest.raises(ValueError):
-        esn = ESN(units=100, output_dim=1, learning_method="foo")
-
-    with pytest.raises(ValueError):
-        esn = ESN(units=100, output_dim=1, reservoir_method="foo")
+        esn.initialize(np.ones((10, 3)), np.ones((10, 8)))
 
 
 def test_esn_init_from_obj():
-    res = Reservoir(100, lr=0.8, sr=0.4, input_bias=False)
+    res = Reservoir(100, lr=0.8, sr=0.4)
     read = Ridge(ridge=1e-5, output_dim=1)
 
     esn = ESN(reservoir=res, readout=read)
 
-    data = np.ones((1, 10))
-    res = esn(data)
+    x = np.ones((10, 2))
+    y = np.arange(10).reshape(-1, 1)
+    esn.fit(x, y)
 
     assert esn.reservoir.W.shape == (100, 100)
-    assert esn.reservoir.Win.shape == (100, 10)
+    assert esn.reservoir.Win.shape == (100, 2)
     assert esn.reservoir.lr == 0.8
     assert esn.reservoir.units == 100
 
-    data = np.ones((10000, 10))
+    data = np.ones((1000, 2))
     res = esn.run(data)
 
-    assert res.shape == (10000, 1)
+    assert res.shape == (1000, 1)
 
 
-def test_esn_states():
-    res = Reservoir(100, lr=0.8, sr=0.4, input_bias=False)
-    read = Ridge(ridge=1e-5, output_dim=1)
+# def test_esn_states(): # TODO: implement a way to return reservoir activity
+#     res = Reservoir(100, lr=0.8, sr=0.4)
+#     read = Ridge(ridge=1e-5, output_dim=1)
 
-    esn = ESN(reservoir=res, readout=read)
+#     esn = ESN(reservoir=res, readout=read)
 
-    data = np.ones((2, 10, 10))
-    out = esn.run(data, return_states="all")
+#     data = np.ones((2, 10, 10))
+#     out = esn.run(data, return_states="all")
 
-    assert out["reservoir"][0].shape == (10, 100)
-    assert out["readout"][0].shape == (10, 1)
+#     assert out["reservoir"][0].shape == (10, 100)
+#     assert out["readout"][0].shape == (10, 1)
 
-    out = esn.run(data, return_states=["reservoir"])
+#     out = esn.run(data, return_states=["reservoir"])
 
-    assert out["reservoir"][0].shape == (10, 100)
+#     assert out["reservoir"][0].shape == (10, 100)
 
-    s_reservoir = esn.state()
-    assert_equal(s_reservoir, res.state())
+#     s_reservoir = esn.state()
+#     assert_equal(s_reservoir, res.state())
 
-    s_readout = esn.state(which="readout")
-    assert_equal(s_readout, read.state())
+#     s_readout = esn.state(which="readout")
+#     assert_equal(s_readout, read.state())
 
-    with pytest.raises(ValueError):
-        esn.state(which="foo")
+#     with pytest.raises(ValueError):
+#         esn.state(which="foo")
 
 
 def test_esn_feedback():
     esn = ESN(units=100, output_dim=5, lr=0.8, sr=0.4, ridge=1e-5, feedback=True)
 
-    x = np.ones((1, 10))
-    y = np.ones((1, 5))
-    res = esn(x)
+    x = np.ones((13, 10))
+    y = np.ones((13, 5))
+    res = esn.fit(x, y).run(x)
 
     assert esn.reservoir.W.shape == (100, 100)
-    assert esn.reservoir.Win.shape == (100, 10)
+    assert esn.reservoir.Win.shape == (100, 15)
     assert esn.readout.Wout.shape == (100, 5)
-    assert res.shape == (1, 5)
+    assert res.shape == (13, 5)
 
-    esn.fit(x, y).run(x, forced_feedbacks=y)
-
-
-def test_esn_parallel_fit_reproducibility():
-    """Reproducibility of the ESN node across backends.
-    Results may vary between OSes and NumPy versions.
-    """
-    seed = 1234
-    rng = np.random.default_rng(seed=seed)
-    X = list(rng.normal(0, 1, (10, 100, 10)))
-    Y = [x @ rng.normal(0, 1, size=(10, 5)) for x in X]
-
-    set_seed(seed)
-    base_Wout = (
-        ESN(
-            units=100,
-            ridge=1e-5,
-            feedback=True,
-            workers=-1,
-            backend="sequential",
-        )
-        .fit(X, Y)
-        .readout.Wout
-    )
-
-    for backend in ("loky", "multiprocessing", "threading", "sequential"):
-        set_seed(seed)
-        esn = ESN(
-            units=100,
-            ridge=1e-5,
-            feedback=True,
-            workers=-1,
-            backend=backend,
-        ).fit(X, Y)
-
-        assert esn.reservoir.W.shape == (100, 100)
-        assert esn.reservoir.Win.shape == (100, 10)
-        assert esn.readout.Wout.shape == (100, 5)
-
-        assert np.abs(np.mean(esn.readout.Wout - base_Wout)) < 1e-14
+    res = esn(x[0])
 
 
-def test_esn_parallel_run_reproducibility():
-    """Reproducibility of the ESN node across backends. Results may
-    vary between OSes and NumPy versions.
-    """
-    seed = 1000
-    rng = np.random.default_rng(seed=seed)
-    X = list(rng.normal(0, 1, (10, 100, 10)))
-    Y = [x @ rng.normal(0, 1, size=(10, 5)) for x in X]
-
-    set_seed(seed)
-    # no feedback here. XXT and YXT sum orders are not deterministic
-    # which results in small (float precision) differences across fits
-    # and leads to error accumulation on run with feedback.
-    set_seed(seed)
+def test_esn_argument_collision():
     esn = ESN(
         units=100,
-        ridge=1e-5,
-        workers=1,
-        backend="sequential",
-    ).fit(X, Y)
-
-    base_y_out = esn.run(X[0])
-
-    for backend in ("loky", "multiprocessing", "threading", "sequential"):
-        set_seed(seed)
-        esn = ESN(
-            units=100,
-            ridge=1e-5,
-            workers=-1,
-            backend=backend,
-        ).fit(X, Y)
-
-        y_out = esn.run(X[0])
-        assert np.abs(np.mean(y_out - base_y_out)) < 1e-14
-
-
-def test_hierarchical_esn_forbidden():
-    esn1 = ESN(
-        units=100,
+        input_dim=15,  # should be the input_dim of the reservoir, not the readout
+        output_dim=5,
         lr=0.8,
         sr=0.4,
-        ridge=1e-5,
-        feedback=True,
-        workers=-1,
-        backend="loky",
-        name="E1",
-    )
-
-    esn2 = ESN(
-        units=100,
-        lr=0.8,
-        sr=0.4,
-        ridge=1e-5,
-        feedback=True,
-        workers=-1,
-        backend="loky",
-        name="E2",
-    )
-
-    # FrozenModel can't be linked (for now).
-    with pytest.raises(TypeError):
-        model = esn1 >> esn2
-
-
-def test_na():
-
-    # Define X, Y, Y_na
-    X = np.ones((10, 5))
-    Y = np.ones((10, 5))
-    Y_na = Y
-    Y_na[-1] = np.nan
-
-    esn1 = ESN(
-        units=100,
-        lr=0.8,
-        sr=0.4,
-        ridge=1e-5,
+        bias=1.0,  # should be the bias of the reservoir, not the readout
+        readout_bias=normal,  # should be the bias of the readout
+        fit_bias=False,
         seed=1,
-        workers=-1,
-        feedback=True,
-        backend="loky",
-        name="E1",
-    )
-
-    esn2 = ESN(
-        units=100,
-        lr=0.8,
-        sr=0.4,
+        name="MyNode",
         ridge=1e-5,
-        seed=1,
-        workers=-1,
         feedback=True,
-        backend="loky",
-        name="E2",
+        input_to_readout=True,
     )
 
-    # Filtered the NaN data and get the predictions | Last row removed from X and Y
-    X_filtered, Y_filtered = _filter_where_na_target(X, Y_na)
-    esn1.fit(X_filtered, Y_filtered)
-    pred_filtered = esn1.run(X_filtered)
+    x = np.ones((13, 10))
+    y = np.ones((13, 5))
+    res = esn.fit(x, y).run(x)
 
-    # Manually deleted the last row of the classic inputs
-    esn2.fit(X[:-1, :], Y[:-1, :])
-    pred_classic = esn2.run(X[:-1, :])
+    assert esn.reservoir.output_dim == 100
+    assert esn.reservoir.input_dim == 15
+    assert esn.readout.input_dim == 110
+    assert esn.readout.output_dim == 5
+    assert esn.reservoir.W.shape == (100, 100)
+    assert esn.reservoir.Win.shape == (100, 15)
+    assert esn.readout.Wout.shape == (110, 5)
+    assert esn.readout.bias.shape == (5,)
+    assert esn.reservoir.bias == 1.0
+    assert res.shape == (13, 5)
+    assert len(esn.nodes) == 3
+    assert len(esn.edges) == 4
 
-    # Assert that those predictions are equal
-    assert_array_almost_equal(pred_filtered, pred_classic)
+    res = esn(x[0])
+
+
+def test_esn_freerunning():
+    rng = np.random.default_rng(seed=1)
+    model = ESN(units=100, sr=1.0, bias=normal)
+    x, y = rng.normal(size=(100, 0)), rng.normal(size=(100, 3))
+    model.fit(x, y)
+    res = model.predict(x=None, iters=213)
+
+    assert model.reservoir.input_dim == 0
+    assert model.readout.input_dim == 100
+    assert model.readout.output_dim == 3
+    assert res.shape == (213, 3)
