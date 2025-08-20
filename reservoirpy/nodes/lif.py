@@ -242,14 +242,6 @@ class LIF(Node):
             n_inhibitory = int(self.inhibitory * self.units)
             self.W[:, :n_inhibitory] *= -1
 
-        if callable(self.bias):
-            self.bias = self.bias(
-                self.units,
-                connectivity=1.0,
-                dtype=self.dtype,
-                seed=bias_rng,
-            )
-
         self.state = {
             "internal": np.zeros((self.units,)),
             "out": np.zeros((self.units,)),
