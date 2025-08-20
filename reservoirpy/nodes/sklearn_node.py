@@ -126,10 +126,11 @@ class ScikitLearnNode(Node):
     def _step(self, state: State, x: Timestep):
         instances = self.instances
         if not isinstance(instances, list):
-            res = instances.predict(x)
+            res = instances.predict(x.reshape(1, -1)).ravel()
         else:
             res = np.concatenate(
-                [instance.predict(x) for instance in instances], axis=-1
+                [instance.predict(x.reshape(1, -1)).ravel() for instance in instances],
+                axis=-1,
             )
         return {"out": res}
 

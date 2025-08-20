@@ -4,7 +4,6 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_almost_equal
 from sklearn.decomposition import PCA
 from sklearn.gaussian_process.kernels import DotProduct
 from sklearn.linear_model import (
@@ -21,7 +20,6 @@ from sklearn.linear_model import (
     Perceptron,
     Ridge,
     RidgeClassifier,
-    RidgeCV,
     SGDClassifier,
     SGDRegressor,
 )
@@ -113,6 +111,9 @@ def test_scikitlearn_regressors_monooutput(model, model_hypers):
     mse = np.mean(np.square(y_pred - y_test))
     assert mse < 2e-4
 
+    timestep = scikit_learn_node(X_test[0])
+    assert timestep.ndim == 1
+
 
 def test_scikitlearn_multioutput():
     rng = np.random.default_rng(seed=2341)
@@ -120,7 +121,11 @@ def test_scikitlearn_multioutput():
     y_train = X_train @ np.array([[0, 1, 0], [0, 1, 1], [-1, 0, 1]])
     X_test = rng.normal(0, 1, size=(100, 3))
 
-    lasso = ScikitLearnNode(model=LassoCV, random_state=2341).fit(X_train, y_train)
+    lasso = (
+        ScikitLearnNode(model=LassoCV, random_state=2341)
+        .fit(X_train, y_train)
+        .fit(X_train, y_train)
+    )  # fit twice
     lasso_pred = lasso.run(X_test)
 
     mt_lasso = ScikitLearnNode(model=MultiTaskLassoCV, random_state=2341).fit(
@@ -143,6 +148,32 @@ def test_scikitlearn_multioutput():
 
     assert lasso_pred.shape == mt_lasso_pred.shape == (100, 3)
     assert np.linalg.norm(mt_lasso_pred - lasso_pred) < 1e-2
+
+
+def test_scikitlearn_multiseries():
+    rng = np.random.default_rng(seed=2341)
+    X_train = rng.normal(0, 1, size=(5, 10000, 3))
+    y_train = X_train @ np.array([[0, 1, 0], [0, 1, 1], [-1, 0, 1]])
+    X_test = rng.normal(0, 1, size=(2, 100, 3))
+
+    lasso = ScikitLearnNode(model=LassoCV, random_state=2341)
+    lasso.fit(X_train, y_train)
+    lasso_pred = lasso.run(X_test)
+
+    assert lasso_pred.shape == (2, 100, 3)
+
+    rng = np.random.default_rng(seed=2341)
+    X_train = list(rng.normal(0, 1, size=(5, 10000, 3)))
+    y_train = X_train @ np.array([[0, 1, 0], [0, 1, 1], [-1, 0, 1]])
+    X_test = list(rng.normal(0, 1, size=(2, 100, 3)))
+
+    lasso = ScikitLearnNode(model=LassoCV, random_state=2341)
+    lasso.fit(X_train, y_train)
+    lasso_pred = lasso.run(X_test)
+
+    assert isinstance(lasso_pred, list)
+    assert len(lasso_pred) == 2
+    assert lasso_pred[0].shape == (100, 3)
 
 
 def test_scikitlearn_reproductibility_random_state():
@@ -181,6 +212,19 @@ def test_scikitlearn_reproductibility_random_state():
         ScikitLearnNode(model=SGDRegressor, random_state=1)
         .fit(X_train, y_train)
         .run(X_test)
+    )
+
+    assert np.all(y_pred1 == y_pred2)
+
+    # Same scikit-learn random_states (call)
+    reservoirpy.set_seed(0)
+    y_pred1 = ScikitLearnNode(model=SGDRegressor, random_state=1).fit(X_train, y_train)(
+        X_test[0]
+    )
+
+    reservoirpy.set_seed(0)
+    y_pred2 = ScikitLearnNode(model=SGDRegressor, random_state=1).fit(X_train, y_train)(
+        X_test[0]
     )
 
     assert np.all(y_pred1 == y_pred2)
