@@ -279,7 +279,7 @@ class Model:
 
         return new_buffers, new_state
 
-    def step(self, x: Optional[ModelTimestep]) -> ModelTimestep:
+    def step(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
         # Auto-regressive mode
         if x is None:
             x = np.zeros((0,))
@@ -347,7 +347,9 @@ class Model:
 
         return (buffers, new_state), output_timeseries
 
-    def run(self, x: Optional[ModelInput], iters: Optional[int] = None) -> ModelInput:
+    def run(
+        self, x: Optional[ModelInput] = None, iters: Optional[int] = None
+    ) -> ModelInput:
         # Auto-regressive mode
         if x is None:
             x = np.zeros((iters, 0))
@@ -392,7 +394,7 @@ class Model:
             return {node.name: result[node] for node in self.outputs}
 
     def predict(
-        self, x: Optional[ModelInput], iters: Optional[int] = None
+        self, x: Optional[ModelInput] = None, iters: Optional[int] = None
     ) -> ModelInput:
         return self.run(x=x, iters=iters)
 
@@ -536,7 +538,7 @@ class Model:
 
         return self
 
-    def __call__(self, x: Optional[ModelTimestep]) -> ModelTimestep:
+    def __call__(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
         return self.step(x)
 
     def __rshift__(

@@ -120,7 +120,7 @@ class Node(ABC):
     def _step(self, state: State, x: Timestep) -> State:
         ...  # pragma: no cover
 
-    def step(self, x: Optional[Timestep]) -> Timestep:
+    def step(self, x: Optional[Timestep] = None) -> Timestep:
         """Call the Node function on a single step of data and update
         the state of the Node.
 
@@ -160,7 +160,9 @@ class Node(ABC):
 
         return current_state, output
 
-    def run(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
+    def run(
+        self, x: Optional[NodeInput] = None, iters: Optional[int] = None
+    ) -> NodeInput:
         """Run the Node on a sequence of data.
         Can update the state of the
         Node several times.
@@ -205,7 +207,9 @@ class Node(ABC):
         self.state = final_state
         return result
 
-    def predict(self, x: Optional[NodeInput], iters: Optional[int] = None) -> NodeInput:
+    def predict(
+        self, x: Optional[NodeInput] = None, iters: Optional[int] = None
+    ) -> NodeInput:
         """Alias for :py:meth:`~.Node.run`
 
         Run the Node on a sequence of data.
@@ -258,7 +262,7 @@ class Node(ABC):
             )
         self.output_dim = output_dim
 
-    def __call__(self, x: Optional[Timestep]) -> Timestep:
+    def __call__(self, x: Optional[Timestep] = None) -> Timestep:
         return self.step(x)
 
     def __repr__(self):
