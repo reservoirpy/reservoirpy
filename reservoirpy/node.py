@@ -1,6 +1,6 @@
 """
 ====================================
-Node API (:class:`reservoirpy.Node`)
+Node API (:mod:`reservoirpy.node`)
 ====================================
 
 Note
@@ -46,30 +46,15 @@ See the following guides to:
 
 .. currentmodule:: reservoirpy.node
 
-.. autoclass:: Node
 
-   .. rubric:: Methods
+.. autosummary::
+   :toctree: generated/
+   :template: autosummary/class.rst
 
-   .. autosummary::
-
-      ~Node.step
-      ~Node.run
-      ~Node.predict
-      ~Node.fit
-      ~Node.initialize
-      ~Node.partial_fit
-      ~Node.reset
-
-   .. rubric:: Attributes
-
-   .. autosummary::
-
-      ~Node.initialized
-      ~Node.input_dim
-      ~Node.output_dim
-      ~Node.state
-      ~Node.name
-
+    Node
+    TrainableNode
+    OnlineNode
+    ParallelNode
 """
 
 from abc import ABC, abstractmethod
@@ -85,6 +70,12 @@ from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
 
 
 class Node(ABC):
+    """Generic Node ABC
+
+    All Nodes should inherit this class.
+
+    """
+
     #: True if the Node has been initialized
     initialized: bool
     #: Expected dimension of the Node input. Can be None before initialization
@@ -315,6 +306,13 @@ class Node(ABC):
 
 
 class TrainableNode(Node):
+    """Node that can be trained.
+
+    :py:class:`reservoirpy.node.TrainableNode` implements the stateful method
+    :py:meth:`~.TrainableNode.fit`.
+
+    """
+
     @abstractmethod
     def fit(
         self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
@@ -341,6 +339,13 @@ class TrainableNode(Node):
 
 
 class OnlineNode(TrainableNode):
+    """Node that can be trained in an online fashion.
+
+    :py:class:`reservoirpy.node.OnlineNode` implements the stateful method
+    :py:meth:`~.OnlineNode.partial_fit` and :py:meth:`~.OnlineNode._learning_step`.
+
+    """
+
     @abstractmethod
     def _learning_step(self, x: Timestep, y: Optional[Timestep]) -> Timestep:
         ...  # pragma: no cover
@@ -391,6 +396,13 @@ class OnlineNode(TrainableNode):
 
 
 class ParallelNode(TrainableNode, ABC):
+    """Node that can be trained in parallel.
+
+    :py:class:`reservoirpy.node.ParallelNode` implements the methods
+    :py:meth:`~.ParallelNode.master` and :py:meth:`~.ParallelNode.worker`.
+
+    """
+
     @abstractmethod
     def worker(self, x: Timeseries, y: Optional[Timeseries]):
         ...  # pragma: no cover
