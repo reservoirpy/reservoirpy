@@ -24,7 +24,7 @@ class Reservoir(Node):
     where:
         - :math:`\\mathbf{x}` is the output activation vector of the reservoir;
         - :math:`\\mathbf{u}` is the input timeseries;
-        - :math:`f` and :math:`g` are activation functions.
+        - :math:`f` is the activation function.
 
 
     Parameters
@@ -179,13 +179,10 @@ class Reservoir(Node):
 
         # set units / output_dim
         if units is None and not is_array(W):
-            raise ValueError(
-                "'units' parameter must not be None if 'W' parameter is not a matrix."
-            )
+            raise ValueError("'units' parameter must not be None if 'W' parameter is not a matrix.")
         if units is not None and is_array(W) and W.shape[-1] != units:
             raise ValueError(
-                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
-                f"{units} != {W.shape[-1]}."
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: " f"{units} != {W.shape[-1]}."
             )
         self.units = units if units is not None else W.shape[-1]
         self.output_dim = self.units
