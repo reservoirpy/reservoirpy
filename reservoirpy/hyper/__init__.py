@@ -28,6 +28,6 @@ do not rely on *hyperopt* and can be used independently.
 """
 from ._hyperplot import plot_hyperopt_report
 from ._hypersearch import research
-from ._parallelized_hypersearch import parallel_research
+from ._parallel_hypersearch import parallel_research
 
 __all__ = ["research", "parallel_research", "plot_hyperopt_report"]
