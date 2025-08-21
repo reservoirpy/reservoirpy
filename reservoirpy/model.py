@@ -148,16 +148,12 @@ class Model:
         self.is_multi_input = len(self.inputs) > 1
         self.is_multi_output = len(self.outputs) > 1
         self.is_online = all([isinstance(n, OnlineNode) for n in self.trainable_nodes])
-        self.is_parallel = all(
-            [isinstance(n, ParallelNode) for n in self.trainable_nodes]
-        )
+        self.is_parallel = all([isinstance(n, ParallelNode) for n in self.trainable_nodes])
         self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
 
         # execution order / cycle detection (without teacher forcing)
         direct_edges = [edge for edge in self.edges if edge[1] == 0]
-        self.execution_order = topological_sort(
-            self.nodes, direct_edges, inputs=self.inputs
-        )
+        self.execution_order = topological_sort(self.nodes, direct_edges, inputs=self.inputs)
         self.feedback_buffers = None
 
         self.initialized = False
@@ -188,9 +184,7 @@ class Model:
         # Turn y into a dict[Node, NodeInput]
 
         if isinstance(y, Mapping):
-            y_: dict[Node, Union[NodeInput, Timestep]] = {
-                self.named_nodes[name]: val for name, val in y.items()
-            }
+            y_: dict[Node, Union[NodeInput, Timestep]] = {self.named_nodes[name]: val for name, val in y.items()}
         elif y is None:
             y_ = {}
         else:
@@ -218,17 +212,15 @@ class Model:
         # execution order / cycle detection (with teacher forcing)
         pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
         pseudo_edges = [edge for edge in self.edges if edge[0] not in y_]
-        self.pseudo_execution_order = topological_sort(
-            self.nodes, pseudo_edges, inputs=pseudo_inputs
-        )
+        self.pseudo_execution_order = topological_sort(self.nodes, pseudo_edges, inputs=pseudo_inputs)
         # Initialize each node in execution_order
         for node in self.pseudo_execution_order:
             node_input_dim = node_input_dims[node]
             if node.initialized:
                 if node_input_dim != node.input_dim:
                     raise ValueError(
-                        f"{node} expects input of dimension {node.input_dim}"
-                        f"but receives input of dimension {node_input_dim}"
+                        f"{node} expects input of dimension {node.input_dim} "
+                        f"but receives input of dimension {node_input_dim}."
                     )
             else:
                 if node in y_:
@@ -238,16 +230,14 @@ class Model:
             if node in y_.keys():
                 if get_data_dimension(y_[node]) != node.output_dim:
                     raise ValueError(
-                        f"{node} expects training data of dimension {node.output_dim}"
-                        f"but receives data of dimension {get_data_dimension(y_[node])}"
+                        f"{node} expects training data of dimension {node.output_dim} "
+                        f"but receives data of dimension {get_data_dimension(y_[node])}."
                     )
             else:
                 for child in self.children[node]:
                     node_input_dims[child] += node.output_dim
 
-        self.feedback_buffers = {
-            (p, d, c): np.zeros((d, p.output_dim)) for p, d, c in self.edges if d > 0
-        }
+        self.feedback_buffers = {(p, d, c): np.zeros((d, p.output_dim)) for p, d, c in self.edges if d > 0}
 
         # TODO: Jax compilation
         self.initialized = True
@@ -266,9 +256,7 @@ class Model:
             if node in x:
                 inputs.append(x[node])
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
-            inputs += [
-                buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
-            ]
+            inputs += [buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node]
             node_input = np.concatenate(inputs, axis=-1)
             new_state[node] = node._step(node_states[node], node_input)
 
@@ -289,9 +277,7 @@ class Model:
             self.initialize(x)
 
         if isinstance(x, Mapping):
-            x_mapping: dict[Node, Timestep] = {
-                self.named_nodes[name]: val for name, val in x.items()
-            }
+            x_mapping: dict[Node, Timestep] = {self.named_nodes[name]: val for name, val in x.items()}
         else:
             [input_node] = self.inputs
             x_mapping = {input_node: x}
@@ -330,9 +316,7 @@ class Model:
                     inputs.append(x[node])
                 inputs += [output_timeseries[parent] for parent in self.parents[node]]
                 node_input = np.concatenate(inputs, axis=-1)
-                new_state[node], output_timeseries[node] = node._run(
-                    node_states[node], node_input
-                )
+                new_state[node], output_timeseries[node] = node._run(node_states[node], node_input)
         else:
             # "online" run: step by step
             n_timesteps = x[list(x.keys())[0]].shape[0]
@@ -347,9 +331,7 @@ class Model:
 
         return (buffers, new_state), output_timeseries
 
-    def run(
-        self, x: Optional[ModelInput] = None, iters: Optional[int] = None
-    ) -> ModelInput:
+    def run(self, x: Optional[ModelInput] = None, iters: Optional[int] = None) -> ModelInput:
         # Auto-regressive mode
         if x is None:
             x = np.zeros((iters, 0))
@@ -359,9 +341,7 @@ class Model:
             self.initialize(x)
 
         if isinstance(x, Mapping):
-            x_mapping: dict[Node, NodeInput] = {
-                self.named_nodes[name]: val for name, val in x.items()
-            }
+            x_mapping: dict[Node, NodeInput] = {self.named_nodes[name]: val for name, val in x.items()}
         else:
             [input_node] = self.inputs
             x_mapping = {input_node: x}
@@ -373,16 +353,12 @@ class Model:
             iterable_x = unfold_mapping(x_mapping)
 
             for timeseries in iterable_x:  # TODO: parallel
-                (new_buffers, new_state), output = self._run(
-                    (previous_buffers, previous_states), timeseries
-                )
+                (new_buffers, new_state), output = self._run((previous_buffers, previous_states), timeseries)
                 for node in output:
                     result[node].append(output[node])
 
         else:
-            (new_buffers, new_state), result = self._run(
-                (previous_buffers, previous_states), x_mapping
-            )
+            (new_buffers, new_state), result = self._run((previous_buffers, previous_states), x_mapping)
 
         for node in new_state:
             node.state = new_state[node]
@@ -393,9 +369,7 @@ class Model:
         else:
             return {node.name: result[node] for node in self.outputs}
 
-    def predict(
-        self, x: Optional[ModelInput] = None, iters: Optional[int] = None
-    ) -> ModelInput:
+    def predict(self, x: Optional[ModelInput] = None, iters: Optional[int] = None) -> ModelInput:
         return self.run(x=x, iters=iters)
 
     def _learning_step(
@@ -411,9 +385,7 @@ class Model:
             inputs = []
             if node in x:
                 inputs.append(x[node])
-            inputs += [
-                buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node
-            ]
+            inputs += [buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node]
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
             if isinstance(node, OnlineNode):
@@ -465,9 +437,7 @@ class Model:
         states = {node: node.state for node in self.nodes}
         buffers = self.feedback_buffers
         for i, (x_timestep, y_timestep) in enumerate(mapping_iterator(x_, y_)):
-            buffers, states = self._learning_step(
-                (buffers, states), x_timestep, y_timestep
-            )
+            buffers, states = self._learning_step((buffers, states), x_timestep, y_timestep)
             for node in self.nodes:
                 output_timeseries[node][i] = states[node]["out"]
 
@@ -541,44 +511,32 @@ class Model:
     def __call__(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
         return self.step(x)
 
-    def __rshift__(
-        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
-    ) -> "Model":
+    def __rshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import link
 
         return link(self, other)
 
-    def __rrshift__(
-        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
-    ) -> "Model":
+    def __rrshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import link
 
         return link(other, self)
 
-    def __lshift__(
-        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
-    ) -> "Model":
+    def __lshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
-    def __rlshift__(
-        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
-    ) -> "Model":
+    def __rlshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
-    def __and__(
-        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
-    ) -> "Model":
+    def __and__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import merge
 
         return merge(self, other)
 
-    def __rand__(
-        self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]
-    ) -> "Model":
+    def __rand__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import merge
 
         return merge(other, self)
