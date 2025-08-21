@@ -123,7 +123,7 @@ def _get_report_path(exp_name, base_path=None):
     return report_path
 
 
-def cpu_parallelized_research(
+def parallel_research(
     objective,
     dataset,
     config_path,

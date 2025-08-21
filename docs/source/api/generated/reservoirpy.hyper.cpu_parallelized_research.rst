@@ -1,6 +1,6 @@
-reservoirpy.hyper.cpu\_parallelized\_research
+reservoirpy.hyper.parallelized\_search
 =============================================
 
 .. currentmodule:: reservoirpy.hyper
 
-.. autofunction:: cpu_parallelized_research
+.. autofunction:: parallel_research
