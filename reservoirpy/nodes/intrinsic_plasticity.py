@@ -228,15 +228,12 @@ class IPReservoir(TrainableNode):
         self.activation = get_function(activation)
 
         if activation == "tanh":
-            self.gradient = partial(
-                IPReservoir.gaussian_gradients, mu=mu, sigma=sigma, eta=learning_rate
-            )
+            self.gradient = partial(IPReservoir.gaussian_gradients, mu=mu, sigma=sigma)
         elif activation == "sigmoid":
-            self.gradient = partial(IPReservoir.exp_gradients, mu=mu, eta=learning_rate)
+            self.gradient = partial(IPReservoir.exp_gradients, mu=mu)
         else:
             raise ValueError(
-                f"Activation '{activation}' must be 'tanh' or 'sigmoid' when "
-                "applying intrinsic plasticity."
+                f"Activation '{activation}' must be 'tanh' or 'sigmoid' when " "applying intrinsic plasticity."
             )
 
         # set input_dim (if possible)
@@ -251,14 +248,10 @@ class IPReservoir(TrainableNode):
 
         # set output_dim
         if units is None and not is_array(W):
-            raise ValueError(
-                "'units' parameter must not be None if 'W' parameter is not "
-                "a matrix."
-            )
+            raise ValueError("'units' parameter must not be None if 'W' parameter is not " "a matrix.")
         if units is not None and is_array(W) and W.shape[-1] != units:
             raise ValueError(
-                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
-                f"{units} != {W.shape[-1]}."
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: " f"{units} != {W.shape[-1]}."
             )
         self.output_dim = units
         if is_array(W):
@@ -311,9 +304,7 @@ class IPReservoir(TrainableNode):
         self.a = np.ones((self.output_dim,))
         self.b = np.zeros((self.output_dim,))
 
-        self.state = dict(
-            internal=np.zeros((self.output_dim,)), out=np.zeros((self.output_dim,))
-        )
+        self.state = dict(internal=np.zeros((self.output_dim,)), out=np.zeros((self.output_dim,)))
 
         self.initialized = True
 
@@ -353,19 +344,19 @@ class IPReservoir(TrainableNode):
             post_state = self.step(u)
 
             delta_a, delta_b = self.gradient(x=pre_state.T, y=post_state.T, a=self.a)
-            self.a += delta_a
-            self.b += delta_b
+            self.a += self.learning_rate * delta_a
+            self.b += self.learning_rate * delta_b
 
-    def gaussian_gradients(x, y, a, mu, sigma, eta):
+    def gaussian_gradients(x, y, a, mu, sigma):
         """KL loss gradients of neurons with tanh activation (~ Normal(mu, sigma))."""
         sig2 = sigma**2
-        delta_b = -eta * (-(mu / sig2) + (y / sig2) * (2 * sig2 + 1 - y**2 + mu * y))
-        delta_a = (eta / a) + delta_b * x
+        delta_b = -(-(mu / sig2) + (y / sig2) * (2 * sig2 + 1 - y**2 + mu * y))
+        delta_a = (1 / a) + delta_b * x
         return delta_a, delta_b
 
-    def exp_gradients(x, y, a, mu, eta):
+    def exp_gradients(x, y, a, mu):
         """KL loss gradients of neurons with sigmoid activation
         (~ Exponential(lambda=1/mu))."""
-        delta_b = eta * (1 - (2 + (1 / mu)) * y + (y**2) / mu)
-        delta_a = (eta / a) + delta_b * x
+        delta_b = 1 - (2 + (1 / mu)) * y + (y**2) / mu
+        delta_a = (1 / a) + delta_b * x
         return delta_a, delta_b
