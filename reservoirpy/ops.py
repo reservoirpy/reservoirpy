@@ -65,16 +65,12 @@ def _link_1to1(
     # maybe nodes are already initialized?
     # check if connected dimensions are ok
     for sender, _, receiver in new_edges:
-        if (
-            sender.initialized
-            and receiver.initialized
-            and sender.output_dim != receiver.input_dim
-        ):
+        if sender.initialized and receiver.initialized and sender.output_dim != receiver.input_dim:
             raise ValueError(
                 f"Dimension mismatch between connected nodes: "
-                f"sender node {sender.name} has output dimension "
+                f"sender node {sender} has output dimension "
                 f"{sender.output_dim} but receiver node "
-                f"{receiver.name} has input dimension "
+                f"{receiver} has input dimension "
                 f"{receiver.input_dim}."
             )
 
@@ -125,10 +121,10 @@ def link(
 
     Parameters
     ----------
-        node1, node2 : Node or list of Node
+        left : Node, Model or list of Node
             Nodes or lists of nodes to link.
-        name: str, optional
-            Name for the chaining Model.
+        right : Node, Model or list of Node
+            Nodes or lists of nodes to link.
 
     Returns
     -------
@@ -138,8 +134,8 @@ def link(
     Raises
     ------
         TypeError
-            Dimension mismatch between connected nodes: `node1` output
-            dimension if different from `node2` input dimension.
+            Dimension mismatch between connected nodes: `left` output
+            dimension if different from `right` input dimension.
             Reinitialize the nodes or create new ones.
 
     Notes
@@ -170,9 +166,7 @@ def link(
     return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
 
 
-def merge(
-    *models: Union[Node, Model, Sequence[Union[Node, Model]]], inplace: bool = False
-) -> Model:
+def merge(*models: Union[Node, Model, Sequence[Union[Node, Model]]]) -> Model:
     """Merge different :py:class:`~.Model` or :py:class:`~.Node`
     instances into a single :py:class:`~.Model` instance.
 
@@ -199,28 +193,15 @@ def merge(
     Parameters
     ----------
     model: Model or Node
-        First node or model to merge. The `inplace` parameter takes this
-        instance as reference.
+        First node or model to merge.
     *models : Model or Node
         All models to merge.
-    inplace: bool, default to False
-        If `True`, then will update Model `model` in-place. If `model` is not
-        a Model instance, this parameter will causes the function to raise
-        a `ValueError`.
-    name: str, optional
-        Name of the resulting Model.
 
     Returns
     -------
     Model
         A new :py:class:`~.Model` instance.
 
-    Raises
-    ------
-    ValueError
-        If `inplace` is `True` but `model` is not a Model instance, then the
-        operation is impossible. In-place merging can only take place on a
-        Model instance.
     """
     # TODO: copy delay buffers
     _check_all_models(*models)
@@ -237,18 +218,14 @@ def merge(
                     nodes += element.nodes
                     edges += element.edges
                 else:
-                    TypeError(
-                        f"Impossible to merge models: object {type(model)} is not a Node or a Model."
-                    )
+                    TypeError(f"Impossible to merge models: object {type(model)} is not a Node or a Model.")
         elif isinstance(model, Node):
             nodes.append(model)
         elif isinstance(model, Model):
             nodes += model.nodes
             edges += model.edges
         else:
-            TypeError(
-                f"Impossible to merge models: object {type(model)} is not a Node or a Model."
-            )
+            TypeError(f"Impossible to merge models: object {type(model)} is not a Node or a Model.")
 
     return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
 
