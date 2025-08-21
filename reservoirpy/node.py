@@ -151,9 +151,7 @@ class Node(ABC):
 
         return current_state, output
 
-    def run(
-        self, x: Optional[NodeInput] = None, iters: Optional[int] = None
-    ) -> NodeInput:
+    def run(self, x: Optional[NodeInput] = None, iters: Optional[int] = None) -> NodeInput:
         """Run the Node on a sequence of data.
         Can update the state of the
         Node several times.
@@ -198,9 +196,7 @@ class Node(ABC):
         self.state = final_state
         return result
 
-    def predict(
-        self, x: Optional[NodeInput] = None, iters: Optional[int] = None
-    ) -> NodeInput:
+    def predict(self, x: Optional[NodeInput] = None, iters: Optional[int] = None) -> NodeInput:
         """Alias for :py:meth:`~.Node.run`
 
         Run the Node on a sequence of data.
@@ -222,6 +218,17 @@ class Node(ABC):
             A sequence of output vectors.
         """
         return self.run(x=x, iters=iters)
+
+    def reset(self) -> State:
+        """Reset all Node state
+
+        Returns
+        -------
+        dict[str, np.array]: previous state of the Node.
+        """
+        previous_state = self.state
+        self.state = {key: np.zeros(val.shape) for key, val in self.state.items()}
+        return previous_state
 
     def _set_input_dim(self, x: Optional[Union[NodeInput, Timestep]]):
         if x is None:
@@ -262,44 +269,32 @@ class Node(ABC):
         else:
             return self.__class__.__name__
 
-    def __rshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
+    def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link
 
         return link(self, other)
 
-    def __rrshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
+    def __rrshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link
 
         return link(other, self)
 
-    def __lshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
+    def __lshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
-    def __rlshift__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
+    def __rlshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
-    def __and__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
+    def __and__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import merge
 
         return merge(self, other)
 
-    def __rand__(
-        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
-    ) -> "Model":
+    def __rand__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import merge
 
         return merge(other, self)
@@ -314,9 +309,7 @@ class TrainableNode(Node):
     """
 
     @abstractmethod
-    def fit(
-        self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
-    ) -> "TrainableNode":
+    def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0) -> "TrainableNode":
         """Offline fitting method of a Node.
 
         Parameters
@@ -373,9 +366,7 @@ class OnlineNode(TrainableNode):
         """
         ...  # pragma: no cover
 
-    def fit(
-        self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0
-    ) -> "OnlineNode":
+    def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0) -> "OnlineNode":
         # Re-initialize in any case
         self.initialize(x, y)
         check_node_input(x, expected_dim=self.input_dim)
@@ -386,9 +377,7 @@ class OnlineNode(TrainableNode):
             if y is None:
                 y = repeat(None)
             for x_ts, y_ts in zip(x, y):
-                _y_pred_current = self.partial_fit(
-                    x_ts[warmup:], None if y_ts is None else y_ts[warmup:]
-                )
+                _y_pred_current = self.partial_fit(x_ts[warmup:], None if y_ts is None else y_ts[warmup:])
         else:
             _y_pred = self.partial_fit(x[warmup:], None if y is None else y[warmup:])
 
@@ -432,8 +421,7 @@ class ParallelNode(TrainableNode, ABC):
                 results = parallel_operator(delayed(self.worker)(x_ts) for x_ts in x)
             else:
                 results = parallel_operator(
-                    delayed(self.worker)(x_ts[warmup:], y_ts[warmup:])
-                    for x_ts, y_ts in zip(x, y)
+                    delayed(self.worker)(x_ts[warmup:], y_ts[warmup:]) for x_ts, y_ts in zip(x, y)
                 )
 
         # Single timeseries
