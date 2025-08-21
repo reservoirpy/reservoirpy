@@ -330,7 +330,7 @@ class IPReservoir(TrainableNode):
 
         next_external = f(self.a * next_state + self.b)
 
-        return {"internal": next_external, "out": next_state}
+        return {"internal": next_state, "out": next_external}
 
     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "IPReservoir":
         check_node_input(x, expected_dim=self.input_dim)
