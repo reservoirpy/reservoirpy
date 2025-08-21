@@ -340,8 +340,8 @@ class IPReservoir(TrainableNode):
 
     def partial_fit(self, x: Timeseries):
         for u in x:
-            pre_state = self.state["internal"]
             post_state = self.step(u)
+            pre_state = self.state["internal"]
 
             delta_a, delta_b = self.gradient(x=pre_state.T, y=post_state.T, a=self.a)
             self.a += self.learning_rate * delta_a
