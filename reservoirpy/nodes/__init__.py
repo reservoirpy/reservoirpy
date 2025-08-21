@@ -16,6 +16,7 @@ Reservoirs
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
    IPReservoir - Reservoir with intrinsic plasticity learning rule
    LocalPlasticityReservoir - Reservoir with weight plasticity
+   ES2N - Edge of Stability Echo State Network
 
 Offline readouts
 ================
@@ -69,6 +70,7 @@ Input and Output
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
+from .es2n import ES2N
 from .intrinsic_plasticity import IPReservoir
 from .io import Input, Output
 from .lif import LIF
@@ -98,4 +100,5 @@ __all__ = [
     "ScikitLearnNode",
     "LIF",
     "LocalPlasticityReservoir",
+    "ES2N",
 ]
