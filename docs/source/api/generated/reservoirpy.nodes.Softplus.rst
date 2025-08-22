@@ -14,6 +14,7 @@ reservoirpy.nodes.Softplus
       ~Softplus.__init__
       ~Softplus.initialize
       ~Softplus.predict
+      ~Softplus.reset
       ~Softplus.run
       ~Softplus.step
    

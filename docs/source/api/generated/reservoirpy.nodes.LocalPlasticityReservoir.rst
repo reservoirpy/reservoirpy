@@ -15,6 +15,7 @@ reservoirpy.nodes.LocalPlasticityReservoir
       ~LocalPlasticityReservoir.fit
       ~LocalPlasticityReservoir.initialize
       ~LocalPlasticityReservoir.predict
+      ~LocalPlasticityReservoir.reset
       ~LocalPlasticityReservoir.run
       ~LocalPlasticityReservoir.step
    

@@ -14,6 +14,7 @@ reservoirpy.nodes.ES2N
       ~ES2N.__init__
       ~ES2N.initialize
       ~ES2N.predict
+      ~ES2N.reset
       ~ES2N.run
       ~ES2N.step
    

@@ -16,6 +16,7 @@ reservoirpy.node.ParallelNode
       ~ParallelNode.initialize
       ~ParallelNode.master
       ~ParallelNode.predict
+      ~ParallelNode.reset
       ~ParallelNode.run
       ~ParallelNode.step
       ~ParallelNode.worker

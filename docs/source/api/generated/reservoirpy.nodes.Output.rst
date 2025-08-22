@@ -14,6 +14,7 @@ reservoirpy.nodes.Output
       ~Output.__init__
       ~Output.initialize
       ~Output.predict
+      ~Output.reset
       ~Output.run
       ~Output.step
    

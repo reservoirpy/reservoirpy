@@ -14,6 +14,7 @@ reservoirpy.nodes.Sigmoid
       ~Sigmoid.__init__
       ~Sigmoid.initialize
       ~Sigmoid.predict
+      ~Sigmoid.reset
       ~Sigmoid.run
       ~Sigmoid.step
    

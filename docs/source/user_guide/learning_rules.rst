@@ -184,9 +184,9 @@ the parameter of the node along with its internal state, and return the state.
 
 .. ipython:: python
 
-    s_t1 = rls.partial_fit(X[0], Y[0])
+    s_t1 = rls.partial_fit(X[:10], Y[:10])
     print("Parameters after first update:", rls.Wout, rls.bias)
-    s_t1 = rls.partial_fit(X[1], Y[1])
+    s_t1 = rls.partial_fit(X[10:], Y[10:])
     print("Parameters after second update:", rls.Wout, rls.bias)
 
 The :py:meth:`~.Node.partial_fit` method can also be called on a timeseries of variables and targets, in a similar way to

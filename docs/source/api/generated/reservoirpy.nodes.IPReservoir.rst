@@ -18,6 +18,7 @@ reservoirpy.nodes.IPReservoir
       ~IPReservoir.initialize
       ~IPReservoir.partial_fit
       ~IPReservoir.predict
+      ~IPReservoir.reset
       ~IPReservoir.run
       ~IPReservoir.step
    

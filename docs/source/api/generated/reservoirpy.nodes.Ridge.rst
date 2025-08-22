@@ -16,6 +16,7 @@ reservoirpy.nodes.Ridge
       ~Ridge.initialize
       ~Ridge.master
       ~Ridge.predict
+      ~Ridge.reset
       ~Ridge.run
       ~Ridge.step
       ~Ridge.worker

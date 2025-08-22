@@ -14,6 +14,7 @@ reservoirpy.nodes.Tanh
       ~Tanh.__init__
       ~Tanh.initialize
       ~Tanh.predict
+      ~Tanh.reset
       ~Tanh.run
       ~Tanh.step
    

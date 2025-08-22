@@ -16,6 +16,7 @@ reservoirpy.nodes.LMS
       ~LMS.initialize
       ~LMS.partial_fit
       ~LMS.predict
+      ~LMS.reset
       ~LMS.run
       ~LMS.step
    

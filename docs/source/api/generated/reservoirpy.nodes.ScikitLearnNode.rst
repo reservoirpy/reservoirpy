@@ -15,6 +15,7 @@ reservoirpy.nodes.ScikitLearnNode
       ~ScikitLearnNode.fit
       ~ScikitLearnNode.initialize
       ~ScikitLearnNode.predict
+      ~ScikitLearnNode.reset
       ~ScikitLearnNode.run
       ~ScikitLearnNode.step
    

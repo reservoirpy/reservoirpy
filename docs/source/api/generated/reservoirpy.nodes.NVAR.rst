@@ -14,6 +14,7 @@ reservoirpy.nodes.NVAR
       ~NVAR.__init__
       ~NVAR.initialize
       ~NVAR.predict
+      ~NVAR.reset
       ~NVAR.run
       ~NVAR.step
    

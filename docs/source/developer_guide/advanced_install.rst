@@ -9,10 +9,7 @@ Advanced installation guide
 This page will guide you into installing ReservoirPy on your system.
 
 Before any package installation, make sure that you have a compatible Python distribution already installed
-on your computer. **ReservoirPy is meant to be used only with Python 3.8 and higher**.
-
-If you are using Python 2, we recommend that you install a more recent version of Python,
-as the support of Python 2 ended in January 2019.
+on your computer. **ReservoirPy is meant to be used only with Python 3.9 and higher**.
 
 To check the version of your Python distribution, you can run the following command in a terminal,
 in Linux/MacOS/Windows :
@@ -44,7 +41,7 @@ To install ReservoirPy using `pip`, simply run the following command in a termin
     pip install reservoirpy
 
 
-To check your installation of ReservoirPy, run:
+To check your installation of ReservoirPy, run one of the following:
 
 .. code-block:: bash
 
@@ -125,21 +122,15 @@ can be found in the table below:
     * - joblib
       - 0.14.1
       - build, install
-    * - dill
-      - 0.3.1.1
-      - build, install
-    * - tqdm
-      - 4.43.0
-      - build, install
     * - hyperopt
       - 0.2.5
       - reservoirpy.hyper, examples
     * - matplotlib
       - 3.3.3
       - reservoirpy.hyper, examples
-    * - seaborn
-      - 0.11.0
-      - reservoirpy.hyper, examples
+    * - tqdm
+      - 4.43.0
+      - reservoirpy.hyper, docs
     * - pytest
       - 6.1.2
       - tests

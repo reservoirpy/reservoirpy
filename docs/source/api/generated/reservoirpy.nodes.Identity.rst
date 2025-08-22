@@ -14,6 +14,7 @@ reservoirpy.nodes.Identity
       ~Identity.__init__
       ~Identity.initialize
       ~Identity.predict
+      ~Identity.reset
       ~Identity.run
       ~Identity.step
    

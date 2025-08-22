@@ -14,6 +14,7 @@ reservoirpy.nodes.Softmax
       ~Softmax.__init__
       ~Softmax.initialize
       ~Softmax.predict
+      ~Softmax.reset
       ~Softmax.run
       ~Softmax.step
    

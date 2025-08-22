@@ -14,6 +14,7 @@ reservoirpy.nodes.ReLU
       ~ReLU.__init__
       ~ReLU.initialize
       ~ReLU.predict
+      ~ReLU.reset
       ~ReLU.run
       ~ReLU.step
    

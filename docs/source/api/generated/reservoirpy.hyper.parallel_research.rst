@@ -1,5 +1,5 @@
-reservoirpy.hyper.parallelized\_search
-=============================================
+reservoirpy.hyper.parallel\_research
+====================================
 
 .. currentmodule:: reservoirpy.hyper
 

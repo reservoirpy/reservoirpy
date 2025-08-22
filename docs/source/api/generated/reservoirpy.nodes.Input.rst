@@ -14,6 +14,7 @@ reservoirpy.nodes.Input
       ~Input.__init__
       ~Input.initialize
       ~Input.predict
+      ~Input.reset
       ~Input.run
       ~Input.step
    

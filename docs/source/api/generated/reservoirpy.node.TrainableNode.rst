@@ -15,6 +15,7 @@ reservoirpy.node.TrainableNode
       ~TrainableNode.fit
       ~TrainableNode.initialize
       ~TrainableNode.predict
+      ~TrainableNode.reset
       ~TrainableNode.run
       ~TrainableNode.step
    

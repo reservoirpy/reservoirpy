@@ -16,6 +16,7 @@ reservoirpy.nodes.RLS
       ~RLS.initialize
       ~RLS.partial_fit
       ~RLS.predict
+      ~RLS.reset
       ~RLS.run
       ~RLS.step
    

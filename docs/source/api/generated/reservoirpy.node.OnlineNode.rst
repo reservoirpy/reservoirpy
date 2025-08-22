@@ -16,6 +16,7 @@ reservoirpy.node.OnlineNode
       ~OnlineNode.initialize
       ~OnlineNode.partial_fit
       ~OnlineNode.predict
+      ~OnlineNode.reset
       ~OnlineNode.run
       ~OnlineNode.step
    

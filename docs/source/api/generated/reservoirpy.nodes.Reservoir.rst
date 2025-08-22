@@ -14,6 +14,7 @@ reservoirpy.nodes.Reservoir
       ~Reservoir.__init__
       ~Reservoir.initialize
       ~Reservoir.predict
+      ~Reservoir.reset
       ~Reservoir.run
       ~Reservoir.step
    
