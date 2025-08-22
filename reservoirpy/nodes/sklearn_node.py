@@ -10,11 +10,11 @@ import numpy as np
 from reservoirpy.type import NodeInput, State, Timeseries, Timestep, is_array
 from reservoirpy.utils.data_validation import check_node_input
 
-from ..node import Node
+from ..node import TrainableNode
 from ..utils.random import rand_generator
 
 
-class ScikitLearnNode(Node):
+class ScikitLearnNode(TrainableNode):
     """
     A node interfacing a scikit-learn linear model that can be used as an offline
     readout node.
@@ -70,29 +70,16 @@ class ScikitLearnNode(Node):
     ):
         if not hasattr(model, "fit"):
             model_name = model.__name__
-            raise AttributeError(
-                f"Specified model {model_name} has no method called 'fit'."
-            )
+            raise AttributeError(f"Specified model {model_name} has no method called 'fit'.")
         if not hasattr(model, "predict"):
             model_name = model.__name__
-            raise AttributeError(
-                f"Specified model {model_name} has no method called 'predict'."
-            )
+            raise AttributeError(f"Specified model {model_name} has no method called 'predict'.")
 
         # Ensure reproducibility
         # scikit-learn currently only supports RandomState
-        if (
-            not "random_state" in kwargs
-            and "random_state" in model.__init__.__kwdefaults__
-        ):
+        if not "random_state" in kwargs and "random_state" in model.__init__.__kwdefaults__:
             generator = rand_generator()
-            kwargs.update(
-                {
-                    "random_state": np.random.RandomState(
-                        seed=generator.integers(1 << 32)
-                    )
-                }
-            )
+            kwargs.update({"random_state": np.random.RandomState(seed=generator.integers(1 << 32))})
 
         self.model = model
         self.name = name
@@ -114,10 +101,7 @@ class ScikitLearnNode(Node):
         # If there are multiple output but the specified model doesn't support
         # multiple outputs, we create an instance of the model for each output.
         if self.output_dim > 1 and not first_instance._get_tags().get("multioutput"):
-            self.instances = [
-                self.model(**deepcopy(self.model_kwargs))
-                for i in range(self.output_dim)
-            ]
+            self.instances = [self.model(**deepcopy(self.model_kwargs)) for i in range(self.output_dim)]
         else:
             self.instances = first_instance
         self.state = {"out": np.zeros((self.output_dim,))}
