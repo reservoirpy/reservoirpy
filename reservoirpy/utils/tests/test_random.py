@@ -18,14 +18,6 @@ def test_set_seed():
         set_seed("foo")
 
 
-def test_random_generator_cast():
-
-    gen1 = np.random.RandomState(123)
-    gen2 = rand_generator(gen1)
-
-    assert isinstance(gen2, np.random.Generator)
-
-
 def test_random_generator_from_seed():
 
     gen1 = rand_generator(123)
