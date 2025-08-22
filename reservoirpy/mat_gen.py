@@ -1306,7 +1306,7 @@ def _small_world(
     rewired_edges = edges[rewire_mask]
 
     for i, j in rewired_edges:
-        possible_nodes = np.where(np.logical_and(matrix[i].toarray() == 0, np.arange(units) != i))[0]
+        possible_nodes = np.where(np.logical_and(matrix[[i]].toarray().ravel() == 0, np.arange(units) != i))[0]
         if len(possible_nodes) == 0:
             continue
         new_j = rng.choice(possible_nodes)
