@@ -116,6 +116,7 @@ References
 
 import copy
 from functools import partial
+from inspect import signature
 from typing import Callable, Iterable, Literal, Optional, Union
 
 import numpy as np
@@ -530,8 +531,8 @@ def _random_sparse(
         parameters, which can be called with a shape and returns a matrix.
     """
 
-    rg = rand_generator(seed)
-    rvs = _get_rvs(dist, **kwargs, random_state=rg)
+    rng = rand_generator(seed)
+    rvs = _get_rvs(dist, **kwargs, random_state=rng)
 
     if degree is not None:
         if len(shape) != 2:
@@ -546,7 +547,7 @@ def _random_sparse(
             direction=direction,
             format=sparsity_type,
             dtype=dtype,
-            random_state=rg,
+            random_state=rng,
             data_rvs=rvs,
         )
     else:
@@ -557,15 +558,20 @@ def _random_sparse(
             matrix = np.zeros(shape, dtype=dtype)
             non_zeros_count = int(connectivity * np.prod(shape))
             non_zero_weights = rvs(size=non_zeros_count).astype(dtype)
-            raveled_indices = rg.choice(matrix.size, non_zeros_count, replace=False)
+            raveled_indices = rng.choice(matrix.size, non_zeros_count, replace=False)
             indices = np.unravel_index(raveled_indices, matrix.shape)
             matrix[indices] = non_zero_weights
         else:
+            if "rng" in signature(sparse.random_array).parameters:
+                rng_arg = {"rng": rng}
+            else:
+                # compatibility with scipy<1.15 (& thus Python<3.10). TODO: remove when updating those
+                rng_arg = {"random_state": rng.integers(np.iinfo(np.int64).max)}
             matrix = sparse.random_array(
                 shape,
                 density=connectivity,
                 format=sparsity_type,
-                rng=rg,
+                **rng_arg,
                 data_sampler=rvs,
                 dtype=dtype,
             )
