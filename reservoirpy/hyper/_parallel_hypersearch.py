@@ -41,10 +41,10 @@ def _parse_config(config):
 def _parse_searchspace(specs):
     if specs[0] == "choice":
         # specs: ['choice', e0, ..., eN]
-        return lambda rng: specs[1:][rng.randint(0, len(specs) - 1)]
+        return lambda rng: specs[1:][rng.integers(0, len(specs) - 1)]
     if specs[0] == "randint":
         # specs: ['randint', low, high]
-        return lambda rng: rng.randint(specs[1], specs[2])
+        return lambda rng: rng.integers(specs[1], specs[2])
     if specs[0] == "uniform":
         # specs: ['uniform', low, high]
         return lambda rng: rng.uniform(specs[1], specs[2])
