@@ -4,6 +4,11 @@
 Create your own :py:class:`Node`
 ================================
 
+.. warning::
+
+   This section of the User Guide only applies to ReservoirPy v0.3. A new guide to node creation is on the way for
+   ReservoirPy v0.4.
+
 Subclassing the :py:class:`Node` to create a custom operator takes only a
 few steps to be done and operational. Subclasses of :py:class:`Node` can
 then be used as any other node instances.
@@ -18,6 +23,7 @@ by the new node class:
 
     import numpy as np
     from reservoirpy import Node
+
 
     def forward(node: Node, x: np.ndarray) -> np.ndarray:
         """Does something to the current state of the node, the input
@@ -119,6 +125,7 @@ You can also create a new subclass of :py:class:`Node` in a similar way:
                 hypers={"const2": const2},
                 name=name,
             )
+
 
     node = CustomNode(const2=-1, name="custom_node")
 
