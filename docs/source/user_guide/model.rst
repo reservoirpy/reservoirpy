@@ -114,22 +114,22 @@ using the node instances:
 Access nodes attributes
 -----------------------
 
-A list of all nodes in the model can be retrieved using the :py:attr:`Model.nodes` attribute. You can also retrieve
-them using their names (see :ref:`naming_nodes`) with the method :py:meth:`~.Model.get_node`:
+A list of all nodes in the model can be retrieved using the :py:attr:`Model.nodes` attribute. The order of the nodes is
+always the order of insertion of the node in the model:
 
 .. code-block:: python
 
     nodeA = Node(..., name="A")
     nodeB = Node(..., name="B")
     model = nodeA >> nodeB
-    assert id(model.get_node("A")) == id(nodeA)
+    assert id(model.nodes[0]) == id(nodeA)
+    assert id(model.named_nodes["A"]) == id(nodeA)
 
-Nodes parameters and hyperparameters can be accessed this way inside a model. They are also stored in the
-:py:attr:`Model.params` and :py:attr:`Model.hypers` attributes, using nested dictionaries:
+Nodes parameters and hyperparameters can be accessed this way inside a model:
 
 .. code-block:: python
 
-    assert model.params["A"]["param1"] == nodeA.param1
+    assert model.named_nodes["A"].param1 == nodeA.param1
 
 
 An example: building a simple Echo State Network
@@ -159,16 +159,14 @@ Next, we can link these two nodes together to create our first ESN:
 
     esn = reservoir >> readout
 
-This ESN can then be called and run over timeseries.
+This ESN can then be fit, called and run over timeseries.
 
 .. ipython:: python
 
     X = np.sin(np.arange(0, 10))[:, np.newaxis]
+    esn.fit(X[:-1], X[1:])
     S = esn.run(X)
     print(S)
-
-Because we have not trained the connections between the readout and the reservoir yet, the output is just a null vector.
-You can see :ref:`learning_rules` to learn more about how to train these connections to perform task on some data.
 
 Multi inputs models
 -------------------
@@ -193,20 +191,18 @@ To create this graph, we can apply ``>>`` on a list of nodes:
 This model will give inputs to node A1 and node A2, concatenate their internal states and give the concatenated states
 to node B.
 
-To run this model, we can either give a single data point that will be used by both A1 and A2, or give
-different inputs to each nodes in the call or run method using a dictionary. In this dictionary, the key must be
-the name of a model input node, and the value a data point (or a timeseries) to give to these input nodes:
+To run this model, we give different inputs to each nodes in the call or run method using a dictionary. In this
+dictionary, the key must be the name of a model input node, and the value a data point (or a timeseries) to give to
+these input nodes:
 
 .. code-block::
 
-    # same input for A1 and A2
-    s = model(x)
     # different inputs for A1 and A2
     s = model({"A1": x1, "A2": x2})
 
 .. note::
 
-    Naming your nodes will help you doing this. We consider above that the nodes have been named "A1", "A2" and "B" at
+    Naming your nodes is necessary for doing this. We consider above that the nodes have been named "A1", "A2" and "B" at
     instanciation.
 
 Multi outputs models
@@ -236,12 +232,12 @@ the keys will be the names of model's output nodes, and the values their respect
 .. code-block:: python
 
     s = model(x)
-    assert s["B1"] == nodeB1.state()
-    assert s["B2"] == nodeB2.state()
+    assert s["B1"] == nodeB1.state["out"]
+    assert s["B2"] == nodeB2.state["out"]
 
 .. note::
 
-    Naming your nodes will help you doing this. We consider above that the nodes have been named "A", "B1" and "B2" at
+    Naming your nodes is necessary for doing this. We consider above that the nodes have been named "A", "B1" and "B2" at
     instanciation.
 
 
@@ -263,7 +259,7 @@ Imagine now that we want to create the model defined by the complicated graph in
     A complicated model.
 
 To create this model, we must decompose it into several path of connections between nodes, or several sub-models. All
-sub-models can then be merged using the ``&`` operator, or the :py:func:`~.merge` function.
+sub-models can then be merged using the ``&`` operator.
 
 First, let's connect inputs
 to nodes A, B and C. To do this, we can use the :py:class:`~.Input` node to indicate to the model where inputs should be
@@ -293,9 +289,6 @@ This operation will gather all nodes and connections defined in all models named
 .. code-block::
 
     model = path1 & path2 & path3 & path4
-    # or using "merge"
-    from reservoirpy import merge
-    model = merge(path1, path2, path3, path4)
 
 ``model`` variable now contains all nodes and all connections defined in the graph in :numref:`compgraph`.
 
