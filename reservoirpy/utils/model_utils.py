@@ -39,9 +39,7 @@ def unfold_mapping(
 T = TypeVar("T")
 
 
-def mapping_iterator(
-    *x: Mapping[T, Timeseries]
-) -> Generator[list[dict[T, Timestep]], Any, None]:
+def mapping_iterator(*x: Mapping[T, Timeseries]) -> Generator[list[dict[T, Timestep]], Any, None]:
     n_timesteps = x[0][list(x[0].keys())[0]].shape[0]
 
     for i in range(n_timesteps):
@@ -50,7 +48,7 @@ def mapping_iterator(
 
 def join_data(*xs: NodeInput) -> NodeInput:
     if isinstance(xs[0], Sequence):
-        return [np.concatenate(elements, axis=-1) for elements in zip(xs)]
+        return [np.concatenate(elements, axis=-1) for elements in zip(*xs)]
     else:
         return np.concatenate(xs, axis=-1)
 
@@ -88,14 +86,12 @@ def check_unnamed_in_out(model):
     unnamed_inputs = [n for n in model.inputs if n.name is None]
     if len(model.inputs) > 1 and len(unnamed_inputs) > 0:
         raise ValueError(
-            f"Model has multiple input nodes but at least one"
-            f" of them is not named: {unnamed_inputs[1:-1]}."
+            f"Model has multiple input nodes but at least one" f" of them is not named: {unnamed_inputs[1:-1]}."
         )
     unnamed_outputs = [n for n in model.outputs if n.name is None]
     if len(model.outputs) > 1 and len(unnamed_outputs) > 0:
         raise ValueError(
-            f"Model has multiple input nodes but at least one"
-            f" of them is not named: {unnamed_outputs[1:-1]}."
+            f"Model has multiple input nodes but at least one" f" of them is not named: {unnamed_outputs[1:-1]}."
         )
 
 
@@ -106,8 +102,7 @@ def check_unnamed_trainable(model):
     unnamed_nodes = [n for n in model.trainable_nodes if n.name is None]
     if len(model.trainable_nodes) > 1 and len(unnamed_nodes) > 0:
         raise ValueError(
-            f"Model has multiple trainable nodes but at least one"
-            f" of them is not named: {unnamed_nodes[1:-1]}."
+            f"Model has multiple trainable nodes but at least one" f" of them is not named: {unnamed_nodes[1:-1]}."
         )
 
 
