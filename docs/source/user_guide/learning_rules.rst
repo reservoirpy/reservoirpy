@@ -157,7 +157,7 @@ trained. A single layer of neurons can be trained using only local information (
 upper layers in the models and averaged over several runs).
 
 Online learning with :py:meth:`~.Node.partial_fit`
---------------------------------------------
+--------------------------------------------------
 
 Online learning can be performed using the :py:meth:`~.Node.partial_fit` method.
 In the following example, we will use the :py:class:`~.RLS` node, a single layer of neurons equipped with
@@ -227,7 +227,7 @@ As ``X`` and ``Y`` where the same timeseries, we can see learning was successful
 function, with a weight of 1 and a bias close to 0.
 
 Online learning with :py:meth:`~.Model.partial_fit`
----------------------------------------------
+---------------------------------------------------
 
 Models also have a :py:meth:`~.Model.partial_fit` method, working similarly to the one of the Node class presented above.
 The :py:meth:`~.Model.partial_fit` method can only be used if all nodes in the model are online nodes, or are not trainable.
