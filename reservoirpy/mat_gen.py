@@ -554,7 +554,7 @@ def _random_sparse(
                 rng_arg = {"rng": rng}
             else:
                 # compatibility with scipy<1.15 (& thus Python<3.10). TODO: remove when updating those
-                rng_arg = {"random_state": rng.integers(np.iinfo(np.int64).max)}
+                rng_arg = {"random_state": rng.integers(4294967295)}
             matrix = sparse.random_array(
                 shape,
                 density=connectivity,
