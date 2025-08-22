@@ -62,10 +62,10 @@ class RLS(OnlineNode):
     >>> from reservoirpy.nodes import RLS
     >>> rls_node = RLS(alpha=1e-1)
 
-    >>> _ = rls_node.train(x[:5], y[:5])
+    >>> _ = rls_node.partial_fit(x[:5], y[:5])
     >>> print(rls_node.Wout.T, rls_node.bias)
     [[ 9.90731641 -0.06884784  6.87944632]] [[12.07802068]]
-    >>> _ = rls_node.train(x[5:], y[5:])
+    >>> _ = rls_node.partial_fit(x[5:], y[5:])
     >>> print(rls_node.Wout.T, rls_node.bias)
     [[ 9.99223366 -0.20499636  6.98924066]] [[12.01128622]]
     """

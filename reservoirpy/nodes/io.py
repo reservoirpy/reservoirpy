@@ -34,7 +34,7 @@ class Input(Node):
     >>> import numpy as np
     >>> from reservoirpy.nodes import Reservoir, Input
     >>> source1, source2 = Input(name="s1"), Input(name="s2")
-    >>> res1, res2 = Reservoir(100), Reservoir(100)
+    >>> res1, res2 = Reservoir(100, name="res1"), Reservoir(100, name="res2)
     >>> model = source1 >> [res1, res2] & source2 >> [res1, res2]
     >>> outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})
     """
@@ -79,7 +79,7 @@ class Output(Node):
     >>> import numpy as np
     >>> from reservoirpy.nodes import Reservoir, Ridge, Output
     >>> reservoir = Reservoir(100)
-    >>> readout = Ridge()
+    >>> readout = Ridge(name="readout")
     >>> probe = Output(name="reservoir-states")
     >>> esn = reservoir >> readout & reservoir >> probe
     >>> _ = esn.initialize(np.ones((1,1)), np.ones((1,1)))

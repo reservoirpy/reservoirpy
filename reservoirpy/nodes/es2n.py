@@ -102,8 +102,8 @@ class ES2N(Node):
 
     Using the :py:func:`~reservoirpy.datasets.mackey_glass` timeseries:
 
-    >>> from reservoirpy.datasets import mackey_glass
-    >>> x = mackey_glass(200)
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x, y = to_forecasting(mackey_glass(200), forecast=10)
     >>> states = es2n.fit(x, y)
 
     .. plot::

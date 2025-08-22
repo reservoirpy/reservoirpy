@@ -91,7 +91,7 @@ def check_unnamed_in_out(model):
     unnamed_outputs = [n for n in model.outputs if n.name is None]
     if len(model.outputs) > 1 and len(unnamed_outputs) > 0:
         raise ValueError(
-            f"Model has multiple input nodes but at least one" f" of them is not named: {unnamed_outputs[1:-1]}."
+            f"Model has multiple output nodes but at least one" f" of them is not named: {unnamed_outputs[1:-1]}."
         )
 
 

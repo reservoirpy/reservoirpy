@@ -104,9 +104,7 @@ def henon_map(
     return states
 
 
-def logistic_map(
-    n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs
-) -> np.ndarray:
+def logistic_map(n_timesteps: int, r: float = 3.9, x0: float = 0.5, **kwargs) -> np.ndarray:
     """Logistic map discrete timeseries [4]_ [5]_.
 
     .. math::
@@ -354,15 +352,10 @@ def mackey_glass(
         # generate random first step based on the value
         # of the initial condition
 
-        history_ = collections.deque(
-            x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5)
-        )
+        history_ = collections.deque(x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5))
     else:
         if not history_length <= len(history):
-            raise ValueError(
-                f"The given history has length of {len(history)} < tau/h"
-                f" with tau={tau} and h={h}."
-            )
+            raise ValueError(f"The given history has length of {len(history)} < tau/h" f" with tau={tau} and h={h}.")
         # use the most recent elements of the provided history
         history_ = collections.deque(history[-history_length:])
 
@@ -466,9 +459,7 @@ def multiscroll(
 
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
-    sol = solve_ivp(
-        multiscroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
-    )
+    sol = solve_ivp(multiscroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -567,9 +558,7 @@ def doublescroll(
 
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
-    sol = solve_ivp(
-        doublescroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
-    )
+    sol = solve_ivp(doublescroll_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -654,9 +643,7 @@ def rabinovich_fabrikant(
 
     t_eval = np.linspace(0.0, t_max, n_timesteps)
 
-    sol = solve_ivp(
-        rabinovich_fabrikant_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs
-    )
+    sol = solve_ivp(rabinovich_fabrikant_diff, y0=x0, t_span=(0.0, t_max), t_eval=t_eval, **kwargs)
 
     return sol.y.T
 
@@ -704,7 +691,7 @@ def narma(
     seed : int or :py:class:`numpy.random.Generator`, optional
         Random state seed for reproducibility.
     u : array of shape (`n_timesteps` + `order`, 1), default to None.
-        Input timeseries (usually uniformly distributed). See above note.
+        Input timeseries (usually uniformly distributed).
 
     Returns
     -------
@@ -716,11 +703,13 @@ def narma(
     >>> import numpy as np
     >>> from reservoirpy.nodes import Reservoir, Ridge
     >>> from reservoirpy.datasets import narma
-    >>> model = Reservoir(100) >> Ridge()
+    >>> reservoir = Reservoir(100)
+    >>> model = reservoir >> Ridge()
     >>> n_timesteps, order = 2000, 30
     >>> rng = np.random.default_rng(seed=2341)
     >>> u, y = narma(n_timesteps=n_timesteps, order=order)
-    >>> model = model.fit(u, y)
+    >>> reservoir.run(u[:order]) # warmup
+    >>> model = model.fit(u[order:], y)
 
     .. plot::
 
@@ -757,12 +746,7 @@ def narma(
         u = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
 
     for t in range(order, n_timesteps + order - 1):
-        y[t + 1] = (
-            a1 * y[t]
-            + a2 * y[t] * np.sum(y[t - order : t])
-            + b * u[t - order] * u[t]
-            + c
-        )
+        y[t + 1] = a1 * y[t] + a2 * y[t] * np.sum(y[t - order : t]) + b * u[t - order] * u[t] + c
     return u, y[order:, :]
 
 
@@ -843,9 +827,7 @@ def lorenz96(
         x0[0] = F + dF
 
     if len(x0) != N:
-        raise ValueError(
-            f"x0 should have shape ({N},), but have shape {np.asarray(x0).shape}"
-        )
+        raise ValueError(f"x0 should have shape ({N},), but have shape {np.asarray(x0).shape}")
 
     def lorenz96_diff(t, state):
         ds = np.zeros(N)
@@ -935,9 +917,7 @@ def rossler(
             https://doi.org/10.1016/0375-9601(76)90101-8.
     """
     if len(x0) != 3:
-        raise ValueError(
-            f"x0 should have shape (3,), but have shape {np.asarray(x0).shape}"
-        )
+        raise ValueError(f"x0 should have shape (3,), but have shape {np.asarray(x0).shape}")
 
     def rossler_diff(t, state):
         x, y, z = state
@@ -1007,9 +987,7 @@ def _kuramoto_sivashinsky(n_timesteps, *, warmup, N, M, x0, h):
     v = np.zeros((n_timesteps, N), dtype=complex)
     v[0] = v0
     for n in range(1, n_timesteps):
-        v[n] = _kuramoto_sivashinsky_etdrk4(
-            v[n - 1], g=g, E=E, E2=E2, Q=Q, f1=f1, f2=f2, f3=f3
-        )
+        v[n] = _kuramoto_sivashinsky_etdrk4(v[n - 1], g=g, E=E, E2=E2, Q=Q, f1=f1, f2=f2, f3=f3)
 
     return np.real(ifft(v[warmup:]))
 
@@ -1098,8 +1076,7 @@ def kuramoto_sivashinsky(
     else:
         if not np.asarray(x0).shape[0] == N:
             raise ValueError(
-                f"Initial condition x0 should be of shape {N} (= N) but "
-                f"has shape {np.asarray(x0).shape}"
+                f"Initial condition x0 should be of shape {N} (= N) but " f"has shape {np.asarray(x0).shape}"
             )
         else:
             x0 = np.asarray(x0)
