@@ -1,10 +1,9 @@
-dill>=0.3.1.1
 joblib>=0.14.1
 numpy>=1.21.1
 scipy>=1.4.1
-tqdm>=4.43.0
 
 # EXTRA : hyperparameters optimization
+tqdm>=4.43.0
 hyperopt
 matplotlib>=2.2.0
 

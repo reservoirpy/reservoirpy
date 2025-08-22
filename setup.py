@@ -15,10 +15,7 @@ AUTHOR_EMAIL = "xavier.hinaut@inria.fr"
 MAINTAINERS = "Xavier Hinaut, Paul Bernard"
 MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, paul.bernard@inria.fr"
 
-DESCRIPTION = (
-    "A simple and flexible code for Reservoir "
-    "Computing architectures like Echo State Networks."
-)
+DESCRIPTION = "A simple and flexible code for Reservoir " "Computing architectures like Echo State Networks."
 
 with open("README.md", "r", encoding="utf-8") as f:
     LONG_DESCRIPTION = f.read()
@@ -27,15 +24,13 @@ URL = "https://github.com/reservoirpy/reservoirpy"
 DOWNLOAD_URL = f"{URL}/v{__version__}.tar.gz"
 
 INSTALL_REQUIRES = [
-    "dill>=0.3.1.1",
     "joblib>=0.14.1",
     "numpy>=1.21.1",
     "scipy>=1.4.1",
-    "tqdm>=4.43.0",
 ]
 
 EXTRA_REQUIRES = {
-    "hyper": ["hyperopt", "matplotlib>=2.2.0"],
+    "hyper": ["hyperopt", "matplotlib>=2.2.0", "tqdm>=4.43.0"],
     "sklearn": ["scikit-learn>=0.24.2"],
 }
 
