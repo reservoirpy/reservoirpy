@@ -186,18 +186,14 @@ class Initializer:
         if self._allow_sr:
             self.__annotations__.update({"sr": float})
         if self._allow_input_scaling:
-            self.__annotations__.update(
-                {"input_scaling": Union[float, Iterable[float]]}
-            )
+            self.__annotations__.update({"input_scaling": Union[float, Iterable[float]]})
 
     def __repr__(self):
         return f"{self._func.__name__}({str(self._kwargs)[1:-1]})"
 
     def __call__(self, *shape, **kwargs):
         if "sr" in kwargs and not self._allow_sr:
-            raise ValueError(
-                "Spectral radius rescaling is not supported by this initializer."
-            )
+            raise ValueError("Spectral radius rescaling is not supported by this initializer.")
 
         if "input_scaling" in kwargs and not self._allow_input_scaling:
             raise ValueError("Input scaling is not supported by this initializer.")
@@ -219,10 +215,7 @@ class Initializer:
     def _func_post_process(self, *shape, sr=None, input_scaling=None, **kwargs):
         """Post process initializer with spectral radius or input scaling factors."""
         if sr is not None and input_scaling is not None:
-            raise ValueError(
-                "'sr' and 'input_scaling' parameters are mutually exclusive for a "
-                "given matrix."
-            )
+            raise ValueError("'sr' and 'input_scaling' parameters are mutually exclusive for a " "given matrix.")
 
         if sr is not None:
             return _scale_spectral_radius(self._func, shape, sr, **kwargs)
@@ -254,14 +247,11 @@ def _get_rvs(dist: str, random_state: Generator, **kwargs) -> Callable:
         return partial(distribution(**kwargs).rvs, random_state=random_state)
     else:
         raise ValueError(
-            f"'{dist}' is not a valid distribution name. "
-            "See 'scipy.stats' for all available distributions."
+            f"'{dist}' is not a valid distribution name. " "See 'scipy.stats' for all available distributions."
         )
 
 
-def _bernoulli_discrete_rvs(
-    p=0.5, value: float = 1.0, random_state: Union[Generator, int] = None
-) -> Callable:
+def _bernoulli_discrete_rvs(p=0.5, value: float = 1.0, random_state: Union[Generator, int] = None) -> Callable:
     """Generator of Bernoulli random variables, equal to +value or -value.
 
     Parameters
@@ -536,9 +526,7 @@ def _random_sparse(
 
     if degree is not None:
         if len(shape) != 2:
-            raise ValueError(
-                f"Matrix shape must have 2 dimensions, got {len(shape)}: {shape}"
-            )
+            raise ValueError(f"Matrix shape must have 2 dimensions, got {len(shape)}: {shape}")
         m, n = shape
         matrix = _random_degree(
             m=m,
@@ -1004,9 +992,7 @@ def _ring(
     """
 
     if len(shape) != 2 or shape[0] != shape[1]:
-        raise ValueError(
-            f"Shape of the ring matrix must be (units, units), got {shape}."
-        )
+        raise ValueError(f"Shape of the ring matrix must be (units, units), got {shape}.")
     units = shape[0]
 
     if weights is None:
@@ -1014,9 +1000,7 @@ def _ring(
     row = np.roll(np.arange(units, dtype=np.int32), shift=-1)
     col = np.arange(units, dtype=np.int32)
 
-    matrix = sparse.coo_array((weights, (row, col)), shape=(units, units)).asformat(
-        sparsity_type, copy=False
-    )
+    matrix = sparse.coo_array((weights, (row, col)), shape=(units, units)).asformat(sparsity_type, copy=False)
 
     if type(matrix) is np.matrix:
         matrix = np.asarray(matrix)
@@ -1069,9 +1053,7 @@ def _line(
     """
 
     if len(shape) != 2 or shape[0] != shape[1]:
-        raise ValueError(
-            f"Shape of the ring matrix must be (units, units), got {shape}."
-        )
+        raise ValueError(f"Shape of the ring matrix must be (units, units), got {shape}.")
     units = shape[0]
 
     if weights is None:
@@ -1079,9 +1061,7 @@ def _line(
     row = np.arange(1, units, dtype=np.int32)
     col = np.arange(units - 1, dtype=np.int32)
 
-    matrix = sparse.coo_array((weights, (row, col)), shape=(units, units)).asformat(
-        sparsity_type, copy=False
-    )
+    matrix = sparse.coo_array((weights, (row, col)), shape=(units, units)).asformat(sparsity_type, copy=False)
 
     if type(matrix) is np.matrix:
         matrix = np.asarray(matrix)
@@ -1128,9 +1108,7 @@ def _orthogonal(
     """
 
     if len(shape) != 2 or shape[0] != shape[1]:
-        raise ValueError(
-            f"Shape of the ring matrix must be (units, units), got {shape}."
-        )
+        raise ValueError(f"Shape of the ring matrix must be (units, units), got {shape}.")
     units = shape[0]
     rg = rand_generator(seed)
 
@@ -1201,9 +1179,7 @@ def _cluster(
 
     rng = rand_generator(seed)
     # Define dictionary for corresponding weight distribution matrices
-    matrix_dict = dict(
-        normal=normal, uniform=uniform, random=random_sparse, bernoulli=bernoulli
-    )
+    matrix_dict = dict(normal=normal, uniform=uniform, random=random_sparse, bernoulli=bernoulli)
 
     # Check for valid distribution
     if distribution not in matrix_dict:
@@ -1225,9 +1201,7 @@ def _cluster(
     n_c = shape[0] // cluster
 
     # Define the cluster matrix
-    c_matrices = matrix_dict[distribution](
-        cluster, n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng
-    )
+    c_matrices = matrix_dict[distribution](cluster, n_c, n_c, connectivity=p_in, dtype=dtype, seed=rng)
 
     # Create the cluster matrix
     for i in range(cluster):
@@ -1285,9 +1259,7 @@ def _small_world(
     """
 
     if len(shape) != 2 or shape[0] != shape[1]:
-        raise ValueError(
-            f"Shape of the small-world matrix must be (units, units), got {shape}."
-        )
+        raise ValueError(f"Shape of the small-world matrix must be (units, units), got {shape}.")
     if nb_close_neighbours % 2 != 0:
         raise ValueError("nb_close_neighbours must be even.")
     if not (0 <= proba_rewire <= 1):
@@ -1299,9 +1271,7 @@ def _small_world(
 
     matrix = sparse.lil_array((units, units), dtype=dtype)
 
-    weight_distribution = dict(
-        normal=normal, uniform=uniform, random_sparse=random_sparse, bernoulli=bernoulli
-    )
+    weight_distribution = dict(normal=normal, uniform=uniform, random_sparse=random_sparse, bernoulli=bernoulli)
     if distribution not in weight_distribution:
         raise ValueError(
             f"Distribution {distribution} is not supported. Must be 'normal', 'uniform', 'random_sparse', 'bernoulli'."
@@ -1336,9 +1306,7 @@ def _small_world(
     rewired_edges = edges[rewire_mask]
 
     for i, j in rewired_edges:
-        possible_nodes = np.where(
-            np.logical_and(matrix[i].toarray() == 0, np.arange(units) != i)
-        )[0]
+        possible_nodes = np.where(np.logical_and(matrix[i].toarray() == 0, np.arange(units) != i))[0]
         if len(possible_nodes) == 0:
             continue
         new_j = rng.choice(possible_nodes)
