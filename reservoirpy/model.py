@@ -64,6 +64,7 @@ from collections import defaultdict
 from typing import Any, Mapping, Optional, Sequence, Union
 
 import numpy as np
+from joblib import Parallel, delayed
 
 from reservoirpy.node import Node
 from reservoirpy.type import NodeInput, Timestep
@@ -331,7 +332,7 @@ class Model:
 
         return (buffers, new_state), output_timeseries
 
-    def run(self, x: Optional[ModelInput] = None, iters: Optional[int] = None) -> ModelInput:
+    def run(self, x: Optional[ModelInput] = None, iters: Optional[int] = None, workers: int = 1) -> ModelInput:
         # Auto-regressive mode
         if x is None:
             x = np.zeros((iters, 0))
@@ -352,10 +353,14 @@ class Model:
             result: dict[Node, list[Timeseries]] = defaultdict(list)
             iterable_x = unfold_mapping(x_mapping)
 
-            for timeseries in iterable_x:  # TODO: parallel
-                (new_buffers, new_state), output = self._run((previous_buffers, previous_states), timeseries)
-                for node in output:
-                    result[node].append(output[node])
+            p_output = Parallel(n_jobs=workers, require="sharedmem")(
+                delayed(self._run)((previous_buffers, previous_states), timeseries) for timeseries in iterable_x
+            )
+            new_model_states, output = zip(*p_output)
+            new_buffers, new_state = new_model_states[-1]
+            for o in output:
+                for node in o:
+                    result[node].append(o[node])
 
         else:
             (new_buffers, new_state), result = self._run((previous_buffers, previous_states), x_mapping)
@@ -406,6 +411,9 @@ class Model:
         x: Union[Timeseries, dict[str, Timeseries]],
         y: Optional[Union[Timeseries, dict[str, Timeseries]]] = None,
     ) -> ModelInput:
+        if not self.is_online:
+            raise TypeError("Trying to partial_fit a Model that can't be trained in an online manner.")
+
         check_model_input(x)
         if y is not None:
             check_model_input(y)
@@ -502,9 +510,12 @@ class Model:
             node_input = join_data(*inputs)
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
-                node.fit(node_input, node_target, warmup=warmup)
+                if isinstance(node, ParallelNode):
+                    node.fit(node_input, node_target, warmup=warmup, workers=workers)
+                else:
+                    node.fit(node_input, node_target, warmup=warmup)
             else:
-                result[node] = node.run(node_input)
+                result[node] = node.run(node_input, workers=workers)
 
         return self
 

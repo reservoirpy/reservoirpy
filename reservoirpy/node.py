@@ -151,7 +151,7 @@ class Node(ABC):
 
         return current_state, output
 
-    def run(self, x: Optional[NodeInput] = None, iters: Optional[int] = None) -> NodeInput:
+    def run(self, x: Optional[NodeInput] = None, iters: Optional[int] = None, workers=1) -> NodeInput:
         """Run the Node on a sequence of data.
         Can update the state of the
         Node several times.
@@ -165,6 +165,9 @@ class Node(ABC):
         iters : int, optional
             If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
             is used instead.
+        workers : int, default to 1
+            Number of workers used for parallelization. If set to -1, all available
+            workers (threads or processes) are used.
 
         Returns
         -------
@@ -182,21 +185,21 @@ class Node(ABC):
         initial_state = self.state
 
         if is_multiseries(x):
-            result = []
-            # TODO: parallelization
-            for timeseries in x:
-                final_state, output = self._run(initial_state, timeseries)
-                result.append(output)
+            output = Parallel(n_jobs=workers)(delayed(self._run)(initial_state, timeseries) for timeseries in x)
+            states, result = zip(*output)
+            final_state = states[-1]
 
             if isinstance(x, np.ndarray):
                 result = np.array(result)
+            else:
+                result = list(result)
         else:
             final_state, result = self._run(initial_state, x)
 
         self.state = final_state
         return result
 
-    def predict(self, x: Optional[NodeInput] = None, iters: Optional[int] = None) -> NodeInput:
+    def predict(self, x: Optional[NodeInput] = None, iters: Optional[int] = None, workers=1) -> NodeInput:
         """Alias for :py:meth:`~.Node.run`
 
         Run the Node on a sequence of data.
@@ -217,7 +220,7 @@ class Node(ABC):
         array of shape ([n_inputs,] timesteps, output_dim) or list of arrays
             A sequence of output vectors.
         """
-        return self.run(x=x, iters=iters)
+        return self.run(x=x, iters=iters, workers=workers)
 
     def reset(self) -> State:
         """Reset all Node state
