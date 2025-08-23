@@ -22,7 +22,7 @@ Installation
         :class-card: install-card
         :shadow: md
 
-        Installing stable release (v0.3.0)
+        Installing stable release (v0.4.0)
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
         ReservoirPy can be installed via pip from `PyPI <https://pypi.org/project/reservoirpy>`__.
