@@ -67,7 +67,7 @@ import numpy as np
 from joblib import Parallel, delayed
 
 from reservoirpy.node import Node
-from reservoirpy.type import NodeInput, Timestep
+from reservoirpy.type import FeedbackBuffers, NodeInput, State, Timestep
 from reservoirpy.utils.data_validation import check_model_input, check_model_timestep
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
@@ -478,6 +478,19 @@ class Model:
                 result[node] = node.run(node_input, workers=workers)
 
         return self
+
+    def reset(self) -> tuple[dict[Node, State], FeedbackBuffers]:
+        """Reset all Node states and buffers in the Model.
+
+        Returns
+        -------
+        dict[str, np.array], dict[Edge, array]: previous states of the Nodes and previous feedback buffer values.
+        """
+        previous_node_states = {node: node.reset() for node in self.nodes}
+        previous_buffers = self.feedback_buffers
+        self.feedback_buffers = {k: np.zeros(v.shape) for k, v in self.feedback_buffers.items()}
+
+        return previous_node_states, previous_buffers
 
     def __call__(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
         return self.step(x)
