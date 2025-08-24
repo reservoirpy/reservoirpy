@@ -38,10 +38,7 @@ def _check_arrays(y_true, y_pred):
     y_pred_array = np.asarray(y_pred)
 
     if not y_true_array.shape == y_pred_array.shape:
-        raise ValueError(
-            f"Shape mismatch between y_true and y_pred: "
-            f"{y_true_array.shape} != {y_pred_array.shape}"
-        )
+        raise ValueError(f"Shape mismatch between y_true and y_pred: " f"{y_true_array.shape} != {y_pred_array.shape}")
 
     return y_true_array, y_pred_array
 
@@ -264,22 +261,16 @@ def nrmse(
             "minmax": lambda y: np.ptp(y, axis=axis),
             "var": lambda y: y.var(axis=axis),
             "mean": lambda y: y.mean(axis=axis),
-            "q1q3": lambda y: np.quantile(y, 0.75, axis=axis)
-            - np.quantile(y, 0.25, axis=axis),
+            "q1q3": lambda y: np.quantile(y, 0.75, axis=axis) - np.quantile(y, 0.25, axis=axis),
         }
 
         if norms.get(norm) is None:
-            raise ValueError(
-                f"Unknown normalization method. "
-                f"Available methods are {list(norms.keys())}."
-            )
+            raise ValueError(f"Unknown normalization method. " f"Available methods are {list(norms.keys())}.")
         else:
             return error / norms[norm](y_true_array)
 
 
-def rsquare(
-    y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False
-) -> float:
+def rsquare(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
     """Coefficient of determination :math:`R^2`:
 
     .. math::
@@ -415,9 +406,7 @@ def memory_capacity(
         test_len = test_size
     else:
         raise ValueError(
-            "invalid test_size argument: "
-            "test_size can be an integer or a float "
-            f"in [0, 1[, but is {test_size}."
+            "invalid test_size argument: " "test_size can be an integer or a float " f"in [0, 1[, but is {test_size}."
         )
 
     # sliding_window_view creates a matrix of the same
@@ -434,10 +423,7 @@ def memory_capacity(
 
     # u[t-k] - z_k[t] square correlation
     capacities = np.square(
-        [
-            np.corrcoef(y_pred, y_test, rowvar=False)[1, 0]
-            for y_pred, y_test in zip(Y_pred.T, Y_test.T)
-        ]
+        [np.corrcoef(y_pred, y_test, rowvar=False)[1, 0] for y_pred, y_test in zip(Y_pred.T, Y_test.T)]
     )
 
     if as_list:
@@ -446,9 +432,7 @@ def memory_capacity(
         return np.sum(capacities)
 
 
-def effective_spectral_radius(
-    W: np.ndarray, lr: float = 1.0, maxiter: Optional[int] = None
-):
+def effective_spectral_radius(W: np.ndarray, lr: float = 1.0, maxiter: Optional[int] = None):
     """Effective spectral radius
 
     The effective spectral radius is defined as the maximal singular value of the matrix
