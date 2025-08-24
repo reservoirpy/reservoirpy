@@ -482,6 +482,9 @@ class Model:
     def __call__(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
         return self.step(x)
 
+    def __repr__(self):
+        return f"Model({str(self.nodes)[1:-1]})"
+
     def __rshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import link
 

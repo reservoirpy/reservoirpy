@@ -64,6 +64,7 @@ from typing import Iterable, Optional, Sequence, Union
 import numpy as np
 from joblib import Parallel, delayed
 
+from reservoirpy.utils import get_non_defaults
 from reservoirpy.utils.data_validation import check_node_input, check_timestep
 
 from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
@@ -267,10 +268,11 @@ class Node(ABC):
         return self.step(x)
 
     def __repr__(self):
-        if self.name is not None:
-            return self.name
-        else:
-            return self.__class__.__name__
+        # base_name = self.name if self.name is not None else self.__class__.__name__
+        base_name = self.__class__.__name__
+        arguments = get_non_defaults(self)
+        arguments_str = ", ".join(f"{arg}:{val}" for arg, val in arguments.items())
+        return f"{base_name}({arguments_str})"
 
     def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link
