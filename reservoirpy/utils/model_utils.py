@@ -2,11 +2,17 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from inspect import signature
-from typing import Any, Generator, Mapping, Sequence, TypeVar
+from typing import Any, Generator, Mapping, Optional, Sequence, TypeVar, Union
 
 import numpy as np
 
-from reservoirpy.type import MultiTimeseries, NodeInput, Timeseries, Timestep
+from reservoirpy.type import (
+    ModelInput,
+    MultiTimeseries,
+    NodeInput,
+    Timeseries,
+    Timestep,
+)
 
 from ..node import Node
 from ..nodes import Input, Output
@@ -111,3 +117,27 @@ def obj_from_kwargs(klas, kwargs):
     params = list(sig.parameters.keys())
     klas_kwargs = {n: v for n, v in kwargs.items() if n in params}
     return klas(**klas_kwargs)
+
+
+def map_input(model, x: Union[T, Mapping[str, T]]) -> dict[Node, T]:
+    mapped_x: dict[Node, T]
+
+    if isinstance(x, Mapping):
+        mapped_x = {model.named_nodes[node]: value for node, value in x.items()}
+    else:
+        mapped_x = {input_node: x for input_node in model.inputs}
+
+    return mapped_x
+
+
+def map_teacher(model, y: Optional[Union[T, Mapping[str, T]]]) -> dict[Node, T]:
+    mapped_y: dict[Node, T]
+
+    if y is None:
+        mapped_y = {}
+    elif isinstance(y, Mapping):
+        mapped_y = {model.named_nodes[name]: val for name, val in y.items()}
+    else:
+        mapped_y = {trainable_node: y for trainable_node in model.trainable_nodes}
+
+    return mapped_y

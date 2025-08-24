@@ -61,7 +61,7 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from collections import defaultdict
-from typing import Any, Mapping, Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -97,6 +97,8 @@ from .utils.model_utils import (
     check_unnamed_trainable,
     data_from_buffer,
     join_data,
+    map_input,
+    map_teacher,
     mapping_iterator,
     unfold_mapping,
 )
@@ -182,15 +184,7 @@ class Model:
         check_input_output_connections(self.edges)
         check_unnamed_trainable(self)
 
-        # Turn y into a dict[Node, NodeInput]
-
-        if isinstance(y, Mapping):
-            y_: dict[Node, Union[NodeInput, Timestep]] = {self.named_nodes[name]: val for name, val in y.items()}
-        elif y is None:
-            y_ = {}
-        else:
-            [trainable_node] = self.trainable_nodes
-            y_ = {trainable_node: y}
+        y_ = map_teacher(self, y)
 
         # Infer node input dimensions from the input they receive
 
@@ -201,8 +195,8 @@ class Model:
                 node = self.named_nodes[node_name]
                 node_input_dims[node] += get_data_dimension(val)
         else:
-            [node] = self.inputs
-            node_input_dims[node] += get_data_dimension(x)
+            for node in self.inputs:
+                node_input_dims[node] += get_data_dimension(x)
 
         # also use y as forced teachers. Useful for models with feedback
         indirect_children = find_indirect_children(nodes=self.nodes, edges=self.edges)
@@ -277,11 +271,7 @@ class Model:
         if not self.initialized:
             self.initialize(x)
 
-        if isinstance(x, Mapping):
-            x_mapping: dict[Node, Timestep] = {self.named_nodes[name]: val for name, val in x.items()}
-        else:
-            [input_node] = self.inputs
-            x_mapping = {input_node: x}
+        x_mapping = map_input(self, x)
 
         state = {node: node.state for node in self.nodes}
         buffers = self.feedback_buffers
@@ -341,11 +331,7 @@ class Model:
         if not self.initialized:
             self.initialize(x)
 
-        if isinstance(x, Mapping):
-            x_mapping: dict[Node, NodeInput] = {self.named_nodes[name]: val for name, val in x.items()}
-        else:
-            [input_node] = self.inputs
-            x_mapping = {input_node: x}
+        x_mapping = map_input(self, x)
 
         previous_states = {node: node.state for node in self.nodes}
         previous_buffers = self.feedback_buffers
@@ -421,21 +407,8 @@ class Model:
         if not self.initialized:
             self.initialize(x, y)
 
-        # Turn x into a dict[Node, NodeInput]
-        if isinstance(x, Mapping):
-            x_ = {self.named_nodes[node]: value for node, value in x.items()}
-        else:
-            [input_node] = self.inputs
-            x_ = {input_node: x}
-
-        # Turn y into a dict[Node, NodeInput]
-        if y is None:
-            y_ = {}
-        elif isinstance(y, Mapping):
-            y_ = {self.named_nodes[name]: val for name, val in y.items()}
-        else:
-            [trainable_node] = self.trainable_nodes
-            y_ = {trainable_node: y}
+        x_ = map_input(self, x)
+        y_ = map_teacher(self, y)
 
         n_timesteps = x_[list(x_.keys())[0]].shape[0]
         output_timeseries: dict[Node, Timeseries] = {
@@ -476,21 +449,8 @@ class Model:
         result: dict[Node, NodeInput] = defaultdict(list)
         buffers = self.feedback_buffers
 
-        # Turn x into a dict[Node, NodeInput]
-        if isinstance(x, Mapping):
-            x_ = {self.named_nodes[node]: value for node, value in x.items()}
-        else:
-            [input_node] = self.inputs
-            x_ = {input_node: x}
-
-        # Turn y into a dict[Node, NodeInput]
-        if y is None:
-            y_ = {}
-        elif isinstance(y, Mapping):
-            y_ = {self.named_nodes[name]: val for name, val in y.items()}
-        else:
-            [trainable_node] = self.trainable_nodes
-            y_ = {trainable_node: y}
+        x_ = map_input(self, x)
+        y_ = map_teacher(self, y)
 
         # forced teaching
         for supervised in y_:
