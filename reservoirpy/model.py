@@ -111,9 +111,9 @@ class Model:
     ----------
     nodes : list of Node, optional
         Nodes to include in the Model.
-    edges : list of (Node, Node), optional
+    edges : list of (Node, int, Node), optional
         Edges between Nodes in the graph. An edge between a
-        Node A and a Node B is created as a tuple (A, B).
+        Node A and a Node B with a delay of :math:`d` is created as a tuple ``(A, d, B)``.
     """
 
     nodes: list[Node]
