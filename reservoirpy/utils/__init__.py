@@ -31,5 +31,5 @@ def get_non_defaults(instance, constructor=None):
     return {
         k: getattr(instance, k)
         for k, v in defaults.items()
-        if hasattr(instance, k) and getattr(instance, k) != v and k not in EXCLUDED_PARAMETERS
+        if hasattr(instance, k) and k not in EXCLUDED_PARAMETERS and getattr(instance, k) != v
     }
