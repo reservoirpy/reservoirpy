@@ -29,7 +29,7 @@ class ScikitLearnNode(TrainableNode):
     :py:class:`sklearn.linear_model.ElasticNet`).
 
     For more information on the above-mentioned estimators,
-    please visit scikit-learn linear model API reference
+    please visit `scikit-learn linear model API reference
     <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model>`_
 
 
