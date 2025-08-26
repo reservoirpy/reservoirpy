@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 
@@ -128,7 +128,7 @@ class RLS(OnlineNode):
                 )
             self.output_dim = bias.shape[0]
 
-    def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
         out = x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
         return {"out": out[-1]}, out
 

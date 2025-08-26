@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, Optional, Sequence, Tuple, Union
+from typing import Callable, Iterable, Optional, Union
 
 import numpy as np
 from scipy import linalg
@@ -141,7 +141,7 @@ class Ridge(ParallelNode):
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x @ self.Wout + self.bias}
 
-    def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
         out = x @ self.Wout + self.bias
         return {"out": out[-1]}, out
 

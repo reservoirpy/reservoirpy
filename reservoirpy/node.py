@@ -67,7 +67,7 @@ from joblib import Parallel, delayed
 from reservoirpy.utils import get_non_defaults
 from reservoirpy.utils.data_validation import check_node_input, check_timestep
 
-from .type import NodeInput, State, Timeseries, Timestep, is_multiseries
+from .type import NodeInput, State, Timeseries, Timestep, is_array, is_multiseries
 
 
 class Node(ABC):
@@ -190,7 +190,7 @@ class Node(ABC):
             states, result = zip(*output)
             final_state = states[-1]
 
-            if isinstance(x, np.ndarray):
+            if is_array(x):
                 result = np.array(result)
             else:
                 result = list(result)

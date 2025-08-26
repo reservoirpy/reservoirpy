@@ -2,7 +2,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from functools import partial
-from typing import Callable, Optional, Sequence, Tuple, Union
+from typing import Callable, Optional, Union
 
 from ..activationsfunc import identity, relu, sigmoid, softmax, softplus, tanh
 from ..node import Node
@@ -43,7 +43,7 @@ class F(Node):
     def _step(self, state: tuple, x: Timestep) -> State:
         return {"out": self.f(x)}
 
-    def _run(self, state: State, x: Timeseries) -> Tuple[State, Timeseries]:
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
         out = self.f(x)
         return {"out": out[-1]}, out
 
