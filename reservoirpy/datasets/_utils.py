@@ -3,9 +3,11 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import sys
 from pathlib import Path
-from typing import List, Union
+from typing import Sequence, Union
 
 import numpy as np
+
+from reservoirpy.type import is_array
 
 DATA_FOLDER = Path.home() / Path("reservoirpy-data")
 
@@ -22,7 +24,7 @@ def _get_data_folder(folder_path=None):
     return folder_path
 
 
-def one_hot_encode(y: Union[np.ndarray, List]):
+def one_hot_encode(y: Union[np.ndarray, Sequence]):
     """Encode categorical features as a one-hot numeric array.
 
     This functions creates a trailing column for each class from the dataset. This function also supports inputs as
@@ -67,7 +69,7 @@ def one_hot_encode(y: Union[np.ndarray, List]):
     array([False,  True])
 
     """
-    if isinstance(y, list) and isinstance(y[0], np.ndarray):  # multi-sequence
+    if isinstance(y, list) and is_array(y[0]):  # multi-sequence
         # treat it as one long timeseries before re-separating them
         series_lengths = [series.shape[0] for series in y]
         series_split_indices = np.cumsum(series_lengths)[:-1]
@@ -90,7 +92,7 @@ def one_hot_encode(y: Union[np.ndarray, List]):
 
 
 def from_aeon_classification(
-    X: Union[np.ndarray, List[np.ndarray]],
+    X: Union[np.ndarray, Sequence[np.ndarray]],
 ):
     """Converts a dataset in the `Aeon <https://aeon-toolkit.org/>`_ classification format into a ReservoirPy-compatible format.
 
@@ -120,21 +122,19 @@ def from_aeon_classification(
     >>> print(X_.shape)
     (4921, 500, 1)
     """
-    X_out: np.ndarray | List[np.ndarray]
+    X_out: Union[np.ndarray, list[np.ndarray]]
 
-    if isinstance(X, list):
+    if isinstance(X, Sequence):
         X_out = [np.swapaxes(np.array(series), 0, 1) for series in X]
         return X_out
 
-    if not isinstance(X, np.ndarray):
+    if not is_array(X):
         if np.array(X).shape == ():
             raise TypeError(f"X must be numpy array-like or a list, got {type(X)}")
         X = np.array(X)
 
     if not len(X.shape) == 3:
-        raise ValueError(
-            f"Expected a 3-dimensional array, got {len(X.shape)} dimensions."
-        )
+        raise ValueError(f"Expected a 3-dimensional array, got {len(X.shape)} dimensions.")
 
     X_out = np.swapaxes(X, 1, 2)
     return X_out

@@ -149,7 +149,7 @@ References
             future and understanding the past. Routledge.
 """
 
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 
@@ -307,7 +307,7 @@ def to_forecasting(
     return np.moveaxis(X, 0, axis), np.moveaxis(y, 0, axis)
 
 
-def mso(n_timesteps: int, freqs: list, normalize: bool = True):
+def mso(n_timesteps: int, freqs: Sequence[float], normalize: bool = True):
     """Multiple superimposed oscillator task [22]_
 
     This task is usually performed to evaluate a model resistance

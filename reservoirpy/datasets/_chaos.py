@@ -5,7 +5,7 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import collections
 import os
-from typing import Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 from joblib import Memory
@@ -656,9 +656,9 @@ def narma(
     b: float = 1.5,
     c: float = 0.001,
     x0: Union[list, np.ndarray] = [0.0],
-    seed: Union[int, RandomState] = None,
-    u: np.ndarray = None,
-) -> Tuple[np.ndarray, np.ndarray]:
+    seed: Optional[Union[int, np.random.Generator]] = None,
+    u: Optional[np.ndarray] = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Non-linear Autoregressive Moving Average (NARMA) timeseries,
     as first defined in [14]_, and as used in [15]_.
 
@@ -735,7 +735,7 @@ def narma(
     """
     if seed is None:
         seed = get_seed()
-    rs = rand_generator(seed)
+    rng = rand_generator(seed)
 
     y = np.zeros((n_timesteps + order, 1))
 
@@ -743,7 +743,7 @@ def narma(
     y[: x0.shape[0], :] = x0
 
     if u is None:
-        u = rs.uniform(0, 0.5, size=(n_timesteps + order, 1))
+        u = rng.uniform(0, 0.5, size=(n_timesteps + order, 1))
 
     for t in range(order, n_timesteps + order - 1):
         y[t + 1] = a1 * y[t] + a2 * y[t] * np.sum(y[t - order : t]) + b * u[t - order] * u[t] + c
@@ -757,7 +757,7 @@ def lorenz96(
     F: float = 8.0,
     dF: float = 0.01,
     h: float = 0.01,
-    x0: Union[list, np.ndarray] = None,
+    x0: Optional[Union[list, np.ndarray]] = None,
     **kwargs,
 ) -> np.ndarray:
     """Lorenz96 attractor timeseries as defined by Lorenz in 1996 [17]_.
@@ -997,7 +997,7 @@ def kuramoto_sivashinsky(
     warmup: int = 0,
     N: int = 128,
     M: float = 16,
-    x0: Union[list, np.ndarray] = None,
+    x0: Optional[Union[list, np.ndarray]] = None,
     h: float = 0.25,
 ) -> np.ndarray:
     """Kuramoto-Sivashinsky oscillators [19]_ [20]_ [21]_.

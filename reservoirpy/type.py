@@ -36,13 +36,13 @@ FeedbackBuffers = dict[Edge, Buffer]
 
 
 def is_array(obj: Any) -> bool:
-    return obj is not None and isinstance(obj, np.ndarray) or issparse(obj)
+    return (hasattr(obj, "__array__") or hasattr(obj, "__array_interface__") or issparse(obj)) and not np.isscalar(obj)
 
 
 def is_multiseries(x: Union[NodeInput, Mapping[Any, NodeInput]]) -> bool:
-    if isinstance(x, dict):
+    if isinstance(x, Mapping):
         return is_multiseries(x[list(x)[0]])
-    return (isinstance(x, np.ndarray) and len(x.shape) == 3) or isinstance(x, Sequence)
+    return (is_array(x) and len(x.shape) == 3) or isinstance(x, Sequence)
 
 
 def get_data_dimension(x: Union[Timestep, Timeseries, MultiTimeseries]) -> int:
