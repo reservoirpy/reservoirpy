@@ -360,8 +360,8 @@ class Model:
         else:
             return {node.name: result[node] for node in self.outputs}
 
-    def predict(self, x: Optional[ModelInput] = None, iters: Optional[int] = None) -> ModelInput:
-        return self.run(x=x, iters=iters)
+    def predict(self, x: Optional[ModelInput] = None, iters: Optional[int] = None, workers: int = 1) -> ModelInput:
+        return self.run(x=x, iters=iters, workers=workers)
 
     def _learning_step(
         self,

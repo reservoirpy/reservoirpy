@@ -215,6 +215,9 @@ class Node(ABC):
         iters : int, optional
             If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
             is used instead.
+        workers : int, default to 1
+            Number of workers used for parallelization. If set to -1, all available
+            workers (threads or processes) are used.
 
         Returns
         -------
