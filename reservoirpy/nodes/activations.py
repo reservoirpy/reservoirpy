@@ -40,7 +40,7 @@ class F(Node):
         self.output_dim = self.input_dim
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> State:
+    def _step(self, state: State, x: Timestep) -> State:
         return {"out": self.f(x)}
 
     def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:

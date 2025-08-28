@@ -115,11 +115,11 @@ class LMS(OnlineNode):
                 )
             self.output_dim = bias.shape[0]
 
-    def _run(self, state: tuple, x: Timeseries) -> tuple[State, Timeseries]:
+    def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
         out = x @ self.Wout + self.bias
         return {"out": out[-1]}, out  # (len, in) @ (in, out) + (out,)
 
-    def _step(self, state: tuple, x: Timestep) -> State:
+    def _step(self, state: State, x: Timestep) -> State:
         return {"out": x @ self.Wout + self.bias}  # (in, ) @ (in, out) + (out,)
 
     def initialize(
