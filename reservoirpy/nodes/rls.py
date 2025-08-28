@@ -165,7 +165,7 @@ class RLS(OnlineNode):
         x: np.ndarray (in,)
         y: np.ndarray (out,)
         Returns
-        (Wout_next, bias_next, P_next, S_next), y_pred
+        y_pred
         """
         Wout: Weights = self.Wout
         bias: Weights = self.bias

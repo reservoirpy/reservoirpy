@@ -158,9 +158,7 @@ class NVAR(Node):
         # for each monomial created in the non linear part, indices
         # of the n components involved, n being the order of the
         # monomials. Pre-compute them to improve efficiency.
-        idx = np.array(
-            list(it.combinations_with_replacement(np.arange(linear_dim), order))
-        )
+        idx = np.array(list(it.combinations_with_replacement(np.arange(linear_dim), order)))
 
         self._monomial_idx = idx
 
@@ -168,7 +166,7 @@ class NVAR(Node):
         self.store = np.zeros((delay * strides, self.input_dim))
         self.initialized = True
 
-    def _step(self, state: tuple, x: Timestep) -> State:
+    def _step(self, state: State, x: Timestep) -> State:
         store = self.store
         strides = self.strides
         idxs = self._monomial_idx
