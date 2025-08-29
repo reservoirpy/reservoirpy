@@ -116,22 +116,38 @@ class Model:
         Node A and a Node B with a delay of :math:`d` is created as a tuple ``(A, d, B)``.
     """
 
+    #: List of Nodes contained in the model, in insertion order.
     nodes: list[Node]
+    #: List of ``(NodeA, d, NodeB)`` edges, representing a connection from ``NodeA`` to ``NodeB`` with a delay of ``d``.
     edges: list[tuple[Node, int, Node]]
+    #: Dictionary of edges -> np.ndarray where arrays contain the values to be sent to the receiving node.
     feedback_buffers: FeedbackBuffers
+    #: List of Nodes that expects an input
     inputs: list[Node]
+    #: List of Nodes expected to output their values
     outputs: list[Node]
+    #: Dictionary that associates a name to a Node with that name in the model.
     named_nodes: dict[str, Node]
+    #: List of nodes that can be trained
     trainable_nodes: list[Node]
+    #: List of Nodes contained in the model, in the order they should be run.
     execution_order: list[Node]
+    #: Dictionary that associates a list of all Nodes connected to the key Node.
     parents: dict[Node, list[Node]]
+    #: Dictionary that associates a list of all Nodes to which the key node is connected.
     children: dict[Node, list[Node]]
 
+    #: If True, the model can be trained (with :py:meth:`~.Model.fit`).
     is_trainable: bool
+    #: If True, the model has multiple Node inputs
     is_multi_input: bool
+    #: If True, the model has multiple outputs and returns a dictionary that associates a node name to a node output.
     is_multi_output: bool
+    #: If True, the model can be trained online (with :py:meth:`~.Model.partial_fit`).
     is_online: bool
+    #: If True, the model can be trained in parallel (offline).
     is_parallel: bool
+    #: If True, the model and its Nodes has been initialized.
     initialized: bool
 
     def __init__(
@@ -167,7 +183,7 @@ class Model:
         y: Optional[Union[ModelInput, ModelTimestep]] = None,
     ):
         """Initializes a :py:class:`Model` instance at runtime, using samples of
-        data to infer all :py:class:`Node` dimensions.
+        data to infer all :py:class:`Node` dimensions and instantiate the feedback buffers.
 
         Parameters
         ----------
@@ -263,6 +279,20 @@ class Model:
         return new_buffers, new_state
 
     def step(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
+        """Call the Model function on a single step of data and update
+        its state.
+
+        Parameters
+        ----------
+        x : array of shape (input_dim,), optional
+            One single step of input data. If None, an empty array is used
+            instead and the Node is assumed to have an input_dim of 0
+
+        Returns
+        -------
+        array of shape (output_dim,) or dict of 1D arrays.
+            An output vector. If the model has multiple outputs, a dictionary is returned instead.
+        """
         # Auto-regressive mode
         if x is None:
             x = np.zeros((0,))
@@ -323,6 +353,24 @@ class Model:
         return (buffers, new_state), output_timeseries
 
     def run(self, x: Optional[ModelInput] = None, iters: Optional[int] = None, workers: int = 1) -> ModelInput:
+        """Run the Model on a sequence of data.
+
+        Parameters
+        ----------
+        x : array ([s,] t, d), list of arrays (t, d) or a mapping of them, optional
+            A timeseries, multiple timeseries, or a mapping of timeseries or multiple timeseries. Input of the Model.
+        iters : int, optional
+            If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
+            is used instead.
+        workers : int, default to 1
+            Number of workers used for parallelization. If set to -1, all available
+            workers (threads or processes) are used.
+
+        Returns
+        -------
+        array of shape ([n_inputs,] timesteps, output_dim) or list of arrays, or dict
+            A sequence of output vectors. If the model has multiple outputs, a mapping is returned instead.
+        """
         # Auto-regressive mode
         if x is None:
             x = np.zeros((iters, 0))
@@ -361,6 +409,24 @@ class Model:
             return {node.name: result[node] for node in self.outputs}
 
     def predict(self, x: Optional[ModelInput] = None, iters: Optional[int] = None, workers: int = 1) -> ModelInput:
+        """Alias for :py:meth:`~.Model.run`.
+
+        Parameters
+        ----------
+        x : array ([s,] t, d), list of arrays (t, d) or a mapping of them, optional
+            A timeseries, multiple timeseries, or a mapping of timeseries or multiple timeseries. Input of the Model.
+        iters : int, optional
+            If ``x`` is ``None``, a dimensionless timeseries of length ``iters``
+            is used instead.
+        workers : int, default to 1
+            Number of workers used for parallelization. If set to -1, all available
+            workers (threads or processes) are used.
+
+        Returns
+        -------
+        array of shape ([n_inputs,] timesteps, output_dim) or list of arrays, or dict
+            A sequence of output vectors. If the model has multiple outputs, a mapping is returned instead.
+        """
         return self.run(x=x, iters=iters, workers=workers)
 
     def _learning_step(
@@ -397,6 +463,25 @@ class Model:
         x: Union[Timeseries, dict[str, Timeseries]],
         y: Optional[Union[Timeseries, dict[str, Timeseries]]] = None,
     ) -> ModelInput:
+        """Fit the Model in an online fashion.
+
+        This method both trains the Model parameters and produce predictions on
+        the run. Calling :py:meth:`partial_fit` updates the Model without
+        resetting the parameters, unlike :py:meth:`fit`.
+
+        Parameters
+        ----------
+        x : array-like of shape (timesteps, input_dim)
+            Input sequence of data.
+        y : array-like of shape (timesteps, output_dim), optional.
+            Target sequence of data. If None, the Node will train in an
+            unsupervised way, if possible.
+
+        Returns
+        -------
+        array of shape (timesteps, output_dim) or mapping of arrays
+            All outputs computed during the training.
+        """
         if not self.is_online:
             raise TypeError("Trying to partial_fit a Model that can't be trained in an online manner.")
 
@@ -438,6 +523,24 @@ class Model:
         warmup: int = 0,
         workers: int = 1,
     ) -> "Model":
+        """Offline fitting method of a Model.
+
+        Parameters
+        ----------
+        x : list or array-like of shape ([series, ] timesteps, input_dim) or a mapping of input, optional
+            Input sequences dataset.
+        y : list or array-like of shape ([series], timesteps, output_dim), or a mapping of input optional
+            Teacher signals dataset. If None, the method will try to fit the
+            Node in an unsupervised way, if possible.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the beginning of each timeseries before training.
+
+        Returns
+        -------
+        Node
+            Node trained offline.
+        """
         check_model_input(x)
         if y is not None:
             check_model_input(y)
