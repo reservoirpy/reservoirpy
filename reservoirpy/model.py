@@ -57,9 +57,9 @@ a :py:class:`Model`.
 
 """
 
-# Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from collections import defaultdict
 from typing import Mapping, Optional, Sequence, Union
 

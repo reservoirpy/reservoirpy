@@ -65,7 +65,6 @@ Input and Output
 """
 
 
-# Author: Nathan Trouvain at 16/12/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 

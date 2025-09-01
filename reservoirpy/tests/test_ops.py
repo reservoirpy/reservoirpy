@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 10/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
 

@@ -1,4 +1,3 @@
-# Author: Paul BERNARD at 01/01/2024 <paul.bernard@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 

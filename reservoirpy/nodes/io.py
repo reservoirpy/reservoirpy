@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from typing import Optional, Sequence, Union
 
 from ..node import Node

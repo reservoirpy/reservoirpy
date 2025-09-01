@@ -1,13 +1,11 @@
-# Author: Nathan Trouvain at 10/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from typing import Sequence
 
 import numpy as np
-import pytest
 
 from reservoirpy.node import Node, OnlineNode, TrainableNode
-from reservoirpy.type import is_multiseries
 
 
 class IdentityNode(Node):

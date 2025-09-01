@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 14/10/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import itertools as it
 from math import comb
 from typing import Optional, Sequence, Union

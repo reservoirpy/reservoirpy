@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 17/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 

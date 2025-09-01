@@ -1,5 +1,8 @@
 """Tools for CPU-parallelized hyperparameter optimization."""
 
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import json
 import os
 import time

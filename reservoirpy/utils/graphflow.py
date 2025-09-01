@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 12/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from collections import deque
 from typing import Any, Optional, Sequence, TypeVar
 
@@ -14,14 +14,8 @@ def unique_ordered(x: Sequence[T]) -> list[T]:
 
 def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     """Returns two dicts linking nodes to their parents and children in the graph."""
-    parents = {
-        child: unique_ordered([p for p, d, c in edges if c is child and d == 0])
-        for child in nodes
-    }
-    children = {
-        parent: unique_ordered([c for p, d, c in edges if p is parent and d == 0])
-        for parent in nodes
-    }
+    parents = {child: unique_ordered([p for p, d, c in edges if c is child and d == 0]) for child in nodes}
+    children = {parent: unique_ordered([c for p, d, c in edges if p is parent and d == 0]) for parent in nodes}
 
     return parents, children
 
@@ -29,17 +23,12 @@ def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
 def find_indirect_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     """Returns two dicts linking nodes to their children in the graph."""
 
-    children = {
-        parent: unique_ordered([c for p, d, c in edges if p is parent])
-        for parent in nodes
-    }
+    children = {parent: unique_ordered([c for p, d, c in edges if p is parent]) for parent in nodes}
 
     return children
 
 
-def topological_sort(
-    nodes: list[T], edges: list[tuple[T, int, T]], inputs: Optional[list[T]] = None
-) -> list[T]:
+def topological_sort(nodes: list[T], edges: list[tuple[T, int, T]], inputs: Optional[list[T]] = None) -> list[T]:
     """Topological sort of nodes in a Model, to determine execution order."""
     if inputs is None:
         inputs = find_inputs(nodes, edges)
@@ -60,24 +49,18 @@ def topological_sort(
                 inputs_deque.append(m)
     if len(edges_set) > 0:
         raise RuntimeError(
-            "Model has a cycle: impossible "
-            "to automatically determine operations "
-            "order in the model."
+            "Model has a cycle: impossible " "to automatically determine operations " "order in the model."
         )
     else:
         return ordered_nodes
 
 
-def find_pseudo_inputs(
-    nodes: list[T], edges: list[tuple[T, int, T]], y_mapping: dict[T, Any]
-) -> list[T]:
+def find_pseudo_inputs(nodes: list[T], edges: list[tuple[T, int, T]], y_mapping: dict[T, Any]) -> list[T]:
     """
     Find all nodes that are not receivers or that only receive forced feedback.
     Guaranteed to preserve order.
     """
-    unsupervised_receivers: set[T] = set(
-        [n for c, d, n in edges if d == 0 and c not in y_mapping.keys()]
-    )
+    unsupervised_receivers: set[T] = set([n for c, d, n in edges if d == 0 and c not in y_mapping.keys()])
     sources = [node for node in nodes if node not in unsupervised_receivers]
     return sources
 

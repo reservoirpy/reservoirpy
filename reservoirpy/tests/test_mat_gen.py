@@ -1,3 +1,6 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
 from numpy.random import default_rng
@@ -47,9 +50,7 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
     if expects == "sparse":
         init = random_sparse(dist=dist, connectivity=connectivity, seed=42, **kwargs)
         w0 = init(*shape)
-        w1 = random_sparse(
-            *shape, dist=dist, connectivity=connectivity, seed=42, **kwargs
-        )
+        w1 = random_sparse(*shape, dist=dist, connectivity=connectivity, seed=42, **kwargs)
 
         w0 = w0.toarray()
         w1 = w1.toarray()
@@ -57,30 +58,21 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
     if expects == "dense":
         init = random_sparse(dist=dist, connectivity=connectivity, seed=42, **kwargs)
         w0 = init(*shape)
-        w1 = random_sparse(
-            *shape, dist=dist, connectivity=connectivity, seed=42, **kwargs
-        )
+        w1 = random_sparse(*shape, dist=dist, connectivity=connectivity, seed=42, **kwargs)
 
     if expects == "raise":
         with pytest.raises(Exception):
-            init = random_sparse(
-                dist=dist, connectivity=connectivity, seed=42, **kwargs
-            )
+            init = random_sparse(dist=dist, connectivity=connectivity, seed=42, **kwargs)
             w0 = init(*shape)
         with pytest.raises(Exception):
-            w1 = random_sparse(
-                *shape, dist=dist, connectivity=connectivity, seed=42, **kwargs
-            )
+            w1 = random_sparse(*shape, dist=dist, connectivity=connectivity, seed=42, **kwargs)
     else:
         assert_array_equal(w1, w0)
         if kwargs.get("degree") is None:
             assert_allclose(np.count_nonzero(w0) / w0.size, connectivity, atol=1e-2)
         else:
             dim_length = {"in": shape[0], "out": shape[1]}
-            assert (
-                np.count_nonzero(w0)
-                == kwargs["degree"] * dim_length[kwargs["direction"]]
-            )
+            assert np.count_nonzero(w0) == kwargs["degree"] * dim_length[kwargs["direction"]]
 
 
 @pytest.mark.parametrize(
@@ -98,9 +90,7 @@ def test_random_sparse(shape, dist, connectivity, kwargs, expects):
 )
 def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
     if expects == "sparse":
-        init = random_sparse(
-            dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs
-        )
+        init = random_sparse(dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs)
         w0 = init(*shape)
         w1 = random_sparse(
             *shape,
@@ -114,9 +104,7 @@ def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
         assert_allclose(w1.toarray(), w0.toarray(), atol=1e-12)
 
     if expects == "dense":
-        init = random_sparse(
-            dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs
-        )
+        init = random_sparse(dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs)
         w0 = init(*shape)
         w1 = random_sparse(
             *shape,
@@ -130,9 +118,7 @@ def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
 
     if expects == "raise":
         with pytest.raises(Exception):
-            init = random_sparse(
-                dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs
-            )
+            init = random_sparse(dist="uniform", sr=sr, input_scaling=input_scaling, seed=42, **kwargs)
             w0 = init(*shape)
             w1 = random_sparse(
                 *shape,
@@ -156,26 +142,18 @@ def test_random_sparse_scalings(shape, sr, input_scaling, kwargs, expects):
 def test_random_sparse_types(shape, dtype, sparsity_type, kwargs, expects):
 
     if expects == "sparse":
-        init = random_sparse(
-            dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs
-        )
+        init = random_sparse(dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs)
         w0 = init(*shape)
-        w1 = random_sparse(
-            *shape, dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs
-        )
+        w1 = random_sparse(*shape, dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs)
 
         assert_allclose(w1.toarray(), w0.toarray(), atol=1e-12)
         assert w0.dtype == dtype
         assert sparse.issparse(w0) and w0.format == sparsity_type
 
     if expects == "dense":
-        init = random_sparse(
-            dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs
-        )
+        init = random_sparse(dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs)
         w0 = init(*shape)
-        w1 = random_sparse(
-            *shape, dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs
-        )
+        w1 = random_sparse(*shape, dtype=dtype, sparsity_type=sparsity_type, seed=42, **kwargs)
 
         assert_allclose(w1, w0, atol=1e-12)
         assert w0.dtype == dtype
@@ -243,9 +221,7 @@ def test_zeros():
         w = zeros(50, 50, sr=2.0)
 
 
-@pytest.mark.parametrize(
-    "N,expected", [(100, (100, 100)), (-1, Exception), ("foo", Exception)]
-)
+@pytest.mark.parametrize("N,expected", [(100, (100, 100)), (-1, Exception), ("foo", Exception)])
 def test_fast_spectral_shape(N, expected):
     if expected is Exception:
         with pytest.raises(expected):
@@ -282,9 +258,7 @@ def test_fast_spectral_features(sr, proba):
     if 1.0 - proba < 1e-5:
         assert not sparse.issparse(W)
     if sparse.issparse(W):
-        assert_allclose(
-            np.count_nonzero(W.toarray()) / W.toarray().size, proba, rtol=1e-1
-        )
+        assert_allclose(np.count_nonzero(W.toarray()) / W.toarray().size, proba, rtol=1e-1)
     else:
         assert_allclose(np.count_nonzero(W) / W.size, proba, rtol=1e-1)
 
@@ -300,19 +274,13 @@ def test_fast_spectral_features_exception(sr, proba):
 
 def test_reproducibility_fsi():
     seed0 = default_rng(78946312)
-    W0 = fast_spectral_initialization(
-        100, sr=1.2, connectivity=0.4, seed=seed0
-    ).toarray()
+    W0 = fast_spectral_initialization(100, sr=1.2, connectivity=0.4, seed=seed0).toarray()
 
     seed1 = default_rng(78946312)
-    W1 = fast_spectral_initialization(
-        100, sr=1.2, connectivity=0.4, seed=seed1
-    ).toarray()
+    W1 = fast_spectral_initialization(100, sr=1.2, connectivity=0.4, seed=seed1).toarray()
 
     seed2 = default_rng(6135435)
-    W2 = fast_spectral_initialization(
-        100, sr=1.2, connectivity=0.4, seed=seed2
-    ).toarray()
+    W2 = fast_spectral_initialization(100, sr=1.2, connectivity=0.4, seed=seed2).toarray()
 
     assert_array_almost_equal(W0, W1)
     assert_raises(AssertionError, assert_array_almost_equal, W0, W2)
@@ -399,14 +367,10 @@ def test_cluster_matrix():
     p_in = 0.1
     p_out = 0.01
 
-    W1 = cluster(
-        shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal"
-    )
+    W1 = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal")
     W1 = W1.toarray()
 
-    W2 = cluster(
-        shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal"
-    )
+    W2 = cluster(shape, shape, cluster=c, seed=1, p_in=p_in, p_out=p_out, distribution="normal")
     W2 = W2.toarray()
 
     n_c = int(shape / c)
@@ -451,9 +415,7 @@ def test_cluster_matrix():
 
     non_zeros_in_clusters = 0
     for i in range(0, c):
-        current_cluster = w_cluster_check[
-            i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c
-        ]
+        current_cluster = w_cluster_check[i * n_c : i * n_c + n_c, i * n_c : i * n_c + n_c]
         non_zeros_in_clusters += np.sum(current_cluster != 0)
     assert non_zeros_in_clusters == (p_in * n_c * n_c * c)
 
@@ -471,9 +433,7 @@ def test_cluster_matrix():
 
     # Check for invalid cluster and shape size
     with pytest.raises(ValueError):
-        _ = cluster(
-            shape, shape, cluster=3, seed=1, p_in=1, p_out=1, distribution="normal"
-        )
+        _ = cluster(shape, shape, cluster=3, seed=1, p_in=1, p_out=1, distribution="normal")
 
 
 def test_small_world_matrix():

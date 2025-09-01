@@ -1,8 +1,7 @@
-# Author: Nathan Trouvain at 14/03/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
-import pytest
 from numpy.testing import assert_equal
 
 from reservoirpy.nodes import Input, Output

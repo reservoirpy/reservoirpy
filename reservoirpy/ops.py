@@ -16,12 +16,12 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
    link_feedback - Link Nodes or Models with a feedback connection.
 """
 
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from itertools import product
 from typing import Sequence, Union
 
-# Author: Nathan Trouvain at 25/10/2021 <nathan.trouvain@inria.fr>
-# Licence: MIT License
-# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 from reservoirpy.node import Node
 
 from .model import Model

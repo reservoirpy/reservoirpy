@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 19/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from inspect import signature
 from typing import Any, Generator, Mapping, Optional, Sequence, TypeVar, Union
 

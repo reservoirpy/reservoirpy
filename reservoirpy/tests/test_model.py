@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 10/11/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
@@ -45,17 +45,13 @@ def test_multi_input():
 
     # Basic multi-input
     input1, input2 = Input(name="Input1"), Input(name="Input2")
-    model5 = Model(
-        [input1, input2, plus_node], [(input1, 0, plus_node), (input2, 0, plus_node)]
-    )
+    model5 = Model([input1, input2, plus_node], [(input1, 0, plus_node), (input2, 0, plus_node)])
     model5.initialize({"Input1": x, "Input2": x})
     assert input1.input_dim == input2.input_dim == 5
 
     # multiple input but not named
     input1, input2 = Input(name="Input1"), Input()
-    model5 = Model(
-        [input1, input2, plus_node], [(input1, 0, plus_node), (input2, 0, plus_node)]
-    )
+    model5 = Model([input1, input2, plus_node], [(input1, 0, plus_node), (input2, 0, plus_node)])
     with pytest.raises(ValueError):
         model5.initialize({"Input1": x, "Input2": x})
 
