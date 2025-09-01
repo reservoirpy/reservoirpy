@@ -383,9 +383,12 @@ class OnlineNode(TrainableNode):
 
         if is_multiseries(x):
             if y is None:
-                y = repeat(None)
-            for x_ts, y_ts in zip(x, y):
-                _y_pred_current = self.partial_fit(x_ts[warmup:], None if y_ts is None else y_ts[warmup:])
+                for x_ts in x:
+                    _y_pred_current = self.partial_fit(x_ts[warmup:])
+            else:
+                for x_ts, y_ts in zip(x, y):
+                    _y_pred_current = self.partial_fit(x_ts[warmup:], y_ts[warmup:])
+
         else:
             _y_pred = self.partial_fit(x[warmup:], None if y is None else y[warmup:])
 
@@ -426,7 +429,7 @@ class ParallelNode(TrainableNode, ABC):
         if is_multiseries(x):
             parallel_operator = Parallel(n_jobs=workers, return_as="generator")
             if y is None:
-                results = parallel_operator(delayed(self.worker)(x_ts) for x_ts in x)
+                results = parallel_operator(delayed(self.worker)(x_ts[warmup:]) for x_ts in x)
             else:
                 results = parallel_operator(
                     delayed(self.worker)(x_ts[warmup:], y_ts[warmup:]) for x_ts, y_ts in zip(x, y)
