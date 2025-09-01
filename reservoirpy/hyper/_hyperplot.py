@@ -3,6 +3,9 @@ hyperparameters results display and analysis.
 
 """
 
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import json
 import math
 import os
@@ -106,18 +109,14 @@ def _logscale_plot(ax, xrange, yrange, base=10):
         ax.yaxis.set_minor_formatter(ticker.LogFormatter())
         ax.yaxis.set_major_formatter(ticker.LogFormatter())
         ax.set_yscale("log", base=base)
-        ax.set_ylim(
-            [yrange.min() - 0.1 * yrange.min(), yrange.max() + 0.1 * yrange.min()]
-        )
+        ax.set_ylim([yrange.min() - 0.1 * yrange.min(), yrange.max() + 0.1 * yrange.min()])
 
 
 def _scale(x):
     return (x - x.min()) / np.ptp(x)
 
 
-def _cross_parameter_plot(
-    ax, values, scores, loss, smaxs, cmaxs, lmaxs, p1, p2, log1, log2, cat1, cat2
-):
+def _cross_parameter_plot(ax, values, scores, loss, smaxs, cmaxs, lmaxs, p1, p2, log1, log2, cat1, cat2):
     X = values[p2].copy()
     Y = values[p1].copy()
 
@@ -143,12 +142,8 @@ def _cross_parameter_plot(
     ax.set_xlabel(p2)
     ax.set_ylabel(p1)
 
-    sc_l = ax.scatter(
-        x=X[lmaxs], y=Y[lmaxs], s=scores[lmaxs] * 100, c=loss[lmaxs], cmap="inferno"
-    )
-    sc_s = ax.scatter(
-        x=X[smaxs], y=Y[smaxs], s=scores[smaxs] * 100, c=cmaxs, cmap="YlGn"
-    )
+    sc_l = ax.scatter(x=X[lmaxs], y=Y[lmaxs], s=scores[lmaxs] * 100, c=loss[lmaxs], cmap="inferno")
+    sc_s = ax.scatter(x=X[smaxs], y=Y[smaxs], s=scores[smaxs] * 100, c=cmaxs, cmap="YlGn")
     sc_m = ax.scatter(x=X[~lmaxs], y=Y[~lmaxs], s=scores[~lmaxs] * 100, color="red")
 
     return sc_l, sc_s, sc_m
@@ -187,9 +182,7 @@ def _loss_plot(
     # all the rest
     sc_l = ax.scatter(x=X[lmaxs], y=loss[lmaxs], s=scores[lmaxs] * 100, color="orange")
     # metric top 5%
-    sc_s = ax.scatter(
-        x=X[smaxs], y=loss[smaxs], s=scores[smaxs] * 100, c=cmaxs, cmap="YlGn"
-    )
+    sc_s = ax.scatter(x=X[smaxs], y=loss[smaxs], s=scores[smaxs] * 100, c=cmaxs, cmap="YlGn")
     # best value
     if loss_behaviour == "min":
         sc_m = ax.scatter(
@@ -246,12 +239,8 @@ def _parameter_violin(ax, values, scores, loss, smaxs, cmaxs, p, log, legend):
 
     quartile1, medians, quartile3 = np.percentile(y, [25, 50, 75])
 
-    ax.scatter(
-        x=medians, y=1, marker="o", color="orange", s=30, zorder=4, label="Median"
-    )
-    ax.hlines(
-        1, quartile1, quartile3, color="gray", linestyle="-", lw=4, label="Q25/Q75"
-    )
+    ax.scatter(x=medians, y=1, marker="o", color="orange", s=30, zorder=4, label="Median")
+    ax.hlines(1, quartile1, quartile3, color="gray", linestyle="-", lw=4, label="Q25/Q75")
     ax.vlines(y.mean(), 0.5, 1.5, color="blue", label="Mean")
 
     ax.scatter(
@@ -363,14 +352,9 @@ def plot_hyperopt_report(
         not_outliers = _outliers_idx(loss, max_deviation)
         loss = loss[not_outliers]
         scores = scores[not_outliers]
-        values = {
-            p: np.array([r["current_params"][p] for r in results])[not_outliers]
-            for p in params
-        }
+        values = {p: np.array([r["current_params"][p] for r in results])[not_outliers] for p in params}
     else:
-        values = {
-            p: np.array([r["current_params"][p] for r in results]) for p in params
-        }
+        values = {p: np.array([r["current_params"][p] for r in results]) for p in params}
 
     categorical = categorical or []
 
@@ -469,9 +453,7 @@ def plot_hyperopt_report(
     l_cbar = fig.colorbar(sc_l, cax=lbar_ax, ax=axes, orientation="horizontal")
     _ = l_cbar.ax.set_title("Loss value")
 
-    f_cbar = fig.colorbar(
-        sc_s, cax=fbar_ax, ax=axes, orientation="horizontal", ticks=[0, 0.5, 1]
-    )
+    f_cbar = fig.colorbar(sc_s, cax=fbar_ax, ax=axes, orientation="horizontal", ticks=[0, 0.5, 1])
     _ = f_cbar.ax.set_title(f"{metric} best population")
     _ = f_cbar.ax.set_xticklabels(["5% best", "2.5% best", "Best"])
 

@@ -114,6 +114,9 @@ References
            doi: 10.1007/978-3-030-16841-4_39.
 """
 
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import copy
 from functools import partial
 from inspect import signature

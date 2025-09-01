@@ -1,3 +1,6 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
@@ -194,9 +197,7 @@ class LocalPlasticityReservoir(TrainableNode):
         self,
         units: Optional[int] = None,
         # local rule choice
-        local_rule: Literal[
-            "oja", "anti-oja", "hebbian", "anti-hebbian", "bcm"
-        ] = "oja",
+        local_rule: Literal["oja", "anti-oja", "hebbian", "anti-hebbian", "bcm"] = "oja",
         eta: float = 1e-3,
         bcm_theta: float = 0.0,
         synapse_normalization: bool = False,
@@ -237,13 +238,10 @@ class LocalPlasticityReservoir(TrainableNode):
 
         # set units / output_dim
         if units is None and not is_array(W):
-            raise ValueError(
-                "'units' parameter must not be None if 'W' parameter is not a matrix."
-            )
+            raise ValueError("'units' parameter must not be None if 'W' parameter is not a matrix.")
         if units is not None and is_array(W) and W.shape[-1] != units:
             raise ValueError(
-                f"Both 'units' and 'W' are set but their dimensions doesn't match: "
-                f"{units} != {W.shape[-1]}."
+                f"Both 'units' and 'W' are set but their dimensions doesn't match: " f"{units} != {W.shape[-1]}."
             )
         self.units = units if units is not None else W.shape[-1]
         self.output_dim = self.units
@@ -344,9 +342,7 @@ class LocalPlasticityReservoir(TrainableNode):
 
         return {"internal": next_state, "out": f(next_state)}
 
-    def fit(
-        self, x: NodeInput, y: None = None, warmup: int = 0
-    ) -> "LocalPlasticityReservoir":
+    def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "LocalPlasticityReservoir":
         check_node_input(x, expected_dim=self.input_dim)
 
         if not self.initialized:

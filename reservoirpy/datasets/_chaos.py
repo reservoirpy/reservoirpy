@@ -1,8 +1,8 @@
 """Chaotic timeseries generators."""
 
-# Author: Nathan Trouvain at 2020 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import collections
 import os
 from typing import Optional, Union

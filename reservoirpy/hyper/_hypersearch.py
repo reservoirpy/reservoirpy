@@ -1,5 +1,8 @@
 """*Hyperopt* wrapper tools for hyperparameters optimization."""
 
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import json
 import os
 import time
@@ -172,10 +175,7 @@ def research(objective, dataset, config_path, report_path=None):
             with open(save_file, "w+") as f:
                 json.dump(json_dict, f, indent=2)
         except Exception as e:
-            warnings.warn(
-                "Results of current simulation were NOT saved "
-                "correctly to JSON file."
-            )
+            warnings.warn("Results of current simulation were NOT saved " "correctly to JSON file.")
             warnings.warn(str(e))
 
         return returned_dict

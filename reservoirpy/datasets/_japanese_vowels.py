@@ -1,6 +1,5 @@
 """Japanese vowels dataset."""
 
-# Author: Nathan Trouvain at 07/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 import io
@@ -74,9 +73,7 @@ def _repeat_target(blocks, targets):
     return repeated_targets
 
 
-def japanese_vowels(
-    one_hot_encode=True, repeat_targets=False, data_folder=None, reload=False
-):
+def japanese_vowels(one_hot_encode=True, repeat_targets=False, data_folder=None, reload=False):
     """Load the Japanese vowels [16]_ dataset.
 
     This is a classic audio discrimination task. Nine male Japanese speakers
@@ -143,22 +140,16 @@ def japanese_vowels(
             if file_role in ["train_sizes", "test_sizes"]:
                 data = fp.read().split(" ")
                 # remove empty characters and spaces
-                data = [
-                    int(s) for s in filter(lambda s: s not in ["", "\n", " "], data)
-                ]
+                data = [int(s) for s in filter(lambda s: s not in ["", "\n", " "], data)]
 
             else:
                 data = fp.read()
 
         data_files[file_role] = data
 
-    X_train, Y_train = _format_data(
-        data_files["train"], data_files["train_sizes"], one_hot_encode
-    )
+    X_train, Y_train = _format_data(data_files["train"], data_files["train_sizes"], one_hot_encode)
 
-    X_test, Y_test = _format_data(
-        data_files["test"], data_files["test_sizes"], one_hot_encode
-    )
+    X_test, Y_test = _format_data(data_files["test"], data_files["test_sizes"], one_hot_encode)
 
     if repeat_targets:
         Y_train = _repeat_target(X_train, Y_train)

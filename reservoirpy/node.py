@@ -56,9 +56,10 @@ See the following guides to:
     OnlineNode
     ParallelNode
 """
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from abc import ABC, abstractmethod
-from itertools import repeat
 from typing import Iterable, Optional, Sequence, Union
 
 import numpy as np

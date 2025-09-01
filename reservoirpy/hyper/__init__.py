@@ -26,6 +26,10 @@ do not rely on *hyperopt* and can be used independently.
     parallel_research
     plot_hyperopt_report
 """
+
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from ._hyperplot import plot_hyperopt_report
 from ._hypersearch import research
 from ._parallel_hypersearch import parallel_research

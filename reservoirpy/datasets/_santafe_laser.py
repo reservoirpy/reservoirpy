@@ -1,5 +1,7 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import importlib.resources
-import sys
 
 import numpy as np
 

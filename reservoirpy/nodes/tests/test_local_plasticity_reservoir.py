@@ -1,9 +1,10 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
 
 from ...mat_gen import ring
-from .. import Ridge
 from ..local_plasticity_reservoir import LocalPlasticityReservoir
 
 
@@ -61,9 +62,7 @@ def test_local_synaptic_plasticity():
 
     assert res.W.shape == (100, 100)
 
-    res = LocalPlasticityReservoir(
-        100, local_rule="oja", epochs=10, eta=1e-3, synapse_normalization=True, seed=10
-    )
+    res = LocalPlasticityReservoir(100, local_rule="oja", epochs=10, eta=1e-3, synapse_normalization=True, seed=10)
     res.initialize(x)
 
     initial_Wvals = res.W.data.copy()

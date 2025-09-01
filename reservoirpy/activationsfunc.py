@@ -18,9 +18,9 @@ Activation functions for reservoir, feedback and output.
 
 """
 
-# Author: Nathan Trouvain at 01/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from functools import wraps
 from typing import Callable, Union
 

@@ -149,6 +149,10 @@ References
             future and understanding the past. Routledge.
 """
 
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
+
 from typing import Optional, Sequence, Union
 
 import numpy as np

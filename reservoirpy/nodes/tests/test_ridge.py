@@ -1,9 +1,6 @@
-# Author: Nathan Trouvain at 24/09/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-# Author: Nathan Trouvain at 06/08/2021 <nathan.trouvain@inria.fr>
-# Licence: MIT License
-# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
 from joblib import Parallel, delayed

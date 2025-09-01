@@ -1,3 +1,6 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from typing import Callable, Iterable, Optional, Union
 
 import numpy as np

@@ -1,3 +1,6 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import numpy as np
 import pytest
 from numpy.testing import assert_almost_equal, assert_array_almost_equal
@@ -51,9 +54,7 @@ def test_identity(value):
     assert np.any(result == val)
 
 
-@pytest.mark.parametrize(
-    "value, expected", [(np.array([1, 2, 3]), np.tanh([1, 2, 3])), (0, np.tanh(0))]
-)
+@pytest.mark.parametrize("value, expected", [(np.array([1, 2, 3]), np.tanh([1, 2, 3])), (0, np.tanh(0))])
 def test_tanh(value, expected):
     result = tanh(value)
 

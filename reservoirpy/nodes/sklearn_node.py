@@ -1,4 +1,3 @@
-# Author: Deepayan Das at 16/08/2023 <deepayan.das@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 

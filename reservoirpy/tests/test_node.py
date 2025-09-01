@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 08/07/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import pickle
 
 import numpy as np

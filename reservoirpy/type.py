@@ -1,6 +1,6 @@
-# Author: Nathan Trouvain at 22/06/2021 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Sequence, TypeVar, Union
