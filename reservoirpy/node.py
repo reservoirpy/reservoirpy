@@ -27,15 +27,15 @@ tool you need).
 The Node API is composed of a base :py:class:`Node` class that can be described
 as a stateful recurrent operator able to manipulate streams of data. A
 :py:class:`Node` applies a `_step` function on some data, and then stores the
-result in its `state` attribute. The `_step` operation can be a function
-depending on the data, on the current `state` vector of the Node and on the Node
+result in its `state` attribute. The :py:meth:`~.Node._step` operation can be a function
+depending on the data, on the current ``state`` vector of the Node and on the Node
 parameters.
 
-Nodes can also be connected together to form a :py:class:`Model`. Models hold
+Nodes can also be connected together to form a :py:class:`~.Model`. Models hold
 references to the connected nodes and make data flow from one node to
 the next, allowing to create *deep* models and other more complex
 architectures and computational graphs.
-:py:class:`Model` is essentially a subclass of :py:class:`Node`,
+:py:class:`~.Model` is essentially a subclass of :py:class:`Node`,
 that can also be connected to other nodes and models.
 
 See the following guides to:
@@ -56,6 +56,7 @@ See the following guides to:
     OnlineNode
     ParallelNode
 """
+
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
