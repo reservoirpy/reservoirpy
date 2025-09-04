@@ -271,12 +271,15 @@ class Node(ABC):
     def __call__(self, x: Optional[Timestep] = None) -> Timestep:
         return self.step(x)
 
-    def __repr__(self):
+    def __str__(self):
         # base_name = self.name if self.name is not None else self.__class__.__name__
         base_name = self.__class__.__name__
         arguments = get_non_defaults(self)
         arguments_str = ", ".join(f"{arg}:{val}" for arg, val in arguments.items())
         return f"{base_name}({arguments_str})"
+
+    def __repr__(self):
+        return self.__str__()
 
     def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link
