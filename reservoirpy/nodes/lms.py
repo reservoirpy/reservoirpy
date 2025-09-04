@@ -90,7 +90,6 @@ class LMS(OnlineNode):
         self.Wout = Wout
         self.bias = bias
         self.fit_bias = fit_bias
-        self.initialized = False
         self.state = {}
         self.name = name
 

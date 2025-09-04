@@ -265,7 +265,6 @@ class IPReservoir(TrainableNode):
         self.a: np.ndarray
         self.b: np.ndarray
         self.state: State
-        self.initialized = False
 
     def initialize(self, x: Union[NodeInput, Timestep], y: None = None):
 

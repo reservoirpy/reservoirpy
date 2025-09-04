@@ -198,7 +198,6 @@ class ES2N(Node):
         self.activation = get_function(activation)
         self.dtype = dtype
         self.rng = random.rand_generator(seed=seed)
-        self.initialized = False
         self.name = name
 
         # set units / output_dim

@@ -98,7 +98,6 @@ class Ridge(ParallelNode):
         self.Wout = Wout
         self.bias = bias
         self.name = name
-        self.initialized = False
         self.state = {}
 
         # set input_dim/output_dim (if possible)

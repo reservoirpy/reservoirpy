@@ -131,7 +131,6 @@ class NVAR(Node):
         self.order = order
         self.strides = strides
         self.name = name
-        self.initialized = False
         self.state = {}
         self.input_dim = input_dim
         self.output_dim = None
