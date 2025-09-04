@@ -598,8 +598,11 @@ class Model:
     def __call__(self, x: Optional[ModelTimestep] = None) -> ModelTimestep:
         return self.step(x)
 
+    def __str__(self):
+        return f"Model({', '.join(map(str, self.nodes))})"
+
     def __repr__(self):
-        return f"Model({str(self.nodes)[1:-1]})"
+        return self.__str__()
 
     def __rshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
         from .ops import link

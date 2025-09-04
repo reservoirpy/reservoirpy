@@ -10,7 +10,7 @@ def get_non_defaults(instance, constructor=None):
     constructor (or a parameter of ``constructor`` if specified), but the attribute value is different from the default
     value of the constructor. For the sake of readability, some parameters names are excluded, such as ``W`` or ``bias``.
 
-    This method is used to ``__repr__``.
+    This method is used for the ``__str__`` and ``__repr__`` methods.
 
     Parameters
     ----------

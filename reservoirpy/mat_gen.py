@@ -191,8 +191,11 @@ class Initializer:
         if self._allow_input_scaling:
             self.__annotations__.update({"input_scaling": Union[float, Iterable[float]]})
 
-    def __repr__(self):
+    def __str__(self):
         return f"{self._func.__name__}({str(self._kwargs)[1:-1]})"
+
+    def __repr__(self):
+        return self.__str__()
 
     def __call__(self, *shape, **kwargs):
         if "sr" in kwargs and not self._allow_sr:
