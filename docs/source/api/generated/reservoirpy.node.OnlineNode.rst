@@ -28,10 +28,10 @@ reservoirpy.node.OnlineNode
 
    .. autosummary::
    
+      ~OnlineNode.initialized
       ~OnlineNode.input_dim
       ~OnlineNode.name
       ~OnlineNode.output_dim
-      ~OnlineNode.initialized
       ~OnlineNode.state
    
    

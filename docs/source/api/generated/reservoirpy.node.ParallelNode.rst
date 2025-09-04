@@ -29,10 +29,10 @@ reservoirpy.node.ParallelNode
 
    .. autosummary::
    
+      ~ParallelNode.initialized
       ~ParallelNode.input_dim
       ~ParallelNode.name
       ~ParallelNode.output_dim
-      ~ParallelNode.initialized
       ~ParallelNode.state
    
    

@@ -28,6 +28,7 @@ reservoirpy.nodes.LMS
 
    .. autosummary::
    
+      ~LMS.initialized
       ~LMS.input_dim
       ~LMS.name
       ~LMS.output_dim
@@ -35,7 +36,6 @@ reservoirpy.nodes.LMS
       ~LMS.bias
       ~LMS.learning_rate
       ~LMS.fit_bias
-      ~LMS.initialized
       ~LMS.state
    
    

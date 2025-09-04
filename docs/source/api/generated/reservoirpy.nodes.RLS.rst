@@ -28,6 +28,7 @@ reservoirpy.nodes.RLS
 
    .. autosummary::
    
+      ~RLS.initialized
       ~RLS.input_dim
       ~RLS.name
       ~RLS.output_dim
@@ -37,7 +38,6 @@ reservoirpy.nodes.RLS
       ~RLS.alpha
       ~RLS.fit_bias
       ~RLS.forgetting
-      ~RLS.initialized
       ~RLS.state
    
    

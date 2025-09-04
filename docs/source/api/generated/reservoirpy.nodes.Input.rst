@@ -26,10 +26,10 @@ reservoirpy.nodes.Input
 
    .. autosummary::
    
+      ~Input.initialized
       ~Input.input_dim
       ~Input.name
       ~Input.output_dim
-      ~Input.initialized
       ~Input.state
    
    

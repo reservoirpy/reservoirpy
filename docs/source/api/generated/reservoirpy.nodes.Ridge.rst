@@ -29,6 +29,7 @@ reservoirpy.nodes.Ridge
 
    .. autosummary::
    
+      ~Ridge.initialized
       ~Ridge.input_dim
       ~Ridge.name
       ~Ridge.output_dim
@@ -36,7 +37,6 @@ reservoirpy.nodes.Ridge
       ~Ridge.fit_bias
       ~Ridge.Wout
       ~Ridge.bias
-      ~Ridge.initialized
       ~Ridge.state
    
    
