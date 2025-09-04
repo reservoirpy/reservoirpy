@@ -43,7 +43,6 @@ class Input(Node):
     state: State
 
     def __init__(self, name: Optional[str] = None):
-        self.initialized = False
         self.name = name
         self.state = {}
 
@@ -95,7 +94,6 @@ class Output(Node):
     state: State
 
     def __init__(self, name: Optional[str] = None):
-        self.initialized = False
         self.name = name
         self.state = {}
 

@@ -27,7 +27,6 @@ class F(Node):
     def __init__(self, f: Callable, name: Optional[str] = None, **kwargs):
         self.f = partial(f, **kwargs)
         self.state = {}
-        self.initialized = False
         self.name = name
 
     def initialize(
@@ -65,7 +64,6 @@ class Softmax(F):
     def __init__(self, beta=1.0, name: Optional[str] = None):
         self.f = partial(softmax, beta=beta)
         self.state = {}
-        self.initialized = False
         self.name = name
 
 
@@ -85,7 +83,6 @@ class Softplus(F):
     def __init__(self, name: Optional[str] = None):
         self.f = softplus
         self.state = {}
-        self.initialized = False
         self.name = name
 
 
@@ -105,7 +102,6 @@ class Sigmoid(F):
     def __init__(self, name: Optional[str] = None):
         self.f = sigmoid
         self.state = {}
-        self.initialized = False
         self.name = name
 
 
@@ -125,7 +121,6 @@ class Tanh(F):
     def __init__(self, name: Optional[str] = None):
         self.f = tanh
         self.state = {}
-        self.initialized = False
         self.name = name
 
 
@@ -147,7 +142,6 @@ class Identity(F):
     def __init__(self, name: Optional[str] = None):
         self.f = identity
         self.state = {}
-        self.initialized = False
         self.name = name
 
 
@@ -167,5 +161,4 @@ class ReLU(F):
     def __init__(self, name: Optional[str] = None):
         self.f = relu
         self.state = {}
-        self.initialized = False
         self.name = name

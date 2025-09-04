@@ -11,7 +11,6 @@ from reservoirpy.node import Node, OnlineNode, TrainableNode
 class IdentityNode(Node):
     def __init__(self, name=None):
         self.name = name
-        self.initialized = False
         self.state = {}
 
     def _step(self, state, x):
@@ -27,7 +26,6 @@ class PlusNode(Node):
     def __init__(self, h=1, name=None):
         self.h = h
         self.name = name
-        self.initialized = False
         self.state = {}
 
     def _step(self, state, x):
@@ -43,7 +41,6 @@ class AccumulateNode(Node):
     def __init__(self, h=0, name=None):
         self.h = h
         self.name = name
-        self.initialized = False
         self.state = {}
 
     def _step(self, state, x):
@@ -64,7 +61,6 @@ class MinusNode(Node):
     def __init__(self, h=1, name=None):
         self.h = h
         self.name = name
-        self.initialized = False
         self.state = {}
 
     def _step(self, state, x):
@@ -79,7 +75,6 @@ class MinusNode(Node):
 class Inverter(Node):
     def __init__(self, name=None):
         self.name = name
-        self.initialized = False
         self.state = {}
 
     def _step(self, state, x):
@@ -95,7 +90,6 @@ class Offline(TrainableNode):
     def __init__(self, name=None):
         self.name = name
         self.b = 0
-        self.initialized = False
         self.state = {}
 
     def initialize(self, x, y=None):
@@ -121,7 +115,6 @@ class Unsupervised(TrainableNode):
     def __init__(self, name=None):
         self.name = name
         self.b = 0
-        self.initialized = False
         self.state = {}
 
     def initialize(self, x, y=None):
@@ -145,7 +138,6 @@ class Unsupervised(TrainableNode):
 class OnlineUnsupervised(OnlineNode):
     def __init__(self, name=None):
         self.name = name
-        self.initialized = False
         self.b = 0
         self.state = {}
 

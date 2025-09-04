@@ -104,7 +104,6 @@ class RLS(OnlineNode):
         self.forgetting = forgetting
         self.name = name
 
-        self.initialized = False
         self.state = {}
 
         # set input_dim/output_dim (if possible)

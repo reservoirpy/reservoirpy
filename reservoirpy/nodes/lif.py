@@ -174,7 +174,6 @@ class LIF(Node):
         self.dtype = dtype
         self.rng = rand_generator(seed=seed)
         self.name = name
-        self.initialized = False
 
         # set units / output_dim
         if units is None and not is_array(W):

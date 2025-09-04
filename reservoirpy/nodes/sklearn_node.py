@@ -85,7 +85,6 @@ class ScikitLearnNode(TrainableNode):
         self.model_kwargs = kwargs
         self.output_dim = output_dim
         self.state = {"out": None}
-        self.initialized = False
 
     def initialize(
         self,
