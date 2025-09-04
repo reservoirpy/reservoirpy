@@ -80,7 +80,7 @@ class Node(ABC):
     """
 
     #: True if the Node has been initialized
-    initialized: bool
+    initialized: bool = False
     #: Expected dimension of the Node input. Can be None before initialization
     input_dim: int = None
     #: Expected dimension of the Node input. Can be None before initialization
