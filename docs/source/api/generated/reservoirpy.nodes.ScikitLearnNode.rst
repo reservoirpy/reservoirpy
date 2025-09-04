@@ -27,13 +27,13 @@ reservoirpy.nodes.ScikitLearnNode
 
    .. autosummary::
    
+      ~ScikitLearnNode.initialized
       ~ScikitLearnNode.input_dim
       ~ScikitLearnNode.name
       ~ScikitLearnNode.output_dim
       ~ScikitLearnNode.model
       ~ScikitLearnNode.model_kwargs
       ~ScikitLearnNode.instances
-      ~ScikitLearnNode.initialized
       ~ScikitLearnNode.state
    
    

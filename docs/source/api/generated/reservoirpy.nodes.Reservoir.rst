@@ -26,10 +26,10 @@ reservoirpy.nodes.Reservoir
 
    .. autosummary::
    
+      ~Reservoir.initialized
       ~Reservoir.input_dim
       ~Reservoir.name
       ~Reservoir.output_dim
-      ~Reservoir.initialized
       ~Reservoir.state
       ~Reservoir.units
       ~Reservoir.lr

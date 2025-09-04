@@ -27,6 +27,7 @@ reservoirpy.nodes.LocalPlasticityReservoir
 
    .. autosummary::
    
+      ~LocalPlasticityReservoir.initialized
       ~LocalPlasticityReservoir.input_dim
       ~LocalPlasticityReservoir.name
       ~LocalPlasticityReservoir.output_dim
@@ -46,7 +47,6 @@ reservoirpy.nodes.LocalPlasticityReservoir
       ~LocalPlasticityReservoir.activation
       ~LocalPlasticityReservoir.dtype
       ~LocalPlasticityReservoir.rng
-      ~LocalPlasticityReservoir.initialized
       ~LocalPlasticityReservoir.state
    
    

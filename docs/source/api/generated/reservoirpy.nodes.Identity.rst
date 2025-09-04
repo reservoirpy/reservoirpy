@@ -26,10 +26,10 @@ reservoirpy.nodes.Identity
 
    .. autosummary::
    
+      ~Identity.initialized
       ~Identity.input_dim
       ~Identity.name
       ~Identity.output_dim
-      ~Identity.initialized
       ~Identity.state
    
    

@@ -26,10 +26,10 @@ reservoirpy.nodes.ES2N
 
    .. autosummary::
    
+      ~ES2N.initialized
       ~ES2N.input_dim
       ~ES2N.name
       ~ES2N.output_dim
-      ~ES2N.initialized
       ~ES2N.state
       ~ES2N.units
       ~ES2N.proximity

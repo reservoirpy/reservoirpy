@@ -27,10 +27,10 @@ reservoirpy.node.TrainableNode
 
    .. autosummary::
    
+      ~TrainableNode.initialized
       ~TrainableNode.input_dim
       ~TrainableNode.name
       ~TrainableNode.output_dim
-      ~TrainableNode.initialized
       ~TrainableNode.state
    
    

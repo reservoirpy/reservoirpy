@@ -26,6 +26,7 @@ reservoirpy.nodes.NVAR
 
    .. autosummary::
    
+      ~NVAR.initialized
       ~NVAR.input_dim
       ~NVAR.name
       ~NVAR.output_dim
@@ -33,7 +34,6 @@ reservoirpy.nodes.NVAR
       ~NVAR.delay
       ~NVAR.order
       ~NVAR.strides
-      ~NVAR.initialized
       ~NVAR.state
    
    

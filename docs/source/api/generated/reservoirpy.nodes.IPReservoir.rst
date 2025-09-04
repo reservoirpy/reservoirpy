@@ -30,6 +30,7 @@ reservoirpy.nodes.IPReservoir
 
    .. autosummary::
    
+      ~IPReservoir.initialized
       ~IPReservoir.input_dim
       ~IPReservoir.name
       ~IPReservoir.output_dim
@@ -50,7 +51,6 @@ reservoirpy.nodes.IPReservoir
       ~IPReservoir.activation
       ~IPReservoir.units
       ~IPReservoir.rng
-      ~IPReservoir.initialized
       ~IPReservoir.state
    
    
