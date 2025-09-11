@@ -47,6 +47,8 @@ with the help of the *hyperopt* library.
 pip install reservoirpy
 ```
 
+For more complete installation (including hyperparameter search, ...), look at the [complete installation guide on ReadTheDocs](https://reservoirpy.readthedocs.io/en/latest/developer_guide/advanced_install.html).
+
 ### An example on chaotic timeseries prediction (Mackey-Glass)
 
 For a general introduction to reservoir computing and ReservoirPy features, take
