@@ -21,25 +21,9 @@ Activation functions for reservoir, feedback and output.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
-from functools import wraps
 from typing import Callable, Union
 
 import numpy as np
-
-
-def _elementwise(func):
-    """Vectorize a function to apply it
-    on arrays.
-    """
-    vect = np.vectorize(func)
-
-    @wraps(func)
-    def vect_wrapper(*args, **kwargs):
-        u = np.asanyarray(args)
-        v = vect(u)
-        return v[0]
-
-    return vect_wrapper
 
 
 def get_function(name: Union[Callable, str]) -> Callable:
@@ -65,15 +49,15 @@ def get_function(name: Union[Callable, str]) -> Callable:
 
     index = {
         "softmax": softmax,
+        "smax": softmax,
         "softplus": softplus,
+        "sp": softplus,
         "sigmoid": sigmoid,
+        "sig": sigmoid,
         "tanh": tanh,
         "identity": identity,
-        "relu": relu,
-        "smax": softmax,
-        "sp": softplus,
-        "sig": sigmoid,
         "id": identity,
+        "relu": relu,
         "re": relu,
     }
 
@@ -105,7 +89,6 @@ def softmax(x: np.ndarray, beta: float = 1.0) -> np.ndarray:
     return np.exp(beta * _x) / np.exp(beta * _x).sum(axis=-1, keepdims=True)
 
 
-@_elementwise
 def softplus(x: np.ndarray) -> np.ndarray:
     """Softplus activation function.
 
@@ -124,10 +107,9 @@ def softplus(x: np.ndarray) -> np.ndarray:
     array
         Activated vector.
     """
-    return np.log(1 + np.exp(x))
+    return np.log(1.0 + np.exp(x))
 
 
-@_elementwise
 def sigmoid(x: np.ndarray) -> np.ndarray:
     """Sigmoid activation function.
 
@@ -145,10 +127,8 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
     array
         Activated vector.
     """
-    if x < 0:
-        u = np.exp(x)
-        return u / (u + 1)
-    return 1 / (1 + np.exp(-x))
+    # we adapt the formula used to avoid saturation in case of high values in exp (0.0 instead of nans)
+    return np.where(x < 0, np.exp(x) / (np.exp(x) + 1.0), 1.0 / (1.0 + np.exp(-x)))
 
 
 def tanh(x: np.ndarray) -> np.ndarray:
@@ -170,7 +150,6 @@ def tanh(x: np.ndarray) -> np.ndarray:
     return np.tanh(x)
 
 
-@_elementwise
 def identity(x: np.ndarray) -> np.ndarray:
     """Identity function.
 
@@ -192,7 +171,6 @@ def identity(x: np.ndarray) -> np.ndarray:
     return x
 
 
-@_elementwise
 def relu(x: np.ndarray) -> np.ndarray:
     """ReLU activation function.
 
@@ -209,6 +187,4 @@ def relu(x: np.ndarray) -> np.ndarray:
     array
         Activated vector.
     """
-    if x < 0:
-        return 0.0
-    return x
+    return np.maximum(x, 0.0)
