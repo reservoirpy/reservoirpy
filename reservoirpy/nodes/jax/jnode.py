@@ -195,7 +195,7 @@ class Node(ABC):
         initial_state = self.state
 
         if is_multiseries(x):
-            output = jax.lax.map(partial(self._run, state=initial_state), x)
+            output = jax.lax.map(partial(self._run, initial_state), x)
             states, result = zip(*output)
             final_state = states[-1]
 
