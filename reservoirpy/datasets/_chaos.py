@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 import numpy as np
 from joblib import Memory
-from numpy.random import Generator, RandomState
+from numpy.random import Generator
 from scipy.fft import fft, ifft
 from scipy.integrate import solve_ivp
 
@@ -255,7 +255,7 @@ def mackey_glass(
     n: int = 10,
     x0: float = 1.2,
     h: float = 1.0,
-    seed: Union[None, int, RandomState, Generator] = None,
+    seed: Union[None, int, Generator] = None,
     history: Union[None, np.ndarray] = None,
     **kwargs,
 ) -> np.ndarray:
@@ -347,12 +347,12 @@ def mackey_glass(
         if seed is None:
             seed = get_seed()
 
-        rs = rand_generator(seed)
+        rng = rand_generator(seed)
 
         # generate random first step based on the value
         # of the initial condition
 
-        history_ = collections.deque(x0 * np.ones(history_length) + 0.2 * (rs.random(history_length) - 0.5))
+        history_ = collections.deque(x0 * np.ones(history_length) + 0.2 * (rng.random(history_length) - 0.5))
     else:
         if not history_length <= len(history):
             raise ValueError(f"The given history has length of {len(history)} < tau/h" f" with tau={tau} and h={h}.")
