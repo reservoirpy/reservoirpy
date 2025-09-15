@@ -67,7 +67,11 @@ import numpy as np
 from joblib import Parallel, delayed
 
 from reservoirpy.utils import get_non_defaults
-from reservoirpy.utils.data_validation import check_node_input, check_timestep
+from reservoirpy.utils.data_validation import (
+    check_node_input,
+    check_timeseries,
+    check_timestep,
+)
 
 from .type import NodeInput, State, Timeseries, Timestep, is_array, is_multiseries
 
