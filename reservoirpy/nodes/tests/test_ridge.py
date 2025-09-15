@@ -4,7 +4,7 @@
 import numpy as np
 import pytest
 from joblib import Parallel, delayed
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 from reservoirpy.nodes import Ridge
 
@@ -72,8 +72,9 @@ def test_ridge_fit():
 
 
 def test_ridge_fit_multiseries():
-    X: np.ndarray = np.ones((15, 12, 100))
-    Y: np.ndarray = np.ones((15, 12, 10))
+    rng = np.random.default_rng(seed=0)
+    X: np.ndarray = rng.uniform(size=(15, 12, 100))
+    Y: np.ndarray = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
 
     node = Ridge(1e-6)
     node.fit(X, Y)
@@ -81,7 +82,12 @@ def test_ridge_fit_multiseries():
     assert node.output_dim == 10
     assert node.Wout.shape == (100, 10)
     assert node.bias.shape == (10,)
-    assert np.any(node.bias != np.zeros((10,)))
+    assert not np.all(node.Wout == np.zeros((100, 10)))
+    assert not np.all(node.bias == np.zeros((10,)))
+    node2 = Ridge(1e-6)
+    node2.fit(X.reshape(15 * 12, 100), Y.reshape(15 * 12, 10))
+    assert_array_almost_equal(node.Wout, node2.Wout)
+    assert_array_almost_equal(node.bias, node2.bias)
 
     node = Ridge(1e-6, fit_bias=False)
     node.fit(X, Y)
