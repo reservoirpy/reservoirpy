@@ -202,8 +202,8 @@ class LIF(Node):
         # leak
         v *= 1 - lr
         # fire
-        spikes = (v > threshold).astype(self.dtype)  # threshold
-        v[v > threshold] = 0.0
+        spikes = np.where(v > threshold, 1.0, 0.0)
+        v = np.where(v > threshold, 0.0, v)
         # integrate
         v += (W @ spikes.T).T
         v += (Win @ x.T).T
