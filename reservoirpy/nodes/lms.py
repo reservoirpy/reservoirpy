@@ -159,21 +159,3 @@ class LMS(OnlineNode):
         self.Wout = Wout_next
         self.bias = bias_next
         return y_pred
-
-    def partial_fit(self, x: Timeseries, y: Timeseries):
-        check_node_input(x, expected_dim=self.input_dim)
-        if y is not None:
-            check_node_input(y)
-
-        if not self.initialized:
-            self.initialize(x, y)
-
-        n_timesteps = x.shape[-2]
-        out_dim = y.shape[-1]
-        y_pred = np.empty((n_timesteps, out_dim))
-        for i, (x_, y_) in enumerate(zip(x, y)):
-            y_pred_ = self._learning_step(x_, y_)
-            y_pred[i] = y_pred_
-
-        self.state = {"out": y_pred_}
-        return y_pred
