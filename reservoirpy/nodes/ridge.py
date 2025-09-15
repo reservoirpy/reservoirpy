@@ -168,7 +168,7 @@ class Ridge(ParallelNode):
             YXT += yxt
             X_sum += x_sum
             Y_sum += y_sum
-            total_samples = sample_size
+            total_samples += sample_size
 
         if self.fit_bias:
             X_means = X_sum / total_samples
