@@ -356,7 +356,6 @@ class OnlineNode(TrainableNode):
     def _learning_step(self, x: Timestep, y: Optional[Timestep]) -> Timestep:
         ...  # pragma: no cover
 
-    @abstractmethod
     def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
         """Fit the Node in an online fashion.
 
@@ -377,7 +376,26 @@ class OnlineNode(TrainableNode):
         array of shape (timesteps, output_dim)
             All outputs computed during the training.
         """
-        ...  # pragma: no cover
+        check_timeseries(x, expected_dim=self.input_dim)
+        if y is not None:
+            check_timeseries(y)
+
+        if not self.initialized:
+            self.initialize(x, y)
+
+        n_timesteps = x.shape[-2]
+        y_pred = np.empty((n_timesteps, self.output_dim))
+        if y is not None:
+            for i, (x_, y_) in enumerate(zip(x, y)):
+                y_pred_ = self._learning_step(x_, y_)
+                y_pred[i] = y_pred_
+        else:
+            for i, x_ in enumerate(x):
+                y_pred_ = self._learning_step(x_, None)
+                y_pred[i] = y_pred_
+
+        self.state = {"out": y_pred_}
+        return y_pred
 
     def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0) -> "OnlineNode":
         # Re-initialize in any case
