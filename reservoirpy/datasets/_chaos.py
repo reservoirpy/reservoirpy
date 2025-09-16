@@ -354,7 +354,7 @@ def mackey_glass(
 
         xt = _mg_rk4(xt, xtau, a=a, b=b, n=n, h=h)
 
-    return X.reshape(-1, 1)
+    return X[history_length:].reshape(-1, 1)
 
 
 def multiscroll(
