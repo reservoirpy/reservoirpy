@@ -347,7 +347,7 @@ def mackey_glass(
     X = np.empty(history_length + n_timesteps)
     X[:history_length] = history_
 
-    for i in range(0, n_timesteps):
+    for i in range(history_length, n_timesteps + history_length):
         X[i] = xt
 
         xtau = X[i - history_length] if tau > 0 else 0.0
