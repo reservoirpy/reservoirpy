@@ -123,7 +123,6 @@ from inspect import signature
 from typing import Callable, Iterable, Literal, Optional, Union
 
 import numpy as np
-from numpy.random import Generator
 from scipy import sparse, stats
 from scipy.sparse.linalg import ArpackNoConvergence
 
@@ -231,7 +230,7 @@ class Initializer:
             return self._func(*shape, **kwargs)
 
 
-def _get_rvs(dist: str, random_state: Generator, **kwargs) -> Callable:
+def _get_rvs(dist: str, random_state: np.random.Generator, **kwargs) -> Callable:
     """Get a scipy.stats random variable generator.
 
     Parameters
@@ -257,7 +256,9 @@ def _get_rvs(dist: str, random_state: Generator, **kwargs) -> Callable:
         )
 
 
-def _bernoulli_discrete_rvs(p=0.5, value: float = 1.0, random_state: Union[Generator, int] = None) -> Callable:
+def _bernoulli_discrete_rvs(
+    p=0.5, value: float = 1.0, random_state: Union[np.random.Generator, int] = None
+) -> Callable:
     """Generator of Bernoulli random variables, equal to +value or -value.
 
     Parameters
@@ -293,7 +294,7 @@ def _scale_spectral_radius(w_init, shape, sr, **kwargs):
         Shape of the matrix.
     sr : float
         New spectral radius.
-    seed: int or Generator
+    seed: int or np.random.Generator
         A random generator or an integer seed.
 
     Returns
