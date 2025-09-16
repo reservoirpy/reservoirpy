@@ -409,15 +409,11 @@ class OnlineNode(TrainableNode):
             check_node_input(y)
 
         if is_multiseries(x):
-            if y is None:
-                for x_ts in x:
-                    _y_pred_current = self.partial_fit(x_ts[warmup:])
-            else:
-                for x_ts, y_ts in zip(x, y):
-                    _y_pred_current = self.partial_fit(x_ts[warmup:], y_ts[warmup:])
-
+            for i in range(len(x)):
+                yi = y[i][warmup:] if y is not None else None
+                _y_pred_current = self.partial_fit(x[i][warmup:], yi)
         else:
-            _y_pred = self.partial_fit(x[warmup:], None if y is None else y[warmup:])
+            _y_pred = self.partial_fit(x[warmup:], y[warmup:] if y is not None else None)
 
         return self
 
