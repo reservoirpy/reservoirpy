@@ -5,7 +5,6 @@ from functools import partial
 from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
-from numpy.random import Generator
 
 from reservoirpy.utils.data_validation import check_node_input
 
@@ -188,7 +187,7 @@ class IPReservoir(TrainableNode):
     #: Number of neuronal units in the reservoir.
     units: int
     #: A random state generator.
-    rng: Generator
+    rng: np.random.Generator
 
     def __init__(
         self,
