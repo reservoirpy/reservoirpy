@@ -5,7 +5,6 @@ from functools import partial
 from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
-from numpy.random import Generator
 
 from ..mat_gen import uniform
 from ..node import Node
@@ -159,7 +158,7 @@ class LIF(Node):
         W: Union[Weights, Callable] = partial(uniform, low=0.0),
         input_dim: Optional[int] = None,
         dtype: type = np.float64,
-        seed: Optional[Union[int, Generator]] = None,
+        seed: Optional[Union[int, np.random.Generator]] = None,
         name: Optional[str] = None,
     ):
         self.inhibitory = inhibitory
