@@ -20,23 +20,16 @@ from ._seed import get_seed
 memory = Memory(os.path.join(_TEMPDIR, "datasets"), verbose=0)
 
 
-def _mg_eq(xt, xtau, a=0.2, b=0.1, n=10):
-    """
-    Mackey-Glass time delay differential equation, at values x(t) and x(t-tau).
-    """
-    return -b * xt + a * xtau / (1 + xtau**n)
-
-
 def _mg_rk4(xt, xtau, a, b, n, h=1.0):
     """
     Runge-Kuta method (RK4) for Mackey-Glass timeseries discretization.
     """
-    k1 = h * _mg_eq(xt, xtau, a, b, n)
-    k2 = h * _mg_eq(xt + 0.5 * k1, xtau, a, b, n)
-    k3 = h * _mg_eq(xt + 0.5 * k2, xtau, a, b, n)
-    k4 = h * _mg_eq(xt + k3, xtau, a, b, n)
-
-    return xt + k1 / 6 + k2 / 3 + k3 / 3 + k4 / 6
+    bh = -b * h
+    k1 = bh * xt + a * xtau / (1 + xtau**n)
+    k2 = 2 * k1 + bh * k1
+    k3 = 2 * k1 + bh * k2
+    k4 = k1 + bh * k3
+    return xt + (k1 + k2 + k3 + k4) / 6
 
 
 def henon_map(
@@ -341,40 +334,25 @@ def mackey_glass(
     history_length = int(np.floor(tau / h))
 
     if history is None:
-        # a random state is needed as the method used to discretize
-        # the timeseries needs to use randomly generated initial steps
-        # based on the initial condition passed as parameter.
-        if seed is None:
-            seed = get_seed()
-
-        rng = rand_generator(seed)
-
-        # generate random first step based on the value
-        # of the initial condition
-
-        history_ = collections.deque(x0 * np.ones(history_length) + 0.2 * (rng.random(history_length) - 0.5))
+        rng = rand_generator(seed if seed is not None else get_seed())
+        history_ = x0 * np.ones(history_length) + 0.2 * (rng.random(history_length) - 0.5)
     else:
         if not history_length <= len(history):
             raise ValueError(f"The given history has length of {len(history)} < tau/h" f" with tau={tau} and h={h}.")
         # use the most recent elements of the provided history
-        history_ = collections.deque(history[-history_length:])
+        history_ = history[-history_length:]
 
     xt = x0
 
-    X = np.zeros(n_timesteps)
+    X = np.empty(history_length + n_timesteps)
+    X[:history_length] = history_
 
     for i in range(0, n_timesteps):
         X[i] = xt
 
-        if tau == 0:
-            xtau = 0.0
-        else:
-            xtau = history_.popleft()
-            history_.append(xt)
+        xtau = X[i - history_length] if tau > 0 else 0.0
 
-        xth = _mg_rk4(xt, xtau, a=a, b=b, n=n, h=h)
-
-        xt = xth
+        xt = _mg_rk4(xt, xtau, a=a, b=b, n=n, h=h)
 
     return X.reshape(-1, 1)
 
