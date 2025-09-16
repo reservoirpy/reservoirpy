@@ -3,7 +3,7 @@
 
 import itertools as it
 from math import comb
-from typing import Optional, Sequence, Union
+from typing import Optional, Union
 
 import numpy as np
 

@@ -5,7 +5,6 @@ from typing import Callable, Literal, Optional, Sequence, Union
 
 import numpy as np
 import scipy.sparse as sp
-from numpy.random import Generator
 
 from reservoirpy.utils.data_validation import check_node_input
 
@@ -191,7 +190,7 @@ class LocalPlasticityReservoir(TrainableNode):
     #: Type of matrices elements. By default, ``np.float64``.
     dtype: type
     #: A random state generator. Used for generating Win and W.
-    rng: Generator
+    rng: np.random.Generator
 
     def __init__(
         self,

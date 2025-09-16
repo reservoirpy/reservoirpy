@@ -5,8 +5,6 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 
-from reservoirpy.utils.data_validation import check_node_input
-
 from ..mat_gen import zeros
 from ..node import OnlineNode
 from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array
