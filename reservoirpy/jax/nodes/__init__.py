@@ -69,33 +69,33 @@ Input and Output
 
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .es2n import ES2N
+from .intrinsic_plasticity import IPReservoir
+from .io import Input, Output
+from .lif import LIF
+from .lms import LMS
 
-# from .intrinsic_plasticity import IPReservoir
-# from .io import Input, Output
-# from .lif import LIF
-# from .lms import LMS
 # from .local_plasticity_reservoir import LocalPlasticityReservoir
-# from .nvar import NVAR
-# from .reservoir import Reservoir
-# from .ridge import Ridge
-# from .rls import RLS
+from .nvar import NVAR
+from .reservoir import Reservoir
+from .ridge import Ridge
+from .rls import RLS
 
 __all__ = [
-    # "Reservoir",
-    # "Input",
-    # "Output",
-    # "Ridge",
-    # "LMS",
-    # "RLS",
+    "Reservoir",
+    "Input",
+    "Output",
+    "Ridge",
+    "LMS",
+    "RLS",
     "Tanh",
     "Softmax",
     "Softplus",
     "Identity",
     "Sigmoid",
     "ReLU",
-    # "NVAR",
-    # "IPReservoir",
-    # "LIF",
+    "NVAR",
+    "IPReservoir",
+    "LIF",
     # "LocalPlasticityReservoir",
     "ES2N",
 ]
