@@ -284,7 +284,10 @@ class Node(ABC):
         base_name = self.__class__.__name__
         arguments = get_non_defaults(self)
         arguments_str = ", ".join(f"{arg}:{val}" for arg, val in arguments.items())
-        return f"{base_name}"  # ({arguments_str})"
+        return f"{base_name}({arguments_str})"
+
+    def __repr__(self):
+        return self.__str__()
 
     def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
         from .ops import link
