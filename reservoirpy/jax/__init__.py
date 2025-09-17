@@ -1,6 +1,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from . import activationsfunc, mat_gen, nodes, type
+from . import activationsfunc, mat_gen, nodes, type, utils
 from .node import Node
 
 __all__ = [
@@ -13,4 +13,5 @@ __all__ = [
     # "Model",  # WIP
     # "ESN",  # WIP
     "type",
+    "utils",
 ]
