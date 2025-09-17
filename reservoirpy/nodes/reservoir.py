@@ -9,7 +9,7 @@ from ..activationsfunc import get_function, tanh
 from ..mat_gen import bernoulli, normal
 from ..node import Node
 from ..type import NodeInput, State, Timestep, Weights, is_array
-from ..utils import random
+from ..utils import rand_generator
 
 
 class Reservoir(Node):
@@ -176,7 +176,7 @@ class Reservoir(Node):
         self.bias = bias
         self.activation = get_function(activation)
         self.dtype = dtype
-        self.rng = random.rand_generator(seed=seed)
+        self.rng = rand_generator(seed=seed)
         self.name = name
 
         # set units / output_dim
