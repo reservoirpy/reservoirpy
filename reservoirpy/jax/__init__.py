@@ -1,11 +1,10 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-# from . import mat_gen
 # from .node import Node
-from . import activationsfunc
+from . import activationsfunc, mat_gen
 
 __all__ = [
-    # "mat_gen",  # WIP
+    "mat_gen",
     "activationsfunc",
     # "observables",  # NOT PLANNED FOR NOW
     # "hyper",  # NOT PLANNED
