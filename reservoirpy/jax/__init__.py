@@ -1,6 +1,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from . import activationsfunc, mat_gen, nodes
+from . import activationsfunc, mat_gen, nodes, type
 from .node import Node
 
 __all__ = [
@@ -12,5 +12,5 @@ __all__ = [
     "Node",
     # "Model",  # WIP
     # "ESN",  # WIP
-    # "type",  # We use reservoirpy.type instead, at least for now
+    "type",
 ]
