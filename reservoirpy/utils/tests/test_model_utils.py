@@ -31,7 +31,7 @@ def test_data_from_buffer():
     new_buffer, new_x = data_from_buffer(buffer, x)
     assert new_buffer.shape == buffer.shape
     assert new_x.shape == x.shape
-    np.testing.assert_array_equal(new_buffer, x[-5:])
+    assert_array_equal(new_buffer, x[-5:])
 
     # multiseries 3D array
     x = np.arange(20).reshape(2, -1, 1)
@@ -39,11 +39,11 @@ def test_data_from_buffer():
     new_buffer, new_x = data_from_buffer(buffer, x)
     assert new_buffer.shape == buffer.shape
     assert new_x.shape == x.shape
-    np.testing.assert_array_equal(new_buffer, x[-1, -5:])
+    assert_array_equal(new_buffer, x[-1, -5:])
 
     # list of timeseries
     x = [np.arange(100 * i, 100 * i + 10).reshape(-1, 1) for i in range(3)]
     buffer = np.arange(-5, 0).reshape(-1, 1)
     new_buffer, new_x = data_from_buffer(buffer, x)
     assert len(new_x) == len(x)
-    np.testing.assert_array_equal(new_buffer, x[-1][-5:])
+    assert_array_equal(new_buffer, x[-1][-5:])
