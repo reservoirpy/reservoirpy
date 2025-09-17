@@ -9,7 +9,9 @@ import jax
 import numpy as np
 from scipy.sparse import sparray
 
-global_dtype = np.float64
+from reservoirpy.type import is_array, is_multiseries
+
+global_dtype = jax.numpy.float64
 
 # Creating a real type alias (Array1D) and then using it in another alias (Timestep)
 # as a str is a trick to both benefits from type checks from pyright and the like

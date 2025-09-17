@@ -75,8 +75,9 @@ from reservoirpy.type import (
     is_array,
     is_multiseries,
 )
-from reservoirpy.utils import get_non_defaults
-from reservoirpy.utils.data_validation import check_node_input, check_timestep
+
+from ..utils import get_non_defaults
+from ..utils.data_validation import check_node_input, check_timeseries, check_timestep
 
 
 class Node(ABC):
@@ -150,14 +151,14 @@ class Node(ABC):
         return new_state["out"]
 
     def _run(self, state: State, x: Timeseries) -> tuple[State, Timeseries]:
-        def sep(func):
+        def split(func):
             def step_func(state, x):
                 out = func(state, x)
-                return out, x["out"]
+                return out, out["out"]
 
             return step_func
 
-        new_state, output = jax.lax.scan(sep(self._step), state, x)
+        new_state, output = jax.lax.scan(split(self._step), state, x)
 
         return new_state, output
 
@@ -195,7 +196,10 @@ class Node(ABC):
         initial_state = self.state
 
         if is_multiseries(x):
-            output = jax.lax.map(partial(self._run, initial_state), x)
+            if isinstance(x, Sequence):
+                output = [self._run(initial_state, x_series) for x_series in x]
+            else:
+                output = jax.lax.map(partial(self._run, initial_state), x)
             states, result = zip(*output)
             final_state = states[-1]
 
@@ -363,7 +367,6 @@ class OnlineNode(TrainableNode):
     def _learning_step(self, x: Timestep, y: Optional[Timestep]) -> Timestep:
         ...  # pragma: no cover
 
-    @abstractmethod
     def partial_fit(self, x: Timeseries, y: Optional[Timeseries]) -> Timeseries:
         """Fit the Node in an online fashion.
 
@@ -384,7 +387,27 @@ class OnlineNode(TrainableNode):
         array of shape (timesteps, output_dim)
             All outputs computed during the training.
         """
-        ...  # pragma: no cover
+        check_timeseries(x, expected_dim=self.input_dim)
+        if y is not None:
+            check_timeseries(y)
+
+        if not self.initialized:
+            self.initialize(x, y)
+
+        n_timesteps = x.shape[-2]
+        y_pred = jnp.empty((n_timesteps, self.output_dim))
+        if y is not None:
+            for i, (x_, y_) in enumerate(zip(x, y)):
+                y_pred_ = self._learning_step(x_, y_)
+                # TODO: find a better way if necessary
+                y_pred.at[i].set(y_pred_)
+        else:
+            for i, x_ in enumerate(x):
+                y_pred_ = self._learning_step(x_, None)
+                y_pred.at[i].set(y_pred_)
+
+        self.state = {"out": y_pred_}
+        return y_pred
 
     def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0) -> "OnlineNode":
         # Re-initialize in any case
@@ -394,12 +417,11 @@ class OnlineNode(TrainableNode):
             check_node_input(y)
 
         if is_multiseries(x):
-            if y is None:
-                for x_ts in x:
-                    _y_pred_current = self.partial_fit(x_ts[warmup:])
-            else:
-                for x_ts, y_ts in zip(x, y):
-                    _y_pred_current = self.partial_fit(x_ts[warmup:], y_ts[warmup:])
+            for i in range(len(x)):
+                yi = y[i][warmup:] if y is not None else None
+                _y_pred_current = self.partial_fit(x[i][warmup:], yi)
+        else:
+            _y_pred = self.partial_fit(x[warmup:], y[warmup:] if y is not None else None)
 
         return self
 
@@ -409,7 +431,6 @@ class ParallelNode(TrainableNode, ABC):
 
     :py:class:`~.ParallelNode` implements the methods
     :py:meth:`~.ParallelNode.master` and :py:meth:`~.ParallelNode.worker`.
-
     """
 
     @abstractmethod
@@ -437,13 +458,13 @@ class ParallelNode(TrainableNode, ABC):
         # Multi-series
         if is_multiseries(x):
             if y is None:
-                results = jax.lax.map(self.worker, x)
+                results = jax.vmap(self.worker)(x, None)
             else:
-                results = jax.lax.map(self.worker, x)
+                results = jax.vmap(self.worker)(x, y)
 
         # Single timeseries
         else:
-            results = (self.worker(x[warmup:], y[warmup:]) for _ in range(1))
+            results = jax.tree.map(partial(jnp.expand_dims, axis=0), self.worker(x[warmup:], y[warmup:]))
 
         self.master(results)
 
