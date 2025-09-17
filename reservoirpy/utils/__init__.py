@@ -1,6 +1,5 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-from . import data_validation, graphflow, model_utils, random
 from .random import rand_generator
 
 EXCLUDED_PARAMETERS = ["Win", "W", "bias", "Wout"]
@@ -34,13 +33,3 @@ def get_non_defaults(instance, constructor=None):
         for k, v in defaults.items()
         if hasattr(instance, k) and k not in EXCLUDED_PARAMETERS and getattr(instance, k) != v
     }
-
-
-__all__ = [
-    "get_non_defaults",
-    "data_validation",
-    "graphflow",
-    "model_utils",
-    "random",
-    "rand_generator",
-]
