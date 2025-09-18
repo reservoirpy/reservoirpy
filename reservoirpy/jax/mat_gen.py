@@ -4,20 +4,6 @@ from jax.experimental import sparse as jsparse
 
 from .. import mat_gen
 
-INITIALIZER_NAMES = [
-    "bernoulli",
-    "cluster",
-    "line",
-    "normal",
-    "orthogonal",
-    "ring",
-    "small_world",
-    "uniform",
-    "zeros",
-]
-
-INITIALIZER_MAPPING = {name: getattr(mat_gen, name) for name in INITIALIZER_NAMES}
-
 
 class JaxInitializer(mat_gen.Initializer):
     """Initializer for matrix generation for the Jax backend
@@ -28,7 +14,7 @@ class JaxInitializer(mat_gen.Initializer):
     """
 
     def __call__(self, *shape, **kwargs):
-        call_result = super(JaxInitializer, self).__call__(*shape, **kwargs)
+        call_result = mat_gen.Initializer.__call__(self, *shape, **kwargs)
 
         # Not initialized yet, only kwargs set
         if isinstance(call_result, mat_gen.Initializer):
@@ -41,15 +27,13 @@ class JaxInitializer(mat_gen.Initializer):
                 return jnp.array(call_result)
 
 
-def __getattr__(name):
-    if name in INITIALIZER_MAPPING:
-        initializer = INITIALIZER_MAPPING[name]
-        # This is a very bad idea :)
-        # But attributes are kept, only the methods are modified, which is what we want
-        # so it should be okay
-        initializer.__class__ = JaxInitializer
-        return initializer
-    else:
-        raise AttributeError(
-            f"Cannot import {name} from this Jax module. Available elements are {list(INITIALIZER_MAPPING.keys())}."
-        )
+bernoulli = JaxInitializer(mat_gen._bernoulli)
+cluster = JaxInitializer(mat_gen._cluster)
+line = JaxInitializer(mat_gen._line)
+normal = JaxInitializer(mat_gen._normal)
+orthogonal = JaxInitializer(mat_gen._orthogonal)
+ring = JaxInitializer(mat_gen._ring)
+small_world = JaxInitializer(mat_gen._small_world)
+uniform = JaxInitializer(mat_gen._uniform)
+zeros = JaxInitializer(mat_gen._zeros)
+ones = JaxInitializer(mat_gen._ones)
