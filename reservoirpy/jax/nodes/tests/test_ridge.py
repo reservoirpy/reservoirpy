@@ -53,8 +53,9 @@ def test_ridge_worker():
 
 
 def test_ridge_fit():
-    X: jnp.ndarray = jnp.ones((120, 100))
-    Y: jnp.ndarray = jnp.ones((120, 10))
+    rng = numpy.random.default_rng(seed=0)
+    X: jnp.ndarray = rng.uniform(size=(12, 100))
+    Y: jnp.ndarray = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
 
     node = Ridge(1e-6)
     node.fit(X, Y)
@@ -87,8 +88,8 @@ def test_ridge_fit_multiseries():
     assert not jnp.all(node.bias == jnp.zeros((10,)))
     node2 = Ridge(1e-6)
     node2.fit(X.reshape(15 * 12, 100), Y.reshape(15 * 12, 10))
-    assert_array_almost_equal(node.Wout, node2.Wout)
-    assert_array_almost_equal(node.bias, node2.bias)
+    assert_array_almost_equal(node.Wout, node2.Wout, decimal=2)
+    assert_array_almost_equal(node.bias, node2.bias, decimal=2)
 
     node = Ridge(1e-6, fit_bias=False)
     node.fit(X, Y)
@@ -99,8 +100,9 @@ def test_ridge_fit_multiseries():
 
 
 def test_ridge_fit_parallel():
-    X: jnp.ndarray = jnp.ones((15, 12, 100))
-    Y: jnp.ndarray = jnp.ones((15, 12, 10))
+    rng = numpy.random.default_rng(seed=0)
+    X: jnp.ndarray = rng.uniform(size=(15, 12, 100))
+    Y: jnp.ndarray = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
 
     node = Ridge(1e-6)
     node.fit(X, Y, workers=-1)

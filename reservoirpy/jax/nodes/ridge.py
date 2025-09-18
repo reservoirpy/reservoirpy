@@ -156,19 +156,13 @@ class Ridge(ParallelNode):
         return XXT, YXT, x_sum, y_sum, sample_size
 
     def master(self, generator: Iterable):
-        XXT = np.zeros((self.input_dim, self.input_dim))
-        YXT = np.zeros((self.input_dim, self.output_dim))
-        X_sum = 0.0
-        Y_sum = 0.0
-        total_samples = 0
+        xxt, yxt, x_sum, y_sum, sample_size = generator
+        XXT = np.sum(xxt, axis=0)
+        YXT = np.sum(yxt, axis=0)
+        X_sum = np.sum(x_sum, axis=0)
+        Y_sum = np.sum(y_sum, axis=0)
+        total_samples = np.sum(sample_size)
         ridge_In = self.ridge * np.eye(self.input_dim)
-
-        for (xxt, yxt, x_sum, y_sum, sample_size) in generator:
-            XXT += xxt
-            YXT += yxt
-            X_sum += x_sum
-            Y_sum += y_sum
-            total_samples += sample_size
 
         if self.fit_bias:
             X_means = X_sum / total_samples
