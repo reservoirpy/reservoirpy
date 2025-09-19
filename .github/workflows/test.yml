@@ -53,11 +53,10 @@ jobs:
         run:  |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install flake8 pytest pytest-cov
-          pip install -r requirements.txt
-          pip install -e .
+          pip install .[sklearn]
       - name: Test with Pytest
         run: |
-          pytest --cov-report=xml --cov=reservoirpy
+          pytest --cov-report=xml --cov=reservoirpy --ignore-glob=reservoirpy/jax/*
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -69,3 +68,29 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           verbose: true
+
+  build-jax:
+    runs-on: ${{matrix.os}}
+
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-latest]
+        python-version: ["3.13"]
+
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install pytest pytest-cov flake8
+          pip install .[jax]
+      - name: Test reservoirpy/jax
+        run: pytest --cov-report=xml reservoirpy/jax --cov=reservoirpy/jax
