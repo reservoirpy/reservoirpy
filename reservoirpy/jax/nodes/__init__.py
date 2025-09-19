@@ -100,4 +100,9 @@ __all__ = [
     "ES2N",
 ]
 
-# TODO: Error for ScikitLearnNode
+
+def __getattr__(attr):
+    if attr in ["LocalPlasticityReservoir", "ScikitLearnNode"]:
+        raise AttributeError(f"{attr} does not have a Jax implementation. Please use reservoir.nodes.{attr} instead.")
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {attr}")
