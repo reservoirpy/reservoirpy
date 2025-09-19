@@ -5,6 +5,7 @@ from functools import partial
 from typing import Optional, Sequence, Union
 
 import jax
+import jax.numpy as jnp
 
 from ..node import Node
 from ..type import NodeInput, State, Timeseries, Timestep
@@ -52,6 +53,7 @@ class Input(Node):
     def initialize(self, x: Union[NodeInput, Timestep]):
         self._set_input_dim(x)
         self.output_dim = self.input_dim
+        self.state = {"out": jnp.zeros((self.output_dim,))}
         self.initialized = True
 
     @partial(jax.jit, static_argnums=(0,))

@@ -265,7 +265,7 @@ class ES2N(Node):
                 seed=bias_rng,
             )
 
-        self.state = {"out": jnp.zeros((self.units,))}
+        self.state = {"out": jnp.zeros((self.output_dim,))}
 
         self.initialized = True
 

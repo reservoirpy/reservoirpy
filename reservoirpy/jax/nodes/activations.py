@@ -4,6 +4,7 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 import jax
+import jax.numpy as jnp
 from jax.nn import identity, relu, sigmoid, softmax, softplus, tanh
 
 from ...type import NodeInput, State, Timeseries, Timestep
@@ -38,6 +39,7 @@ class F(Node):
     ):
         self._set_input_dim(x)
         self.output_dim = self.input_dim
+        self.state = {"out": jnp.zeros((self.output_dim,))}
         self.initialized = True
 
     @partial(jax.jit, static_argnums=(0,))

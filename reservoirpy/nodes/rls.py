@@ -151,6 +151,8 @@ class RLS(OnlineNode):
         self.P = np.eye(self.input_dim) / self.alpha
         self.S = 0
 
+        self.state = {"out": np.zeros((self.output_dim,))}
+
         self.initialized = True
 
     def _learning_step(

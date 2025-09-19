@@ -163,6 +163,7 @@ class NVAR(Node):
 
         # to store the k*s last inputs, k being the delay and s the strides
         self.store = np.zeros((delay * strides, self.input_dim))
+        self.state = {"out": np.zeros((self.output_dim,))}
         self.initialized = True
 
     def _step(self, state: State, x: Timestep) -> State:

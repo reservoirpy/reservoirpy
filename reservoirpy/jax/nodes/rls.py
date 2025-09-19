@@ -153,6 +153,7 @@ class RLS(OnlineNode):
             self.bias = self.bias(self.output_dim)
         self.P = jnp.eye(self.input_dim) / self.alpha
         self.S = 0
+        self.state = {"out": jnp.zeros((self.output_dim,))}
 
         self.initialized = True
 
