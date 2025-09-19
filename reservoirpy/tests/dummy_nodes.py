@@ -5,7 +5,7 @@ from typing import Sequence
 
 import numpy as np
 
-from reservoirpy.node import Node, OnlineNode, TrainableNode
+from ..node import Node, OnlineNode, TrainableNode
 
 
 class IdentityNode(Node):
@@ -20,6 +20,7 @@ class IdentityNode(Node):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
 
 class PlusNode(Node):
@@ -35,6 +36,7 @@ class PlusNode(Node):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
 
 class AccumulateNode(Node):
@@ -55,6 +57,7 @@ class AccumulateNode(Node):
             )
         }
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
 
 class MinusNode(Node):
@@ -70,6 +73,7 @@ class MinusNode(Node):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
 
 class Inverter(Node):
@@ -84,6 +88,7 @@ class Inverter(Node):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
 
 class Offline(TrainableNode):
@@ -96,6 +101,7 @@ class Offline(TrainableNode):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
     def _step(self, state, x):
         return {"out": x + self.b}
@@ -121,6 +127,7 @@ class Unsupervised(TrainableNode):
         self.input_dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.output_dim = self.input_dim
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
     def _step(self, x):
         return {"out": x + self.b}
@@ -146,6 +153,7 @@ class OnlineUnsupervised(OnlineNode):
         self.output_dim = self.input_dim
         self.b = 0
         self.initialized = True
+        self.state = {"out": np.zeros((self.output_dim,))}
 
     def _step(self, state, x):
         return {"out": x + self.b}

@@ -5,9 +5,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from reservoirpy.nodes.io import Input, Output
-
 from ..model import Model
+from ..nodes import RLS, Input, Output, Reservoir, Ridge
 from ..ops import merge
 from .dummy_nodes import Inverter, MinusNode, Offline, OnlineUnsupervised, PlusNode
 
@@ -120,8 +119,6 @@ def test_complex_node_link():
 
 
 def test_model_complex():
-    from ..nodes import Reservoir, Ridge
-
     r1 = Reservoir(10)
     r2 = Reservoir(10)
     read1 = Ridge()
@@ -336,8 +333,6 @@ def test_online_train_simple():
 
 
 def test_model_online():
-    from reservoirpy.nodes import RLS, Output, Reservoir
-
     reservoir1 = Reservoir(10, name="r1")
     reservoir2 = Reservoir(10, name="r2")
     output = Output(name="out")
@@ -378,9 +373,6 @@ def test_model_return_states():
 
 
 def test_multiinputs():
-    import numpy as np
-
-    from reservoirpy.nodes import Input, Reservoir
 
     source1, source2 = Input(name="s1"), Input(name="s2")
     res1, res2 = Reservoir(100, name="res1"), Reservoir(100, name="res2")

@@ -3,11 +3,11 @@
 
 from typing import Optional
 
-from reservoirpy.node import Node, TrainableNode
-from reservoirpy.nodes import Input, Output, Reservoir, Ridge
 from reservoirpy.type import Edge
 
 from .model import Model
+from .node import Node, TrainableNode
+from .nodes import Input, Output, Reservoir, Ridge
 from .utils.model_utils import obj_from_kwargs
 
 
