@@ -8,9 +8,9 @@ from reservoirpy.type import is_array
 
 def check_timestep(x, *, expected_dim=None):
     if not is_array(x):
-        raise TypeError(f"Input but be an array, got a {type(x)}.")
+        raise TypeError(f"Input must be an array, got a {type(x)}.")
     if not x.ndim == 1:
-        raise ValueError(f"Input but be a 1-dimensional array. Received an array of shape {x.shape}.")
+        raise ValueError(f"Input must be a 1-dimensional array. Received an array of shape {x.shape}.")
     if expected_dim is not None and not x.shape == (expected_dim,):
         raise ValueError(f"Expected input of shape {(expected_dim,)}, got {x.shape}.")
 
@@ -25,9 +25,9 @@ def is_timestep(x):
 
 def check_timeseries(x, *, expected_dim=None, expected_length=None):
     if not is_array(x):
-        raise TypeError(f"Input but be an array, got a {type(x)}.")
+        raise TypeError(f"Input must be an array, got a {type(x)}.")
     if not x.ndim == 2:
-        raise ValueError(f"Input but be a 2-dimensional array. Got array of shape {x.shape}.")
+        raise ValueError(f"Input must be a 2-dimensional array. Got array of shape {x.shape}.")
     if expected_length is not None and not x.shape[0] == expected_length:
         raise ValueError(f"Expected timeseries of length {expected_length}, got {x.shape[0]}.")
     if expected_dim is not None and not x.shape[1] == expected_dim:
@@ -50,7 +50,7 @@ def check_multiseries(x, *, expected_dim=None, expected_length=None):
                 expected_dim = ts.shape[1]
     elif is_array(x):
         if not x.ndim == 3:
-            raise ValueError(f"Input but be a 3-dimensional array. Got array of shape {x.shape}.")
+            raise ValueError(f"Input must be a 3-dimensional array. Got array of shape {x.shape}.")
         if expected_length is not None and not x.shape[1] == expected_length:
             raise ValueError(f"Expected timeseries of length {expected_length}, got {x.shape[1]}.")
         if expected_dim is not None and not x.shape[2] == expected_dim:
@@ -79,7 +79,7 @@ def check_node_input(x, *, expected_dim=None, expected_length=None):
         elif x.ndim == 2:
             check_timeseries(x, expected_dim=expected_dim, expected_length=expected_length)
         else:
-            raise ValueError(f"Input but be a (2 or 3)-dimensional array. Got array of shape {x.shape}.")
+            raise ValueError(f"Input must be a (2 or 3)-dimensional array. Got array of shape {x.shape}.")
     else:
         raise TypeError(f"Expected an array or a sequence of array, got {type(x)}.")
 
