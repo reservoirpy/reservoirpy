@@ -3,6 +3,8 @@
 from functools import partial
 from typing import Callable, Optional, Union
 
+import numpy as np
+
 from ..activationsfunc import identity, relu, sigmoid, softmax, softplus, tanh
 from ..node import Node
 from ..type import NodeInput, State, Timeseries, Timestep
@@ -36,6 +38,7 @@ class F(Node):
     ):
         self._set_input_dim(x)
         self.output_dim = self.input_dim
+        self.state = {"out": np.zeros((self.output_dim,))}
         self.initialized = True
 
     def _step(self, state: State, x: Timestep) -> State:

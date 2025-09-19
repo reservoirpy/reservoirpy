@@ -22,8 +22,6 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 from itertools import product
 from typing import Sequence, Union
 
-from reservoirpy.node import Node
-
 from .model import Model
 from .node import Node
 from .utils.graphflow import unique_ordered

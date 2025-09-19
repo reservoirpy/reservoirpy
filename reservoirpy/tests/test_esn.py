@@ -4,9 +4,9 @@
 import numpy as np
 import pytest
 
-from reservoirpy import ESN
-from reservoirpy.mat_gen import normal
-from reservoirpy.nodes import Reservoir, Ridge
+from .. import ESN
+from ..mat_gen import normal
+from ..nodes import Reservoir, Ridge
 
 
 def test_esn_init():
@@ -50,32 +50,6 @@ def test_esn_init_from_obj():
     res = esn.run(data)
 
     assert res.shape == (1000, 1)
-
-
-# def test_esn_states(): # TODO: implement a way to return reservoir activity
-#     res = Reservoir(100, lr=0.8, sr=0.4)
-#     read = Ridge(ridge=1e-5, output_dim=1)
-
-#     esn = ESN(reservoir=res, readout=read)
-
-#     data = np.ones((2, 10, 10))
-#     out = esn.run(data, return_states="all")
-
-#     assert out["reservoir"][0].shape == (10, 100)
-#     assert out["readout"][0].shape == (10, 1)
-
-#     out = esn.run(data, return_states=["reservoir"])
-
-#     assert out["reservoir"][0].shape == (10, 100)
-
-#     s_reservoir = esn.state()
-#     assert_equal(s_reservoir, res.state())
-
-#     s_readout = esn.state(which="readout")
-#     assert_equal(s_readout, read.state())
-
-#     with pytest.raises(ValueError):
-#         esn.state(which="foo")
 
 
 def test_esn_feedback():
