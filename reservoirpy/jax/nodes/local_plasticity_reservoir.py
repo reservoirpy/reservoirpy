@@ -327,6 +327,7 @@
 
 #         if not isinstance(self.W, BCOO):
 #             raise TypeError(f"Weight matrix W should be a BCOO matrix, got {type(self.W)}")
+#         self.state = {"out": jnp.zeros((self.output_dim,))}
 
 #         self.initialized = True
 

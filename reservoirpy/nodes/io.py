@@ -3,6 +3,8 @@
 
 from typing import Optional, Sequence, Union
 
+import numpy as np
+
 from ..node import Node
 from ..type import NodeInput, State, Timeseries, Timestep
 
@@ -49,6 +51,7 @@ class Input(Node):
     def initialize(self, x: Union[NodeInput, Timestep]):
         self._set_input_dim(x)
         self.output_dim = self.input_dim
+        self.state = {"out": np.zeros((self.output_dim,))}
         self.initialized = True
 
     def _step(self, state: State, x: Timestep) -> State:
@@ -101,6 +104,7 @@ class Output(Node):
         dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.input_dim = dim
         self.output_dim = dim
+        self.state = {"out": np.zeros((self.output_dim,))}
         self.initialized = True
 
     def _step(self, state: State, x: Timestep) -> State:

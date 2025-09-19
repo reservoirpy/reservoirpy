@@ -135,6 +135,7 @@ class LMS(OnlineNode):
             self.Wout = self.Wout(self.input_dim, self.output_dim)
         if isinstance(self.bias, Callable):
             self.bias = self.bias(self.output_dim)
+        self.state = {"out": np.zeros((self.output_dim,))}
 
         self.initialized = True
 

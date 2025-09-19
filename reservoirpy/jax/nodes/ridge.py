@@ -5,7 +5,7 @@ from functools import partial
 from typing import Callable, Iterable, Optional, Union
 
 import jax
-import numpy as np
+import jax.numpy as jnp
 from scipy import linalg
 
 from ..node import ParallelNode
@@ -139,6 +139,7 @@ class Ridge(ParallelNode):
             self.Wout = self.Wout(self.input_dim, self.output_dim)
         if isinstance(self.bias, Callable):
             self.bias = self.bias(self.output_dim)
+        self.state = {"out": jnp.zeros((self.output_dim,))}
 
         self.initialized = True
 
@@ -151,8 +152,8 @@ class Ridge(ParallelNode):
         return {"out": out[-1]}, out
 
     def worker(self, x: Timeseries, y: Timeseries):
-        x_sum = np.sum(x, axis=0)
-        y_sum = np.sum(y, axis=0)
+        x_sum = jnp.sum(x, axis=0)
+        y_sum = jnp.sum(y, axis=0)
         sample_size = x.shape[0]
         XXT = x.T @ x
         YXT = x.T @ y
@@ -160,18 +161,18 @@ class Ridge(ParallelNode):
 
     def master(self, generator: Iterable):
         xxt, yxt, x_sum, y_sum, sample_size = generator
-        XXT = np.sum(xxt, axis=0)
-        YXT = np.sum(yxt, axis=0)
-        X_sum = np.sum(x_sum, axis=0)
-        Y_sum = np.sum(y_sum, axis=0)
-        total_samples = np.sum(sample_size)
-        ridge_In = self.ridge * np.eye(self.input_dim)
+        XXT = jnp.sum(xxt, axis=0)
+        YXT = jnp.sum(yxt, axis=0)
+        X_sum = jnp.sum(x_sum, axis=0)
+        Y_sum = jnp.sum(y_sum, axis=0)
+        total_samples = jnp.sum(sample_size)
+        ridge_In = self.ridge * jnp.eye(self.input_dim)
 
         if self.fit_bias:
             X_means = X_sum / total_samples
             Y_means = Y_sum / total_samples
-            XXT -= total_samples * np.outer(X_means, X_means)
-            YXT -= total_samples * np.outer(X_means, Y_means)
+            XXT -= total_samples * jnp.outer(X_means, X_means)
+            YXT -= total_samples * jnp.outer(X_means, Y_means)
 
         Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="sym")
 
@@ -179,4 +180,4 @@ class Ridge(ParallelNode):
         if self.fit_bias:
             self.bias = Y_means - X_means @ Wout
         else:
-            self.bias = np.zeros((self.output_dim,))
+            self.bias = jnp.zeros((self.output_dim,))
