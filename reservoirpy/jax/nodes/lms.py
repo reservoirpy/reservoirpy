@@ -1,11 +1,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from functools import partial
 from typing import Callable, Optional, Union
 
-import jax.numpy as np
-
-from reservoirpy.utils.data_validation import check_timeseries
+import jax
+import jax.numpy as jnp
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
@@ -45,9 +45,9 @@ class LMS(OnlineNode):
 
     Examples
     --------
-    >>> x = np.random.normal(size=(100, 3))
-    >>> noise = np.random.normal(scale=0.01, size=(100, 1))
-    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+    >>> x = jnp.random.normal(size=(100, 3))
+    >>> noise = jnp.random.normal(scale=0.01, size=(100, 1))
+    >>> y = x @ jnp.array([[10], [-0.2], [7.]]) + noise + 12.
 
     >>> from reservoirpy.nodes import LMS
     >>> lms_node = LMS(alpha=1e-1)
@@ -121,6 +121,7 @@ class LMS(OnlineNode):
         out = x @ self.Wout + self.bias
         return {"out": out[-1]}, out  # (len, in) @ (in, out) + (out,)
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x @ self.Wout + self.bias}  # (in, ) @ (in, out) + (out,)
 
@@ -147,7 +148,7 @@ class LMS(OnlineNode):
 
         prediction = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
         error = prediction - y  # (out,)
-        dWout = -alpha * np.outer(x, error)  # (in, out)
+        dWout = -alpha * jnp.outer(x, error)  # (in, out)
         Wout_next = Wout + dWout  # (in, out)
         if self.fit_bias:
             dbias = -alpha * error

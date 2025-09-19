@@ -1,8 +1,10 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from functools import partial
 from typing import Callable, Iterable, Optional, Union
 
+import jax
 import numpy as np
 from scipy import linalg
 
@@ -140,6 +142,7 @@ class Ridge(ParallelNode):
 
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x @ self.Wout + self.bias}
 

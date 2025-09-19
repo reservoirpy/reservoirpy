@@ -1,11 +1,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from functools import partial
 from typing import Callable, Optional, Union
 
-import jax.numpy as np
-
-from reservoirpy.utils.data_validation import check_node_input
+import jax
+import jax.numpy as jnp
 
 from ..mat_gen import zeros
 from ..node import OnlineNode
@@ -60,7 +60,7 @@ class RLS(OnlineNode):
     --------
     >>> x = numpy.random.normal(size=(100, 3))
     >>> noise = numpy.random.normal(scale=0.1, size=(100, 1))
-    >>> y = x @ np.array([[10], [-0.2], [7.]]) + noise + 12.
+    >>> y = x @ jnp.array([[10], [-0.2], [7.]]) + noise + 12.
 
     >>> from reservoirpy.nodes import RLS
     >>> rls_node = RLS(alpha=1e-1)
@@ -134,6 +134,7 @@ class RLS(OnlineNode):
         out = x @ self.Wout + self.bias  # (len, in) @ (in, out) + (out,)
         return {"out": out[-1]}, out
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x @ self.Wout + self.bias}  # (in, ) @ (in, out) + (out,)
 
@@ -150,7 +151,7 @@ class RLS(OnlineNode):
             self.Wout = self.Wout(self.input_dim, self.output_dim)
         if isinstance(self.bias, Callable):
             self.bias = self.bias(self.output_dim)
-        self.P = np.eye(self.input_dim) / self.alpha
+        self.P = jnp.eye(self.input_dim) / self.alpha
         self.S = 0
 
         self.initialized = True
@@ -161,28 +162,28 @@ class RLS(OnlineNode):
         y: Timestep,
     ):
         """
-        Wout: np.ndarray (in, out)
-        bias: np.ndarray (out,)
-        P: np.ndarray (in, in)
-        x: np.ndarray (in,)
-        y: np.ndarray (out,)
+        Wout: jax.Array (in, out)
+        bias: jax.Array (out,)
+        P: jax.Array (in, in)
+        x: jax.Array (in,)
+        y: jax.Array (out,)
         Returns
         y_pred
         """
         Wout: Weights = self.Wout
         bias: Weights = self.bias
-        P: np.ndarray = self.P
+        P: jax.Array = self.P
         forgetting: float = self.forgetting
         S: float = self.S
 
         Px = P @ x  # (in,)
-        dP = -np.outer(Px, Px) / (forgetting + x @ Px)  # (in, in)
+        dP = -jnp.outer(Px, Px) / (forgetting + x @ Px)  # (in, in)
         P_next = (P + dP) / forgetting
         S_next = forgetting * S + 1
 
         prediction = x @ Wout + bias  # (out,) = (in,) @ (in, out) + (out,)
         error = prediction - y  # (out,)
-        dWout = -np.outer(P_next @ x, error)  # (in, out)
+        dWout = -jnp.outer(P_next @ x, error)  # (in, out)
         Wout_next = Wout + dWout  # (in, out)
 
         if self.fit_bias:

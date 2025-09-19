@@ -4,7 +4,8 @@
 from functools import partial
 from typing import Callable, Literal, Optional, Sequence, Union
 
-import jax.numpy as np
+import jax
+import jax.numpy as jnp
 from numpy.random import Generator
 
 from reservoirpy.utils.data_validation import check_node_input
@@ -109,7 +110,7 @@ class IPReservoir(TrainableNode):
         Reservoir units activation function.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
-    dtype : Numpy dtype, default to np.float64
+    dtype : Numpy dtype, default to jnp.float64
         Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
@@ -159,7 +160,7 @@ class IPReservoir(TrainableNode):
     #: Bias of reservoir activation (:math:`\mathbf{b}`).
     b: float
     #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
-    lr: Union[float, np.ndarray]
+    lr: Union[float, jax.Array]
     #: Spectral radius of W.
     sr: float
     #: Mean of the target distribution (0.0 by default) (:math:`\mu`).
@@ -187,7 +188,7 @@ class IPReservoir(TrainableNode):
         self,
         units: Optional[int] = None,
         sr: Optional[float] = None,
-        lr: Union[float, np.ndarray] = 1.0,
+        lr: Union[float, jax.Array] = 1.0,
         mu: float = 0.0,
         sigma: float = 1.0,
         learning_rate: float = 5e-4,
@@ -200,7 +201,7 @@ class IPReservoir(TrainableNode):
         bias: Union[Weights, Callable] = bernoulli,
         activation: Literal["tanh", "sigmoid"] = "tanh",
         input_dim: Optional[int] = None,
-        dtype: type = np.float64,
+        dtype: type = jnp.float64,
         seed: Optional[Union[int, Generator]] = None,
         name=None,
     ):
@@ -237,7 +238,7 @@ class IPReservoir(TrainableNode):
             )
         self.input_dim = input_dim
         if is_array(Win):
-            self.input_dim = np.shape(Win)[-1]
+            self.input_dim = jnp.shape(Win)[-1]
 
         # set output_dim
         if units is None and not is_array(W):
@@ -254,10 +255,6 @@ class IPReservoir(TrainableNode):
         self.dtype = dtype
         self.rng = rand_generator(seed=seed)
         self.name = name
-
-        self.a: np.ndarray
-        self.b: np.ndarray
-        self.state: State
 
     def initialize(self, x: Union[NodeInput, Timestep], y: None = None):
 
@@ -293,13 +290,14 @@ class IPReservoir(TrainableNode):
                 seed=bias_rng,
             )
 
-        self.a = np.ones((self.output_dim,))
-        self.b = np.zeros((self.output_dim,))
+        self.a = jnp.ones((self.output_dim,))
+        self.b = jnp.zeros((self.output_dim,))
 
-        self.state = dict(internal=np.zeros((self.output_dim,)), out=np.zeros((self.output_dim,)))
+        self.state = dict(internal=jnp.zeros((self.output_dim,)), out=jnp.zeros((self.output_dim,)))
 
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         W = self.W  # NxN
         Win = self.Win  # NxI
