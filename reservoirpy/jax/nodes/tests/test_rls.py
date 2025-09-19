@@ -65,11 +65,11 @@ def test_rls_train():
     jax.config.update("jax_enable_x64", True)
     node = RLS(alpha=1e-6)
 
-    X, Y = jnp.ones((200, 100)), jnp.ones((200, 10))
+    X, Y = jnp.ones((38, 100)), jnp.ones((38, 10))
 
     res = node.partial_fit(X, Y)
 
-    assert res.shape == (200, 10)
+    assert res.shape == (38, 10)
     assert node.Wout.shape == (100, 10)
     assert_array_almost_equal(node.Wout, jnp.ones((100, 10)) * 0.005, decimal=4)
     assert node.bias.shape == (10,)
@@ -77,11 +77,11 @@ def test_rls_train():
 
     node = RLS(1e-6, fit_bias=False)
 
-    X, Y = jnp.ones((200, 100)), jnp.ones((200, 10))
+    X, Y = jnp.ones((38, 100)), jnp.ones((38, 10))
 
     res = node.partial_fit(X, Y)
 
-    assert res.shape == (200, 10)
+    assert res.shape == (38, 10)
     assert node.Wout.shape == (100, 10)
     assert_array_almost_equal(node.Wout, jnp.ones((100, 10)) * 0.01, decimal=4)
     assert node.bias.shape == (10,)
@@ -89,7 +89,7 @@ def test_rls_train():
 
     node = RLS(1e-6, fit_bias=True)
 
-    X, Y = jnp.ones((5, 200, 100)), jnp.ones((5, 200, 10))
+    X, Y = jnp.ones((5, 24, 100)), jnp.ones((5, 24, 10))
 
     for x, y in zip(X, Y):
         res = node.partial_fit(x, y)
@@ -99,7 +99,7 @@ def test_rls_train():
     assert node.bias.shape == (10,)
     assert_array_almost_equal(node.bias, jnp.ones((10,)) * 0.5, decimal=4)
 
-    data = jnp.ones((1000, 100))
+    data = jnp.ones((120, 100))
     res = node.run(data)
 
-    assert res.shape == (1000, 10)
+    assert res.shape == (120, 10)

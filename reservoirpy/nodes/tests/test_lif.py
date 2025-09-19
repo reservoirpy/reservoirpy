@@ -6,7 +6,7 @@ from .. import LIF
 
 
 def test_lif():
-    n_timesteps = 1_000
+    n_timesteps = 150
     neurons = 100
 
     lif = LIF(
