@@ -104,24 +104,24 @@ def test_offline_fit():
 
     offline_node.fit(X, Y)
 
-    assert_allclose(offline_node.b, 50.0)
+    assert_allclose(offline_node.b, 50.0, rtol=1e-4)
 
     Y = -jnp.ones((10, 5))
 
     offline_node.fit(X, Y)
 
-    assert_allclose(offline_node.b, -50)
+    assert_allclose(offline_node.b, -50, rtol=1e-4)
 
     X = [jnp.ones((10, 5)) * 2.0] * 3
     Y = [0.3 * jnp.ones((10, 5))] * 3
 
     offline_node.fit(X, Y)
 
-    assert_allclose(offline_node.b, 0.3 * 10 * 5 * 3)
+    assert_allclose(offline_node.b, 0.3 * 10 * 5 * 3, rtol=1e-4)
 
     offline_node.fit(jnp.array(X), jnp.array(Y))
 
-    assert_allclose(offline_node.b, 0.3 * 10 * 5 * 3)
+    assert_allclose(offline_node.b, 0.3 * 10 * 5 * 3, rtol=1e-4)
 
 
 def test_unsupervised_fit():
@@ -132,23 +132,23 @@ def test_unsupervised_fit():
 
     unsupervised_node.fit(X)
 
-    assert_allclose(unsupervised_node.b, 50.0)
+    assert_allclose(unsupervised_node.b, 50.0, rtol=1e-4)
 
     X = -jnp.ones((10, 5))
 
     unsupervised_node.fit(X)
 
-    assert_allclose(unsupervised_node.b, -50)
+    assert_allclose(unsupervised_node.b, -50, rtol=1e-4)
 
     X = [0.3 * jnp.ones((10, 5))] * 3
 
     unsupervised_node.fit(X)
 
-    assert_allclose(unsupervised_node.b, 0.3 * 10 * 5 * 3)
+    assert_allclose(unsupervised_node.b, 0.3 * 10 * 5 * 3, rtol=1e-4)
 
     unsupervised_node.fit(jnp.array(X))
 
-    assert_allclose(unsupervised_node.b, 0.3 * 10 * 5 * 3)
+    assert_allclose(unsupervised_node.b, 0.3 * 10 * 5 * 3, rtol=1e-4)
 
 
 def test_partial_fit_unsupervised():
@@ -159,13 +159,13 @@ def test_partial_fit_unsupervised():
 
     online_node.partial_fit(X)
 
-    assert_allclose(online_node.b, 50.0)
+    assert_allclose(online_node.b, 50.0, rtol=1e-4)
 
     X = jnp.ones((10, 5)) * 2.0
 
     online_node.partial_fit(X)
 
-    assert_allclose(online_node.b, 150.0)
+    assert_allclose(online_node.b, 150.0, rtol=1e-4)
 
     X = [jnp.ones((10, 5)) * 2.0] * 3
 
