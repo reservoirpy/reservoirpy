@@ -76,11 +76,15 @@ from reservoirpy.type import (
     is_multiseries,
 )
 
+from ..node import Node as NNode
+from ..node import OnlineNode as NOnlineNode
+from ..node import ParallelNode as NParallelNode
+from ..node import TrainableNode as NTrainableNode
 from ..utils import get_non_defaults
 from ..utils.data_validation import check_node_input, check_timeseries, check_timestep
 
 
-class Node(ABC):
+class Node(NNode, ABC):
     """Generic Jax Node ABC
 
     All Jax Nodes should inherit this class.
@@ -294,37 +298,37 @@ class Node(ABC):
         return self.__str__()
 
     def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link
+        from ..ops import link
 
         return link(self, other)
 
     def __rrshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link
+        from ..ops import link
 
         return link(other, self)
 
     def __lshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link_feedback
+        from ..ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
     def __rlshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link_feedback
+        from ..ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
     def __and__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import merge
+        from ..ops import merge
 
         return merge(self, other)
 
     def __rand__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import merge
+        from ..ops import merge
 
         return merge(other, self)
 
 
-class TrainableNode(Node):
+class TrainableNode(NTrainableNode, Node, ABC):
     """Node that can be trained.
 
     :py:class:`reservoirpy.node.TrainableNode` implements the stateful method
@@ -355,7 +359,7 @@ class TrainableNode(Node):
         ...  # pragma: no cover
 
 
-class OnlineNode(TrainableNode):
+class OnlineNode(NOnlineNode, TrainableNode, ABC):
     """Node that can be trained in an online fashion.
 
     :py:class:`reservoirpy.node.OnlineNode` implements the stateful method
@@ -426,7 +430,7 @@ class OnlineNode(TrainableNode):
         return self
 
 
-class ParallelNode(TrainableNode, ABC):
+class ParallelNode(NParallelNode, TrainableNode, ABC):
     """Jax Node that can be trained in parallel.
 
     :py:class:`~.ParallelNode` implements the methods

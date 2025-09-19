@@ -96,7 +96,7 @@ __all__ = [
     "NVAR",
     "IPReservoir",
     "LIF",
-    # "LocalPlasticityReservoir",
+    # "LocalPlasticityReservoir",  # TODO: find a way to edit W as a sparse BCOO
     "ES2N",
 ]
 
