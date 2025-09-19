@@ -61,3 +61,7 @@ def timestep_from_input(x: Union[NodeInput, Timestep]):
         return np.zeros((x[0].shape[-1],))
     else:
         return np.zeros((x.shape[-1],))
+
+
+class DeprecatedError(AttributeError):
+    pass
