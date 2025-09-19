@@ -9,7 +9,7 @@ import jax
 import numpy as np
 from scipy.sparse import sparray
 
-from reservoirpy.type import is_array, is_multiseries
+from reservoirpy.type import get_data_dimension, is_array, is_multiseries
 
 global_dtype = jax.numpy.float64
 

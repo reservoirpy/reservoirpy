@@ -1,7 +1,7 @@
 """
-====================================
-Node API (:mod:`reservoirpy.node`)
-====================================
+==========================================
+Jax Node API (:mod:`reservoirpy.jax.node`)
+==========================================
 
 Note
 ----
@@ -44,7 +44,7 @@ See the following guides to:
 - **Learn more about how to combine nodes within a Model**: :ref:`model`
 - **Learn how to subclass Node to make your own**: :ref:`create_new_node`
 
-.. currentmodule:: reservoirpy.node
+.. currentmodule:: reservoirpy.jax.node
 
 
 .. autosummary::
@@ -202,10 +202,13 @@ class Node(NNode, ABC):
         if is_multiseries(x):
             if isinstance(x, Sequence):
                 output = [self._run(initial_state, x_series) for x_series in x]
+                states, result = zip(*output)
+                final_state = states[-1]
             else:
                 output = jax.lax.map(partial(self._run, initial_state), x)
-            states, result = zip(*output)
-            final_state = states[-1]
+                states, result = output
+                # take the final state from the last timeseries run
+                final_state = {key: val[-1] for key, val in states.items()}
 
             if is_array(x):
                 result = jnp.array(result)
@@ -298,34 +301,50 @@ class Node(NNode, ABC):
         return self.__str__()
 
     def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from ..ops import link
+        from .ops import link
 
         return link(self, other)
 
     def __rrshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from ..ops import link
+        from .ops import link
 
         return link(other, self)
 
     def __lshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from ..ops import link_feedback
+        from .ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
     def __rlshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from ..ops import link_feedback
+        from .ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
     def __and__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from ..ops import merge
+        from .ops import merge
 
         return merge(self, other)
 
     def __rand__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from ..ops import merge
+        from .ops import merge
 
         return merge(other, self)
+
+    def __lt__(self, other):
+        """'<' operator for Jax Nodes, to enable using them as PyTree keys."""
+        return id(self) < id(other)
+
+    def __gt__(self, other):
+        """'>' operator for Jax Nodes, to enable using them as PyTree keys."""
+        return id(self) > id(other)
+
+    def __le__(self, other):
+        """'<=' operator for Jax Nodes, to enable using them as PyTree keys."""
+        return id(self) <= id(other)
+
+    def __ge__(self, other):
+        """'>=' operator for Jax Nodes, to enable using them as PyTree keys."""
+        return id(self) >= id(other)
 
 
 class TrainableNode(NTrainableNode, Node, ABC):

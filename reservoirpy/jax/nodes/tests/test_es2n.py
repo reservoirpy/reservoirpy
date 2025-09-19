@@ -1,6 +1,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+import jax
 import jax.numpy as jnp
 import pytest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
@@ -29,8 +30,8 @@ def test_es2n_init():
     with pytest.raises(ValueError):
         ES2N()
 
-    # res = ES2N(100, activation="relu")
-    # assert id(res.activation) == id(relu)
+    res = ES2N(100, activation="relu")
+    assert id(res.activation) == id(jax.nn.relu)
 
 
 def test_es2n_init_from_proximity_is_arrays():
