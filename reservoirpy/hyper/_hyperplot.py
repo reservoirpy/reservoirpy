@@ -11,7 +11,6 @@ import math
 import os
 from os import path
 
-import matplotlib
 import numpy as np
 
 # These values comes from seaborn's 'paper' context (v0.13.0)
@@ -269,7 +268,6 @@ def _parameter_bar(ax, values, scores, loss, smaxs, cmaxs, p, categories):
     ax.bar(x=categories, height=heights, color="forestgreen", alpha=0.3)
 
 
-@matplotlib.rc_context(PAPER_CONTEXT | DARKGRID_STYLE)
 def plot_hyperopt_report(
     exp,
     params,
@@ -338,154 +336,157 @@ def plot_hyperopt_report(
             Matplotlib figure object.
 
     """
-    import matplotlib.pyplot as plt
+    import matplotlib
 
-    N = len(params)
-    not_log = not_log or []
+    with matplotlib.rc_context(PAPER_CONTEXT | DARKGRID_STYLE):
+        import matplotlib.pyplot as plt
 
-    results = _get_results(exp)
+        N = len(params)
+        not_log = not_log or []
 
-    loss = np.array([r["returned_dict"][loss_metric] for r in results])
-    scores = np.array([r["returned_dict"][metric] for r in results])
+        results = _get_results(exp)
 
-    if max_deviation is not None:
-        not_outliers = _outliers_idx(loss, max_deviation)
-        loss = loss[not_outliers]
-        scores = scores[not_outliers]
-        values = {p: np.array([r["current_params"][p] for r in results])[not_outliers] for p in params}
-    else:
-        values = {p: np.array([r["current_params"][p] for r in results]) for p in params}
+        loss = np.array([r["returned_dict"][loss_metric] for r in results])
+        scores = np.array([r["returned_dict"][metric] for r in results])
 
-    categorical = categorical or []
+        if max_deviation is not None:
+            not_outliers = _outliers_idx(loss, max_deviation)
+            loss = loss[not_outliers]
+            scores = scores[not_outliers]
+            values = {p: np.array([r["current_params"][p] for r in results])[not_outliers] for p in params}
+        else:
+            values = {p: np.array([r["current_params"][p] for r in results]) for p in params}
 
-    for p in categorical:
-        values[p] = values[p].astype(str)
+        categorical = categorical or []
 
-    # Sorting for categorical plotting
-    all_categorical = [val for p, val in values.items() if p in categorical]
-    all_numerical = [val for p, val in values.items() if p not in categorical]
+        for p in categorical:
+            values[p] = values[p].astype(str)
 
-    sorted_idx = np.lexsort((loss, scores, *all_numerical, *all_categorical))
+        # Sorting for categorical plotting
+        all_categorical = [val for p, val in values.items() if p in categorical]
+        all_numerical = [val for p, val in values.items() if p not in categorical]
 
-    loss = np.array([loss[i] for i in sorted_idx])
-    scores = np.array([scores[i] for i in sorted_idx])
+        sorted_idx = np.lexsort((loss, scores, *all_numerical, *all_categorical))
 
-    for p, val in values.items():
-        values[p] = np.array([val[i] for i in sorted_idx])
+        loss = np.array([loss[i] for i in sorted_idx])
+        scores = np.array([scores[i] for i in sorted_idx])
 
-    scores = _scale(scores)
+        for p, val in values.items():
+            values[p] = np.array([val[i] for i in sorted_idx])
 
-    # loss and f1 values
+        scores = _scale(scores)
 
-    if loss_behaviour == "min":
-        lmaxs = loss > loss.min()
-    else:
-        lmaxs = loss < loss.max()
+        # loss and f1 values
 
-    percent = math.ceil(len(scores) * 0.05)
-    smaxs = scores.argsort()[-percent:][::-1]
-    cmaxs = _scale(scores[smaxs])
+        if loss_behaviour == "min":
+            lmaxs = loss > loss.min()
+        else:
+            lmaxs = loss < loss.max()
 
-    # gridspecs
+        percent = math.ceil(len(scores) * 0.05)
+        smaxs = scores.argsort()[-percent:][::-1]
+        cmaxs = _scale(scores[smaxs])
 
-    fig = plt.figure(figsize=(15, 19), constrained_layout=True)
-    gs = fig.add_gridspec(2, 1, height_ratios=[2 / 30, 28 / 30])
-    fig.suptitle(f"Hyperopt trials summary - {title}", size=15)
+        # gridspecs
 
-    gs0 = gs[0].subgridspec(1, 3)
-    gs1 = gs[1].subgridspec(N + 1, N)
+        fig = plt.figure(figsize=(15, 19), constrained_layout=True)
+        gs = fig.add_gridspec(2, 1, height_ratios=[2 / 30, 28 / 30])
+        fig.suptitle(f"Hyperopt trials summary - {title}", size=15)
 
-    lbar_ax = fig.add_subplot(gs0[0, 0])
-    fbar_ax = fig.add_subplot(gs0[0, 1])
-    rad_ax = fig.add_subplot(gs0[0, 2])
-    rad_ax.axis("off")
+        gs0 = gs[0].subgridspec(1, 3)
+        gs1 = gs[1].subgridspec(N + 1, N)
 
-    # plot
-    axes = []
-    for i, p1 in enumerate(params):
-        for j, p2 in enumerate(params):
-            ax = fig.add_subplot(gs1[i, j])
-            axes.append(ax)
-            if p1 == p2:
-                sc_l, sc_s, sc_m = _loss_plot(
+        lbar_ax = fig.add_subplot(gs0[0, 0])
+        fbar_ax = fig.add_subplot(gs0[0, 1])
+        rad_ax = fig.add_subplot(gs0[0, 2])
+        rad_ax.axis("off")
+
+        # plot
+        axes = []
+        for i, p1 in enumerate(params):
+            for j, p2 in enumerate(params):
+                ax = fig.add_subplot(gs1[i, j])
+                axes.append(ax)
+                if p1 == p2:
+                    sc_l, sc_s, sc_m = _loss_plot(
+                        ax=ax,
+                        values=values,
+                        scores=scores,
+                        loss=loss,
+                        smaxs=smaxs,
+                        cmaxs=cmaxs,
+                        lmaxs=lmaxs,
+                        p=p2,
+                        log=p2 not in not_log,
+                        categorical=p2 in categorical,
+                        legend=(i == 0 and j == 0),
+                        loss_behaviour=loss_behaviour,
+                    )
+                else:
+                    sc_l, sc_s, sc_m = _cross_parameter_plot(
+                        ax=ax,
+                        values=values,
+                        scores=scores,
+                        loss=loss,
+                        smaxs=smaxs,
+                        cmaxs=cmaxs,
+                        lmaxs=lmaxs,
+                        p1=p1,
+                        p2=p2,
+                        log1=p1 not in not_log,
+                        log2=p2 not in not_log,
+                        cat1=p1 in categorical,
+                        cat2=p2 in categorical,
+                    )
+
+        # legends
+
+        handles, labels = sc_l.legend_elements(prop="sizes")
+        legend = rad_ax.legend(
+            handles,
+            labels,
+            loc="center left",
+            title=f"Normalized {metric} (%)",
+            mode="expand",
+            ncol=len(labels) // 2 + 1,
+        )
+
+        l_cbar = fig.colorbar(sc_l, cax=lbar_ax, ax=axes, orientation="horizontal")
+        _ = l_cbar.ax.set_title("Loss value")
+
+        f_cbar = fig.colorbar(sc_s, cax=fbar_ax, ax=axes, orientation="horizontal", ticks=[0, 0.5, 1])
+        _ = f_cbar.ax.set_title(f"{metric} best population")
+        _ = f_cbar.ax.set_xticklabels(["5% best", "2.5% best", "Best"])
+
+        # violinplots
+
+        legend = True
+        for i, p in enumerate(params):
+            ax = fig.add_subplot(gs1[-1, i])
+            if p in categorical:
+                _parameter_bar(
                     ax=ax,
                     values=values,
                     scores=scores,
                     loss=loss,
                     smaxs=smaxs,
                     cmaxs=cmaxs,
-                    lmaxs=lmaxs,
-                    p=p2,
-                    log=p2 not in not_log,
-                    categorical=p2 in categorical,
-                    legend=(i == 0 and j == 0),
-                    loss_behaviour=loss_behaviour,
+                    p=p,
+                    categories=sorted(list(set(values[p]))),
                 )
             else:
-                sc_l, sc_s, sc_m = _cross_parameter_plot(
+                _parameter_violin(
                     ax=ax,
                     values=values,
                     scores=scores,
                     loss=loss,
                     smaxs=smaxs,
                     cmaxs=cmaxs,
-                    lmaxs=lmaxs,
-                    p1=p1,
-                    p2=p2,
-                    log1=p1 not in not_log,
-                    log2=p2 not in not_log,
-                    cat1=p1 in categorical,
-                    cat2=p2 in categorical,
+                    p=p,
+                    log=not (p in not_log),
+                    legend=legend,
                 )
-
-    # legends
-
-    handles, labels = sc_l.legend_elements(prop="sizes")
-    legend = rad_ax.legend(
-        handles,
-        labels,
-        loc="center left",
-        title=f"Normalized {metric} (%)",
-        mode="expand",
-        ncol=len(labels) // 2 + 1,
-    )
-
-    l_cbar = fig.colorbar(sc_l, cax=lbar_ax, ax=axes, orientation="horizontal")
-    _ = l_cbar.ax.set_title("Loss value")
-
-    f_cbar = fig.colorbar(sc_s, cax=fbar_ax, ax=axes, orientation="horizontal", ticks=[0, 0.5, 1])
-    _ = f_cbar.ax.set_title(f"{metric} best population")
-    _ = f_cbar.ax.set_xticklabels(["5% best", "2.5% best", "Best"])
-
-    # violinplots
-
-    legend = True
-    for i, p in enumerate(params):
-        ax = fig.add_subplot(gs1[-1, i])
-        if p in categorical:
-            _parameter_bar(
-                ax=ax,
-                values=values,
-                scores=scores,
-                loss=loss,
-                smaxs=smaxs,
-                cmaxs=cmaxs,
-                p=p,
-                categories=sorted(list(set(values[p]))),
-            )
-        else:
-            _parameter_violin(
-                ax=ax,
-                values=values,
-                scores=scores,
-                loss=loss,
-                smaxs=smaxs,
-                cmaxs=cmaxs,
-                p=p,
-                log=not (p in not_log),
-                legend=legend,
-            )
-            legend = False
-        if legend:
-            ax.set_ylabel(f"5% best {metric}\nparameter distribution")
-    return fig
+                legend = False
+            if legend:
+                ax.set_ylabel(f"5% best {metric}\nparameter distribution")
+        return fig
