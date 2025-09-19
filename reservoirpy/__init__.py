@@ -33,3 +33,10 @@ __all__ = [
     "ESN",
     "type",
 ]
+
+
+def __getattr__(attr):
+    if attr in ["experimental", "verbosity", "compat"]:
+        raise type.DeprecatedError(f"reservoirpy.{attr} has been removed in ReservoirPy v0.4.0.")
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {attr!r}")

@@ -101,3 +101,15 @@ __all__ = [
     "LocalPlasticityReservoir",
     "ES2N",
 ]
+
+
+def __getattr__(attr):
+    if attr == "ESN":
+        raise AttributeError(
+            "Since ReservoirPy v0.4.0, ESN is no longer a Node and is located at the top of the module."
+            "Use reservoirpy.ESN instead."
+        )
+    if attr in ["Concat", "from_sklearn", "FORCE"]:
+        raise type.DeprecatedError(f"reservoirpy.nodes.{attr} has been removed in ReservoirPy v0.4.0.")
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {attr!r}")
