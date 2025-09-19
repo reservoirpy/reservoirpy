@@ -12,7 +12,7 @@ from ..nodes import Reservoir, Ridge
 def test_esn_init():
     esn = ESN(units=100, lr=0.8, sr=0.4, ridge=1e-5)
 
-    data = np.ones((1000, 10))
+    data = np.ones((150, 10))
     res = esn.fit(data, data)
     data = np.ones((10,))
     res = esn(data)
@@ -22,9 +22,9 @@ def test_esn_init():
     assert esn.reservoir.lr == 0.8
     assert esn.reservoir.units == 100
 
-    data = np.ones((1000, 10))
+    data = np.ones((150, 10))
     res = esn.run(data)
-    assert res.shape == (1000, 10)
+    assert res.shape == (150, 10)
 
     esn = ESN(units=100, lr=0.8, sr=0.4, ridge=1e-5, output_dim=7)
     with pytest.raises(ValueError):

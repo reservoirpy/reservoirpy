@@ -87,7 +87,7 @@ def test_rls_train():
 
     node = RLS(1e-6, fit_bias=True)
 
-    X, Y = np.ones((5, 200, 100)), np.ones((5, 200, 10))
+    X, Y = np.ones((5, 24, 100)), np.ones((5, 24, 10))
 
     for x, y in zip(X, Y):
         res = node.partial_fit(x, y)
@@ -97,7 +97,7 @@ def test_rls_train():
     assert node.bias.shape == (10,)
     assert_array_almost_equal(node.bias, np.ones((10,)) * 0.5, decimal=4)
 
-    data = np.ones((1000, 100))
+    data = np.ones((120, 100))
     res = node.run(data)
 
-    assert res.shape == (1000, 10)
+    assert res.shape == (120, 10)

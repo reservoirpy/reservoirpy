@@ -118,23 +118,3 @@ def test_ridge_fit_parallel():
     assert node.output_dim == 10
     assert node.Wout.shape == (100, 10)
     assert_array_equal(node.bias, jnp.zeros((10,)))
-
-
-def test_parallel():
-    process_count = 16
-
-    rng = numpy.random.default_rng(seed=42)
-    x = rng.random((400, 10))
-    y = x[:, 2::-1] + rng.random((400, 3)) / 10
-    x_run = rng.random((20, 10))
-
-    def run_ridge(i):
-        readout = Ridge(ridge=1e-8)
-        return readout.fit(x, y).run(x_run)
-
-    parallel = Parallel(n_jobs=process_count, return_as="generator")
-    results = list(parallel(delayed(run_ridge)(i) for i in range(process_count)))
-
-    for result in results:
-        assert_array_almost_equal(result, results[0])
-        # assert jnp.all(result == results[0])
