@@ -37,3 +37,10 @@ small_world = JaxInitializer(mat_gen._small_world)
 uniform = JaxInitializer(mat_gen._uniform)
 zeros = JaxInitializer(mat_gen._zeros)
 ones = JaxInitializer(mat_gen._ones)
+
+
+def __getattr__(attr):
+    if attr in ["random_sparse", "fast_spectral_initialization"]:
+        raise AttributeError(f"{attr} does not have a Jax implementation. Please use reservoir.mat_gen.{attr} instead.")
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {attr}")

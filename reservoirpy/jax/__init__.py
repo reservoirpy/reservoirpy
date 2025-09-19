@@ -10,6 +10,7 @@ __all__ = [
     "activationsfunc",
     # "observables",  # NOT PLANNED FOR NOW
     # "hyper",  # NOT PLANNED
+    # "datasets",  # NOT PLANNED
     "nodes",
     "Node",
     "Model",
@@ -17,3 +18,10 @@ __all__ = [
     "type",
     "utils",
 ]
+
+
+def __getattr__(attr):
+    if attr in ["observables", "hyper", "datasets", "set_seed", "__version__"]:
+        raise AttributeError(f"{attr} does not have a Jax implementation. Please use reservoir.{attr} instead.")
+    else:
+        raise AttributeError(f"module {__name__!r} has no attribute {attr}")
