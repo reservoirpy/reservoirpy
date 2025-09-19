@@ -20,7 +20,7 @@ def test_nvar():
     data = jnp.ones((10,))
     res = node(data)
 
-    assert node.store is not None
+    assert "store" in node.state
     assert node.strides == 1
     assert node.delay == 3
     assert node.order == 2

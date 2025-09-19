@@ -4,7 +4,7 @@
 # from typing import Callable, Literal, Optional, Sequence, Union
 
 # from jax.experimental.sparse import BCOO
-# import jax.numpy as np
+# import jax.numpy as jnp
 # from numpy.random import Generator
 
 # from reservoirpy.utils.data_validation import check_node_input
@@ -118,7 +118,7 @@
 #         Input dimension. Can be inferred at first call.
 #     seed : int or :py:class:`numpy.random.Generator`, optional
 #         A random state seed, for noise generation.
-#     dtype : Numpy dtype, default to np.float64
+#     dtype : Numpy dtype, default to jnp.float64
 #         Numerical type for node parameters.
 #     name : str, optional
 #         Node name.
@@ -186,7 +186,7 @@
 #     bias: Weights
 #     #: Activation of the reservoir units (tanh by default) (:math:`f`).
 #     activation: Callable
-#     #: Type of matrices elements. By default, ``np.float64``.
+#     #: Type of matrices elements. By default, ``jnp.float64``.
 #     dtype: type
 #     #: A random state generator. Used for generating Win and W.
 #     rng: Generator
@@ -212,7 +212,7 @@
 #         activation: Union[str, Callable] = tanh,
 #         input_dim: Optional[int] = None,
 #         seed: Optional[Union[int, Generator]] = None,
-#         dtype: type = np.float64,
+#         dtype: type = jnp.float64,
 #         name: Optional[str] = None,
 #     ):
 #         self.units = units
@@ -321,8 +321,8 @@
 #             )
 
 #         self.state = {
-#             "out": np.zeros((self.units,)),
-#             "internal": np.zeros((self.units,)),
+#             "out": jnp.zeros((self.units,)),
+#             "internal": jnp.zeros((self.units,)),
 #         }
 
 #         if not isinstance(self.W, BCOO):
@@ -369,8 +369,8 @@
 #                 # Optionally normalize each row.
 #                 if do_norm:
 #                     # Compute the L2 norm per row for the updated data.
-#                     row_norms = np.sqrt(np.sum(self.W**2, axis=1)).reshape(-1, 1)
-#                     safe_norms = np.where(row_norms > 0, row_norms, 1)
+#                     row_norms = jnp.sqrt(jnp.sum(self.W**2, axis=1)).reshape(-1, 1)
+#                     safe_norms = jnp.where(row_norms > 0, row_norms, 1)
 #                     self.W /= safe_norms
 
 #         for _epoch in range(self.epochs):

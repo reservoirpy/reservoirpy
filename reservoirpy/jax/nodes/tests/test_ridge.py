@@ -11,9 +11,9 @@ from reservoirpy.jax.nodes import Ridge
 
 
 def test_ridge_init():
-    x: jnp.ndarray = jnp.ones((100,))
-    X: jnp.ndarray = jnp.ones((120, 100))
-    Y: jnp.ndarray = jnp.ones((120, 10))
+    x: jax.Array = jnp.ones((100,))
+    X: jax.Array = jnp.ones((120, 100))
+    Y: jax.Array = jnp.ones((120, 10))
 
     node = Ridge(ridge=1e-8)
     node.initialize(X, Y)
@@ -39,8 +39,8 @@ def test_ridge_init():
 
 
 def test_ridge_worker():
-    X: jnp.ndarray = 2 * jnp.ones((120, 100))
-    Y: jnp.ndarray = 2 * jnp.ones((120, 10))
+    X: jax.Array = 2 * jnp.ones((120, 100))
+    Y: jax.Array = 2 * jnp.ones((120, 10))
 
     node = Ridge(1e-6)
 
@@ -54,8 +54,8 @@ def test_ridge_worker():
 
 def test_ridge_fit():
     rng = numpy.random.default_rng(seed=0)
-    X: jnp.ndarray = rng.uniform(size=(12, 100))
-    Y: jnp.ndarray = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
+    X: jax.Array = rng.uniform(size=(12, 100))
+    Y: jax.Array = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
 
     node = Ridge(1e-6)
     node.fit(X, Y)
@@ -75,8 +75,8 @@ def test_ridge_fit():
 
 def test_ridge_fit_multiseries():
     rng = numpy.random.default_rng(seed=0)
-    X: jnp.ndarray = rng.uniform(size=(15, 12, 100))
-    Y: jnp.ndarray = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
+    X: jax.Array = rng.uniform(size=(15, 12, 100))
+    Y: jax.Array = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
 
     node = Ridge(1e-6)
     node.fit(X, Y)
@@ -101,8 +101,8 @@ def test_ridge_fit_multiseries():
 
 def test_ridge_fit_parallel():
     rng = numpy.random.default_rng(seed=0)
-    X: jnp.ndarray = rng.uniform(size=(15, 12, 100))
-    Y: jnp.ndarray = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
+    X: jax.Array = rng.uniform(size=(15, 12, 100))
+    Y: jax.Array = X @ rng.uniform(size=(100, 10)) + rng.uniform(size=10)
 
     node = Ridge(1e-6)
     node.fit(X, Y, workers=-1)

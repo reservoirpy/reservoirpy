@@ -4,7 +4,8 @@
 from functools import partial
 from typing import Callable, Optional, Sequence, Union
 
-import jax.numpy as np
+import jax
+import jax.numpy as jnp
 from numpy.random import Generator
 
 from ...type import is_array
@@ -59,7 +60,7 @@ class LIF(Node):
         the returned weight matrix.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
-    dtype : Numpy dtype, default to np.float64
+    dtype : Numpy dtype, default to jnp.float64
         Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
@@ -127,10 +128,10 @@ class LIF(Node):
     inhibitory: float
     #: Spike threshold. (1.0 by default)
     threshold: float
-    #: Type of matrices elements. By default, ``np.float64``.
+    #: Type of matrices elements. By default, ``jnp.float64``.
     dtype: type
     #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
-    lr: Union[float, np.ndarray]
+    lr: Union[float, jax.Array]
     #: Spectral radius of ``W`` (optional).
     sr: float
     #: Input scaling (float or array) (1.0 by default).
@@ -159,7 +160,7 @@ class LIF(Node):
         Win: Union[Weights, Callable] = partial(uniform, low=0.0),
         W: Union[Weights, Callable] = partial(uniform, low=0.0),
         input_dim: Optional[int] = None,
-        dtype: type = np.float64,
+        dtype: type = jnp.float64,
         seed: Optional[Union[int, Generator]] = None,
         name: Optional[str] = None,
     ):
@@ -194,6 +195,7 @@ class LIF(Node):
             )
         self.input_dim = Win.shape[-1] if is_array(Win) else input_dim
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep):
         v = state["internal"].copy()
         threshold = self.threshold
@@ -203,8 +205,8 @@ class LIF(Node):
         # leak
         v *= 1 - lr
         # fire
-        spikes = np.where(v > threshold, 1.0, 0.0)
-        v = np.where(v > threshold, 0.0, v)
+        spikes = jnp.where(v > threshold, 1.0, 0.0)
+        v = jnp.where(v > threshold, 0.0, v)
         # integrate
         v += (W @ spikes.T).T
         v += (Win @ x.T).T
@@ -243,8 +245,8 @@ class LIF(Node):
             self.W.at[:, :n_inhibitory].multiply(-1)
 
         self.state = {
-            "internal": np.zeros((self.units,)),
-            "out": np.zeros((self.units,)),
+            "internal": jnp.zeros((self.units,)),
+            "out": jnp.zeros((self.units,)),
         }
 
         self.initialized = True

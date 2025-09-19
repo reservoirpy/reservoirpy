@@ -1,6 +1,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from functools import partial
 from typing import Callable, Optional, Sequence, Union
 
 import jax
@@ -268,6 +269,7 @@ class ES2N(Node):
 
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         W = self.W  # NxN
         O = self.O  # NxN

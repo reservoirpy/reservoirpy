@@ -1,9 +1,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from functools import partial
 from typing import Callable, Optional, Sequence, Union
 
-import jax.numpy as np
+import jax
+import jax.numpy as jnp
 from numpy.random import Generator
 
 from ..activationsfunc import get_function, tanh
@@ -72,7 +74,7 @@ class Reservoir(Node):
         - If a callable, should be an element-wise operator on arrays.
     input_dim : int, optional
         Input dimension. Can be inferred at first call.
-    dtype : Numpy dtype, default to np.float64
+    dtype : Numpy dtype, default to jnp.float64
         Numerical type for node parameters.
     seed : int or :py:class:`numpy.random.Generator`, optional
         A random state seed, for noise generation.
@@ -127,7 +129,7 @@ class Reservoir(Node):
     #: Number of neuronal units in the reservoir.
     units: int
     #: Leaking rate (1.0 by default) (:math:`\mathrm{lr}`).
-    lr: Union[float, np.ndarray]
+    lr: Union[float, jax.Array]
     #: Spectral radius of ``W`` (optional).
     sr: float
     #: Input scaling (float or array) (1.0 by default).
@@ -142,7 +144,7 @@ class Reservoir(Node):
     W: Union["Weights", Callable]
     #: Bias vector (:math:`\mathbf{b}`).
     bias: Union["Weights", Callable, float]
-    #: Type of matrices elements. By default, ``np.float64``.
+    #: Type of matrices elements. By default, ``jnp.float64``.
     dtype: type
     #: Activation of the reservoir units (tanh by default) (:math:`f`).
     activation: Callable
@@ -152,7 +154,7 @@ class Reservoir(Node):
     def __init__(
         self,
         units: Optional[int] = None,
-        lr: Union[float, np.ndarray] = 1.0,
+        lr: Union[float, jax.Array] = 1.0,
         sr: float = 1.0,
         input_scaling: Union[float, Sequence] = 1.0,
         input_connectivity: float = 0.1,
@@ -162,7 +164,7 @@ class Reservoir(Node):
         bias: Union["Weights", Callable, float] = 0.0,
         activation: Union[str, Callable] = tanh,
         input_dim: Optional[int] = None,
-        dtype: type = np.float64,
+        dtype: type = jnp.float64,
         seed: Optional[Union[int, Generator]] = None,
         name: Optional[str] = None,
     ):
@@ -233,10 +235,11 @@ class Reservoir(Node):
                 seed=bias_rng,
             )
 
-        self.state = {"out": np.zeros((self.units,))}
+        self.state = {"out": jnp.zeros((self.units,))}
 
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         W = self.W  # NxN
         Win = self.Win  # NxI

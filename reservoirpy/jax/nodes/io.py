@@ -1,7 +1,10 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+from functools import partial
 from typing import Optional, Sequence, Union
+
+import jax
 
 from ..node import Node
 from ..type import NodeInput, State, Timeseries, Timestep
@@ -51,6 +54,7 @@ class Input(Node):
         self.output_dim = self.input_dim
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x}
 
@@ -103,6 +107,7 @@ class Output(Node):
         self.output_dim = dim
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
         return {"out": x}
 

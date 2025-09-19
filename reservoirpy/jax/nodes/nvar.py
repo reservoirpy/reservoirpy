@@ -2,10 +2,12 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 import itertools as it
+from functools import partial
 from math import comb
-from typing import Optional, Sequence, Union
+from typing import Optional, Union
 
-import jax.numpy as np
+import jax
+import jax.numpy as jnp
 
 from ..node import Node
 from ..type import NodeInput, State, Timestep
@@ -79,7 +81,7 @@ class NVAR(Node):
     Example
     -------
 
-    >>> import jax.numpy as np
+    >>> import jax.numpy as jnp
     >>> from reservoirpy.nodes import NVAR, Ridge
     >>> nvar = NVAR(delay=2, order=2, strides=1)
     >>> readout = Ridge(ridge=2.5e-6, output_dim=3)
@@ -98,7 +100,7 @@ class NVAR(Node):
     We can now predict the differences and integrate these predictions:
 
     >>> u = X[600]
-    >>> res = np.zeros((5400-600, readout.output_dim))
+    >>> res = jnp.zeros((5400-600, readout.output_dim))
     >>> for i in range(5400-600):
     ...     u = u + model(u)
     ...     res[i, :] = u
@@ -108,8 +110,6 @@ class NVAR(Node):
 
     """
 
-    #: Time window over the inputs (of shape (delay * strides, features)).
-    store: np.ndarray
     #: Maximum delay of inputs (:math:`k`).
     delay: int
     #: Order of the non-linear monomials (:math:`n`).
@@ -125,7 +125,6 @@ class NVAR(Node):
         input_dim: Optional[int] = None,
         name: Optional[str] = None,
     ):
-        self.store = None
         self._monomial_idx = None
         self.delay = delay
         self.order = order
@@ -157,34 +156,37 @@ class NVAR(Node):
         # for each monomial created in the non linear part, indices
         # of the n components involved, n being the order of the
         # monomials. Pre-compute them to improve efficiency.
-        idx = np.array(list(it.combinations_with_replacement(np.arange(linear_dim), order)))
+        idx = jnp.array(list(it.combinations_with_replacement(jnp.arange(linear_dim), order)))
 
         self._monomial_idx = idx
 
-        # to store the k*s last inputs, k being the delay and s the strides
-        self.store = np.zeros((delay * strides, self.input_dim))
+        self.state = {
+            "out": jnp.zeros((self.output_dim,)),
+            # to store the k*s last inputs, k being the delay and s the strides
+            "store": jnp.zeros((delay * strides, self.input_dim)),
+        }
         self.initialized = True
 
+    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
-        store = self.store
+        store = state["store"]
         strides = self.strides
         idxs = self._monomial_idx
         output_dim = self.output_dim
 
         # store the current input
-        new_store = np.roll(store, 1, axis=0)
+        new_store = jnp.roll(store, 1, axis=0)
         new_store.at[0].set(x)
-        self.store = new_store
 
-        output = np.zeros((output_dim,))
+        output = jnp.zeros((output_dim,))
 
         # select all previous inputs, including the current, with strides
-        linear_feats = np.ravel(new_store[::strides, :])
+        linear_feats = jnp.ravel(new_store[::strides, :])
         linear_len = linear_feats.shape[0]
 
         output.at[:linear_len].set(linear_feats)
 
         # select monomial terms and compute them
-        output.at[linear_len:].set(np.prod(linear_feats[idxs], axis=1))
+        output.at[linear_len:].set(jnp.prod(linear_feats[idxs], axis=1))
 
-        return {"out": output}
+        return {"out": output, "store": new_store}
