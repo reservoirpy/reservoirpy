@@ -14,7 +14,7 @@ If you are reading this, **thank you very much for considering contributing**, a
 **All of the above are equally important contributions to us.**
 
 If you have any question about this document and contribution in general, do not hesitate to contact
-paul.bernard<@>inria.fr, main developer, or xavier.hinaut<@>inria.fr, head of the project.
+xavier.hinaut<@>inria.fr, head of the project.
 
 This document is based on and inspired by the `scikit-learn project contributing guidelines
 <https://scikit-learn.org/dev/developers/contributing.html#submitting-a-bug-report-or-a-feature-request>`_
@@ -68,7 +68,7 @@ feedback:
   can be found by running the following code snippet::
 
     >>> import reservoirpy
-    >>> print('reservoirpy', reservoirpy.__version___>)
+    >>> print('reservoirpy', reservoirpy.__version___)
 
 - Please ensure all **code snippets and error messages are formatted in
   appropriate code blocks**.  See `Creating and highlighting code blocks
@@ -168,18 +168,10 @@ modifying code and submitting a PR:
    document).
 
 It is often helpful to keep your local feature branch synchronized with the
-latest changes of the main ReservoirPy repository. If there are only a few new
-commits in the master branch, use::
+latest changes of the main ReservoirPy repository::
 
     $ git fetch upstream
     $ git rebase upstream/master
-
-Subsequently, you might need to solve potential conflicts.
-If it's been a while since you've last updated your branch, it might be easier
-to merge the master branch into yours::
-
-    $ git fetch upstream
-    $ git merge upstream/master
 
 Refer to the
 `Git documentation related to resolving merge conflict using the command
@@ -318,47 +310,6 @@ A good etiquette to take over is:
   new PR to the old one. The new PR should be created by pulling from the
   old one.
 
-.. _new_contributors:
-
-Issues for New Contributors
-===========================
-
-.. _solve_issues:
-
-New contributors should look for the following tags when looking for issues.  We
-strongly recommend that new contributors tackle "easy" issues first: this helps
-the contributor become familiar with the contribution workflow, and for the core
-devs to become acquainted with the contributor; besides which, we frequently
-underestimate how easy an issue is to solve!
-
-.. topic:: good first issue tag
-
-    A great way to start contributing to ReservoirPy is to pick an item from
-    the list of `good first issues
-    <https://github.com/reservoirpy/reservoirpy/labels/good%20first%20issue>`_
-    in the issue tracker. Resolving these issues allow you to start contributing
-    to the project without much prior knowledge. If you have already contributed
-    to ReservoirPy, you should look at Easy issues instead.
-
-.. topic:: starter project tag
-
-    If you have already contributed to ReservoirPy, another great way to contribute
-    to ReservoirPy is to pick an item from the list of `starter project
-    <https://github.com/reservoirpy/reservoirpy/labels/starter%project>`_ in the issue
-    tracker. Your assistance in this area will be greatly appreciated by the
-    more experienced developers as it helps free up their time to concentrate on
-    other issues.
-
-.. topic:: help wanted tag
-
-    We often use the help wanted tag to mark issues regardless of difficulty. Additionally,
-    we use the help wanted tag to mark Pull Requests which have been abandoned
-    by their original contributor and are available for someone to pick up where the original
-    contributor left off. The list of issues with the help wanted tag can be found
-    `here <https://github.com/reservoirpy/reservoirpy/labels/help%20wanted>`__ .
-
-    Note that not all issues which need contributors will have this tag.
-
 .. _contribute_documentation:
 
 Documentation
@@ -373,11 +324,12 @@ Building the Documentation
 
 Building the documentation requires installing sphinx::
 
-   pip3 install sphinx
+   pip install -r docs/requirements.txt
 
-To build the documentation, you need to be in the main ``reservoirpy`` folder. You can do this with::
+To build the documentation, you need to be in the main ``reservoirpy/docs`` folder. You can do this with::
 
-   sphinx-build docs/ docs/html
+   cd docs/
+   make html
 
 Writing Docstrings
 ==================
@@ -394,12 +346,6 @@ using the numpy docstring standard.
 When writing up your docstrings, please review the `NumPy docstring guidge <https://numpydoc.readthedocs.io/en/latest/format.html>`_
 to understand the role and syntax of each section. Following this syntax is important not only for readability,
 it is also required for automated parsing for inclusion into our generated API Reference.
-
-You can look at these for any object by printing out the ``__doc__`` attribute.
-Try this out with the np.array class and the np.mean function to see good examples::
-
-    >>> import numpy as np
-    >>> print(np.mean.__doc__)
 
 The Anatomy of a Docstring
 --------------------------
@@ -452,7 +398,7 @@ Here's a generic docstring template::
       """Write a one-line summary for the method.
 
       Write a description of the method, including "big O"
-      (:math:`O\left(g\left(n\right)\right)`) complexities.
+      (:math:`O\\left(g\\left(n\\right)\\right)`) complexities.
 
       Parameters
       ----------
