@@ -287,31 +287,43 @@ class Node(ABC):
         return self.__str__()
 
     def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link
+        """self >> other"""
+        from .ops import ModelBuilderUtil, link
+
+        if isinstance(other, int):
+            return ModelBuilderUtil(node=self, delay=other, node_is_first=True)
 
         return link(self, other)
 
     def __rrshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link
+        """other >> self"""
+        from .ops import ModelBuilderUtil, link
+
+        if isinstance(other, int):
+            return ModelBuilderUtil(node=self, delay=other, node_is_first=False)
 
         return link(other, self)
 
     def __lshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """self << other"""
         from .ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
     def __rlshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """other << self"""
         from .ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
     def __and__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """self & other"""
         from .ops import merge
 
         return merge(self, other)
 
     def __rand__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """other & self"""
         from .ops import merge
 
         return merge(other, self)
