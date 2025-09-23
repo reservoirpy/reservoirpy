@@ -89,7 +89,15 @@ In the same manner, you can install scikit-learn with the appropriate version us
 
 .. code-block::
 
-    pip install reservoirpy[sklearn]
+    pip install "reservoirpy[sklearn]"
+
+**Jax**
+
+If you want to use the ``reservoirpy.jax`` submodule:
+
+.. code-block::
+
+    pip install "reservoirpy[jax]"
 
 **Development tools**
 
