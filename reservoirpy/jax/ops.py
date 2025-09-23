@@ -22,9 +22,10 @@ Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 from itertools import product
 from typing import Sequence, Union
 
+from ..model import Model
+from ..node import Node
 from ..utils.graphflow import unique_ordered
-from .model import Model
-from .node import Node
+from .model import Model as JModel
 
 
 def _check_all_models(*operands):
@@ -80,7 +81,7 @@ def _link_1to1(
 def link(
     left: Union[Node, Model, Sequence[Union[Node, Model]]],
     right: Union[Node, Model, Sequence[Union[Node, Model]]],
-) -> Model:
+) -> JModel:
     """Link two :py:class:`~.Node` instances to form a :py:class:`~.Model`
     instance. `node1` output will be used as input for `node2` in the
     created model. This is similar to a function composition operation:
@@ -146,7 +147,6 @@ def link(
             model = node1 >> node2 >> node1  # raises! data would flow in
                                              # circles forever...
     """
-    # TODO: copy delay buffers
     _check_all_models(left, right)
 
     left_seq: Sequence = left if isinstance(left, Sequence) else [left]
@@ -161,7 +161,7 @@ def link(
             nodes += new_nodes
             edges += new_edges
 
-    return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
+    return JModel(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
 
 
 def merge(*models: Union[Node, Model, Sequence[Union[Node, Model]]]) -> Model:
@@ -201,7 +201,6 @@ def merge(*models: Union[Node, Model, Sequence[Union[Node, Model]]]) -> Model:
         A new :py:class:`~.Model` instance.
 
     """
-    # TODO: copy delay buffers
     _check_all_models(*models)
 
     nodes: list[Node] = []
@@ -225,7 +224,7 @@ def merge(*models: Union[Node, Model, Sequence[Union[Node, Model]]]) -> Model:
         else:
             TypeError(f"Impossible to merge models: object {type(model)} is not a Node or a Model.")
 
-    return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
+    return JModel(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
 
 
 def link_feedback(
@@ -270,7 +269,6 @@ def link_feedback(
         TypeError
             If any of the senders or receivers are not Nodes or Models.
     """
-    # TODO: copy delay buffers
     _check_all_models(sender, receiver)
 
     left_seq: Sequence = sender if isinstance(sender, Sequence) else [sender]
@@ -285,4 +283,4 @@ def link_feedback(
             nodes += new_nodes
             edges += new_edges
 
-    return Model(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
+    return JModel(nodes=unique_ordered(nodes), edges=unique_ordered(edges))
