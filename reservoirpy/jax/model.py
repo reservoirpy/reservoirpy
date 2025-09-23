@@ -70,6 +70,9 @@ import numpy as np
 from joblib import Parallel, delayed
 
 from ..model import Model as NumpyModel
+from ..node import OnlineNode as NOnlineNode
+from ..node import ParallelNode as NParallelNode
+from ..node import TrainableNode as NTrainableNode
 from ..utils.data_validation import check_model_input, check_model_timestep
 from ..utils.graphflow import (
     find_indirect_children,
@@ -91,7 +94,7 @@ from ..utils.model_utils import (
     mapping_iterator,
     unfold_mapping,
 )
-from .node import Node, OnlineNode, ParallelNode, TrainableNode
+from .node import Node
 from .type import (
     FeedbackBuffers,
     ModelInput,
@@ -163,12 +166,12 @@ class Model(NumpyModel):
         self.inputs = find_inputs(self.nodes, self.edges)
         self.outputs = find_outputs(self.nodes, self.edges)
         self.named_nodes = {n.name: n for n in self.nodes if n.name is not None}
-        self.trainable_nodes = [n for n in nodes if isinstance(n, TrainableNode)]
+        self.trainable_nodes = [n for n in nodes if isinstance(n, NTrainableNode)]
         self.is_trainable = len(self.trainable_nodes) > 0
         self.is_multi_input = len(self.inputs) > 1
         self.is_multi_output = len(self.outputs) > 1
-        self.is_online = all([isinstance(n, OnlineNode) for n in self.trainable_nodes])
-        self.is_parallel = all([isinstance(n, ParallelNode) for n in self.trainable_nodes])
+        self.is_online = all([isinstance(n, NOnlineNode) for n in self.trainable_nodes])
+        self.is_parallel = all([isinstance(n, NParallelNode) for n in self.trainable_nodes])
         self.parents, self.children = find_parents_and_children(self.nodes, self.edges)
 
         # execution order / cycle detection (without teacher forcing)
@@ -428,7 +431,7 @@ class Model(NumpyModel):
             inputs += [buffer[-1] for (_p, _d, c), buffer in buffers.items() if c == node]
             inputs += [new_state[parent]["out"] for parent in self.parents[node]]
             node_input = np.concatenate(inputs, axis=-1)
-            if isinstance(node, OnlineNode):
+            if isinstance(node, NOnlineNode):
                 node_target = y.get(node, None)
                 new_state[node] = {"out": node._learning_step(node_input, node_target)}
             else:
@@ -554,9 +557,9 @@ class Model(NumpyModel):
                     buffers[(p, _d, c)] = new_buffer
                     inputs.append(data)
             node_input = join_data(*inputs)
-            if isinstance(node, TrainableNode):
+            if isinstance(node, NTrainableNode):
                 node_target = y_.get(node, None)
-                if isinstance(node, ParallelNode):
+                if isinstance(node, NParallelNode):
                     node.fit(node_input, node_target, warmup=warmup, workers=workers)
                 else:
                     node.fit(node_input, node_target, warmup=warmup)
