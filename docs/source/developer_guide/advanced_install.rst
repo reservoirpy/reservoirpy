@@ -70,6 +70,17 @@ editable mode using `pip` :
 Additional dependencies and requirements
 ========================================
 
+Some ReservoirPy submodules uses specific libraries. Since we want ReservoirPy to keep its core features
+as simple as possible, those libraries are not included in the default install process. However, you
+can install of the additional dependencies by running:
+
+.. code-block::
+
+    pip install "reservoirpy[all]"
+
+For a more fine-grained control of your environmnent, you can only install the optional dependencies you
+need:
+
 **Hyperoptimization and visualization tools**
 
 All basic dependencies of ReservoirPy should be installed when using `pip` as package manager.
@@ -79,11 +90,13 @@ more dependencies in your virtual environment, namely `hyperopt`, `matplotlib` a
 
 .. code-block::
 
-    pip install reservoirpy[hyper]
+    pip install "reservoirpy[hyper]"
 
 **ScikitLearnNode**
 
 You can use some of scikit-learn's linear models through the use of the the ScikitLearnNode.
+While even the ScikitLearnNode does not require scikit-learn to be installed since
+it is never imported, this installation ensures that the correct model API version is used
 
 In the same manner, you can install scikit-learn with the appropriate version using:
 
