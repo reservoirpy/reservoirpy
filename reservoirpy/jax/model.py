@@ -69,6 +69,7 @@ import jax.numpy as jnp
 import numpy as np
 from joblib import Parallel, delayed
 
+from ..model import Model as NumpyModel
 from ..utils.data_validation import check_model_input, check_model_timestep
 from ..utils.graphflow import (
     find_indirect_children,
@@ -104,7 +105,7 @@ from .type import (
 )
 
 
-class Model:
+class Model(NumpyModel):
     """Model base class.
 
     Parameters
