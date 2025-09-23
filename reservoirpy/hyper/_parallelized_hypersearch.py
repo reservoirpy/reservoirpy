@@ -1,11 +1,17 @@
 """Tools for CPU-parallelized hyperparameter optimization."""
 
-from glob import glob
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import json
-import numpy as np
 import os
 import time
 import warnings
+from glob import glob
+
+import numpy as np
+
+from reservoirpy.utils.random import rand_generator
 
 
 def _get_conf_from_json(confpath):
@@ -29,8 +35,8 @@ def _parse_config(config):
             f"Unknown algorithm: {config['hp_method']}. "
             "Available algorithms for CPU parallelized research: 'random'."
         )
-    
-    config['hp_space'] = {arg: _parse_searchspace(specs) for arg, specs in config['hp_space'].items()}
+
+    config["hp_space"] = {arg: _parse_searchspace(specs) for arg, specs in config["hp_space"].items()}
 
     return config
 
@@ -38,34 +44,34 @@ def _parse_config(config):
 def _parse_searchspace(specs):
     if specs[0] == "choice":
         # specs: ['choice', e0, ..., eN]
-        return lambda: specs[1:][np.random.randint(0, len(specs) - 1)]
+        return lambda rng: specs[1:][rng.integers(0, len(specs) - 1)]
     if specs[0] == "randint":
         # specs: ['randint', low, high]
-        return lambda: np.random.randint(specs[1], specs[2])
+        return lambda rng: rng.integers(specs[1], specs[2])
     if specs[0] == "uniform":
         # specs: ['uniform', low, high]
-        return lambda: np.random.uniform(specs[1], specs[2])
+        return lambda rng: rng.uniform(specs[1], specs[2])
     if specs[0] == "quniform":
         # specs: ['quniform', low, high, q]
-        return lambda: np.round(np.random.uniform(specs[1], specs[2]) / specs[3]) * specs[3]
+        return lambda rng: np.round(rng.uniform(specs[1], specs[2]) / specs[3]) * specs[3]
     if specs[0] == "loguniform":
         # specs: ['loguniform', low, high]
-        return lambda: np.exp(np.random.uniform(np.log(specs[1]), np.log(specs[2])))
+        return lambda rng: np.exp(rng.uniform(np.log(specs[1]), np.log(specs[2])))
     if specs[0] == "qloguniform":
         # specs: ['qloguniform', low, high, q]
-        return lambda: np.round(np.exp(np.random.uniform(np.log(specs[1]), np.log(specs[2]))) / specs[3]) * specs[3]
+        return lambda rng: np.round(np.exp(rng.uniform(np.log(specs[1]), np.log(specs[2]))) / specs[3]) * specs[3]
     if specs[0] == "normal":
         # specs: ['normal', mu, sigma]
-        return lambda: specs[1] + specs[2] * np.random.randn()
+        return lambda rng: specs[1] + specs[2] * rng.randn()
     if specs[0] == "qnormal":
         # specs: ['qnormal', mu, sigma, q]
-        return lambda: np.round((specs[1] + specs[2] * np.random.randn()) / specs[3]) * specs[3]
+        return lambda rng: np.round((specs[1] + specs[2] * rng.randn()) / specs[3]) * specs[3]
     if specs[0] == "lognormal":
         # specs: ['lognormal', mu, sigma]
-        return lambda: np.exp(np.log(specs[1]) + np.log(specs[2]) * np.random.randn())
+        return lambda rng: np.exp(np.log(specs[1]) + np.log(specs[2]) * rng.randn())
     if specs[0] == "qlognormal":
         # specs: ['qlognormal', mu, sigma, q]
-        return lambda: np.round(np.exp(np.log(specs[1]) + np.log(specs[2]) * np.random.randn()) / specs[3]) * specs[3]
+        return lambda rng: np.round(np.exp(np.log(specs[1]) + np.log(specs[2]) * rng.randn()) / specs[3]) * specs[3]
 
 
 def _worker(objective, dataset, config, kwargs):
@@ -82,7 +88,7 @@ def _worker(objective, dataset, config, kwargs):
         end = time.time()
         duration = end - start
 
-        returned_dict["status"] = 'ok'
+        returned_dict["status"] = "ok"
         returned_dict["start_time"] = start
         returned_dict["duration"] = duration
 
@@ -93,7 +99,7 @@ def _worker(objective, dataset, config, kwargs):
         start = time.time()
 
         returned_dict = {
-            "status": 'fail',
+            "status": "fail",
             "start_time": start,
             "error": str(e),
         }
@@ -120,7 +126,14 @@ def _get_report_path(exp_name, base_path=None):
     return report_path
 
 
-def cpu_parallelized_research(objective, dataset, config_path, report_path=None, n_jobs=-1, inner_max_num_threads=None):
+def parallel_research(
+    objective,
+    dataset,
+    config_path,
+    report_path=None,
+    n_jobs=-1,
+    inner_max_num_threads=None,
+):
     """
     Executes a parallelized hyperparameter search on the provided
     objective function using the configuration specified.
@@ -157,41 +170,33 @@ def cpu_parallelized_research(objective, dataset, config_path, report_path=None,
         number of threads per process. If set to -1, there will be no restriction.
         By default, it is calculated as `max(1, number of trials // number of jobs)`.
     """
-    from joblib import cpu_count, delayed, Parallel, parallel_config
+    from joblib import Parallel, cpu_count, delayed, parallel_config
     from tqdm import tqdm
 
     config = _get_conf_from_json(config_path)
-    report_path = _get_report_path(config['exp'], report_path)
+    report_path = _get_report_path(config["exp"], report_path)
 
-    search_space = config['hp_space']
-    max_evals = config['hp_max_evals']
+    search_space = config["hp_space"]
+    max_evals = config["hp_max_evals"]
 
     if inner_max_num_threads is None:
         inner_max_num_threads = max(1, cpu_count() // max_evals)
     elif inner_max_num_threads == -1:
         inner_max_num_threads = None
 
-    np.random.seed(config.get('seed'))
+    rng = rand_generator(config.get("seed"))
 
-    params_list = [
-        {arg: f() for arg, f in search_space.items()}
-        for _ in range(max_evals)
-    ]
+    params_list = [{arg: f(rng) for arg, f in search_space.items()} for _ in range(max_evals)]
 
     best_params = None
-    best_loss = float('inf')
+    best_loss = float("inf")
 
-    with parallel_config(backend='loky', inner_max_num_threads=inner_max_num_threads):
-        it = Parallel(n_jobs=n_jobs, return_as='generator_unordered')(
+    with parallel_config(backend="loky", inner_max_num_threads=inner_max_num_threads):
+        it = Parallel(n_jobs=n_jobs, return_as="generator_unordered")(
             delayed(_worker)(objective, dataset, config, kwargs) for kwargs in params_list
         )
 
-    pbar = tqdm(
-        iterable=it,
-        total=len(params_list),
-        unit='trial',
-        postfix='best loss=?'
-    )
+    pbar = tqdm(iterable=it, total=len(params_list), unit="trial", postfix="best loss=?")
 
     for kwargs, returned_dict, save_file in pbar:
         try:
@@ -205,15 +210,12 @@ def cpu_parallelized_research(objective, dataset, config_path, report_path=None,
             with open(save_file, "w+") as f:
                 json.dump(json_dict, f, indent=2)
         except Exception as e:
-            warnings.warn(
-                "Results of current simulation were NOT saved "
-                "correctly to JSON file."
-            )
+            warnings.warn("Results of current simulation were NOT saved " "correctly to JSON file.")
             warnings.warn(str(e))
 
-        if returned_dict['loss'] < best_loss:
+        if returned_dict["loss"] < best_loss:
             best_params = kwargs
-            best_loss = returned_dict['loss']
-            pbar.set_postfix({'best loss': best_loss})
-  
+            best_loss = returned_dict["loss"]
+            pbar.set_postfix({"best loss": best_loss})
+
     return best_params, best_loss
