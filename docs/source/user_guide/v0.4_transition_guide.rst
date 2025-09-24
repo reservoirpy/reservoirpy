@@ -1,0 +1,108 @@
+.. _transition_guide:
+
+=====================================
+The ReservoirPy v0.4 transition guide
+=====================================
+
+`ReservoirPy v0.4.0 <https://github.com/reservoirpy/reservoirpy/releases/tag/v0.4.0>`, released in August 2025, is the
+first major update since ReservoirPy v0.3.0 was released in January 2022. Since this version is a major rewrite of the
+library's core mechanisms (namely Nodes and Models), you can expect many breaking changes, including small,
+hard-to-notice changes.
+
+If you already have existing code using ReservoirPy v0.3, feel free to pin your reservoirpy dependency to version
+0.3 (i.e. using reservoirpy==0.3.* in your requirements.txt). ReservoirPy v0.3 will still receive minor updates for a
+while.
+
+But if you want to take the leap and convert your code to ReservoirPy v0.4, this guide will provide some help to
+avoid most pitfalls. It is still recommended to compare and test your code attentively to ensure no weird behavior arises.
+
+Deprecated methods and submodules
+=================================
+
+:py:mod:`reservoirpy.compat`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module used to be a copy of ReservoirPy v0.2. This is no longer maintained, and if you want to use previous
+versions of ReservoirPy, you can do so using
+
+.. code-block:: bash
+
+    pip install reservoirpy=={your_version_name}
+
+:py:class:`reservoirpy.nodes.FORCE`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This online-trainable node has been separated into two different nodes: :py:class:`reservoirpy.nodes.RLS` and
+:py:class:`reservoirpy.nodes.LMS`.
+
+:py:class:`reservoirpy.nodes.Concat`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This node used to be a helper node for model construction. Whenever two nodes were connected to another, a ``Concat``
+node was introduced to merge the two inputs. This is now internally done within the model and is no longer useful.
+
+:py:class:`reservoirpy.nodes.Delay`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This node used to introduce a delayed connection between two nodes. This is also internally done within the model and
+can be used with the syntax ``node1 >>{delay_as_int}>> node2``.
+
+:py:class:`reservoirpy.nodes.ESN`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``ESN`` used to be a node similar to a ``Reservoir >> Ridge`` that reimplemented its fit and run methods in order to be
+parallelized. However running can be done on all models and fitting can be done on most models.
+
+However you can use the :py:class:`reservoirpy.ESN` model that inherit the Model class and is a nice wrapper to easily
+create simple Echo State Networks.
+
+:py:meth:`reservoirpy.Node.train`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is the v0.3 method for online training. This has been replaced to :py:meth:`reservoirpy.Node.partial_fit` to match
+scikit-learn's API. If your code used the v0.3 method called :py:meth:`reservoirpy.Node.partial_fit` (especially in the
+Ridge node), you may want to take a look at the method :py:meth:`reservoirpy.node.ParallelNode.worker` for nodes that
+can be fit in parallel.
+
+Data format
+===========
+
+In ReservoirPy v0.3, timesteps (for example, in the method :py:meth:`reservoirpy.Node.step`) was expected to be of shape
+$(n_features, 1)$. This expected format led to many instances of input reshaping to accomodate this, and this has now
+been changed to :math:`(n_features,)`, which is more intuitive: for example, iterating on a timeseries
+( :math:`(n_timesteps, n_features)` ) yields timesteps.
+
+This also applies to one-dimensional matrices throughout the library, such as the node states, or the node biases.
+
+Node and model state
+====================
+
+The Node state used to be a single 1-D array. This is now a dictionary of arrays in order to take into account some
+nodes that contains multiple states, such as the :py:class:`reservoirpy.node.LIF`. However, all state dictionaries must
+have the "out" key, that represents the output of the node.
+:py:meth:`reservoirpy.Node.state` is no longer a method and is now the above-mentioned dict, so ``node.state()`` can
+be replaced by ``node.state["out"]``.
+
+Even if the model doesn't have a state attribute per-se, you should be aware that while the "state" of the model in
+ReservoirPy v0.3 was the states of all its nodes, v0.4 models also contains the `feedback_buffers` that contains
+the intermediate values of delayed connections.
+
+Feedback
+========
+
+Feedback used to be an attribute of the receiving node. This means that a feedback was created using the following
+syntax:
+
+.. code-block:: python
+
+    # create a new reservoir that contains the readout as a feedback
+    reservoir = reservoir << readout
+    model = reservoir >> readout
+
+In ReservoirPy v0.4, a feedback is a regular connection with a 1-timestep delay. The above syntax would create a model
+and overwrite the ``reservoir`` variable.
+
+.. code-block:: python
+
+    # correct v0.4 model with feedback connection
+    model = (reservoir >> readout) & (reservoir << readout)
