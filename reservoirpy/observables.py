@@ -458,7 +458,7 @@ def effective_spectral_radius(
     """Effective spectral radius
 
     The effective spectral radius is defined as the maximal singular value of the matrix
-    :math:`lr \cdot W + (1-lr) \cdot I_{n}`.
+    :math:`lr \\cdot W + (1-lr) \\cdot I_{n}`.
 
     This concept was first introduced by Jaeger & al. [1]_, with an important result on leaky echo
     state networks:
@@ -488,7 +488,7 @@ def effective_spectral_radius(
     Returns
     -------
     float
-        Spectral radius of :math:`lr \cdot W + (1-lr) \cdot I_{n}`.
+        Spectral radius of :math:`lr \\cdot W + (1-lr) \\cdot I_{n}`.
 
     Raises
     ------

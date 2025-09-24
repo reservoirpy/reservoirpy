@@ -421,7 +421,7 @@ def mso8(n_timesteps: int, normalize: bool = True):
 
     .. math::
 
-        MSO(t) = \sum_{i=1}^{8} sin(f_i t)
+        MSO(t) = \\sum_{i=1}^{8} sin(f_i t)
 
     Parameters
     ----------
