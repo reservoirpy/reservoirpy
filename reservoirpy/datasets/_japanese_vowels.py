@@ -1,4 +1,5 @@
 """Japanese vowels dataset."""
+
 # Author: Nathan Trouvain at 07/05/2022 <nathan.trouvain@inria.fr>
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
@@ -8,7 +9,6 @@ from urllib.request import urlopen
 
 import numpy as np
 
-from .. import logger
 from ._utils import _get_data_folder
 
 SOURCE_URL = "https://archive.ics.uci.edu/static/public/128/japanese+vowels.zip"
@@ -58,7 +58,7 @@ def _format_data(data, block_numbers, one_hot_encode):
 def _download(data_folder):  # pragma: no cover
     """Download data from source into the reservoirpy data local directory."""
 
-    logger.info(f"Downloading {SOURCE_URL}.")
+    print(f"Downloading {SOURCE_URL}.")
 
     with urlopen(SOURCE_URL) as zipresp:
         with zipfile.ZipFile(io.BytesIO(zipresp.read())) as zfile:
