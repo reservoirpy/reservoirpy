@@ -23,11 +23,11 @@ do not rely on *hyperopt* and can be used independently.
     :toctree: generated/
 
     research
-    parallelized_research
+    parallel_research
     plot_hyperopt_report
 """
 from ._hyperplot import plot_hyperopt_report
 from ._hypersearch import research
-from ._parallelized_hypersearch import parallel_research
+from ._parallel_research import parallel_research
 
 __all__ = ["research", "parallel_research", "plot_hyperopt_report"]
