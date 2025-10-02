@@ -106,3 +106,18 @@ and overwrite the ``reservoir`` variable.
 
     # correct v0.4 model with feedback connection
     model = (reservoir >> readout) & (reservoir << readout)
+
+ScikitLearnNode
+===============
+
+Parameters of the scikit-learn model used to be passed as a ``model_hypers`` dict at node creation:
+
+.. code-block:: python
+
+    ridgecv = ScikitLearnNode(sklearn.linear_model.Lasso, model_hypers={"alpha": 1e-2})
+
+You can now pass those arguments directly as keyword arguments of the node:
+
+.. code-block:: python
+
+    ridgecv = ScikitLearnNode(sklearn.linear_model.Lasso, alpha=1e-2)
