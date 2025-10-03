@@ -200,19 +200,12 @@ class Model:
         check_input_output_connections(self.edges)
         check_unnamed_trainable(self)
 
+        x_ = map_input(self, x)
         y_ = map_teacher(self, y)
 
         # Infer node input dimensions from the input they receive
-
         node_input_dims = {node: 0 for node in self.nodes}
-
-        if isinstance(x, dict):
-            for node_name, val in x.items():
-                node = self.named_nodes[node_name]
-                node_input_dims[node] += get_data_dimension(val)
-        else:
-            for node in self.inputs:
-                node_input_dims[node] += get_data_dimension(x)
+        node_input_dims |= {node: get_data_dimension(x_[node]) for node in x_}
 
         # also use y as forced teachers. Useful for models with feedback
         indirect_children = find_indirect_children(nodes=self.nodes, edges=self.edges)
@@ -548,7 +541,6 @@ class Model:
         if not self.initialized:
             self.initialize(x, y)
 
-        # TODO: try removing the default list
         result: dict[Node, NodeInput] = defaultdict(list)
         buffers = self.feedback_buffers
 
@@ -557,7 +549,6 @@ class Model:
 
         # forced teaching
         for supervised in y_:
-            # TODO: handle Unsupervised has children
             result[supervised] = y_[supervised]
 
         for node in self.pseudo_execution_order:
@@ -565,12 +556,13 @@ class Model:
             if node in x_:
                 inputs.append(x_[node])
             inputs += [result[parent] for parent in self.parents[node]]
-            for (p, _d, c), buffer in buffers.items():
-                if c == node:
-                    new_buffer, data = data_from_buffer(buffer, result[p])
-                    buffers[(p, _d, c)] = new_buffer
+            for (parent, _d, child), buffer in buffers.items():
+                if child == node:
+                    new_buffer, data = data_from_buffer(buffer, result[parent])
+                    buffers[(parent, _d, child)] = new_buffer
                     inputs.append(data)
             node_input = join_data(*inputs)
+
             if isinstance(node, TrainableNode):
                 node_target = y_.get(node, None)
                 if isinstance(node, ParallelNode):
