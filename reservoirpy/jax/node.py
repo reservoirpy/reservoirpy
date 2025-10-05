@@ -294,7 +294,7 @@ class Node(NNode, ABC):
         # base_name = self.name if self.name is not None else self.__class__.__name__
         base_name = self.__class__.__name__
         arguments = get_non_defaults(self)
-        arguments_str = ", ".join(f"{arg}:{val}" for arg, val in arguments.items())
+        arguments_str = ", ".join(f"{arg}={val}" for arg, val in arguments.items())
         return f"{base_name}({arguments_str})"
 
     def __repr__(self):
