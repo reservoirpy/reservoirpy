@@ -5,9 +5,9 @@ from typing import Callable, Optional, Union
 
 import jax
 import jax.numpy as jnp
-from jax.nn import identity, relu, sigmoid, softmax, softplus, tanh
 
 from ...type import NodeInput, State, Timeseries, Timestep
+from ..activationsfunc import identity, relu, sigmoid, softmax, softplus, tanh
 from ..node import Node
 
 

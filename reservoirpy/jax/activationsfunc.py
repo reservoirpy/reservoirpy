@@ -3,7 +3,15 @@
 
 from typing import Callable, Union
 
-from jax.nn import identity, relu, sigmoid, softmax, softplus, tanh
+import jax.numpy as jnp
+from jax.nn import relu, sigmoid, softmax, softplus, tanh
+
+
+# jax.nn.identity was introduced in jax v0.6.0.
+# To be able to use previous jax versions, we reimplement
+# this one.
+def identity(x):
+    return jnp.asarray(x)
 
 
 def get_function(name: Union[Callable, str]) -> Callable:
