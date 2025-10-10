@@ -11,4 +11,4 @@ matplotlib>=2.2.0
 scikit-learn (>=0.24.2, <1.7.0)
 
 # EXTRA : jax backend
-jax==0.7.1
+jax>=0.4

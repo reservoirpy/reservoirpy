@@ -15,7 +15,7 @@ AUTHOR_EMAIL = "xavier.hinaut@inria.fr"
 MAINTAINERS = "Xavier Hinaut, Paul Bernard"
 MAINTAINERS_EMAIL = "xavier.hinaut@inria.fr, paul.bernard@inria.fr"
 
-DESCRIPTION = "A simple and flexible code for Reservoir " "Computing architectures like Echo State Networks."
+DESCRIPTION = "A simple and flexible code for Reservoir Computing architectures like Echo State Networks."
 
 with open("README.md", "r", encoding="utf-8") as f:
     LONG_DESCRIPTION = f.read()
@@ -32,8 +32,7 @@ INSTALL_REQUIRES = [
 EXTRA_REQUIRES = {
     "hyper": ["hyperopt", "matplotlib>=2.2.0", "tqdm>=4.43.0"],
     "sklearn": ["scikit-learn (>=0.24.2, <1.7.0)"],
-    "jax": ["jax==0.7.1"],
-    "all": ["hyperopt", "matplotlib>=2.2.0", "tqdm>=4.43.0", "scikit-learn>=0.24.2", "jax==0.7.1"],
+    "jax": ["jax>=0.4"],
 }
 
 PROJECT_URLS = {
@@ -80,6 +79,6 @@ if __name__ == "__main__":
         ],
         python_requires=">=3.9",
         install_requires=INSTALL_REQUIRES,
-        extras_require=EXTRA_REQUIRES,
+        extras_require=EXTRA_REQUIRES | {"all": sum(EXTRA_REQUIRES.values(), [])},
         package_data={"reservoirpy": ["datasets/santafe_laser.npy"]},
     )
