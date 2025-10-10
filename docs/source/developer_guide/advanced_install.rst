@@ -160,7 +160,10 @@ can be found in the table below:
       - tests
     * - scikit-learn
       - 0.24.1
-      - tests
+      - reservoirpy.nodes.ScikitLearnNode, tests
+    * - jax
+      - 0.4.38
+      - reservoirpy.jax, tests
     * - sphinx
       - 7.2.6
       - docs
