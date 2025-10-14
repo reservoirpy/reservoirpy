@@ -103,7 +103,7 @@ def spectral_radius(W: Weights, maxiter: Optional[int] = None) -> float:
             )
         )
 
-    return max(abs(linalg.eig(W)[0]))
+    return max(abs(linalg.eigvals(W)))
 
 
 def mse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
