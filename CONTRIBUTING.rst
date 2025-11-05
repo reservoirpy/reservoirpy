@@ -6,7 +6,6 @@ If you are reading this, **thank you very much for considering contributing**, a
 
 - :ref:`I would like to submit a bug report or suggest a new feature <opening_an_issue>`
 - :ref:`I would like to improve code, style, or add features <contributing_code>`
-- :ref:`I can help answer questions and solve issues <solve_issues>`
 - :ref:`I have a suggestion to improve or complete documentation <contribute_documentation>`
 - `I want to reference you in my work <https://github.com/reservoirpy/reservoirpy#cite>`_
 - `I use the project and add a star <https://github.com/reservoirpy/reservoirpy>`_
