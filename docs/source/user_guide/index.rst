@@ -24,3 +24,5 @@ see :doc:`quickstart`.
     learning_rules
     hyper
     create_new_node
+    v0.4_transition_guide
+    jax_backend

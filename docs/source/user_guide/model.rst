@@ -151,7 +151,7 @@ one neuron.
     from reservoirpy.nodes import Reservoir, Ridge
 
     reservoir = Reservoir(100)
-    readout = Ridge(output_dim=1)
+    readout = Ridge(ridge=1e-7)
 
 Next, we can link these two nodes together to create our first ESN:
 
