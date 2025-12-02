@@ -135,7 +135,7 @@ class NVAR(Node):
         self.input_dim = input_dim
         self.output_dim = None
 
-    def initialize(self, x: Union[NodeInput, Timestep]):
+    def initialize(self, x: Union[NodeInput, Timestep], y: None = None):
 
         # set input_dim
         self._set_input_dim(x)

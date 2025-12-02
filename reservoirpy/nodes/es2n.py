@@ -218,7 +218,7 @@ class ES2N(Node):
             )
         self.input_dim = Win.shape[-1] if is_array(Win) else input_dim
 
-    def initialize(self, x: Optional[Union[NodeInput, Timestep]]):
+    def initialize(self, x: Optional[Union[NodeInput, Timestep]], y: None = None):
 
         # set input_dim
         self._set_input_dim(x)

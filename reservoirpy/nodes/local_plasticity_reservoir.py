@@ -285,7 +285,7 @@ class LocalPlasticityReservoir(TrainableNode):
 
         self.increment = rules[local_rule]
 
-    def initialize(self, x: Optional[Union[NodeInput, Timestep]]):
+    def initialize(self, x: Optional[Union[NodeInput, Timestep]], y: None = None):
 
         # set input_dim
         self._set_input_dim(x)
