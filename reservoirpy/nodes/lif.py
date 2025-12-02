@@ -213,6 +213,7 @@ class LIF(Node):
     def initialize(
         self,
         x: Optional[Union[NodeInput, Timestep]],
+        y: None = None,
     ):
         self._set_input_dim(x)
 
