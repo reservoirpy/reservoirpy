@@ -48,7 +48,7 @@ class Input(Node):
         self.name = name
         self.state = {}
 
-    def initialize(self, x: Union[NodeInput, Timestep]):
+    def initialize(self, x: Union[NodeInput, Timestep], y: None = None):
         self._set_input_dim(x)
         self.output_dim = self.input_dim
         self.state = {"out": np.zeros((self.output_dim,))}
@@ -100,7 +100,7 @@ class Output(Node):
         self.name = name
         self.state = {}
 
-    def initialize(self, x: Union[NodeInput, Timestep]):
+    def initialize(self, x: Union[NodeInput, Timestep], y: None = None):
         dim = x.shape[-1] if not isinstance(x, Sequence) else x[0].shape[-1]
         self.input_dim = dim
         self.output_dim = dim
