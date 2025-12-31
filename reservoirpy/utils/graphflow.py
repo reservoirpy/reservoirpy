@@ -48,7 +48,7 @@ def topological_sort(nodes: list[T], edges: list[tuple[T, int, T]], inputs: Opti
             if parents.get(m) is None or len(parents[m]) < 1:
                 inputs_deque.append(m)
     if len(edges_set) > 0:
-        raise RuntimeError(
+        raise ValueError(
             "Model has a cycle: impossible " "to automatically determine operations " "order in the model."
         )
     else:

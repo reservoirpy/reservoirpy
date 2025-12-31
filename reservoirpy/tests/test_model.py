@@ -27,14 +27,14 @@ def test_node_initialize():
     assert set(model1.nodes) == set(model2.nodes)
 
     # 2-circular graph
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _model3 = Model(
             [plus_node, minus_node],
             [(minus_node, 0, plus_node), (plus_node, 0, minus_node)],
         )
 
     # 1-circular graph
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _model4 = Model([plus_node, minus_node], [(plus_node, 0, plus_node)])
 
 
