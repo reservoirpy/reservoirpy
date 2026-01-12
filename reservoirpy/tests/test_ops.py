@@ -33,13 +33,13 @@ def test_node_link():
     assert set(model.nodes) == set(model3.nodes) | set(model4.nodes)
 
     # cycles in the model!
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = model1 & model2
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = plus_node >> minus_node >> plus_node
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = plus_node >> plus_node
 
     x = np.ones((5,))
