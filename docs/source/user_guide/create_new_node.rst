@@ -73,6 +73,8 @@ Here is the general outline of a new node:
             self.initialized = True
 
         def _step(self, state: State, x: Timestep) -> State:
+            # get the last node output
+            s = state["out"]
             # compute the new_state
             y = ...
             return {"out": y}
