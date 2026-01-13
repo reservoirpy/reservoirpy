@@ -150,6 +150,9 @@ def filter_nan_targets(x: NodeInput, y: Optional[NodeInput]) -> tuple[NodeInput,
         return x, y
 
     if is_multiseries(y):
+        # don't change the 3D arrays into lists if not necessary
+        if hasattr(y, "ndim") and y.ndim == 3 and not np.any(np.isnan(y)):
+            return x, y
         return (
             [x_[~np.any(np.isnan(y_), axis=-1)] for (x_, y_) in zip(x, y)],
             [y_[~np.any(np.isnan(y_), axis=-1)] for (x_, y_) in zip(x, y)],
