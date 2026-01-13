@@ -71,6 +71,7 @@ from reservoirpy.utils.data_validation import (
     check_node_input,
     check_timeseries,
     check_timestep,
+    filter_nan_targets,
 )
 
 from .type import NodeInput, State, Timeseries, Timestep, is_array, is_multiseries
@@ -419,6 +420,7 @@ class OnlineNode(TrainableNode):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
+        x, y = filter_nan_targets(x, y)
 
         if is_multiseries(x):
             for i in range(len(x)):
@@ -456,6 +458,7 @@ class ParallelNode(TrainableNode, ABC):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
+        x, y = filter_nan_targets(x, y)
 
         if not self.initialized:
             self.initialize(x, y)

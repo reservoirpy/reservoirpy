@@ -1,8 +1,8 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
-
 import numpy as np
 import pytest
+from numpy.testing import assert_array_equal
 
 from reservoirpy.utils.data_validation import (
     check_model_input,
@@ -11,6 +11,7 @@ from reservoirpy.utils.data_validation import (
     check_node_input,
     check_timeseries,
     check_timestep,
+    filter_nan_targets,
     is_model_input,
     is_model_timestep,
     is_multiseries,
@@ -270,3 +271,25 @@ def test_is_model_input():
     assert is_model_input(x) == True
 
     assert is_model_input(12) == False
+
+
+def test_filter_nan_targets():
+    x = np.ones((10, 4))
+    y = np.ones((10, 3))
+    x2, y2 = filter_nan_targets(x, y)
+    assert_array_equal(x, x2)
+    assert_array_equal(y, y2)
+
+    x = np.arange(10).reshape(10, 1)
+    y = np.ones((10, 3))
+    y[7, 2] = np.nan
+    x2, y2 = filter_nan_targets(x, y)
+    assert_array_equal(x2.T, np.array([[0, 1, 2, 3, 4, 5, 6, 8, 9]]))
+    assert y2.shape == (9, 3)
+
+    x = np.ones((10, 100, 3))
+    y = np.ones((10, 100, 2))
+    y[7, 2, 0] = np.nan
+    x2, y2 = filter_nan_targets(x, y)
+    assert isinstance(x2, list) and len(x2) == 10 and x2[7].shape == (99, 3) and x2[8].shape == (100, 3)
+    assert isinstance(y2, list) and len(y2) == 10 and y2[7].shape == (99, 2) and y2[8].shape == (100, 2)
