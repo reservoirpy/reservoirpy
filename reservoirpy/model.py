@@ -109,9 +109,9 @@ class Model:
 
     Parameters
     ----------
-    nodes : list of Node, optional
+    nodes : list of Node
         Nodes to include in the Model.
-    edges : list of (Node, int, Node), optional
+    edges : list of (Node, int, Node)
         Edges between Nodes in the graph. An edge between a
         Node A and a Node B with a delay of :math:`d` is created as a tuple ``(A, d, B)``.
     """
