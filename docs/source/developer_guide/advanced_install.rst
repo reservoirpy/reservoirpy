@@ -141,7 +141,7 @@ can be found in the table below:
       - 1.4.1
       - build, install
     * - joblib
-      - 0.14.1
+      - 1.3.0
       - build, install
     * - hyperopt
       - 0.2.5
