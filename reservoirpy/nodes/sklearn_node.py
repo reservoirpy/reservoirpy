@@ -7,7 +7,7 @@ from typing import Any, Optional, Sequence, Union
 import numpy as np
 
 from reservoirpy.type import NodeInput, State, Timeseries, Timestep, is_array
-from reservoirpy.utils.data_validation import check_node_input
+from reservoirpy.utils.data_validation import check_node_input, filter_nan_targets
 
 from ..node import TrainableNode
 from ..utils.random import rand_generator
@@ -130,6 +130,7 @@ class ScikitLearnNode(TrainableNode):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y, expected_dim=self.output_dim)
+        x, y = filter_nan_targets(x, y)
 
         if not self.initialized:
             self.initialize(x, y)
