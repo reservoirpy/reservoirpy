@@ -81,7 +81,12 @@ from ..node import OnlineNode as NOnlineNode
 from ..node import ParallelNode as NParallelNode
 from ..node import TrainableNode as NTrainableNode
 from ..utils import get_non_defaults
-from ..utils.data_validation import check_node_input, check_timeseries, check_timestep
+from ..utils.data_validation import (
+    check_node_input,
+    check_timeseries,
+    check_timestep,
+    filter_nan_targets,
+)
 
 
 class Node(NNode, ABC):
@@ -438,6 +443,7 @@ class OnlineNode(NOnlineNode, TrainableNode, ABC):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
+        x, y = filter_nan_targets(x, y)
 
         if is_multiseries(x):
             for i in range(len(x)):
@@ -474,6 +480,7 @@ class ParallelNode(NParallelNode, TrainableNode, ABC):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
+        x, y = filter_nan_targets(x, y)
 
         if not self.initialized:
             self.initialize(x, y)

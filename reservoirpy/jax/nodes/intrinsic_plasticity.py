@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 from numpy.random import Generator
 
-from reservoirpy.utils.data_validation import check_node_input
+from reservoirpy.utils.data_validation import check_node_input, filter_nan_targets
 
 from ...type import is_array, is_multiseries
 from ..activationsfunc import get_function
@@ -315,6 +315,7 @@ class IPReservoir(TrainableNode):
 
     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "IPReservoir":
         check_node_input(x, expected_dim=self.input_dim)
+        x, y = filter_nan_targets(x, y)
 
         if not self.initialized:
             self.initialize(x, y)

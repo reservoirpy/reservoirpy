@@ -346,6 +346,7 @@
 
 #     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "LocalPlasticityReservoir":
 #         check_node_input(x, expected_dim=self.input_dim)
+#         x, y = filter_nan_target(x, y)
 
 #         if not self.initialized:
 #             self.initialize(x)
