@@ -100,6 +100,8 @@ print(f"RMSE: {rmse(y_test, predictions)}; R^2 score: {rsquare(y_test, predictio
 [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Classification-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/5-Classification-with-RC.ipynb)
 - [**6 - Interfacing ReservoirPy with scikit-learn**](./tutorials/6-Interfacing_with_scikit-learn.ipynb)
 [![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_scikit--learn_interface-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/6-Interfacing_with_scikit-learn.ipynb)
+- [**7 - Introduction to the Jax backend**](./tutorials/7-The-Jax-Backend.ipynb)
+[![Tutorial on Google Colab](https://img.shields.io/badge/Tutorial:_Jax_backend-525252?style=flat&logo=googlecolab&logoColor=%23F9AB00)](https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/7-The-Jax-Backend.ipynb)
 
 ### Examples
 

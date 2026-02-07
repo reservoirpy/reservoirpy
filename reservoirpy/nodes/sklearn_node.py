@@ -138,16 +138,16 @@ class ScikitLearnNode(TrainableNode):
         if isinstance(x, Sequence):
             # Concatenate all the batches as one np.ndarray
             # of shape (timeseries*timesteps, features)
-            x = np.concatenate(x, axis=0)
+            x = np.concatenate([x_[warmup:] for x_ in x], axis=0)
         if is_array(x) and x.ndim == 3:
-            x = x.reshape(-1, x.shape[-1])
+            x = x[:, warmup:].reshape(-1, x.shape[-1])
 
         if isinstance(y, Sequence):
             # Concatenate all the batches as one np.ndarray
             # of shape (timeseries*timesteps, features)
-            y = np.concatenate(y, axis=0)
+            y = np.concatenate([y_[warmup:] for y_ in y], axis=0)
         if is_array(y) and y.ndim == 3:
-            y = y.reshape(-1, y.shape[-1])
+            y = y[:, warmup:].reshape(-1, y.shape[-1])
 
         instances = self.instances
         if not isinstance(instances, list):

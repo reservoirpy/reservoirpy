@@ -47,6 +47,12 @@ A guide to use the ScikitLearnNode, an interface to integrate any scikit-learn m
 your ReservoirPy architecture, including classification models. It also includes an example to speed-up the optimisation of ridge parameter search with *Ridge-CV*.
 
 
+7. **[Introduction to the Jax backend](7-The-Jax-Backend.ipynb)**
+
+A guide to use the Jax backend, an alternative to the Jax backend. It includes a section to improve your model performances
+and another on Jax-based gradient calculation.
+
+
 ## Getting started
 
 Each tutorial may have its own dependencies, and therefore require some installation.
@@ -57,8 +63,9 @@ In general, you will need:
 - Jupyter, to benefits from the power of Jupyter notebooks
 - scikit-learn, to have metrics from scikit-learn
 - Hyperopt, to optimise hyperparameters.
+- Jax, to use the Jax backend of ReservoirPy
 
-Everything is in the requirements file.
+Everything is in the requirements file of ReservoirPy.
 
 
 **Dependencies:**
@@ -71,6 +78,7 @@ requests
 reservoirpy
 scikit-learn
 seaborn
+jax
 ```
 
 ### Opening the notebook
