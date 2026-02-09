@@ -1,5 +1,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from functools import partial
 from typing import Callable, Optional, Union
 

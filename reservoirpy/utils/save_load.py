@@ -1,3 +1,6 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import pickle
 from os import PathLike, fspath
 from pathlib import Path

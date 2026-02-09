@@ -1,3 +1,6 @@
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 import jax.numpy as jnp
 import scipy.sparse
 from jax.experimental import sparse as jsparse
