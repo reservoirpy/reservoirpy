@@ -1,9 +1,12 @@
-# This is much more simple than reservoirpy.activationsfunc
-# since those activation functions are defined in jax.nn
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from typing import Callable, Union
 
 import jax.numpy as jnp
+
+# This is simpler than reservoirpy.activationsfunc
+# since those activation functions are defined in jax.nn
 from jax.nn import relu, sigmoid, softmax, softplus, tanh
 
 
