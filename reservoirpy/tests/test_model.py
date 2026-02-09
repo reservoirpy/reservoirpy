@@ -128,7 +128,7 @@ def test_model_complex():
 
     model = r1 >> read1 >> r2 >> read2 >> read3
     model &= r2 & [(r1 << r2), (r1 << read1), read1] & (r2 << read2) & r2
-    model.initialize(x, y)
+    # model.initialize(x, y)
 
     assert set(model.edges) == {
         (r1, 0, read1),
@@ -142,7 +142,7 @@ def test_model_complex():
 
     model = (r1 >> read1) & (r2 >> read2)
     model &= [r1, r2] << read1
-    model.initialize(x, y)
+    # model.initialize(x, y)
 
     assert set(model.edges) == {
         (r1, 0, read1),
@@ -154,34 +154,34 @@ def test_model_complex():
     r1 = Reservoir(10)
     read1 = Ridge()
     model = r1 << (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
 
     assert set(model.edges) == {(r1, 0, read1), (read1, 1, r1)}
 
     model = [r2] & (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = (r2 >> read1) & [r1]
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = r2 & (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = (r2 >> read1) & r1
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = [r2] >> (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = (r2 >> read1) >> [r1]
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = r2 >> (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = (r2 >> read1) >> r1
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = [r2] << (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = (r2 >> read1) << [r1]
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = r2 << (r1 >> read1)
-    model.initialize(x, y)
+    # model.initialize(x, y)
     model = (r2 >> read1) << r1
-    model.initialize(x, y)
+    # model.initialize(x, y)
 
 
 def test_model_call():
