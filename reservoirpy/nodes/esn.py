@@ -29,25 +29,22 @@ def _run_partial_fit_fn(esn, x, y, lock, warmup):
     _esn = deepcopy(esn)
     _esn.reservoir.reset()
 
-    original_readout_name = (
-        esn.readout.name[:-7]
-        if esn.readout.name.endswith("-(copy)")
-        else esn.readout.name
-    )
-    original_reservoir_name = (
-        esn.reservoir.name[:-7]
-        if esn.reservoir.name.endswith("-(copy)")
-        else esn.reservoir.name
-    )
+    copied_nodes = _esn.reservoir.name.endswith("-(copy)")
+    x = {(f"{k}-(copy)" if copied_nodes else k): x[k] for k in x}
+    y = {(f"{k}-(copy)" if copied_nodes else k): y[k] for k in y}
+    [entrypoint] = x
 
     seq_len = len(x[list(x)[0]])
     states = np.zeros((seq_len, esn.reservoir.output_dim))
 
-    for i, (x, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
-        with _esn.readout.with_feedback(forced_feedback[original_readout_name]):
-            states[i, :] = call(_esn.reservoir, x[original_reservoir_name])
+    for i, (x_, forced_feedback, _) in enumerate(dispatch(x, y, shift_fb=True)):
+        with _esn.readout.with_feedback(forced_feedback[_esn.readout.name]):
+            states[i, :] = call(_esn.reservoir, x_[entrypoint])
 
-    esn.readout.partial_fit(states, y[original_readout_name], warmup=warmup, lock=lock)
+    if esn._use_raw_inputs:
+        states = np.concatenate((states, x[entrypoint]), axis=1)
+
+    esn.readout.partial_fit(states, y[_esn.readout.name], warmup=warmup, lock=lock)
 
     return states[-1]
 
@@ -57,19 +54,14 @@ def _run_fn(
 ):
     _esn = deepcopy(esn)
 
-    original_reservoir_name = (
-        esn.reservoir.name[:-7]
-        if esn.reservoir.name.endswith("-(copy)")
-        else esn.reservoir.name
-    )
+    copied_nodes = _esn.reservoir.name.endswith("-(copy)")
+    x = {(f"{k}-(copy)" if copied_nodes else k): x[k] for k in x}
 
-    X = {_esn.reservoir.name: x[original_reservoir_name]}
-
-    states = _allocate_returned_states(_esn, X, return_states)
+    states = _allocate_returned_states(_esn, x, return_states)
 
     with _esn.with_state(from_state, stateful=stateful, reset=reset):
         for i, (x_step, forced_feedback, _) in enumerate(
-            dispatch(X, forced_fb, shift_fb=shift_fb)
+            dispatch(x, forced_fb, shift_fb=shift_fb)
         ):
             _esn._load_proxys()
             with _esn.with_feedback(forced_feedback):
@@ -271,6 +263,7 @@ class ESN(FrozenModel):
 
         self._trainable = True
         self._is_fb_initialized = False
+        self._use_raw_inputs = use_raw_inputs
 
     @property
     def is_trained_offline(self) -> bool:
@@ -292,10 +285,7 @@ class ESN(FrozenModel):
         return False
 
     def _call(self, x=None, return_states=None, *args, **kwargs):
-        data = x[self.reservoir.name]
-
-        state = call(self.reservoir, data)
-        call(self.readout, state)
+        self._forward(self, x)
 
         state = {}
         if return_states == "all":
