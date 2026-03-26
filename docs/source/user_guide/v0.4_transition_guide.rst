@@ -4,7 +4,7 @@
 The ReservoirPy v0.4 transition guide
 =====================================
 
-`ReservoirPy v0.4.0 <https://github.com/reservoirpy/reservoirpy/releases/tag/v0.4.0>`, released in August 2025, is the
+`ReservoirPy v0.4.0 <https://github.com/reservoirpy/reservoirpy/releases/tag/v0.4.0>`__, released in August 2025, is the
 first major update since ReservoirPy v0.3.0 was released in January 2022. Since this version is a major rewrite of the
 library's core mechanisms (namely Nodes and Models), you can expect many breaking changes, including small,
 hard-to-notice changes.
