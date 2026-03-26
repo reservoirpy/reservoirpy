@@ -17,6 +17,7 @@ Reservoirs
    IPReservoir - Reservoir with intrinsic plasticity learning rule
    LocalPlasticityReservoir - Reservoir with weight plasticity
    ES2N - Edge of Stability Echo State Network
+   LIF - Leaky Integrate and Fire spiking neural network
 
 Offline readouts
 ================
