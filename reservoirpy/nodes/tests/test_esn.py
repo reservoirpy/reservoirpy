@@ -6,6 +6,7 @@ import pytest
 from numpy.testing import assert_array_almost_equal, assert_equal
 
 from reservoirpy import set_seed
+from reservoirpy.mat_gen import ones
 from reservoirpy.node import _filter_where_na_target
 from reservoirpy.nodes import ESN, Reservoir, Ridge
 
@@ -244,3 +245,29 @@ def test_na():
 
     # Assert that those predictions are equal
     assert_array_almost_equal(pred_filtered, pred_classic)
+
+
+def test_esn_fit_raw_inputs():
+    backends = ("loky", "multiprocessing", "threading", "sequential")
+    esn = ESN(units=100, sr=0.9, ridge=1e-6, use_raw_inputs=True)
+
+    data = np.ones((20, 2))
+    esn.fit(data, data)
+
+
+def test_esn_call_raw_inputs():
+    reservoir = Reservoir(10)
+    readout = Ridge(2, Wout=ones, bias=ones)
+    esn = ESN(reservoir=reservoir, readout=readout, use_raw_inputs=True)
+
+    data = np.zeros((2,))
+    esn(data)
+    res = esn._call(np.ones((1, 2)))
+
+
+def test_esn_run_raw_inputs():
+    reservoir = Reservoir(10)
+    readout = Ridge(2, Wout=ones, bias=ones)
+    esn = ESN(reservoir=reservoir, readout=readout, use_raw_inputs=True)
+
+    res = esn.run(np.ones((10, 2)))
