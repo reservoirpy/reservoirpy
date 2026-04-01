@@ -321,6 +321,37 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False)
     D = (y_true_array - y_true_array.mean(axis=axis)) ** 2
     return 1 - np.sum(d, axis=axis) / np.sum(D, axis=axis)
 
+def mae(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
+    """Mean absolute error metric.
+    
+    Parameters
+    ----------
+    y-true : array-like of shape (N, features) Ground truth values.
+    y-pred : array-like of shape (N, features) Predicted values.
+    dimensionwise: boolean, optional If True, return a mean absolute error for each dimension of the timeseries.
+
+    Returns
+    -------
+    float
+        Mean absolute error. If `dimensionwise` is True, returns a Numpy array of shape $(features, )$. 
+    
+    Examples
+    --------
+    """
+    y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
+
+    if dimensionwise:
+        if len(y_true_array.shape) == 3:
+            axis = (0, 1)
+        else:
+            axis = 0
+    else:
+        axis = None
+
+    error = np.abs(y_true_array - y_pred_array)
+    return np.mean(error, axis=axis)
+
+    
 
 def memory_capacity(
     model: "Model",
