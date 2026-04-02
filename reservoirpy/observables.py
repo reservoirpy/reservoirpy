@@ -13,6 +13,7 @@ Metrics and observables for Reservoir Computing:
     rmse
     nrmse
     rsquare
+    mae
     memory_capacity
     effective_spectral_radius
 """
@@ -326,9 +327,12 @@ def mae(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> 
     
     Parameters
     ----------
-    y-true : array-like of shape (N, features) Ground truth values.
-    y-pred : array-like of shape (N, features) Predicted values.
-    dimensionwise: boolean, optional If True, return a mean absolute error for each dimension of the timeseries.
+    y_true : array-like of shape (N, features) 
+        Ground truth values.
+    y_pred : array-like of shape (N, features) 
+        Predicted values.
+    dimensionwise: boolean, optional
+        If True, return a mean absolute error for each dimension of the timeseries.
 
     Returns
     -------
@@ -337,6 +341,16 @@ def mae(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> 
     
     Examples
     --------
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> model = Reservoir(units=100, sr=1) >> Ridge(ridge=1e-8)
+
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
+    >>> y_pred = model.fit(x_train, y_train).run(x_test)
+
+    >>> from reservoirpy.observables import mae
+    >>> print(mae(y_true=y_test, y_pred=y_pred))
+    0.000525672762759351
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 
