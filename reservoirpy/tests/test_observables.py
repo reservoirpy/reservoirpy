@@ -72,7 +72,7 @@ def test_spectral_radius():
         rho = spectral_radius(w)
 
 
-@pytest.mark.parametrize("observable", [mse, rmse, nrmse, rsquare])
+@pytest.mark.parametrize("observable", [mse, rmse, nrmse, rsquare, mae])
 def test_dimensionwise(observable):
     rng = np.random.default_rng(1234)
     # single series
