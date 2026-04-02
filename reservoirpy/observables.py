@@ -323,7 +323,12 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False)
     return 1 - np.sum(d, axis=axis) / np.sum(D, axis=axis)
 
 def mae(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
-    """Mean absolute error metric.
+    """Mean absolute error metric:
+
+    .. math::
+
+        \\frac{1}{N} \sum_{i=0}^{N-1} |y_i - \hat{y}_i|
+
     
     Parameters
     ----------
