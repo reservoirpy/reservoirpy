@@ -10,6 +10,7 @@ Metrics and observables for Reservoir Computing:
 
     spectral_radius
     mse
+    mae
     rmse
     nrmse
     rsquare
@@ -149,6 +150,49 @@ def mse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> 
     else:
         axis = None
     return np.mean((y_true_array - y_pred_array) ** 2, axis=axis)
+
+
+def mae(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
+    """Mean absolute error metric:
+
+    .. math::
+
+        \\frac{\\sum_{i=0}^{N-1} |y_i - \\hat{y}_i|}{N}
+
+    Parameters
+    ----------
+    y_true : array-like of shape (N, features)
+        Ground truth values.
+    y_pred : array-like of shape (N, features)
+        Predicted values.
+    dimensionwise: boolean, optional
+        If True, return a mean absolute error for each dimension of the timeseries
+
+    Returns
+    -------
+    float
+        Mean absolute error.
+    If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
+
+    Examples
+    --------
+    >>> from reservoirpy.observables import mae
+    >>> import numpy as np
+    >>> y_true = np.array([[1.0], [2.0], [3.0]])
+    >>> y_pred = np.array([[1.5], [2.5], [3.5]])
+    >>> print(mae(y_true=y_true, y_pred=y_pred))
+    0.5
+    """
+    y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
+
+    if dimensionwise:
+        if len(y_true_array.shape) == 3:
+            axis = (0, 1)
+        else:
+            axis = 0
+    else:
+        axis = None
+    return np.mean(np.abs(y_true_array - y_pred_array), axis=axis)
 
 
 def rmse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
