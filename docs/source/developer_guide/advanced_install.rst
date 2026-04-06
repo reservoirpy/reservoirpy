@@ -26,6 +26,28 @@ environments and packages <https://docs.python.org/3/tutorial/venv.html>`_, or t
 if you are using Anaconda.
 
 
+Installation using virtual environment and packages
+---------------------------------------------------
+
+.. code-block:: bash
+
+    python3 -m venv reservoirpy
+    source reservoirpy/bin/activate
+    python3 -m pip install --upgrade pip
+
+Then continue installation using `pip` as described in the next section.
+
+Installation using `conda environment manager`
+=============================================
+
+.. code-block:: bash
+
+    conda create -n reservoirpy python=3.10
+    conda activate reservoirpy
+    python -m pip install --upgrade pip
+
+Then continue installation using `pip` as described in the next section.
+
 Installation using `pip`
 ========================
 
