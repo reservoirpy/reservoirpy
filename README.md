@@ -15,9 +15,6 @@
 </div>
 
 
-
----
-
 <p> <img src="static/googlecolab.svg" alt="Google Colab icon" width=32 height=32 align="left"><b>Tutorials:</b> <a href="https://colab.research.google.com/github/reservoirpy/reservoirpy/blob/master/tutorials/1-Getting_Started.ipynb">Open in Colab</a> </p>
 <!--<p><img src="static/changelog.svg" alt="2" width =32 height=32 align="left"><b>Changelog:</b> https://github.com/reservoirpy/reservoirpy/releases</p>-->
 <p> <img src="static/documentation.svg" alt="Open book icon" width=32 height=32 align="left"><b>Documentation:</b> <a href="https://reservoirpy.readthedocs.io/">https://reservoirpy.readthedocs.io/</a></p>
@@ -30,8 +27,8 @@
 readouts
 - [feedback loops](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Feedback-connections)
 - [offline and online training](https://reservoirpy.readthedocs.io/en/latest/user_guide/learning_rules.html)
-- [parallel implementation](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.ESN.html)
-- sparse matrix computation
+- [parallelization across sequences](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Parallelization)
+- [sparse matrix computation](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Custom-weight-matrices)
 - advanced learning rules (e.g. [*Intrinsic Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.IPReservoir.html), [*Local Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.LocalPlasticityReservoir.html) or [*NVAR* (Next-Generation RC)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.NVAR.html))
 - interfacing with [scikit-learn](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.ScikitLearnNode.html) models
 - and many more!
@@ -55,8 +52,9 @@ For a general introduction to reservoir computing and ReservoirPy features, take
 a look at the [tutorials](#tutorials)
 
 ```python
+from reservoirpy import ESN
+
 from reservoirpy.datasets import mackey_glass, to_forecasting
-from reservoirpy.nodes import Reservoir, Ridge
 from reservoirpy.observables import rmse, rsquare
 
 ### Step 1: Load the dataset
@@ -67,12 +65,8 @@ x_train, x_test, y_train, y_test = to_forecasting(X, test_size=0.2)
 
 ### Step 2: Create an Echo State Network
 
-# 100 neurons reservoir, spectral radius = 1.25, leak rate = 0.3
-reservoir = Reservoir(units=100, sr=1.25, lr=0.3)
-# feed-forward layer of neurons, trained with L2-regularization
-readout = Ridge(ridge=1e-5)
-# connect the two nodes
-esn = reservoir >> readout
+# 100 neurons, sr = spectral radius, lr = leak rate
+esn = ESN(units=100, sr=1.25, lr=0.3, ridge=1e-5)
 
 ### Step 3: Fit, run and evaluate the ESN
 
