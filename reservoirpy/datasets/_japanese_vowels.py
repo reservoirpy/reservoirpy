@@ -10,7 +10,7 @@ import numpy as np
 
 from ._utils import _get_data_folder
 
-SOURCE_URL = "https://archive.ics.uci.edu/static/public/128/japanese+vowels.zip"
+SOURCE_URL = "https://cdn.uci-ics-mlr-prod.aws.uci.edu/128/japanese%2Bvowels.zip"
 
 REMOTE_FILES = {
     "DESCR": "JapaneseVowels.data.html",
