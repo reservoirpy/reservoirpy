@@ -217,7 +217,7 @@ def to_forecasting(
 
     Parameters
     ----------
-    timeseries : np.ndarray
+    timeseries : np.ndarray or list
         Timeseries to split.
     forecast : int, optional
         Number of time lag steps between
@@ -274,7 +274,7 @@ def to_forecasting(
     ValueError
         If ``test_size`` is a float, it must be in [0, 1[.
     """
-
+    timeseries = np.asarray(timeseries)
     series_ = np.moveaxis(timeseries.view(), axis, 0)
     time_len = series_.shape[0]
 
