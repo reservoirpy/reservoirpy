@@ -274,7 +274,17 @@ def to_forecasting(
     ValueError
         If ``test_size`` is a float, it must be in [0, 1[.
     """
-    timeseries = np.asarray(timeseries)
+    try:
+        timeseries = np.asarray(timeseries)
+    except ValueError:
+        max_len = max(len(item) for item in timeseries)
+        for index, ii in enumerate(timeseries):
+            padding = np.zeros((max_len - len(ii), ii.shape[1]))
+            timeseries[index] = np.concatenate((ii, padding), axis=0)
+        
+        timeseries = np.asarray(timeseries)
+    
+    
     series_ = np.moveaxis(timeseries.view(), axis, 0)
     time_len = series_.shape[0]
 
