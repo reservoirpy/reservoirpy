@@ -147,6 +147,28 @@ def test_to_forecasting_with_test(dataset_func):
     assert x.shape[0] == y.shape[0]
     assert xt.shape[0] == yt.shape[0] == 10
 
+def test_to_forecasting_list():
+    x1 = np.arange(20).reshape(10, 2)
+    x2 = np.arange(16).reshape(8, 2)
+
+    x, y = datasets.to_forecasting([x1, x2], forecast=1)
+
+    assert isinstance(x, list)
+    assert isinstance(y, list)
+    np.testing.assert_array_equal(x[0], x1[:-1])
+    np.testing.assert_array_equal(y[0], x1[1:])
+    np.testing.assert_array_equal(x[1], x2[:-1])
+    np.testing.assert_array_equal(y[1], x2[1:])
+
+def test_to_forecasting_3D():
+    data = np.arange(10 * 20 * 110).reshape(10, 20, 110)
+
+    x, y = datasets.to_forecasting(data, forecast=2)
+
+    assert isinstance(x, np.ndarray)
+    assert isinstance(y, np.ndarray)
+    np.testing.assert_array_equal(x, data[:, :-2,:])
+    np.testing.assert_array_equal(y, data[:, 2:, :])
 
 def test_japanese_vowels():
     X_train, X_test, Y_train, Y_test = datasets.japanese_vowels(reload=True)
