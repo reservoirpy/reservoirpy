@@ -203,7 +203,6 @@ __all__ = [
 def to_forecasting(
     timeseries: np.ndarray,
     forecast: int = 1,
-    axis: int = 0,
     test_size: Optional[Union[int, float]] = None,
 ):
     """Split a timeseries for forecasting tasks.
@@ -225,8 +224,6 @@ def to_forecasting(
         :math:`X_{t+\\mathrm{forecast}}`, by default 1,
         i.e. returns two timeseries with a time difference
         of 1 timesteps.
-    axis : int, optional
-        Time axis of the timeseries, by default 0
     test_size : int or float, optional
         If set, will also split the timeseries
         into a training phase and a testing phase of
@@ -275,30 +272,26 @@ def to_forecasting(
         If ``test_size`` is a float, it must be in [0, 1[.
     """    
     if isinstance(timeseries, list):
-        X_array, X_t_array, y_array, y_t_array = [], [], [], []
 
-        for temp_array in timeseries:
-            if test_size is not None:
-                X, X_t, y, y_t = to_forecasting(timeseries=temp_array, 
-                                forecast=forecast, 
-                                axis=axis, 
-                                test_size=test_size)
-                X_t_array.extend(X_t)
-                y_t_array.extend(y_t)
-            else:
-                X, y = to_forecasting(timeseries=temp_array, 
-                                forecast=forecast, 
-                                axis=axis, 
-                                test_size=test_size)
+        results = [to_forecasting(timeseries=temp_array, 
+                            forecast=forecast,  
+                            test_size=test_size) for temp_array in timeseries]
 
-            X_array.extend(X)
-            y_array.extend(y)
         if test_size is not None:
+            X_array, X_t_array, y_array, y_t_array = map(list, zip(*results))
             return X_array, X_t_array, y_array, y_t_array
         else:
+            X_array, y_array = map(list, zip(*results))
             return X_array, y_array
         
-    series_ = np.moveaxis(timeseries.view(), axis, 0)
+    if isinstance(timeseries, np.ndarray):
+        if timeseries.ndim == 3:
+            time_axis = 1
+        else:
+            time_axis = 0
+
+        series_ = np.moveaxis(timeseries.view(), time_axis, 0)
+
     time_len = series_.shape[0]
 
     if test_size is not None:
@@ -324,14 +317,14 @@ def to_forecasting(
         X = X[:-test_len]
         y = y[:-test_len]
 
-        X = np.moveaxis(X, 0, axis)
-        X_t = np.moveaxis(X_t, 0, axis)
-        y = np.moveaxis(y, 0, axis)
-        y_t = np.moveaxis(y_t, 0, axis)
+        X = np.moveaxis(X, 0, time_axis)
+        X_t = np.moveaxis(X_t, 0, time_axis)
+        y = np.moveaxis(y, 0, time_axis)
+        y_t = np.moveaxis(y_t, 0, time_axis)
 
         return X, X_t, y, y_t
 
-    return np.moveaxis(X, 0, axis), np.moveaxis(y, 0, axis)
+    return np.moveaxis(X, 0, time_axis), np.moveaxis(y, 0, time_axis)
 
 
 def mso(n_timesteps: int, freqs: Sequence[float], normalize: bool = True):
