@@ -284,13 +284,13 @@ def to_forecasting(
             X_array, y_array = map(list, zip(*results))
             return X_array, y_array
         
-    if isinstance(timeseries, np.ndarray):
-        if timeseries.ndim == 3:
-            time_axis = 1
-        else:
-            time_axis = 0
+    timeseries = np.asarray(timeseries)
+    if timeseries.ndim == 3:
+        time_axis = 1
+    else:
+        time_axis = 0
 
-        series_ = np.moveaxis(timeseries.view(), time_axis, 0)
+    series_ = np.moveaxis(timeseries.view(), time_axis, 0)
 
     time_len = series_.shape[0]
 
