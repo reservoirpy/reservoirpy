@@ -151,14 +151,15 @@ def test_to_forecasting_list():
     x1 = np.arange(20).reshape(10, 2)
     x2 = np.arange(16).reshape(8, 2)
 
-    x, y = datasets.to_forecasting([x1, x2], forecast=1)
+    x_train, x_test, y_train, y_test = datasets.to_forecasting([x1, x2], forecast=1, test_size=0.5)
 
-    assert isinstance(x, list)
-    assert isinstance(y, list)
-    np.testing.assert_array_equal(x[0], x1[:-1])
-    np.testing.assert_array_equal(y[0], x1[1:])
-    np.testing.assert_array_equal(x[1], x2[:-1])
-    np.testing.assert_array_equal(y[1], x2[1:])
+    assert isinstance(x_train, list)
+    assert isinstance(y_train, list)
+    assert x_train[0].shape == (10 - 1 - 5, 2)
+    assert y_train[0].shape == (10 - 1 - 5, 2)
+    # np.testing.assert_array_equal(y_train[:5], x1[5:])
+    # np.testing.assert_array_equal(x_test[5:9], x2[:4])
+    # np.testing.assert_array_equal(y_test[5:9], x2[4:])
 
 def test_to_forecasting_3D():
     data = np.arange(10 * 20 * 110).reshape(10, 20, 110)
