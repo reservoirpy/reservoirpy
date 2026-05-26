@@ -157,6 +157,8 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 
+from reservoirpy.type import DeprecatedError
+
 from ._chaos import (
     doublescroll,
     henon_map,
@@ -203,6 +205,7 @@ __all__ = [
 def to_forecasting(
     timeseries: np.ndarray,
     forecast: int = 1,
+    axis: int = 0,
     test_size: Optional[Union[int, float]] = None,
 ):
     """Split a timeseries for forecasting tasks.
@@ -224,6 +227,8 @@ def to_forecasting(
         :math:`X_{t+\\mathrm{forecast}}`, by default 1,
         i.e. returns two timeseries with a time difference
         of 1 timesteps.
+    axis : int, optional
+        Deprecated. The time axis of `timeseries` is now inferred.
     test_size : int or float, optional
         If set, will also split the timeseries
         into a training phase and a testing phase of
@@ -270,25 +275,21 @@ def to_forecasting(
     ------
     ValueError
         If ``test_size`` is a float, it must be in [0, 1[.
-    """    
+    """
+    if axis != 0:
+        raise DeprecatedError("`axis` argument is deprecated. The time axis of `timeseries` is now inferred.")
+
     if isinstance(timeseries, list):
 
-        results = [to_forecasting(timeseries=temp_array, 
-                            forecast=forecast,  
-                            test_size=test_size) for temp_array in timeseries]
+        results = [
+            to_forecasting(timeseries=temp_array, forecast=forecast, test_size=test_size) for temp_array in timeseries
+        ]
 
-        if test_size is not None:
-            X_array, X_t_array, y_array, y_t_array = map(list, zip(*results))
-            return X_array, X_t_array, y_array, y_t_array
-        else:
-            X_array, y_array = map(list, zip(*results))
-            return X_array, y_array
-        
-    timeseries = np.asarray(timeseries)
-    if timeseries.ndim == 3:
-        time_axis = 1
-    else:
-        time_axis = 0
+        # results is a list of tuples ((X, y) or (X_train, X_test, y_train, y_test))
+        # zip(*x) transposes the nested iterables
+        return tuple(map(list, zip(*results)))
+
+    time_axis = -2
 
     series_ = np.moveaxis(timeseries.view(), time_axis, 0)
 
