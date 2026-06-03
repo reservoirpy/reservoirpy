@@ -52,19 +52,19 @@ def one_hot_encode(y: Union[np.ndarray, Sequence]):
     >>> X = np.random.normal(size=(10, 100, 1))  # 10 series, 100 timesteps
     >>> y = np.mean(X, axis=(1,2)) > 0. # a boolean for each series
     >>> print(y)
-    [ True False False False  True False  True  True  True False]
+    [False False False False  True False False  True  True  True]
     >>> y_encoded, classes = one_hot_encode(y)
     >>> y_encoded
-    array([ [0., 1.],
-            [1., 0.],
-            [1., 0.],
-            [1., 0.],
-            [0., 1.],
-            [1., 0.],
-            [0., 1.],
-            [0., 1.],
-            [0., 1.],
-            [1., 0.]])
+    array([[1., 0.],
+           [1., 0.],
+           [1., 0.],
+           [1., 0.],
+           [0., 1.],
+           [1., 0.],
+           [1., 0.],
+           [0., 1.],
+           [0., 1.],
+           [0., 1.]])
     >>> classes
     array([False,  True])
 

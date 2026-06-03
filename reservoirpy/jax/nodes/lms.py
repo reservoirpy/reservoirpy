@@ -50,14 +50,14 @@ class LMS(OnlineNode):
     >>> y = x @ jnp.array([[10], [-0.2], [7.]]) + noise + 12.
 
     >>> from reservoirpy.nodes import LMS
-    >>> lms_node = LMS(alpha=1e-1)
+    >>> lms_node = LMS(learning_rate=1e-1)
 
-    >>> lms_node.train(x[:50], y[:50])
+    >>> lms_node.partial_fit(x[:50], y[:50])
     >>> print(lms_node.Wout.T, lms_node.bias)
-    [[ 9.156 -0.967   6.411]] [[11.564]]
-    >>> lms_node.train(x[50:], y[50:])
+    [[ 9.84425682 -0.22298041  7.02898776]] [11.98749596]
+    >>> lms_node.partial_fit(x[50:], y[50:])
     >>> print(lms_node.Wout.T, lms_node.bias)
-    [[ 9.998 -0.202  7.001]] [[12.005]]
+    [[ 9.99796945 -0.19835782  6.99814731]] [11.99872646]
 
     References
     ----------
