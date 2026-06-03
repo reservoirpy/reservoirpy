@@ -148,6 +148,7 @@
 
 #     Example
 #     -------
+#     >>> from reservoirpy.jax.nodes import LocalPlasticityReservoir
 #     >>> reservoir = LocalPlasticityReservoir(
 #     ...     units=100, sr=0.9, local_rule="hebbian",
 #     ...     eta=1e-3, epochs=5, synapse_normalization=True

@@ -252,7 +252,7 @@ def to_forecasting(
 
     >>> from reservoirpy.datasets import to_forecasting
     >>> from numpy import linspace, sin
-    >>> t = linspace(0, 500, 1000)
+    >>> t = linspace(0, 500, 1000).reshape(-1, 1)
     >>> timeseries = sin(0.2*t) + sin(0.311*t)
     >>> X_train, X_test, y_train, y_test = to_forecasting(timeseries, forecast=10, test_size=200)
 
@@ -260,7 +260,7 @@ def to_forecasting(
 
         from reservoirpy.datasets import to_forecasting
         from numpy import linspace, sin
-        t = linspace(0, 500, 1000); h=10
+        t = linspace(0, 500, 1000).reshape(-1, 1); h=10
         timeseries = sin(0.2*t) + sin(0.311*t)
         X_train, X_test, y_train, y_test = to_forecasting(timeseries, forecast=h, test_size=200)
         plt.figure(figsize=(12, 3))
@@ -414,7 +414,7 @@ def mso2(n_timesteps: int, normalize: bool = True):
     --------
 
     >>> from reservoirpy.datasets import mso2
-    >>> timeseries = mso(500)
+    >>> timeseries = mso2(500)
     >>> print(timeseries.shape)
     (500, 1)
 
@@ -460,7 +460,7 @@ def mso8(n_timesteps: int, normalize: bool = True):
     --------
 
     >>> from reservoirpy.datasets import mso8
-    >>> timeseries = mso(500)
+    >>> timeseries = mso8(500)
     >>> print(timeseries.shape)
     (500, 1)
 
