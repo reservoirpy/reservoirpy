@@ -2,7 +2,9 @@ name: "Testing"
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - v0.3-maintenance
     paths-ignore:
       - 'docs/**'
       - 'examples/**'
