@@ -287,16 +287,23 @@ class Node(ABC):
     def __repr__(self):
         return self.__str__()
 
-    def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+    def __rshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Union[Model, ModelBuilderUtil]":
         """self >> other"""
         from .ops import ModelBuilderUtil, link
 
         if isinstance(other, int):
             return ModelBuilderUtil(node=self, delay=other, node_is_first=True)
+        if isinstance(other, ModelBuilderUtil):
+            # calls ModelBuilderUtil.__rrshift__ instead
+            return NotImplemented
 
         return link(self, other)
 
-    def __rrshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+    def __rrshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Union[Model, ModelBuilderUtil]":
         """other >> self"""
         from .ops import ModelBuilderUtil, link
 
