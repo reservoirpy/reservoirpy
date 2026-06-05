@@ -205,7 +205,7 @@ __all__ = [
 def to_forecasting(
     timeseries: np.ndarray,
     forecast: int = 1,
-    axis: int = 0,
+    axis: None = None,
     test_size: Optional[Union[int, float]] = None,
 ):
     """Split a timeseries for forecasting tasks.
@@ -275,8 +275,10 @@ def to_forecasting(
     ------
     ValueError
         If ``test_size`` is a float, it must be in [0, 1[.
+    DeprecatedError
+        ``axis`` argument should be None.
     """
-    if axis != 0:
+    if axis is not None:
         raise DeprecatedError("`axis` argument is deprecated. The time axis of `timeseries` is now inferred.")
 
     if isinstance(timeseries, list):

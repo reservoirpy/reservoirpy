@@ -602,6 +602,9 @@ class Model:
 
         if isinstance(other, int):
             return ModelBuilderUtil(node=self, delay=other, node_is_first=True)
+        if isinstance(other, ModelBuilderUtil):
+            # calls ModelBuilderUtil.__rrshift__ instead
+            return NotImplemented
 
         return link(self, other)
 

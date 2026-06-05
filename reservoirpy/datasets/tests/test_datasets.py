@@ -10,6 +10,7 @@ from joblib import Memory
 from numpy.testing import assert_allclose
 
 from reservoirpy import _TEMPDIR, datasets
+from reservoirpy.type import DeprecatedError
 
 
 @contextmanager
@@ -135,6 +136,9 @@ def test_to_forecasting(dataset_func):
     assert y.shape[0] == 200 - 5
     assert x.shape[0] == y.shape[0]
 
+    with pytest.raises(DeprecatedError):
+        datasets.to_forecasting(x, forecast=10, axis=2)
+
 
 @pytest.mark.parametrize("dataset_func", [datasets.mackey_glass, datasets.lorenz])
 def test_to_forecasting_with_test(dataset_func):
@@ -146,6 +150,7 @@ def test_to_forecasting_with_test(dataset_func):
     assert y.shape[0] == 200 - 5 - 10
     assert x.shape[0] == y.shape[0]
     assert xt.shape[0] == yt.shape[0] == 10
+
 
 def test_to_forecasting_list_test_size():
     x1 = np.arange(20).reshape(10, 2)
@@ -160,11 +165,12 @@ def test_to_forecasting_list_test_size():
     assert x_test[0].shape == (10 - 5, 2)
     assert y_test[0].shape == (10 - 5, 2)
 
+
 def test_to_forecasting_list():
     x1 = np.arange(20).reshape(10, 2)
     x2 = np.arange(16).reshape(8, 2)
 
-    x, y  = datasets.to_forecasting([x1, x2], forecast=1)
+    x, y = datasets.to_forecasting([x1, x2], forecast=1)
 
     assert isinstance(x, list)
     assert isinstance(y, list)
@@ -172,7 +178,8 @@ def test_to_forecasting_list():
     np.testing.assert_array_equal(y[0], x1[1:])
     np.testing.assert_array_equal(x[1], x2[:-1])
     np.testing.assert_array_equal(y[1], x2[1:])
-    
+
+
 def test_to_forecasting_3D():
     data = np.arange(10 * 20 * 110).reshape(10, 20, 110)
 
@@ -180,8 +187,9 @@ def test_to_forecasting_3D():
 
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
-    np.testing.assert_array_equal(x, data[:, :-2,:])
+    np.testing.assert_array_equal(x, data[:, :-2, :])
     np.testing.assert_array_equal(y, data[:, 2:, :])
+
 
 def test_japanese_vowels():
     X_train, X_test, Y_train, Y_test = datasets.japanese_vowels(reload=True)
