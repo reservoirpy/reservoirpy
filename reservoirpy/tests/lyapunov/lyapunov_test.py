@@ -1317,7 +1317,7 @@ def run_item5(systems=None, verbose: bool = True) -> list:
     """Verify VPT for the swept-best HPs loaded from each system's HP CSV.
 
     Requires that ``esn_test.run_ridge_sweep`` has already been run and
-    written ``{system}_best_hp.csv`` for each system.  Reads those HPs
+    written rows to ``best_hp.csv`` for each system.  Reads those HPs
     (including the swept-best regularisation value and analytic spinup),
     trains a single ESN per system with ``warmup=spinup``, and reports VPT
     vs. the baseline.
@@ -1359,7 +1359,7 @@ def run_item5(systems=None, verbose: bool = True) -> list:
         if verbose:
             print(f"  spinup={spinup}  ridge={hp['ridge']:.2e}  "
                   f"noise_reg={hp['noise_reg']:.2e}  "
-                  f"(from {sys_name}_best_hp.csv)")
+                  f"(from best_hp.csv)")
 
         # 2. Train + val data and physical t_step.
         train_data, val_block, t_step = generate_train_val(
@@ -1434,7 +1434,7 @@ def assess_lyapunov(
     """Train an ESN on *system_name* and compare its Lyapunov spectrum to the true system.
 
     Workflow:
-    1. Load HPs from ``{system_name}_best_hp.csv`` (written by
+    1. Load HPs from ``best_hp.csv`` (written by
        ``esn_test.run_ridge_sweep``).
     2. Generate / load train data; train ESN via ``load_or_train_esn``.
     3. Compute the true spectrum via ``known_system_test`` (result is cached in
