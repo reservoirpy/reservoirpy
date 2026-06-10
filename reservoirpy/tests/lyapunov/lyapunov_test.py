@@ -973,41 +973,79 @@ def _load_reg_sweep(system_name: str) -> list:
     return results
 
 
-def _hp_csv_path(system_name: str) -> str:
-    """Path to the per-system best-HP CSV (written by run_ridge_sweep / task_b_hp)."""
-    return os.path.join(_THIS_DIR, f"{system_name}_best_hp.csv")
+def _hp_csv_path() -> str:
+    """Path to the combined best-HP CSV (one row per system, written by run_ridge_sweep / task_b_hp)."""
+    return os.path.join(_THIS_DIR, "best_hp.csv")
+
+
+# Canonical column order for best_hp.csv.
+_HP_CSV_FIELDNAMES = [
+    "system", "time_step", "size", "seed", "leak", "radius", "in_scale",
+    "bias_scale", "spinup", "spinup_arch", "sparse", "subsample_t",
+    "ridge", "noise_reg", "vt_0_2_std_med",
+    "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
+]
 
 
 def _load_hp_csv(system_name: str) -> dict:
-    """Load the HP dict written by ``run_ridge_sweep`` / ``task_b_hp``.
+    """Load the HP dict for *system_name* from ``best_hp.csv``.
 
-    Raises ``FileNotFoundError`` if the CSV is absent (run
-    ``esn_test.run_ridge_sweep`` first).
+    Raises ``FileNotFoundError`` if ``best_hp.csv`` is absent (run
+    ``esn_test.run_ridge_sweep`` first) and ``KeyError`` if the system row
+    is missing.
     """
     import csv  # noqa: PLC0415
-    path = _hp_csv_path(system_name)
+    path = _hp_csv_path()
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"HP CSV not found at {path!r}. Run esn_test.run_ridge_sweep() first."
         )
-    with open(path, newline="") as f:
-        reader = csv.DictReader(f)
-        row = next(reader)
     int_keys = {"size", "seed", "spinup", "spinup_arch", "subsample_t"}
     float_keys = {
         "time_step", "leak", "radius", "in_scale", "bias_scale",
         "sparse", "ridge", "noise_reg", "vt_0_2_std_med",
         "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
     }
-    hp = {}
-    for k, v in row.items():
-        if k in int_keys:
-            hp[k] = int(v)
-        elif k in float_keys:
-            hp[k] = float(v)
-        else:
-            hp[k] = v
-    return hp
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            if row["system"] == system_name:
+                hp = {}
+                for k, v in row.items():
+                    if k == "system":
+                        continue
+                    if k in int_keys:
+                        hp[k] = int(v)
+                    elif k in float_keys:
+                        hp[k] = float(v)
+                    else:
+                        hp[k] = v
+                return hp
+    raise KeyError(
+        f"No row for system {system_name!r} in {path!r}. "
+        "Run esn_test.run_ridge_sweep() for this system first."
+    )
+
+
+def _write_hp_csv(system_name: str, save_row: dict) -> None:
+    """Upsert *save_row* for *system_name* into ``best_hp.csv``.
+
+    Reads existing rows (if the file exists), replaces or appends the row for
+    *system_name*, and rewrites the full file — preserving all other systems'
+    rows.  *save_row* should contain the 18 HP keys; the ``system`` key is
+    injected automatically.
+    """
+    import csv  # noqa: PLC0415
+    path = _hp_csv_path()
+    rows = {}
+    if os.path.exists(path):
+        with open(path, newline="") as f:
+            for row in csv.DictReader(f):
+                rows[row["system"]] = row
+    rows[system_name] = {"system": system_name, **save_row}
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=_HP_CSV_FIELDNAMES, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows.values())
 
 
 def _arch_components(hp: dict, input_dim: int):
@@ -1434,8 +1472,10 @@ def assess_lyapunov(
         ``true_spectrum``, ``true_ci``, ``true_ky_dim``,
         ``esn_spectrum``, ``esn_ci``, ``esn_ky_dim``.
     """
+    import time as _time  # noqa: PLC0415
     from reservoirpy.observables import lyapunov as _lyap_esn  # noqa: PLC0415
 
+    _t0 = _time.perf_counter()
     item3_name = _ITEM5_TO_ITEM3.get(system_name)
     if item3_name is None:
         raise ValueError(
@@ -1494,7 +1534,6 @@ def assess_lyapunov(
         rtol=rtol,
         display=display,
         progress_bar=progress_bar,
-        progress_verbose=verbose,
         probe_sub_cycle_cap=50,   # ESN state is not a ring buffer; cap the slow probe
     )
     esn_spec = np.asarray(esn_raw["spectrum"]) / t_step
@@ -1518,6 +1557,8 @@ def assess_lyapunov(
         ky_t = f"{true_ky:.3f}" if true_ky is not None else "None"
         ky_e = f"{esn_ky:.3f}"  if esn_ky  is not None else "None"
         print(f"\n  KY dim:  true={ky_t}  ESN={ky_e}")
+
+    print(f"\n  Total time: {_time.perf_counter() - _t0:.1f}s", flush=True)
 
     return {
         "system":        system_name,
@@ -1567,4 +1608,9 @@ if __name__ == "__main__":
             print(f"λ₁ probe: {probe_str}  cycle_length={result['cycle_length']}  breakin={result['breakin_cycles']}")
     else:
         # run_item5(verbose=True)
-        assess_lyapunov("lorenz_f")
+        # assess_lyapunov("lorenz_x")
+        # assess_lyapunov("lorenz_f")
+        # assess_lyapunov("lorenz96")
+        assess_lyapunov("kuramoto_sivashinsky")
+        assess_lyapunov("mackey_glass")
+
