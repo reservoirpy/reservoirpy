@@ -509,7 +509,7 @@ def effective_spectral_radius(W: np.ndarray, lr: float = 1.0, maxiter: Optional[
 
 def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
                        probe_sub_cycle_cap=None,
-                       progress_bar=False, progress_verbose=False):
+                       progress_bar=False):
     """Estimate the largest Lyapunov exponent via a two-pass Benettin probe.
 
     Pass 1 (fast): ``sub_cycle=5`` — good for high-λ ODE systems.
@@ -548,8 +548,7 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
                   f"({discard} transient / {n_windows - discard} kept)"
                   f"  = {total_steps} steps total",
                   flush=True)
-        bar = (_LyapProgress(n_windows, label, cycles_per_mark=1,
-                             verbose=progress_verbose)
+        bar = (_LyapProgress(n_windows, label, cycles_per_mark=1)
                if progress_bar else None)
 
         for w in range(n_windows):
@@ -568,12 +567,6 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
             log_growths[w] = np.log(d / pert_scale)
             pert = fid + delta * (pert_scale / d)
             if bar:
-                inst = log_growths[w] / sub_cyc / t_step
-                phase = "transient" if w < discard else "kept    "
-                bar.set_metric(
-                    f"log(d/ε)={log_growths[w]:+.3f}  "
-                    f"λ₁(inst)={inst:+.5f}/step  [{phase}]"
-                )
                 bar.update(1)
 
         if bar:
@@ -653,70 +646,43 @@ def _progress_bar(done: int, total: int, done_flag: bool, phase: str = "accum") 
 
 class _LyapProgress:
     """Plain-stdout progress bar: a ruler line of '_' then '|' marks, one mark
-    per ``cycles_per_mark`` cycles.  Times itself for s/cycle + ETA reporting.
-
-    Non-verbose output example (total=2000, cpm=100 → 20 marks)::
+    per ``cycles_per_mark`` cycles.  Example (total=2000, cpm=100 → 20 marks)::
 
         Breakin: 2000 cycles, 1 '|' = 100 cycles
         ____________________
-        ||||||||||||||||||||
-
-    Verbose output: one status line printed per mark (count, elapsed,
-    ms/cyc, optional metric string).
+          ||||||||||||||||||||
     """
 
     def __init__(self, total: int, label: str,
-                 cycles_per_mark: int = 100, verbose: bool = False) -> None:
+                 cycles_per_mark: int = 100) -> None:
         self.total = max(1, int(total))
         self.cpm = max(1, int(cycles_per_mark))
         self.n_marks = max(1, -(-self.total // self.cpm))  # ceiling division
         self.count = 0
         self.marks = 0
-        self.verbose = verbose
-        self.metric = ""
         self.label = label
         self.t0 = time.perf_counter()
         print(f"  {label}: {self.total} cycles, 1 '|' = {self.cpm} cycles",
               flush=True)
         print("  " + "_" * self.n_marks, flush=True)
-        if not verbose:
-            sys.stdout.write("  ")
-            sys.stdout.flush()
-
-    def set_metric(self, text: str) -> None:
-        self.metric = text
+        sys.stdout.write("  ")
+        sys.stdout.flush()
 
     def update(self, n: int = 1) -> None:
         self.count += n
         tgt = min(self.n_marks, self.count // self.cpm)
         while self.marks < tgt:
             self.marks += 1
-            if self.verbose:
-                elapsed = self.elapsed
-                spc = self.per_cycle
-                print(
-                    f"  [{self.label}] cyc {self.count}/{self.total}  "
-                    f"mark {self.marks}/{self.n_marks}  "
-                    f"elapsed {elapsed:5.1f}s  {spc * 1e3:6.2f} ms/cyc"
-                    + (f"  {self.metric}" if self.metric else ""),
-                    flush=True,
-                )
-            else:
-                sys.stdout.write("|")
-                sys.stdout.flush()
+            sys.stdout.write("|")
+            sys.stdout.flush()
 
     @property
     def elapsed(self) -> float:
         return time.perf_counter() - self.t0
 
-    @property
-    def per_cycle(self) -> float:
-        return self.elapsed / self.count if self.count else float("nan")
-
     def close(self) -> None:
-        if not self.verbose:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
 
 def _lyapunov(
@@ -732,7 +698,6 @@ def _lyapunov(
     convergence: str = "ky_dim",
     display: bool = False,
     progress_bar: bool = False,
-    progress_verbose: bool = False,
     probe_sub_cycle_cap: Optional[int] = None,
 ) -> dict:
     """Compute the Lyapunov spectrum of a dynamical system via QR-Benettin.
@@ -838,7 +803,7 @@ def _lyapunov(
                   flush=True)
         lambda_1_probe = _estimate_lambda_1(
             model, epsilon, probe_sub_cycle_cap=probe_sub_cycle_cap,
-            progress_bar=progress_bar, progress_verbose=progress_verbose)
+            progress_bar=progress_bar)
         if lambda_1_probe is None or lambda_1_probe <= 0:
             cycle_length = 100
         else:
@@ -891,16 +856,13 @@ def _lyapunov(
 
     # --- plain-stdout progress bar factory (replaces tqdm) ---
     _make_bar = (
-        lambda total, label: _LyapProgress(  # noqa: E731
-            total, label, cycles_per_mark=100, verbose=progress_verbose
-        )
+        lambda total, label: _LyapProgress(total, label, cycles_per_mark=100)  # noqa: E731
     ) if progress_bar else None
 
     # --- adaptive or fixed breakin ---
     breakin_used = 0
-    breakin_secs: Optional[float] = None
+    _t_breakin = time.perf_counter()
     if breakin_cycles is not None:
-        b = _make_bar(breakin_cycles, "Breakin") if _make_bar else None
         remaining = breakin_cycles
         while remaining > 0:
             chunk = min(remaining, _PROGRESS_INTERVAL)
@@ -909,19 +871,13 @@ def _lyapunov(
             remaining -= chunk
             if display:
                 _progress_bar(breakin_used, breakin_cycles, False, "breakin")
-            if b is not None:
-                b.update(chunk)
         if display:
             sys.stderr.write("\n")
             sys.stderr.flush()
-        if b is not None:
-            breakin_secs = b.elapsed
-            b.close()
     else:
         _BREAKIN_CHUNK = 200
         _DIAG_CYCLES = 50
         _MAX_BREAKIN = 1000
-        b = _make_bar(_MAX_BREAKIN, "Breakin") if _make_bar else None
         while breakin_used < _MAX_BREAKIN:
             _do_qr_cycles(_BREAKIN_CHUNK)
             breakin_used += _BREAKIN_CHUNK
@@ -931,19 +887,15 @@ def _lyapunov(
                 ok_str = "ok" if not violated else "violated"
                 _progress_bar(breakin_used, _MAX_BREAKIN, not violated,
                                f"breakin  order={ok_str}")
-            if b is not None:
-                b.update(_BREAKIN_CHUNK)
             if not violated:
                 break
         if display:
             sys.stderr.write("\n")
             sys.stderr.flush()
-        if b is not None:
-            breakin_secs = b.elapsed
-            b.close()
 
     # --- ETA estimate before accumulation ---
-    if progress_bar and breakin_used > 0 and breakin_secs is not None:
+    if progress_bar and breakin_used > 0:
+        breakin_secs = time.perf_counter() - _t_breakin
         spc = breakin_secs / breakin_used
         print(
             f"  Breakin: {breakin_used} cycles in {breakin_secs:.1f}s "
@@ -1015,11 +967,6 @@ def _lyapunov(
 
         ky_dim = _kaplan_yorke(spectrum)
         ky_dim_ci = _kaplan_yorke_ci(spectrum, ci_half_rate)
-
-        if acc is not None and np.isfinite(spectrum[0]):
-            acc.set_metric(
-                f"λ₁={spectrum[0] * t_step:+.4f}/step  conv={converged}"
-            )
 
         if rtol > 0:
             converged = _is_converged(
