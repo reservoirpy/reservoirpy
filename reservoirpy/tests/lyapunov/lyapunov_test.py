@@ -25,7 +25,12 @@ import numpy as np
 import scipy.fft
 
 from reservoirpy.datasets._chaos import _kuramoto_sivashinsky_etdrk4
-from reservoirpy.observables import _lyapunov, valid_time_multitest
+from reservoirpy.observables import (
+    _lyapunov,
+    _kaplan_yorke,
+    _kaplan_yorke_ci,
+    valid_time_multitest,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +338,31 @@ def known_system_test(
     min_cycles = min_cycles if min_cycles is not None else model.min_cycles_default
     max_cycles = max_cycles if max_cycles is not None else 2000
     # breakin_cycles = breakin_cycles if breakin_cycles is not None else 4000
+
+    # Fast path: return cached spectrum when available and sufficient.
+    cached_spec = row["spectrum"] if row is not None else None
+    cached_ci   = row["spectrum_ci"] if row is not None else None
+    if (cached_spec is not None and len(cached_spec) >= k
+            and cached_ci is not None and len(cached_ci) >= k):
+        spec = cached_spec[:k]
+        ci   = cached_ci[:k]
+        ky_dim    = _kaplan_yorke(spec)
+        ky_dim_ci = _kaplan_yorke_ci(spec, ci)
+        return {
+            "spectrum":             spec,
+            "spectrum_ci":          ci,
+            "ky_dim":               ky_dim,
+            "ky_dim_ci":            ky_dim_ci,
+            "n_cycles":             0,
+            "converged":            True,
+            "log_growths":          np.zeros((0, k)),
+            "collapsed_directions": np.zeros(k, dtype=bool),
+            "cycle_length":         0,
+            "breakin_cycles":       0,
+            "lambda_1_probe":       float(spec[0]) if len(spec) > 0 else None,
+            "system":               system_name,
+            "h":                    model.t_step,
+        }
 
     result = _lyapunov(
         model,
@@ -1095,6 +1125,10 @@ def _arch_components(hp: dict, input_dim: int):
     return W, M[:, :input_dim], M[:, input_dim]
 
 
+_2RES_SEED_OFFSET    = 1      # seed gap between the two reservoir instances
+_2RES_COMBINER_FLOOR = 1e-6  # small positive ridge for the combiner; avoids singular solve
+
+
 def build_esn(hp: dict, input_dim: int, n_train_samples: int):
     """Construct (but do not train) a reservoirpy ESN matching *hp*.
 
@@ -1144,6 +1178,103 @@ def build_esn(hp: dict, input_dim: int, n_train_samples: int):
     # β·T to match classic_ridge's averaged-Gram convention (see docstring).
     readout = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True) #
     return ESN(reservoir=reservoir, readout=readout, input_to_readout=True)
+
+
+def build_two_res_esn(
+    hp: dict,
+    input_dim: int,
+    n_train_samples: int,
+    seed_offset: int = _2RES_SEED_OFFSET,
+):
+    """Construct (but do not train) a two-reservoir averaging ensemble.
+
+    Two named Reservoir nodes receive the same input (``map_input`` broadcasts a
+    plain array to all input nodes when there are multiple named ones).  Each
+    feeds its own named Ridge readout; both readouts feed a "combiner" Ridge.
+    ``Model.fit`` uses forced-teaching (same target ``y`` for all trainable
+    nodes), so each readout converges to the same mapping; the combiner —
+    trained on two collinear parent outputs with a small positive ridge
+    (``_2RES_COMBINER_FLOOR``) — converges to an exact 0.5 / 0.5 average.
+
+    **Why no explicit Input node**: an explicit ``Input`` node would appear
+    first in ``model.nodes`` (topological order), consuming perturbation dims
+    0..2 in ``_flatten_model_state``.  Those dims get immediately overwritten
+    by every ``model.run()`` call, collapsing all Lyapunov exponents to −∞.
+    Instead, the two Reservoir nodes are named so ``check_unnamed_in_out``
+    passes.  ``model.nodes`` then starts with the Reservoir states, giving
+    meaningful perturbation directions.
+
+    Topology::
+
+        model = [res1("2res_res1") >> ro1("2res_readout1"),
+                 res2("2res_res2") >> ro2("2res_readout2")] >> comb("2res_combiner")
+
+    Parameters
+    ----------
+    hp : dict
+        Hyperparameter row (same schema as ``best_hp.csv``).
+    input_dim : int
+        Dimensionality of the input signal.
+    n_train_samples : int
+        Training length *T* — used to scale the readout ridge (β·T convention,
+        matching ``build_esn``).
+    seed_offset : int, default ``_2RES_SEED_OFFSET``
+        Added to ``hp["seed"]`` for the second reservoir.
+
+    Returns
+    -------
+    reservoirpy.Model
+        An untrained 5-node model (Reservoir×2, Ridge×2, combiner).
+    """
+    from reservoirpy.nodes import Reservoir, Ridge
+    from reservoirpy.mat_gen import uniform
+
+    ridge_beta = float(hp.get("ridge", 0.0))
+    rc_conn    = hp["sparse"] / hp["size"]
+
+    def _make_reservoir(seed, name):
+        return Reservoir(
+            units=hp["size"],
+            sr=hp["radius"],
+            lr=hp["leak"],
+            input_scaling=hp["in_scale"],
+            input_connectivity=1.0 / input_dim,
+            rc_connectivity=rc_conn,
+            W=uniform,
+            Win=uniform,
+            bias=uniform(input_scaling=hp["bias_scale"]),
+            seed=seed,
+            name=name,
+        )
+
+    res1 = _make_reservoir(int(hp["seed"]),              "2res_res1")
+    res2 = _make_reservoir(int(hp["seed"]) + seed_offset, "2res_res2")
+    ro1  = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout1")
+    ro2  = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout2")
+    comb = Ridge(ridge=_2RES_COMBINER_FLOOR,          fit_bias=True, name="2res_combiner")
+
+    return [res1 >> ro1, res2 >> ro2] >> comb
+
+
+def _two_res_cache_path(base_system_name: str, hp: dict, seed_offset: int) -> str:
+    """Return pickle path for a cached two-reservoir (model, norm) tuple.
+
+    Suffix ``_2res_n1r1z1u1_ni``:
+      ``2res`` — two-reservoir ensemble (no explicit Input node)
+      ``n1``   — std-normalised training data
+      ``r1``   — Ridge β scaled by training length (β·T)
+      ``z1``   — noise_reg included in tag
+      ``u1``   — uniform[−1,1] Win/W/bias distributions
+      ``ni``   — no input-to-readout skip connection
+    """
+    noise_reg = float(hp.get("noise_reg", 0.0))
+    tag = (f"{base_system_name}_2res_off{seed_offset}"
+           f"_sz{hp['size']}_sr{hp['radius']:.4f}"
+           f"_lr{hp['leak']:.4f}_is{hp['in_scale']:.4f}"
+           f"_bs{hp['bias_scale']:.4f}_rg{hp['ridge']:.2e}"
+           f"_nz{noise_reg:.2e}_sd{hp['seed']}_n1r1z1u1_ni")
+    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
+    return os.path.join(_MODEL_CACHE_DIR, f"{tag}.pkl")
 
 
 def _esn_cache_path(system_name: str, hp: dict) -> str:
@@ -1230,6 +1361,67 @@ def load_or_train_esn(
     # state (reservoirpy/model.py:519), so this makes the training pass robust to
     # any reuse / re-fit of the model object.  initialize() must run first to create
     # the state dict; fit() will skip re-initialization via its own guard.
+    if not model.initialized:
+        model.initialize(x_norm, y_norm)
+    model.reset()
+
+    model.fit(x_norm, y_norm, warmup=(spinup or 0))
+
+    if cache:
+        with open(cache_path, "wb") as f:
+            pickle.dump({"model": model, "norm": norm}, f)
+        print(f"  [cache] saved  {os.path.basename(cache_path)}")
+    return model, norm
+
+
+def load_or_train_two_res_esn(
+    base_system_name: str,
+    hp: dict,
+    train_data: np.ndarray,
+    spinup: Optional[int] = None,
+    seed_offset: int = _2RES_SEED_OFFSET,
+    cache: bool = True,
+):
+    """Return ``(model, norm)`` for a trained two-reservoir averaging ensemble.
+
+    Mirrors :func:`load_or_train_esn` exactly: same normalization, same optional
+    input noise, same ``warmup`` argument — but builds the model via
+    :func:`build_two_res_esn` and caches under a ``_2res_off{offset}``-tagged
+    path so it never aliases a single-ESN cache entry.
+
+    Parameters
+    ----------
+    base_system_name : str
+        System name without the ``_2res`` suffix (e.g. ``"lorenz_f"``).  Used
+        for the cache filename and HP lookup.
+    hp, train_data, spinup, cache
+        Same semantics as :func:`load_or_train_esn`.
+    seed_offset : int, default ``_2RES_SEED_OFFSET``
+        Forwarded to :func:`build_two_res_esn`.
+    """
+    cache_path = _two_res_cache_path(base_system_name, hp, seed_offset)
+    if cache and os.path.exists(cache_path):
+        with open(cache_path, "rb") as f:
+            cached = pickle.load(f)
+        print(f"  [cache] loaded {os.path.basename(cache_path)}")
+        return cached["model"], cached["norm"]
+
+    x_mean = train_data[:-1].mean(axis=0)
+    x_std  = np.maximum(train_data[:-1].std(axis=0), 1e-8)
+    norm   = {"mean": x_mean, "std": x_std}
+
+    traj_norm = (train_data - x_mean) / x_std
+    noise_reg = float(hp.get("noise_reg", 0.0))
+    if noise_reg > 0.0:
+        rng = np.random.default_rng(int(hp["seed"]))
+        traj_norm = traj_norm + noise_reg * rng.standard_normal(traj_norm.shape)
+
+    x_norm = traj_norm[:-1]
+    y_norm = traj_norm[1:]
+
+    input_dim = train_data.shape[1]
+    model = build_two_res_esn(hp, input_dim, len(x_norm), seed_offset=seed_offset)
+
     if not model.initialized:
         model.initialize(x_norm, y_norm)
     model.reset()
@@ -1476,10 +1668,16 @@ def assess_lyapunov(
     from reservoirpy.observables import lyapunov as _lyap_esn  # noqa: PLC0415
 
     _t0 = _time.perf_counter()
-    item3_name = _ITEM5_TO_ITEM3.get(system_name)
+
+    # Support the "_2res" suffix: strip it and resolve everything from base_name.
+    is_2res   = system_name.endswith("_2res")
+    base_name = system_name[: -len("_2res")] if is_2res else system_name
+
+    item3_name = _ITEM5_TO_ITEM3.get(base_name)
     if item3_name is None:
         raise ValueError(
-            f"Unknown system {system_name!r}. Known: {sorted(_ITEM5_TO_ITEM3)}"
+            f"Unknown system {system_name!r} (base={base_name!r}). "
+            f"Known: {sorted(_ITEM5_TO_ITEM3)}"
         )
 
     true_sys = _SYSTEMS[item3_name]()
@@ -1494,17 +1692,21 @@ def assess_lyapunov(
         print(f"{'='*60}")
 
     # --- Step 1: load HP and train ESN ---
-    hp     = _load_hp_csv(system_name)
+    hp     = _load_hp_csv(base_name)
     spinup = _spinup_for(hp, arch_components=False)
 
     if verbose:
-        print(f"  spinup={spinup}  ridge={hp['ridge']:.2e}  "
+        model_tag = "2-reservoir ensemble" if is_2res else "ESN"
+        print(f"  model={model_tag}  spinup={spinup}  ridge={hp['ridge']:.2e}  "
               f"noise_reg={hp['noise_reg']:.2e}")
 
     train_data, _val, t_step = generate_train_val(
-        system_name, n_train=_N_TRAIN, n_val=_N_VAL,
+        base_name, n_train=_N_TRAIN, n_val=_N_VAL,
     )
-    model, norm = load_or_train_esn(system_name, hp, train_data, spinup=spinup)
+    if is_2res:
+        model, norm = load_or_train_two_res_esn(base_name, hp, train_data, spinup=spinup)
+    else:
+        model, norm = load_or_train_esn(base_name, hp, train_data, spinup=spinup)
     x_norm = (train_data - norm["mean"]) / norm["std"]
 
     # --- Step 2: true system Lyapunov spectrum ---
@@ -1611,6 +1813,7 @@ if __name__ == "__main__":
         # assess_lyapunov("lorenz_x")
         # assess_lyapunov("lorenz_f")
         # assess_lyapunov("lorenz96")
-        assess_lyapunov("kuramoto_sivashinsky")
-        assess_lyapunov("mackey_glass")
+        # assess_lyapunov("kuramoto_sivashinsky")
+        # assess_lyapunov("mackey_glass")
+        assess_lyapunov("lorenz_f_2res")
 
