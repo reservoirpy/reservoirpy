@@ -104,6 +104,8 @@ class _KnownSystem:
     """
 
     name: str = ""
+    formal_name: str = ""
+    method: str = ""
     k_default: int = 3
     min_cycles_default: int = 500
     t_step: float = 1.0
@@ -188,7 +190,9 @@ class _ODESystem(_KnownSystem):
 class Lorenz(_ODESystem):
     """Lorenz (1963) attractor, σ=10, ρ=28, β=8/3."""
 
-    name      = "lorenz"
+    name         = "lorenz"
+    formal_name  = "Lorenz63"
+    method       = "ODE RK4"
     k_default = 3
     stdev     = 14.282866422209104
     sigma, rho, beta = 10.0, 28.0, 8.0 / 3.0
@@ -205,7 +209,9 @@ class Lorenz(_ODESystem):
 class Lorenz96(_ODESystem):
     """Lorenz (1996) model, N=10, F=8."""
 
-    name      = "lorenz96"
+    name         = "lorenz96"
+    formal_name  = "Lorenz96 10d"
+    method       = "ODE RK4"
     k_default = 10
     stdev     = 3.622654737513749
     F      = 8.0
@@ -225,7 +231,9 @@ class Lorenz96(_ODESystem):
 class MackeyGlass(_KnownSystem):
     """Mackey-Glass delay-differential equation, τ=20, a=0.2, b=0.1, n=10."""
 
-    name      = "mackey_glass"
+    name         = "mackey_glass"
+    formal_name  = "Mackey-Glass"
+    method       = "DDE RK4"
     k_default = 10
     stdev     = 0.2252707719024293
     tau, a, b, n_mg = 20.0, 0.2, 0.1, 10
@@ -271,7 +279,9 @@ class MackeyGlass(_KnownSystem):
 class KuramotoSivashinsky(_KnownSystem):
     """Kuramoto-Sivashinsky PDE on a periodic domain, L=22, N=128."""
 
-    name      = "kuramoto_sivashinsky"
+    name         = "kuramoto_sivashinsky"
+    formal_name  = "Kuramoto-Sivashinsky"
+    method       = "PDE ETDRK4"
     k_default = 10
     stdev     = 1.1297214457875504
     N, M = 128, 16
@@ -510,7 +520,10 @@ def known_system_test(
             and cached_sp is not None and len(cached_sp) >= k
             and cached_ci is not None and len(cached_ci) >= k):
         if verbose:
-            print(f"  {system_name} Lyapunov spectrum loaded from cache  (k={k})")
+            _fn = _SYSTEMS[system_name].formal_name or system_name
+            _mt = _SYSTEMS[system_name].method or "direct"
+            print(f"  [lyapunov spectrum cache] loaded {_fn} {_mt}"
+                  f" lyapunov spectrum from cache  (k={k})")
         spec = cached_sp[:k]
         ci   = cached_ci[:k]
         ky_dim    = _kaplan_yorke(spec)
@@ -532,7 +545,10 @@ def known_system_test(
         }
 
     if verbose:
-        print(f"  Finding {system_name} True Lyapunov Spectrum  (k={k})...")
+        _fn = _SYSTEMS[system_name].formal_name or system_name
+        _mt = _SYSTEMS[system_name].method or "direct"
+        print(f"  [true system lyapunov spectrum] computing {_fn} {_mt}"
+              f" lyapunov spectrum  (k={k})...")
 
     stepper = _SystemStepper(model)
     result = _lyapunov(
@@ -673,6 +689,35 @@ def _system_factory(hp: dict) -> _KnownSystem:
     return cls()
 
 
+def _input_label(hp: dict) -> str:
+    """Return a human-readable input description for an RC trained on *hp*.
+
+    Derived from the system class and ``select_dims`` in *hp*.  Used in
+    per-RC headers and table row labels.
+
+    Examples
+    --------
+    ``Lorenz`` + ``select_dims=[0]``   → ``"x"``
+    ``Lorenz`` + empty ``select_dims`` → ``"(x, y, z)"``
+    ``Lorenz96``                        → ``"(x_1, x_2, ..., x_10)"``
+    ``MackeyGlass``                     → ``"P"``
+    ``KuramotoSivashinsky``             → ``"64 point discretization of [0, L)"``
+    """
+    cls_name = hp.get("class", "")
+    sel = hp.get("select_dims")   # None or list of ints
+    if cls_name == "Lorenz":
+        if sel is not None and len(sel) == 1 and sel[0] == 0:
+            return "x"
+        return "(x, y, z)"
+    if cls_name == "Lorenz96":
+        return "(x_1, x_2, ..., x_10)"
+    if cls_name == "MackeyGlass":
+        return "P"
+    if cls_name == "KuramotoSivashinsky":
+        return "64 point discretization of [0, L)"
+    return ""
+
+
 def generate_train_val(
     system_name: str,
     n_train: int = _N_TRAIN,
@@ -700,7 +745,7 @@ def generate_train_val(
         train_data = data["train_data"]
         val_block  = data["val_block"]
         t_step     = float(data["t_step"])
-        print(f"  [data cache] loaded {os.path.basename(cache_path)}")
+        print(f"  [training data cache] loaded {os.path.basename(cache_path)}")
         return train_data, val_block, t_step
 
     hp       = _load_hp_csv(system_name)
@@ -722,13 +767,13 @@ def generate_train_val(
             out.append(raw)
         return np.stack(out, axis=0)
 
-    print(f"  [data cache] generating {os.path.basename(cache_path)}...")
+    print(f"  [training data cache] generating {os.path.basename(cache_path)}...")
     train_data = _step_and_collect(n_train)
     val_block  = _step_and_collect(n_val)
 
     t_step = sys.t_step * gen_sub
     np.savez(cache_path, train_data=train_data, val_block=val_block, t_step=t_step)
-    print(f"  [data cache] saved    {os.path.basename(cache_path)}")
+    print(f"  [training data cache] saved    {os.path.basename(cache_path)}")
     return train_data, val_block, t_step
 
 
@@ -957,31 +1002,25 @@ def build_two_res_esn(
 def _esn_cache_path(system_name: str, hp: dict) -> str:
     """Return pickle path for a cached ``(model, norm)`` tuple.
 
-    Tag suffix ``_n1r1z1u1``:
-      ``n1`` — std-normalised training data
-      ``r1`` — Ridge β scaled by training length (β·T)
-      ``z1`` — noise_reg included in tag
-      ``u1`` — uniform[−1,1] Win/W/bias distributions
+    The filename is just the system name: hyperparameters are loaded
+    deterministically from the HP CSV, so they do not distinguish cache
+    entries.  Note: this means editing a hyperparameter in the CSV will reuse
+    the existing cache — delete the ``.pkl`` to force a retrain.
     """
-    noise_reg = float(hp.get("noise_reg", 0.0))
-    tag = (f"{system_name}_sz{hp['size']}_sr{hp['radius']:.4f}"
-           f"_lr{hp['leak']:.4f}_is{hp['in_scale']:.4f}"
-           f"_bs{hp['bias_scale']:.4f}_rg{hp['ridge']:.2e}"
-           f"_nz{noise_reg:.2e}_sd{hp['seed']}_n1r1z1u1")
     os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
-    return os.path.join(_MODEL_CACHE_DIR, f"{tag}.pkl")
+    return os.path.join(_MODEL_CACHE_DIR, f"{system_name}.pkl")
 
 
 def _two_res_cache_path(base_system_name: str, hp: dict, seed_offset: int) -> str:
-    """Return pickle path for a cached two-reservoir ``(model, norm)`` tuple."""
-    noise_reg = float(hp.get("noise_reg", 0.0))
-    tag = (f"{base_system_name}_2res_off{seed_offset}"
-           f"_sz{hp['size']}_sr{hp['radius']:.4f}"
-           f"_lr{hp['leak']:.4f}_is{hp['in_scale']:.4f}"
-           f"_bs{hp['bias_scale']:.4f}_rg{hp['ridge']:.2e}"
-           f"_nz{noise_reg:.2e}_sd{hp['seed']}_n1r1z1u1_ni")
+    """Return pickle path for a cached two-reservoir ``(model, norm)`` tuple.
+
+    See :func:`_esn_cache_path` for the naming rationale and the
+    stale-cache caveat.
+    """
     os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
-    return os.path.join(_MODEL_CACHE_DIR, f"{tag}.pkl")
+    return os.path.join(
+        _MODEL_CACHE_DIR, f"{base_system_name}_2res_off{seed_offset}.pkl"
+    )
 
 
 def load_or_train_esn(
@@ -1006,7 +1045,7 @@ def load_or_train_esn(
     if cache and os.path.exists(cache_path):
         with open(cache_path, "rb") as f:
             cached = pickle.load(f)
-        print(f"  [cache] loaded {os.path.basename(cache_path)}")
+        print(f"  [trained rc cache] loaded {os.path.basename(cache_path)}")
         return cached["model"], cached["norm"]
 
     x_mean = train_data[:-1].mean(axis=0)
@@ -1031,7 +1070,7 @@ def load_or_train_esn(
     if cache:
         with open(cache_path, "wb") as f:
             pickle.dump({"model": model, "norm": norm}, f)
-        print(f"  [cache] saved  {os.path.basename(cache_path)}")
+        print(f"  [trained rc cache] saved  {os.path.basename(cache_path)}")
     return model, norm
 
 
@@ -1058,7 +1097,7 @@ def load_or_train_two_res_esn(
     if cache and os.path.exists(cache_path):
         with open(cache_path, "rb") as f:
             cached = pickle.load(f)
-        print(f"  [cache] loaded {os.path.basename(cache_path)}")
+        print(f"  [trained rc cache] loaded {os.path.basename(cache_path)}")
         return cached["model"], cached["norm"]
 
     x_mean = train_data[:-1].mean(axis=0)
@@ -1083,7 +1122,7 @@ def load_or_train_two_res_esn(
     if cache:
         with open(cache_path, "wb") as f:
             pickle.dump({"model": model, "norm": norm}, f)
-        print(f"  [cache] saved  {os.path.basename(cache_path)}")
+        print(f"  [trained rc cache] saved  {os.path.basename(cache_path)}")
     return model, norm
 
 
@@ -1162,9 +1201,13 @@ def _assess_one(
     k = len(true_spec)
 
     if verbose:
-        model_tag = "2-reservoir" if is_2res else "ESN"
-        print(f"\n  [{esn_name}]  {model_tag}  k={k}  spinup={spinup}"
-              f"  ridge={hp['ridge']:.2e}  noise_reg={hp['noise_reg']:.2e}")
+        input_lbl = _input_label(hp)
+        size = int(hp.get("size", 0))
+        if is_2res:
+            model_desc = f"2-reservoir model, size={size} each, input={input_lbl}"
+        else:
+            model_desc = f"Basic ESN, size={size}, input={input_lbl}"
+        print(f"\n  [{esn_name}]  {model_desc}")
 
     # Training data
     train_data, _val, t_step = generate_train_val(base_name)
@@ -1178,7 +1221,7 @@ def _assess_one(
 
     # ESN Lyapunov spectrum (raw exponents in per-step units → rescale by t_step)
     if verbose:
-        print(f"  [{esn_name}]  Computing ESN Lyapunov spectrum...")
+        print(f"  [{esn_name}]  Computing RC Lyapunov spectrum...")
     esn_raw = _lyap_esn(
         model,
         init=x_norm,
@@ -1211,8 +1254,7 @@ def _assess_one(
 
     elapsed = time.perf_counter() - _t0
     if verbose:
-        verdict = "PASS" if passed else "FAIL"
-        print(f"  [{esn_name}]  {verdict}  ({elapsed:.1f}s)")
+        print(f"  [{esn_name}]  DONE  ({elapsed:.1f}s)")
 
     return {
         "esn_name":            esn_name,
@@ -1232,6 +1274,10 @@ def _assess_one(
         "passed_reduced":        passed_reduced,
         "true_ky_reduced":       true_ky_red,
         "esn_ky_reduced":        esn_ky_red,
+        # presentation metadata
+        "is_2res":             is_2res,
+        "input_label":         _input_label(hp),
+        "size":                int(hp.get("size", 0)),
     }
 
 
@@ -1254,6 +1300,19 @@ def _ky_str(ky, marked: bool = False) -> str:
     return f"{ky:.3f} + n" if marked else f"{ky:.3f}"
 
 
+def _rc_row_label(r: dict, multi_rc: bool) -> str:
+    """Return the RC row label for the results table.
+
+    When there are multiple RCs in the group (``multi_rc=True``), include the
+    input label so readers can distinguish them.  For a single RC, report the
+    reservoir size instead (input is stated in the per-RC header above the table).
+    """
+    rc_type = "2 reservoirs" if r.get("is_2res") else "basic ESN"
+    if multi_rc:
+        return f"RC, {rc_type}, {r['input_label']} input"
+    return f"RC, {rc_type}, size={r['size']}"
+
+
 def _print_system_table(
     sys_name: str,
     group: list,
@@ -1263,7 +1322,7 @@ def _print_system_table(
 ) -> None:
     """Print one bordered ASCII table for a single underlying system.
 
-    Row order: literature (if available) → computed-true → ESN rows.
+    Row order: literature (if available) → computed-true → RC rows.
 
     Parameters
     ----------
@@ -1276,44 +1335,65 @@ def _print_system_table(
         no literature spectrum is available.
     reduced : bool
         When True, use near-zero-removed spectra and ``*`` column suffixes.
+        For Kuramoto-Sivashinsky, the literature row has its near-zero
+        exponents (l3 and l4) stripped by hardcoded index rather than by the
+        1%-of-principal threshold (which would not remove them).
     """
     spec_key  = "true_spectrum_reduced" if reduced else "true_spectrum"
     espec_key = "esn_spectrum_reduced"  if reduced else "esn_spectrum"
     tky_key   = "true_ky_reduced"       if reduced else "true_ky"
     eky_key   = "esn_ky_reduced"        if reduced else "esn_ky"
-    pf_key    = "passed_reduced"        if reduced else "passed"
 
-    # ---- compute column width ------------------------------------------- #
+    # ---- system formal name and method ------------------------------------ #
+    sys_cls     = _SYSTEMS.get(sys_name)
+    formal_name = sys_cls.formal_name if sys_cls else sys_name
+    method      = sys_cls.method      if sys_cls else "direct"
+
+    # ---- literature spectrum for this mode -------------------------------- #
+    if known_row is not None and known_row.get("spectrum") is not None:
+        lit_spec_full = np.asarray(known_row["spectrum"])
+        if reduced and sys_name == "kuramoto_sivashinsky":
+            # Hardcode: drop indices 2 and 3 (l3=0.002, l4=-0.004) for KS.
+            keep = [i for i in range(len(lit_spec_full)) if i not in (2, 3)]
+            lit_spec_disp = lit_spec_full[keep]
+        elif reduced:
+            # For other systems apply the 1%-of-principal near-zero filter.
+            nz_thresh_lit = (1e-2 * abs(float(lit_spec_full[0]))
+                             if len(lit_spec_full) else 0.0)
+            lit_spec_disp = lit_spec_full[np.abs(lit_spec_full) >= nz_thresh_lit]
+        else:
+            lit_spec_disp = lit_spec_full
+    else:
+        lit_spec_disp = None
+
+    # ---- compute column widths ------------------------------------------- #
     max_k = max(
         max(len(r[spec_key]), len(r[espec_key])) for r in group
     )
-    if reduced and known_row is not None and len(known_row["spectrum"]) > 0:
-        # In reduced mode, apply the same near-zero filter to the literature
-        # spectrum so it is consistent with the pruned true/esn columns.
-        lit_spec_full = known_row["spectrum"]
-        nz_thresh_lit = 1e-2 * abs(float(lit_spec_full[0])) if len(lit_spec_full) else 0.0
-        lit_spec_disp = lit_spec_full[np.abs(lit_spec_full) >= nz_thresh_lit]
-    elif known_row is not None:
-        lit_spec_disp = known_row["spectrum"]
-    else:
-        lit_spec_disp = None
     if lit_spec_disp is not None:
         max_k = max(max_k, len(lit_spec_disp))
 
-    lbl_w  = 28
+    # Determine label column width from the longest row label we will print.
+    multi_rc = len(group) > 1
+    source_str = known_row.get("source", "") if known_row else ""
+    candidate_labels = [
+        f"Literature: {source_str}" if source_str else "",
+        method,
+    ] + [_rc_row_label(r, multi_rc) for r in group]
+    lbl_w = max(28, max(len(lbl) for lbl in candidate_labels) + 2)
+
     lam_w  = 9
     ky_w   = 12 if reduced else 8
-    pf_w   = 6
     suffix = "*" if reduced else ""
 
     # ---- header ------------------------------------------------------------ #
     hdr = f"  {'System / kind':<{lbl_w}}"
     for i in range(max_k):
         hdr += f"  {('λ' + str(i + 1) + suffix):>{lam_w}}"
-    hdr += f"  {'KY dim':>{ky_w}}  {'P/F':>{pf_w}}"
+    hdr += f"  {'KY dim':>{ky_w}}"
     total_w = len(hdr) - 2   # exclude the leading "  "
     sep      = "  " + "─" * total_w
-    title    = f"  ── {sys_name} " + "─" * max(0, total_w - len(sys_name) - 5)
+    title    = f"  ── {formal_name} " + "─" * max(0, total_w - len(formal_name) - 5)
 
     print(f"\n{title}")
     print(hdr)
@@ -1321,57 +1401,51 @@ def _print_system_table(
 
     # ---- literature row (optional, top) ------------------------------------ #
     if lit_spec_disp is not None and len(lit_spec_disp) > 0:
-        lit_label = f"{sys_name} (lit.)"
+        lit_label = f"Literature: {source_str}" if source_str else "Literature"
         row_s = f"  {lit_label:<{lbl_w}}"
         for i in range(max_k):
             row_s += (f"  {_lam_str(lit_spec_disp[i]):>{lam_w}}"
                       if i < len(lit_spec_disp) else f"  {'':>{lam_w}}")
-        ky_lit = known_row.get("ky_dim") if known_row else None
-        row_s += f"  {_ky_str(ky_lit):>{ky_w}}"
-        row_s += f"  {'':>{pf_w}}"
+        if reduced:
+            ky_lit = _kaplan_yorke(lit_spec_disp)
+            row_s += f"  {_ky_str(ky_lit, marked=True):>{ky_w}}"
+        else:
+            ky_lit = known_row.get("ky_dim") if known_row else None
+            row_s += f"  {_ky_str(ky_lit):>{ky_w}}"
         print(row_s)
 
     # ---- computed-true row (one per system) -------------------------------- #
     # Use the first result in the group for the true-spectrum data.
-    r0       = group[0]
-    t_spec   = r0[spec_key]
-    row_s    = f"  {sys_name + ' (true)':<{lbl_w}}"
+    r0     = group[0]
+    t_spec = r0[spec_key]
+    row_s  = f"  {method:<{lbl_w}}"
     for i in range(max_k):
         row_s += (f"  {_lam_str(t_spec[i]):>{lam_w}}"
                   if i < len(t_spec) else f"  {'':>{lam_w}}")
     dropped_true = len(r0["true_spectrum_reduced"]) < len(r0["true_spectrum"])
     row_s += f"  {_ky_str(r0[tky_key], reduced and dropped_true):>{ky_w}}"
-    row_s += f"  {'':>{pf_w}}"
     print(row_s)
 
-    # ---- ESN rows ---------------------------------------------------------- #
+    # ---- RC rows ---------------------------------------------------------- #
     for r in group:
-        e_spec  = r[espec_key]
-        row_s   = f"  {r['esn_name']:<{lbl_w}}"
+        e_spec   = r[espec_key]
+        rc_label = _rc_row_label(r, multi_rc)
+        row_s    = f"  {rc_label:<{lbl_w}}"
         for i in range(max_k):
             row_s += (f"  {_lam_str(e_spec[i]):>{lam_w}}"
                       if i < len(e_spec) else f"  {'':>{lam_w}}")
         dropped_esn = len(r["esn_spectrum_reduced"]) < len(r["esn_spectrum"])
         row_s += f"  {_ky_str(r[eky_key], reduced and dropped_esn):>{ky_w}}"
-        pf     = "PASS" if r[pf_key] else "FAIL"
-        row_s += f"  {pf:>{pf_w}}"
         print(row_s)
 
     print(sep)
-
-    # ---- literature footnote (below bottom separator) ---------------------- #
-    if known_row is not None and known_row.get("source"):
-        footnote = f"  lit.: {known_row['source']}"
-        if known_row.get("url"):
-            footnote += f"  {known_row['url']}"
-        print(footnote)
 
 
 def _print_results_table(results: list, reduced: bool = False) -> None:
     """Print one ASCII comparison table per underlying dynamical system.
 
     Each table has row order: literature (if available) → computed-true →
-    ESN rows.  Literature exponent columns are taken from
+    RC rows.  Literature exponent columns are taken from
     ``known_lyapunov_specs.csv``; table width widens to fit them when they
     exceed the computed spectrum length.
 
@@ -1382,7 +1456,7 @@ def _print_results_table(results: list, reduced: bool = False) -> None:
     reduced : bool
         If True, use the near-zero-removed spectra (``*_spectrum_reduced`` /
         ``*_ci_reduced`` fields) and label columns ``λ1*``, ``λ2*``, etc.
-        The pass/fail verdict is taken from ``passed_reduced``.  Default False.
+        Default False.
     """
     if not results:
         return
@@ -1399,13 +1473,9 @@ def _print_results_table(results: list, reduced: bool = False) -> None:
         _print_system_table(sys_name, group, known.get(sys_name), reduced=reduced)
 
 
-# ---------------------------------------------------------------------------
-# run_lyapunov_test  — main entry point
-# ---------------------------------------------------------------------------
 
-
-def run_lyapunov_test(
-    esn_names=None,
+def main(
+    esn_names=['lorenz_f', 'lorenz_x_2res', 'lorenz_x', 'lorenz96', 'mackey_glass', 'kuramoto_sivashinsky'],
     *,
     min_cycles: int = 500,
     max_cycles: int = 2000,
@@ -1414,16 +1484,13 @@ def run_lyapunov_test(
     verbose: bool = True,
     force_true_spectra: bool = False,
 ) -> list:
-    """Train ESNs and compare their Lyapunov spectra to the true system spectra.
+    """Train Reservoir Computers and compare their Lyapunov spectra to the true system spectra.
 
     For each unique underlying dynamical system represented in *esn_names*,
-    the true spectrum is computed or loaded from cache (once), then each ESN
+    the true spectrum is computed or loaded from cache (once), then each RC
     that maps to that system is trained and assessed.  A combined ASCII
-    comparison table with Pass/Fail verdicts is printed at the end.
-
-    Pass criterion (per ESN): every positive true exponent
-    (> ``max_positive_λ × 1e-2``) must lie within the ESN's 95 % CI band
-    (``|true_λ − esn_λ| ≤ esn_ci``).
+    comparison table is printed at the end.  For Kuramoto-Sivashinsky, an
+    additional reduced table (near-zero exponents removed) is always printed.
 
     Parameters
     ----------
@@ -1443,7 +1510,7 @@ def run_lyapunov_test(
 
     Returns
     -------
-    list of dict, one per ESN, as returned by :func:`_assess_one`.
+    list of dict, one per RC, as returned by :func:`_assess_one`.
     """
     import csv  # noqa: PLC0415
 
@@ -1467,12 +1534,21 @@ def run_lyapunov_test(
         underlying_groups.setdefault(sys_inst.name, []).append(esn_name)
 
     all_results: list = []
+    known = _load_known_specs()
+
+    if verbose:
+        print(f"\n{'=' * 64}")
+        print(f"{'LYAPUNOV EXPONENT FINDER DEMONSTRATION':^64}")
+        print(f"{'=' * 64}")
 
     for sys_name, esn_list in underlying_groups.items():
         if verbose:
+            sys_cls     = _SYSTEMS.get(sys_name)
+            formal_name = sys_cls.formal_name if sys_cls else sys_name
+            rc_list_str = ", ".join(esn_list)
             print(f"\n{'=' * 64}")
-            print(f"  Underlying system : {sys_name}")
-            print(f"  ESN(s)            : {esn_list}")
+            print(f"  {'Underlying system':<21}: {formal_name}")
+            print(f"  {'Reservoir Computer(s)':<21}: {rc_list_str}")
             print(f"{'=' * 64}")
 
         # True spectrum — k set by the system's k_default.
@@ -1493,31 +1569,25 @@ def run_lyapunov_test(
             )
             all_results.append(result)
 
-    # Combined table and overall verdict.
-    if verbose and all_results:
-        _print_results_table(all_results)
-
-    overall = all(r["passed"] for r in all_results) if all_results else True
-
-    # If any row failed, try the near-zero-removed re-test.
-    if all_results and not overall:
+        # Print this system's results table before moving to the next system.
         if verbose:
-            print(
-                "\nComparison failed — removing near-zero exponents"
-                " (|λ| < 1% of principal λ) and re-testing:"
-            )
-            _print_results_table(all_results, reduced=True)
-        overall_reduced = all(
-            r["passed"] or r["passed_reduced"] for r in all_results
-        )
-        if overall_reduced:
-            overall = True
-            if verbose:
-                print("Overall PASS after near-zero exponent removal.")
+            group = [r for r in all_results if r["underlying_sys"] == sys_name]
+            _print_system_table(sys_name, group, known.get(sys_name))
+
+            # Kuramoto-Sivashinsky: also print the reduced near-zero exponent table.
+            if sys_name == "kuramoto_sivashinsky":
+                print("\nRemoving near-zero exponents:")
+                for r in group:
+                    _print_system_table(
+                        "kuramoto_sivashinsky",
+                        [r],
+                        known.get("kuramoto_sivashinsky"),
+                        reduced=True,
+                    )
 
     elapsed = time.perf_counter() - _t0
-    verdict = "PASS" if overall else "FAIL"
-    print(f"\nOverall: {verdict}  Runtime: {elapsed:.1f}s", flush=True)
+    mins, secs = divmod(elapsed, 60)
+    print(f"\nOverall Runtime: {int(mins):02d}:{secs:05.2f}", flush=True)
 
     return all_results
 
@@ -1532,4 +1602,4 @@ def run_lyapunov_test(
 #   python -m reservoirpy.tests.lyapunov.lyapunov_test --true lorenz  → true system only
 
 if __name__ == "__main__":
-    run_lyapunov_test(["lorenz_x_2res", "lorenz_f", "lorenz_x", "kuramoto_sivashinsky"], force_true_spectra=False)
+    main(force_true_spectra=True)
