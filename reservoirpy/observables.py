@@ -513,14 +513,14 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
                        progress_bar=False):
     """Estimate the largest Lyapunov exponent via a Benettin probe.
 
-    Primary pass (``"probe"``): ``sub_cycle = max(50, state_dim)`` — each
-    window spans at least one full ring-buffer traversal, so the DDE
-    delayed-feedback channel has time to act before renormalization resets the
-    perturbation direction.  The first half of windows is discarded as an
-    alignment transient.
-    Fallback pass (``"probe-fast"``): ``sub_cycle=5`` — runs only if the
-    primary pass returns ``None`` (divergence or degenerate perturbation norm).
-    Returns ``None`` only if both passes fail.
+    Primary pass (``"lyapunov time probe"``):
+    ``sub_cycle = max(50, state_dim)`` — each window spans at least one full
+    ring-buffer traversal, so the DDE delayed-feedback channel has time to act
+    before renormalization resets the perturbation direction.  The first half
+    of windows is discarded as an alignment transient.
+    Fallback pass (``"lyapunov time probe"``): ``sub_cycle=5`` — runs only if
+    the primary pass returns ``None`` (divergence or degenerate perturbation
+    norm).  Returns ``None`` only if both passes fail.
     Leaves ``model.state`` restored to its pre-probe value.
 
     ``probe_sub_cycle_cap`` caps the primary-pass sub_cycle (useful for
@@ -546,12 +546,7 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
         log_growths = np.empty(n_windows)
         discard = n_windows // 2
 
-        if progress_bar:
-            total_steps = n_windows * sub_cyc * 2   # fid + pert each window
-            print(f"    {label}:  {n_windows} renorms × {sub_cyc} steps "
-                  f"({discard} transient / {n_windows - discard} kept)"
-                  f"  = {total_steps} steps total", flush=True)
-        bar = tqdm(total=n_windows, desc=label, unit="renorm",
+        bar = tqdm(total=n_windows, desc="  " + label.ljust(24), unit="renorm",
                    disable=not progress_bar, file=sys.stdout)
 
         for w in range(n_windows):
@@ -583,14 +578,14 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
     if probe_sub_cycle_cap is not None:
         slow_sub = min(slow_sub, probe_sub_cycle_cap)
     state_before = np.asarray(model.state, dtype=float).copy()
-    result_slow, fid = _run_pass(slow_sub, min_windows=200, label="probe")
+    result_slow, fid = _run_pass(slow_sub, min_windows=200, label="lyapunov time probe")
     model.state = fid
     if result_slow is not None:
         return result_slow
 
     # Fallback pass: short fast window, only if the primary pass diverged/failed.
     model.state = state_before
-    result_fast, fid = _run_pass(sub_cycle, label="probe-fast")
+    result_fast, fid = _run_pass(sub_cycle, label="lyapunov time probe")
     model.state = fid
     return result_fast
 
@@ -633,6 +628,34 @@ def _is_converged(spectrum, ci_half_rate, ky_dim, ky_dim_ci, rtol, mode):
             return False
         return bool(np.max(ci_half_rate[finite]) < rtol * abs(lam1))
     raise ValueError(f"unknown convergence mode: {mode!r}")
+
+
+def _warn_in_order(message: str, stacklevel: int = 3) -> None:
+    """Emit a RuntimeWarning to stdout so it stays in order with progress bars.
+
+    Progress bars and status prints go to stdout; the default ``warnings.warn``
+    writes to stderr.  Stdout and stderr are independent streams — flushing
+    both does not guarantee display order at the terminal level.  This helper
+    temporarily redirects warning output to stdout (the same stream as tqdm),
+    which guarantees the warning appears immediately after the bar that
+    triggered it.
+
+    ``stacklevel=3`` (default) makes the reported call-site point to
+    *_lyapunov*'s caller rather than to the helper itself — equivalent to
+    ``stacklevel=2`` in a direct ``warnings.warn`` call inside ``_lyapunov``.
+    """
+    sys.stdout.flush()
+    orig_showwarning = warnings.showwarning
+
+    def _to_stdout(msg, cat, fn, ln, file=None, line=None):
+        orig_showwarning(msg, cat, fn, ln, file=sys.stdout, line=line)
+
+    warnings.showwarning = _to_stdout
+    try:
+        warnings.warn(message, RuntimeWarning, stacklevel=stacklevel)
+    finally:
+        warnings.showwarning = orig_showwarning
+    sys.stdout.flush()
 
 
 _PROGRESS_INTERVAL = 50
@@ -752,11 +775,6 @@ def _lyapunov(
 
     # --- probe to auto-set cycle_length ---
     if cycle_length is None:
-        if progress_bar:
-            _cap_str = (f", cap={probe_sub_cycle_cap}" if probe_sub_cycle_cap
-                        else "")
-            print(f"  [probe] estimating λ₁  (slow sub_cycle≥50 + fast fallback{_cap_str})",
-                  flush=True)
         lambda_1_probe = _estimate_lambda_1(
             model, epsilon, probe_sub_cycle_cap=probe_sub_cycle_cap,
             progress_bar=progress_bar)
@@ -764,12 +782,6 @@ def _lyapunov(
             cycle_length = 100
         else:
             cycle_length = int(np.ceil(lyap_time_per_cycle / (lambda_1_probe * t_step)))
-        if progress_bar:
-            probe_str = (f"{lambda_1_probe:.5f}" if lambda_1_probe is not None
-                         else "None (fallback)")
-            steps_per_qr = cycle_length * (k + 1)
-            print(f"  [probe] λ₁ ≈ {probe_str}/step  →  cycle_length={cycle_length}"
-                  f"  ({steps_per_qr} steps/QR-cycle, k+1={k+1} states)", flush=True)
     else:
         lambda_1_probe = None
 
@@ -814,7 +826,8 @@ def _lyapunov(
     # --- adaptive or fixed breakin ---
     breakin_used = 0
     if breakin_cycles is not None:
-        pbar_bi = tqdm(total=breakin_cycles, desc="breakin", unit="cyc",
+        pbar_bi = tqdm(total=breakin_cycles,
+                       desc="  " + "perturbation breakin".ljust(24), unit="cyc",
                        disable=not progress_bar, file=sys.stdout)
         _do_qr_cycles(breakin_cycles, pbar=pbar_bi)
         breakin_used = breakin_cycles
@@ -824,9 +837,11 @@ def _lyapunov(
         _DIAG_CYCLES = 50
         _MAX_ATTEMPTS = 3  # initial run + up to two reruns if ordering fails
         for attempt in range(1, _MAX_ATTEMPTS + 1):
+            _bi_label = ("perturbation breakin"
+                         if attempt == 1 else "perturbation breakin ext")
             pbar_bi = tqdm(
                 total=_BREAKIN_CHUNK,
-                desc=f"breakin {attempt}/{_MAX_ATTEMPTS}",
+                desc="  " + _bi_label.ljust(24),
                 unit="cyc",
                 disable=not progress_bar,
                 file=sys.stdout,
@@ -848,7 +863,7 @@ def _lyapunov(
 
     cycles_per_batch = max(1, min_cycles // m)
 
-    pbar = tqdm(total=max_cycles, desc="Lyapunov", unit="cyc",
+    pbar = tqdm(total=max_cycles, desc="  " + "lyapunov spectrum finder", unit="cyc",
                 disable=not progress_bar, file=sys.stdout)
 
     while n_cycles < max_cycles and not converged:
@@ -921,22 +936,18 @@ def _lyapunov(
     ky_dim_ci = _kaplan_yorke_ci(spectrum, ci_half_rate)
 
     if _ordering_violated(recorded, cycle_length, t_step):
-        warnings.warn(
+        _warn_in_order(
             "Final Lyapunov spectrum has statistically significant out-of-order "
             "adjacent exponents — consider increasing max_cycles or breakin_cycles.",
-            RuntimeWarning,
-            stacklevel=2,
         )
 
     finite_spec = spectrum[np.isfinite(spectrum)]
     if len(finite_spec) >= 2 and np.isfinite(spectrum[0]) and spectrum[0] != 0:
         n_near_zero = int(np.sum(np.abs(finite_spec) < 1e-3 * np.abs(spectrum[0])))
         if n_near_zero >= 2:
-            warnings.warn(
+            _warn_in_order(
                 f"{n_near_zero} Lyapunov exponents are within 1e-3·|λ₁| of zero; "
                 "some may be spurious and the Kaplan-Yorke dimension may be off by one.",
-                RuntimeWarning,
-                stacklevel=2,
             )
 
     return {
