@@ -33,6 +33,7 @@ import numpy as np
 from scipy import linalg
 from scipy.sparse import issparse
 from scipy.sparse.linalg import eigs
+from tqdm import tqdm
 
 from .type import Weights
 from .utils.random import rand_generator
@@ -510,18 +511,21 @@ def effective_spectral_radius(W: np.ndarray, lr: float = 1.0, maxiter: Optional[
 def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
                        probe_sub_cycle_cap=None,
                        progress_bar=False):
-    """Estimate the largest Lyapunov exponent via a two-pass Benettin probe.
+    """Estimate the largest Lyapunov exponent via a Benettin probe.
 
-    Pass 1 (fast): ``sub_cycle=5`` — good for high-λ ODE systems.
-    Pass 2 (slow): ``sub_cycle = max(50, state_dim)`` — each window spans at
-    least one full ring-buffer traversal, so the DDE delayed-feedback channel
-    has time to act before renormalization resets the perturbation direction.
-    The first half of windows is discarded as alignment transient in both passes.
-    Returns ``None`` only if both passes give a non-positive or diverging result.
+    Primary pass (``"probe"``): ``sub_cycle = max(50, state_dim)`` — each
+    window spans at least one full ring-buffer traversal, so the DDE
+    delayed-feedback channel has time to act before renormalization resets the
+    perturbation direction.  The first half of windows is discarded as an
+    alignment transient.
+    Fallback pass (``"probe-fast"``): ``sub_cycle=5`` — runs only if the
+    primary pass returns ``None`` (divergence or degenerate perturbation norm).
+    Returns ``None`` only if both passes fail.
     Leaves ``model.state`` restored to its pre-probe value.
 
-    ``probe_sub_cycle_cap`` caps the slow-pass sub_cycle (useful for large-state
-    models like ESNs where the state dimension is not a ring-buffer length).
+    ``probe_sub_cycle_cap`` caps the primary-pass sub_cycle (useful for
+    large-state models like ESNs where the state dimension is not a ring-buffer
+    length).
     """
     t_step = getattr(model, "t_step", 1.0)
     stdev = getattr(model, "stdev", 1.0)
@@ -546,49 +550,49 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5,
             total_steps = n_windows * sub_cyc * 2   # fid + pert each window
             print(f"    {label}:  {n_windows} renorms × {sub_cyc} steps "
                   f"({discard} transient / {n_windows - discard} kept)"
-                  f"  = {total_steps} steps total",
-                  flush=True)
-        bar = (_LyapProgress(n_windows, label, cycles_per_mark=1)
-               if progress_bar else None)
+                  f"  = {total_steps} steps total", flush=True)
+        bar = tqdm(total=n_windows, desc=label, unit="renorm",
+                   disable=not progress_bar, file=sys.stdout)
 
         for w in range(n_windows):
             model.state = fid
-            model.evolve(sub_cyc)
+            model.run(sub_cyc)
             fid = np.asarray(model.state, dtype=float)
             model.state = pert
-            model.evolve(sub_cyc)
+            model.run(sub_cyc)
             pert = np.asarray(model.state, dtype=float)
             delta = pert - fid
             d = np.linalg.norm(delta)
             if not np.isfinite(d) or d == 0.0:
-                if bar:
-                    bar.close()
+                bar.close()
                 return None, fid
             log_growths[w] = np.log(d / pert_scale)
             pert = fid + delta * (pert_scale / d)
-            if bar:
-                bar.update(1)
+            bar.update(1)
 
-        if bar:
-            bar.close()
+        bar.close()
         # discard first half as alignment transient; mean over second half
         lam = float(log_growths[discard:].mean()) / sub_cyc
         return (lam / t_step if lam > 0 else None), fid
 
-    result_fast, fid = _run_pass(sub_cycle, label="probe-fast")
-    # always run slow pass — dim-aware window size handles DDE/PDE ring-buffer states
-    model.state = fid
-    dim = fid.size
-    # min_windows=200 → 100 recording windows after half-discard, enough to average
-    # out Lorenz-scale variance while still spanning the full ring buffer for DDE/PDE
+    # Primary pass: dim-aware window — handles DDE/PDE ring-buffer states.
+    # min_windows=200 → 100 recording windows after half-discard, enough to
+    # average out Lorenz-scale variance while spanning the full ring buffer.
+    dim = np.asarray(model.state, dtype=float).size
     slow_sub = max(50, dim)
     if probe_sub_cycle_cap is not None:
         slow_sub = min(slow_sub, probe_sub_cycle_cap)
-    result_slow, fid = _run_pass(slow_sub, min_windows=200, label="probe-slow")
+    state_before = np.asarray(model.state, dtype=float).copy()
+    result_slow, fid = _run_pass(slow_sub, min_windows=200, label="probe")
     model.state = fid
-    # prefer the slow-pass result; fall back to fast; return None if both fail
-    results = [r for r in [result_slow, result_fast] if r is not None]
-    return results[0] if results else None
+    if result_slow is not None:
+        return result_slow
+
+    # Fallback pass: short fast window, only if the primary pass diverged/failed.
+    model.state = state_before
+    result_fast, fid = _run_pass(sub_cycle, label="probe-fast")
+    model.state = fid
+    return result_fast
 
 
 def _ordering_violated(log_growths, cycle_length, t_step):
@@ -634,57 +638,6 @@ def _is_converged(spectrum, ci_half_rate, ky_dim, ky_dim_ci, rtol, mode):
 _PROGRESS_INTERVAL = 50
 
 
-def _progress_bar(done: int, total: int, done_flag: bool, phase: str = "accum") -> None:
-    width = 30
-    frac = done / total if total else 1.0
-    filled = int(width * frac)
-    bar = "#" * filled + "-" * (width - filled)
-    tag = " converged" if done_flag else ""
-    sys.stderr.write(f"\r  {phase} [{bar}] {done}/{total}{tag}")
-    sys.stderr.flush()
-
-
-class _LyapProgress:
-    """Plain-stdout progress bar: a ruler line of '_' then '|' marks, one mark
-    per ``cycles_per_mark`` cycles.  Example (total=2000, cpm=100 → 20 marks)::
-
-        Breakin: 2000 cycles, 1 '|' = 100 cycles
-        ____________________
-          ||||||||||||||||||||
-    """
-
-    def __init__(self, total: int, label: str,
-                 cycles_per_mark: int = 100) -> None:
-        self.total = max(1, int(total))
-        self.cpm = max(1, int(cycles_per_mark))
-        self.n_marks = max(1, -(-self.total // self.cpm))  # ceiling division
-        self.count = 0
-        self.marks = 0
-        self.label = label
-        self.t0 = time.perf_counter()
-        print(f"  {label}: {self.total} cycles, 1 '|' = {self.cpm} cycles",
-              flush=True)
-        print("  " + "_" * self.n_marks, flush=True)
-        sys.stdout.write("  ")
-        sys.stdout.flush()
-
-    def update(self, n: int = 1) -> None:
-        self.count += n
-        tgt = min(self.n_marks, self.count // self.cpm)
-        while self.marks < tgt:
-            self.marks += 1
-            sys.stdout.write("|")
-            sys.stdout.flush()
-
-    @property
-    def elapsed(self) -> float:
-        return time.perf_counter() - self.t0
-
-    def close(self) -> None:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-
-
 def _lyapunov(
     model,
     k: int,
@@ -692,11 +645,10 @@ def _lyapunov(
     breakin_cycles: Optional[int] = None,
     min_cycles: int = 500,
     max_cycles: int = 2000,
-    rtol: float = 0.01,
+    rtol: float = 0.0,
     epsilon: float = 1e-5,
     lyap_time_per_cycle: float = 0.5,
     convergence: str = "ky_dim",
-    display: bool = False,
     progress_bar: bool = False,
     probe_sub_cycle_cap: Optional[int] = None,
 ) -> dict:
@@ -708,12 +660,14 @@ def _lyapunov(
 
     Parameters
     ----------
-    model : object
-        Duck-typed model with the following attributes:
+    model : :class:`ReservoirStepper` or equivalent
+        A stepper object implementing the following contract (reservoirs via
+        :class:`ReservoirStepper`; baseline ODE systems via a compatible
+        wrapper):
 
         - ``state`` : array of shape ``(dim,)``, or list of ``m`` such arrays
           for multiple input states.  Readable and writable.
-        - ``evolve(steps: int)`` : advance the model ``steps`` iterations,
+        - ``run(steps: int)`` : advance the model ``steps`` iterations,
           updating ``model.state`` in place.
         - ``t_step`` : float, default 1 — real time per iteration.
         - ``stdev`` : float, default 1 — attractor data standard deviation,
@@ -727,8 +681,9 @@ def _lyapunov(
         to approximately half the Lyapunov time.
     breakin_cycles : int or None, optional
         Cycles run before accumulation begins (discarded).  If ``None``
-        (default), an adaptive scheme runs 200-cycle chunks until spectrum
-        ordering is satisfied, up to a hard cap of 1000 cycles.
+        (default), an adaptive scheme runs a 500-cycle break-in, checks
+        spectrum ordering, and reruns up to two more times (1500 cycles
+        total) if ordering is still violated.
     min_cycles : int, optional
         Minimum post-breakin cycles between convergence checks.  Default 500.
     max_cycles : int, optional
@@ -745,8 +700,9 @@ def _lyapunov(
         Which quantity the ``rtol`` criterion is applied to.  One of
         ``"ky_dim"`` (default — falls back to ``"all"`` when KY is undefined),
         ``"lambda_1"`` (CI of λ₁ only), or ``"all"`` (max CI vs |λ₁|).
-    display : bool, optional
-        If True, show a growth-factor time series and a convergence plot.
+    progress_bar : bool, optional
+        If True, show tqdm progress bars for the probe, break-in, and
+        accumulation phases.  Default False.
 
     Returns
     -------
@@ -799,7 +755,7 @@ def _lyapunov(
         if progress_bar:
             _cap_str = (f", cap={probe_sub_cycle_cap}" if probe_sub_cycle_cap
                         else "")
-            print(f"  [probe] estimating λ₁  (fast sub_cycle=5 + slow{_cap_str})",
+            print(f"  [probe] estimating λ₁  (slow sub_cycle≥50 + fast fallback{_cap_str})",
                   flush=True)
         lambda_1_probe = _estimate_lambda_1(
             model, epsilon, probe_sub_cycle_cap=probe_sub_cycle_cap,
@@ -808,13 +764,12 @@ def _lyapunov(
             cycle_length = 100
         else:
             cycle_length = int(np.ceil(lyap_time_per_cycle / (lambda_1_probe * t_step)))
-        if display or progress_bar:
+        if progress_bar:
             probe_str = (f"{lambda_1_probe:.5f}" if lambda_1_probe is not None
                          else "None (fallback)")
             steps_per_qr = cycle_length * (k + 1)
             print(f"  [probe] λ₁ ≈ {probe_str}/step  →  cycle_length={cycle_length}"
-                  f"  ({steps_per_qr} steps/QR-cycle, k+1={k+1} states)",
-                  flush=True)
+                  f"  ({steps_per_qr} steps/QR-cycle, k+1={k+1} states)", flush=True)
     else:
         lambda_1_probe = None
 
@@ -830,7 +785,7 @@ def _lyapunov(
             collection[j + 1, j % dim] += pert_scale
         perturbed_states.append(collection)
 
-    def _do_qr_cycles(n, record=False):
+    def _do_qr_cycles(n, record=False, pbar=None):
         """Run n QR-Benettin cycles over all m collections; optionally record log-growths."""
         buf = np.empty((n * m, k)) if record else None
         c = 0
@@ -838,7 +793,7 @@ def _lyapunov(
             for i in range(m):
                 for j in range(k + 1):
                     model.state = perturbed_states[i][j]
-                    model.evolve(cycle_length)
+                    model.run(cycle_length)
                     perturbed_states[i][j] = np.asarray(model.state, dtype=float)
                 fiducial = perturbed_states[i][0]
                 error = perturbed_states[i][1:] - fiducial
@@ -852,58 +807,36 @@ def _lyapunov(
                 signs[signs == 0] = 1.0
                 Q = Q * signs
                 perturbed_states[i][1:] = fiducial + (Q[:, :k] * pert_scale).T
+            if pbar is not None:
+                pbar.update(1)
         return buf[:c] if record else None
-
-    # --- plain-stdout progress bar factory (replaces tqdm) ---
-    _make_bar = (
-        lambda total, label: _LyapProgress(total, label, cycles_per_mark=100)  # noqa: E731
-    ) if progress_bar else None
 
     # --- adaptive or fixed breakin ---
     breakin_used = 0
-    _t_breakin = time.perf_counter()
     if breakin_cycles is not None:
-        remaining = breakin_cycles
-        while remaining > 0:
-            chunk = min(remaining, _PROGRESS_INTERVAL)
-            _do_qr_cycles(chunk)
-            breakin_used += chunk
-            remaining -= chunk
-            if display:
-                _progress_bar(breakin_used, breakin_cycles, False, "breakin")
-        if display:
-            sys.stderr.write("\n")
-            sys.stderr.flush()
+        pbar_bi = tqdm(total=breakin_cycles, desc="breakin", unit="cyc",
+                       disable=not progress_bar, file=sys.stdout)
+        _do_qr_cycles(breakin_cycles, pbar=pbar_bi)
+        breakin_used = breakin_cycles
+        pbar_bi.close()
     else:
-        _BREAKIN_CHUNK = 200
+        _BREAKIN_CHUNK = 500
         _DIAG_CYCLES = 50
-        _MAX_BREAKIN = 1000
-        while breakin_used < _MAX_BREAKIN:
-            _do_qr_cycles(_BREAKIN_CHUNK)
+        _MAX_ATTEMPTS = 3  # initial run + up to two reruns if ordering fails
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            pbar_bi = tqdm(
+                total=_BREAKIN_CHUNK,
+                desc=f"breakin {attempt}/{_MAX_ATTEMPTS}",
+                unit="cyc",
+                disable=not progress_bar,
+                file=sys.stdout,
+            )
+            _do_qr_cycles(_BREAKIN_CHUNK, pbar=pbar_bi)
             breakin_used += _BREAKIN_CHUNK
+            pbar_bi.close()
             sample = _do_qr_cycles(_DIAG_CYCLES, record=True)
-            violated = _ordering_violated(sample, cycle_length, t_step)
-            if display:
-                ok_str = "ok" if not violated else "violated"
-                _progress_bar(breakin_used, _MAX_BREAKIN, not violated,
-                               f"breakin  order={ok_str}")
-            if not violated:
+            if not _ordering_violated(sample, cycle_length, t_step):
                 break
-        if display:
-            sys.stderr.write("\n")
-            sys.stderr.flush()
-
-    # --- ETA estimate before accumulation ---
-    if progress_bar and breakin_used > 0:
-        breakin_secs = time.perf_counter() - _t_breakin
-        spc = breakin_secs / breakin_used
-        print(
-            f"  Breakin: {breakin_used} cycles in {breakin_secs:.1f}s "
-            f"({spc * 1e3:.2f} ms/cyc, cycle_length={cycle_length})"
-            f"  →  est. accumulation ≤ {spc * max_cycles:.1f}s "
-            f"for {max_cycles} cycles",
-            flush=True,
-        )
 
     # --- accumulation phase ---
     _SAT_LOG_THRESH = np.log(1e-12)
@@ -915,7 +848,8 @@ def _lyapunov(
 
     cycles_per_batch = max(1, min_cycles // m)
 
-    acc = _make_bar(max_cycles, "Lyapunov") if _make_bar else None
+    pbar = tqdm(total=max_cycles, desc="Lyapunov", unit="cyc",
+                disable=not progress_bar, file=sys.stdout)
 
     while n_cycles < max_cycles and not converged:
         batch = min(cycles_per_batch, max_cycles - n_cycles)
@@ -925,7 +859,7 @@ def _lyapunov(
                     break
                 for j in range(k + 1):
                     model.state = perturbed_states[i][j]
-                    model.evolve(cycle_length)
+                    model.run(cycle_length)
                     perturbed_states[i][j] = np.asarray(model.state, dtype=float)
 
                 fiducial = perturbed_states[i][0]
@@ -940,10 +874,7 @@ def _lyapunov(
                 log_growths[n_cycles] = lg
                 sat_count += lg < _SAT_LOG_THRESH
                 n_cycles += 1
-                if acc is not None:
-                    acc.update(1)
-                if display and n_cycles % _PROGRESS_INTERVAL == 0:
-                    _progress_bar(n_cycles, max_cycles, False)
+                pbar.update(1)
 
                 signs = np.sign(np.diag(R))
                 signs[signs == 0] = 1.0
@@ -973,12 +904,7 @@ def _lyapunov(
                 spectrum, ci_half_rate, ky_dim, ky_dim_ci, rtol, convergence
             )
 
-    if acc is not None:
-        acc.close()
-    if display:
-        _progress_bar(n_cycles, max_cycles, converged)
-        sys.stderr.write("\n")
-        sys.stderr.flush()
+    pbar.close()
 
     # --- finalize ---
     recorded = log_growths[:n_cycles].copy()
@@ -1509,56 +1435,83 @@ def _parse_init(init, kind: str):
     return items
 
 
-def _rc_closed_loop_step(model) -> None:
-    """Advance a trained RC one step in closed-loop (autoregressive) mode.
+class ReservoirStepper:
+    """Stepper that drives a trained reservoirpy :class:`Model` for :func:`_lyapunov`.
 
-    If the model has delayed-feedback edges (feedback_buffers is non-empty),
-    use ``model.run(iters=1)`` which routes output through the buffer
-    automatically.  Otherwise read the current output-node state and feed it
-    back manually as the next-step input — this covers the common case of a
-    plain ``Reservoir >> Ridge`` model without explicit feedback wiring.
-    """
-    fb = getattr(model, "feedback_buffers", None)
-    if fb:
-        model.run(iters=1)
-    else:
-        pred = np.concatenate(
-            [np.asarray(n.state["out"], float).ravel() for n in model.outputs]
-        )
-        model.run(pred.reshape(1, -1))
+    This is the **primary** object fed to the QR-Benettin engine.  It wraps a
+    trained model and exposes the stepper contract:
 
+    - ``state`` — flat 1-D array (or list of arrays for multi-IC runs),
+      readable and writable.
+    - ``run(n_steps)`` — advance the model ``n_steps`` closed-loop steps,
+      updating ``state`` in place.
+    - ``t_step`` — real time per step (default 1.0; ``lyapunov()`` sets this
+      from the model's training ``time_step`` HP if available).
+    - ``stdev`` — attractor scale used to size perturbations; set by
+      :meth:`probe_stdev` or supplied directly.
 
-def _probe_stdev(model, n_probe: int = 200) -> float:
-    """Estimate attractor stdev from a short closed-loop run."""
-    records = []
-    for _ in range(n_probe):
-        _rc_closed_loop_step(model)
-        records.append(_flatten_model_state(model))
-    stdev = float(np.std(np.stack(records)))
-    return stdev if stdev > 0 else 1.0
-
-
-class _RCAdapter:
-    """Duck-typed wrapper that exposes a trained reservoirpy Model to ``_lyapunov``.
-
-    ``_lyapunov`` sets ``adapter.state``, calls ``adapter.evolve(steps)``,
-    then reads ``adapter.state`` back.  This class translates those operations
-    to ``_unflatten_model_state`` / closed-loop stepping /
-    ``_flatten_model_state``.
+    Closed-loop stepping: if the model has delayed-feedback edges
+    (``feedback_buffers`` is non-empty), each step calls
+    ``model.run(iters=1)``, which routes output through the buffer
+    automatically.  Otherwise the current output-node state is read and fed
+    back as the next-step input — the common case of a plain
+    ``Reservoir >> Ridge`` model without explicit feedback wiring.
     """
 
     t_step: float = 1.0
 
-    def __init__(self, model, init_states: list, stdev: float):
+    def __init__(self, model, init_states: list, stdev: float = 1.0,
+                 t_step: float = 1.0):
         self._model = model
-        self.state = init_states if len(init_states) > 1 else init_states[0]
+        self.state = init_states[0] if len(init_states) == 1 else init_states
         self.stdev = stdev
+        self.t_step = t_step
 
-    def evolve(self, steps: int) -> None:
+    # ------------------------------------------------------------------
+    # stepper contract
+    # ------------------------------------------------------------------
+
+    def run(self, n_steps: int) -> None:
+        """Advance ``n_steps`` closed-loop steps; update ``self.state``."""
         _unflatten_model_state(self._model, np.asarray(self.state, float))
-        for _ in range(steps):
-            _rc_closed_loop_step(self._model)
+        for _ in range(n_steps):
+            self._closed_loop_step()
         self.state = _flatten_model_state(self._model)
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+
+    def _closed_loop_step(self) -> None:
+        """Advance the underlying model one step in closed-loop mode."""
+        fb = getattr(self._model, "feedback_buffers", None)
+        if fb:
+            self._model.run(iters=1)
+        else:
+            pred = np.concatenate(
+                [np.asarray(n.state["out"], float).ravel()
+                 for n in self._model.outputs]
+            )
+            self._model.run(pred.reshape(1, -1))
+
+    def probe_stdev(self, n_probe: int = 200) -> float:
+        """Estimate attractor stdev from a short closed-loop run.
+
+        Starts from the first init state (restores it after probing so the
+        saved state is not consumed).  Returns at least a small positive floor
+        so perturbation scaling is never zero.
+        """
+        saved = np.asarray(self.state if not isinstance(self.state, list)
+                           else self.state[0], float).copy()
+        _unflatten_model_state(self._model, saved)
+        records = []
+        for _ in range(n_probe):
+            self._closed_loop_step()
+            records.append(_flatten_model_state(self._model))
+        # restore so the saved state is available for the main run
+        _unflatten_model_state(self._model, saved)
+        stdev = float(np.std(np.stack(records)))
+        return stdev if stdev > 0 else 1.0
 
 
 def lyapunov(
@@ -1572,11 +1525,11 @@ def lyapunov(
 ) -> dict:
     """Lyapunov spectrum of a trained reservoir computer.
 
-    Wraps :func:`_lyapunov` for use with a trained reservoirpy :class:`Model`.
-    The model is driven in closed-loop (autoregressive) mode: at each step the
-    output-node prediction is fed back as the next-step input.  Models with
-    explicit feedback wiring (``<<``) and plain ``Reservoir >> Ridge`` models
-    are both supported.
+    Wraps :func:`_lyapunov` for use with a trained reservoirpy :class:`Model`
+    via a :class:`ReservoirStepper`.  The model is driven in closed-loop
+    (autoregressive) mode: at each step the output-node prediction is fed back
+    as the next-step input.  Models with explicit feedback wiring (``<<``) and
+    plain ``Reservoir >> Ridge`` models are both supported.
 
     Parameters
     ----------
@@ -1616,7 +1569,7 @@ def lyapunov(
     **lyap_kwargs
         Additional keyword arguments forwarded to :func:`_lyapunov`
         (e.g. ``breakin_cycles``, ``min_cycles``, ``max_cycles``, ``rtol``,
-        ``epsilon``, ``lyap_time_per_cycle``, ``display``).
+        ``epsilon``, ``lyap_time_per_cycle``, ``progress_bar``).
 
     Returns
     -------
@@ -1662,13 +1615,11 @@ def lyapunov(
             "are all trajectories shorter than spinup?"
         )
 
+    stepper = ReservoirStepper(model, init_states)
     if kind == "trajectory":
-        stdev = _probe_stdev(model)
-    else:
-        stdev = 1.0
+        stepper.stdev = stepper.probe_stdev()
 
     if k is None:
         k = init_states[0].size
 
-    adapter = _RCAdapter(model, init_states, stdev)
-    return _lyapunov(adapter, k=k, **lyap_kwargs)
+    return _lyapunov(stepper, k=k, **lyap_kwargs)

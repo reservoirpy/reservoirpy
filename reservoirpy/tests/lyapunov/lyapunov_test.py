@@ -1,25 +1,28 @@
-"""Lyapunov spectrum computation for known dynamical systems.
+"""Lyapunov spectrum test suite for known dynamical systems and trained ESNs.
 
-This module validates ``_lyapunov()`` against reference dynamical systems from
-``reservoirpy.datasets._chaos``.  It is designed to be run as a script (item 3
-of the Lyapunov implementation plan) rather than as a pytest test suite.
+Validates ``_lyapunov()`` against reference systems, then compares ESN spectra
+to true spectra from those same systems.  Designed to be run as a script or
+called interactively.
 
 Usage::
 
-    # single system (with display)
-    python -m reservoirpy.tests.lyapunov.lyapunov_test lorenz
-    # all item-3 systems → writes true_values.csv
+    # all systems in hyperparameters.csv
     python -m reservoirpy.tests.lyapunov.lyapunov_test
+    # named systems only
+    python -m reservoirpy.tests.lyapunov.lyapunov_test lorenz_x lorenz_f
+    # true system only (no ESN)
+    python -m reservoirpy.tests.lyapunov.lyapunov_test --true lorenz
 """
 
+import ast
 import os
 import pickle
 import sys
+import time
 from typing import Optional
 
 # Ensure the local reservoirpy fork takes precedence over any installed copy.
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../..")))
-
 
 import numpy as np
 import scipy.fft
@@ -29,8 +32,23 @@ from reservoirpy.observables import (
     _lyapunov,
     _kaplan_yorke,
     _kaplan_yorke_ci,
-    valid_time_multitest,
 )
+
+
+# ---------------------------------------------------------------------------
+# Path constants
+# ---------------------------------------------------------------------------
+
+_THIS_DIR        = os.path.dirname(os.path.abspath(__file__))
+_IC_DIR          = os.path.join(_THIS_DIR, "initial_conditions")
+_TRUE_SPECTRA_CSV  = os.path.join(_THIS_DIR, "true_lyapunov_spectra.csv")
+_KNOWN_SPECS_CSV   = os.path.join(_THIS_DIR, "known_lyapunov_specs.csv")
+_MODEL_CACHE_DIR   = os.path.join(_THIS_DIR, "model_cache")
+_DATA_CACHE_DIR  = os.path.join(_THIS_DIR, "data_cache")
+
+_N_TRAIN = 20000   # training trajectory length
+_N_VAL   = 10000   # validation block length
+_SPINUP  = 200     # open-loop warmup steps (fixed fallback)
 
 
 # ---------------------------------------------------------------------------
@@ -69,12 +87,20 @@ def _ks_etdrk4_setup(N: int, M: int, h: float, d: float) -> dict:
 
 
 class _KnownSystem:
-    """Per-system constants, stepper, and IC; presents the ``_lyapunov`` API.
+    """Per-system constants and integrator for a known dynamical system.
 
     Subclasses must implement :meth:`step` and :meth:`initial_state`.
-    After calling ``initial_state()``, assign its return values to
-    ``self.state`` and ``self.stdev`` before passing the instance to
-    ``_lyapunov``.
+    To pass an instance to :func:`_lyapunov`, set ``self.state = self.x0.copy()``,
+    then wrap with :class:`_SystemStepper`.
+
+    Attributes
+    ----------
+    x0 : np.ndarray
+        On-attractor initial condition (post-warmup).  Used as the starting
+        state for all normal-path calls; ``initial_state()`` is a regenerator
+        utility only.
+    stdev : float
+        Trajectory standard deviation on the attractor.
     """
 
     name: str = ""
@@ -83,13 +109,12 @@ class _KnownSystem:
     t_step: float = 1.0
     n_warmup: int = 2000
     n_sample: int = 2000
+    stdev: float = 1.0
+    x0: np.ndarray = np.zeros(1)
 
     @property
     def cache_key(self) -> str:
         return self.name
-
-    def evolve(self, n_steps: int) -> None:
-        self.state = self.step(self.state, n_steps)
 
     def step(self, state: np.ndarray, n_steps: int) -> np.ndarray:
         raise NotImplementedError
@@ -98,7 +123,26 @@ class _KnownSystem:
         raise NotImplementedError
 
 
-class _RK4System(_KnownSystem):
+class _SystemStepper:
+    """Adapt a :class:`_KnownSystem` to the stepper contract for :func:`_lyapunov`.
+
+    Mirrors the interface of :class:`reservoirpy.observables.ReservoirStepper`
+    for baseline ODE/PDE systems.  The underlying system's :meth:`step` is
+    called on each :meth:`run` invocation; ``state``, ``stdev``, and ``t_step``
+    are copied from the wrapped system at construction time.
+    """
+
+    def __init__(self, system: _KnownSystem):
+        self._system = system
+        self.state  = system.state
+        self.stdev  = system.stdev
+        self.t_step = system.t_step
+
+    def run(self, n_steps: int) -> None:
+        self.state = self._system.step(self.state, n_steps)
+
+
+class _ODESystem(_KnownSystem):
     """Autonomous ODE systems integrated with fixed-step RK4.
 
     Subclasses set ``t_step`` and ``x0`` and implement :meth:`rhs`.
@@ -120,6 +164,14 @@ class _RK4System(_KnownSystem):
         return s
 
     def initial_state(self):
+        """Regenerate an on-attractor state and stdev from the current x0.
+
+        Uses ``self.x0`` as the integration seed, runs ``n_warmup`` steps to
+        explore the attractor, then samples ``n_sample`` steps for the stdev
+        estimate.  Not called on the normal path (``x0`` and ``stdev`` are class
+        attributes); useful if you need to re-derive the on-attractor IC from
+        scratch.
+        """
         state = self.step(np.asarray(self.x0, dtype=float), self.n_warmup)
         traj = np.empty((self.n_sample, state.size))
         for i in range(self.n_sample):
@@ -133,12 +185,15 @@ class _RK4System(_KnownSystem):
 # ---------------------------------------------------------------------------
 
 
-class Lorenz(_RK4System):
-    name = "lorenz"
+class Lorenz(_ODESystem):
+    """Lorenz (1963) attractor, σ=10, ρ=28, β=8/3."""
+
+    name      = "lorenz"
     k_default = 3
+    stdev     = 14.282866422209104
     sigma, rho, beta = 10.0, 28.0, 8.0 / 3.0
     t_step = 0.02
-    x0 = [10.0, 10.0, 1.0]
+    x0 = np.array([-14.534641402422949, -9.213263792189714, 39.81952304782705])
 
     def rhs(self, s):
         x, y, z = s
@@ -147,50 +202,37 @@ class Lorenz(_RK4System):
         )
 
 
-class Lorenz96(_RK4System):
-    name = "lorenz96"
+class Lorenz96(_ODESystem):
+    """Lorenz (1996) model, N=10, F=8."""
+
+    name      = "lorenz96"
     k_default = 10
-    F = 8.0
+    stdev     = 3.622654737513749
+    F      = 8.0
     t_step = 0.02
-
-    def __init__(self, N: int = 10):
-        self.N = N
-        x0 = np.ones(N)
-        x0[0] += 0.01
-        self.x0 = x0
-
-    @property
-    def cache_key(self) -> str:
-        return f"{self.name}_N{self.N}"
+    N      = 10
+    x0 = np.array([
+         1.538644901557219,   2.6612631824750546,  8.92197688363573,
+        -1.4017919582755187, -1.5123381827246805,  0.13260794908701265,
+         2.900132447269597,   5.747863245706213,   1.7267896821355198,
+        -2.798819138645696,
+    ])
 
     def rhs(self, s):
         return (np.roll(s, -1) - np.roll(s, 2)) * np.roll(s, 1) - s + self.F
 
 
-class RabinovichFabrikant(_RK4System):
-    name = "rabinovich_fabrikant"
-    k_default = 3
-    min_cycles_default = 300
-    alpha, gamma = 1.1, 0.87
-    t_step = 0.05
-    x0 = [-1.0, 0.0, 0.5]
-
-    def rhs(self, s):
-        x, y, z = s
-        return np.array(
-            [
-                y * (z - 1.0 + x**2) + self.gamma * x,
-                x * (3.0 * z + 1.0 - x**2) + self.gamma * y,
-                -2.0 * z * (self.alpha + x * y),
-            ]
-        )
-
-
 class MackeyGlass(_KnownSystem):
-    name = "mackey_glass"
-    k_default = 5
+    """Mackey-Glass delay-differential equation, τ=20, a=0.2, b=0.1, n=10."""
+
+    name      = "mackey_glass"
+    k_default = 10
+    stdev     = 0.2252707719024293
     tau, a, b, n_mg = 20.0, 0.2, 0.1, 10
     t_step = 0.1
+
+    def __init__(self):
+        self.x0 = np.load(os.path.join(_IC_DIR, "mackey_glass.npy"))
 
     @property
     def n_delay(self):
@@ -217,6 +259,7 @@ class MackeyGlass(_KnownSystem):
         return buf
 
     def initial_state(self):
+        """Regenerator: starts from 0.9·ones(n_delay), not from self.x0."""
         state = self.step(0.9 * np.ones(self.n_delay), self.n_warmup)
         traj = np.empty(self.n_sample)
         for i in range(self.n_sample):
@@ -226,14 +269,18 @@ class MackeyGlass(_KnownSystem):
 
 
 class KuramotoSivashinsky(_KnownSystem):
-    name = "kuramoto_sivashinsky"
+    """Kuramoto-Sivashinsky PDE on a periodic domain, L=22, N=128."""
+
+    name      = "kuramoto_sivashinsky"
     k_default = 10
+    stdev     = 1.1297214457875504
     N, M = 128, 16
     L = 22.0
     t_step = 0.25
 
     def __init__(self):
         self._scalars = _ks_etdrk4_setup(self.N, self.M, self.t_step, d=self.L)
+        self.x0 = np.load(os.path.join(_IC_DIR, "kuramoto_sivashinsky.npy"))
 
     def step(self, state: np.ndarray, n_steps: int) -> np.ndarray:
         v = scipy.fft.fft(state)
@@ -242,6 +289,7 @@ class KuramotoSivashinsky(_KnownSystem):
         return np.real(scipy.fft.ifft(v))
 
     def initial_state(self):
+        """Regenerator: starts from a cosine initial condition, not from self.x0."""
         phi = 2.0 * np.pi * np.arange(1, self.N + 1) / self.N
         state = np.cos(phi) * (1.0 + np.sin(phi))
         state = self.step(state, self.n_warmup)
@@ -253,16 +301,133 @@ class KuramotoSivashinsky(_KnownSystem):
 
 
 # ---------------------------------------------------------------------------
-# known_system_test
+# System registry
 # ---------------------------------------------------------------------------
 
 _SYSTEMS = {
     "lorenz":               Lorenz,
-    "lorenz96":             lambda: Lorenz96(N=10),
-    "rabinovich_fabrikant": RabinovichFabrikant,
+    "lorenz96":             Lorenz96,
     "mackey_glass":         MackeyGlass,
     "kuramoto_sivashinsky": KuramotoSivashinsky,
 }
+
+
+# ---------------------------------------------------------------------------
+# True-spectrum cache  (true_lyapunov_spectra.csv)
+# ---------------------------------------------------------------------------
+
+
+def _load_true_spectra() -> dict:
+    """Load ``true_lyapunov_spectra.csv``; return ``{sys: {spectrum, spectrum_ci}}``.
+
+    Rows are interleaved: one ``spectrum`` row then one ``ci`` row per system.
+    Columns are ``system``, ``kind``, ``l1``, ``l2``, … (ragged; trailing cells
+    may be empty).
+    """
+    if not os.path.exists(_TRUE_SPECTRA_CSV):
+        return {}
+    import csv
+
+    out: dict = {}
+    with open(_TRUE_SPECTRA_CSV, newline="") as f:
+        for row in csv.DictReader(f):
+            sys_name = row["system"]
+            kind     = row["kind"]   # "spectrum" or "ci"
+            # Collect lN values in order until an empty cell
+            vals = []
+            i = 1
+            while f"l{i}" in row and row[f"l{i}"].strip():
+                vals.append(float(row[f"l{i}"]))
+                i += 1
+            if sys_name not in out:
+                out[sys_name] = {"spectrum": None, "spectrum_ci": None}
+            key = "spectrum_ci" if kind == "ci" else "spectrum"
+            out[sys_name][key] = np.array(vals) if vals else None
+    return out
+
+
+def _save_true_spectra(spectra: dict) -> None:
+    """Write *spectra* dict to ``true_lyapunov_spectra.csv`` (interleaved rows).
+
+    Parameters
+    ----------
+    spectra : dict
+        ``{sys_name: {"spectrum": np.ndarray, "spectrum_ci": np.ndarray}}``.
+    """
+    import csv
+
+    max_k = 0
+    for val in spectra.values():
+        for arr in (val.get("spectrum"), val.get("spectrum_ci")):
+            if arr is not None:
+                max_k = max(max_k, len(arr))
+
+    fieldnames = ["system", "kind"] + [f"l{i + 1}" for i in range(max_k)]
+    with open(_TRUE_SPECTRA_CSV, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(fieldnames)
+        for sys_name, val in spectra.items():
+            for kind_key, arr_key in (("spectrum", "spectrum"), ("ci", "spectrum_ci")):
+                arr = val.get(arr_key)
+                if arr is not None:
+                    pad = [""] * (max_k - len(arr))
+                    w.writerow([sys_name, kind_key] + [repr(float(x)) for x in arr] + pad)
+
+
+# ---------------------------------------------------------------------------
+# Known-literature spectra  (known_lyapunov_specs.csv)
+# ---------------------------------------------------------------------------
+
+
+def _load_known_specs() -> dict:
+    """Load ``known_lyapunov_specs.csv``; return per-system literature entries.
+
+    Returns
+    -------
+    dict
+        ``{system_name: {"spectrum": np.ndarray, "source": str, "url": str,
+        "ky_dim": float or None}}``.  Returns ``{}`` if the file does not exist.
+
+    Notes
+    -----
+    The CSV stores individual exponents in columns ``l1``, ``l2``, … (ragged;
+    trailing columns may be absent for a given row).  ``l2`` may legitimately
+    be ``0``, so the presence check is ``cell.strip() != ""`` rather than
+    truthiness of the float.
+    """
+    if not os.path.exists(_KNOWN_SPECS_CSV):
+        return {}
+    import csv
+
+    out: dict = {}
+    with open(_KNOWN_SPECS_CSV, newline="") as f:
+        for row in csv.DictReader(f):
+            sys_name = row.get("system", "").strip()
+            if not sys_name:
+                continue
+            # Collect l1, l2, … in order until a column is absent or empty.
+            vals = []
+            i = 1
+            while f"l{i}" in row and row[f"l{i}"].strip() != "":
+                vals.append(float(row[f"l{i}"]))
+                i += 1
+            ky_raw  = row.get("ky_dim", "").strip()
+            ky_dim  = float(ky_raw) if ky_raw else None
+            # If a system appears more than once (multiple literature rows),
+            # keep the first entry — it typically has the fullest spectrum.
+            if sys_name not in out:
+                out[sys_name] = {
+                    "spectrum": np.array(vals) if vals else np.array([]),
+                    "source":   row.get("source", "").strip(),
+                    "url":      row.get("url", "").strip(),
+                    "ky_dim":   ky_dim,
+                }
+    return out
+
+
+# ---------------------------------------------------------------------------
+# known_system_test
+# ---------------------------------------------------------------------------
 
 
 def known_system_test(
@@ -277,26 +442,32 @@ def known_system_test(
     convergence: str = "ky_dim",
     space: str = "real",
     display: bool = True,
+    force: bool = False,
+    verbose: bool = True,
 ) -> dict:
     """Compute the Lyapunov spectrum of a known dynamical system.
+
+    Uses the class's on-attractor ``x0`` and ``stdev`` as the starting state —
+    no warmup is required.  Caches computed spectra to
+    ``true_lyapunov_spectra.csv`` and returns from cache on subsequent calls
+    (unless *force* is True or the cache has fewer than *k* exponents).
 
     Parameters
     ----------
     system_name : str
-        One of ``"lorenz"``, ``"lorenz96"``, ``"rabinovich_fabrikant"``,
-        ``"mackey_glass"``, ``"kuramoto_sivashinsky"``.
+        One of ``"lorenz"``, ``"lorenz96"``, ``"mackey_glass"``,
+        ``"kuramoto_sivashinsky"``.
     k : int, optional
-        Number of Lyapunov exponents.  Defaults per system if None.
+        Number of Lyapunov exponents.  Defaults to ``system.k_default``.
     cycle_length : int or None, optional
         Steps between QR reorthonormalizations.  ``None`` (default) lets the
         algorithm estimate it from a short λ₁ probe.
     breakin_cycles : int or None, optional
-        Breakin cycles before accumulation.  ``None`` (default) uses adaptive
-        breakin (200-cycle chunks, up to 1000 total).
+        Breakin cycles before accumulation.  ``None`` uses adaptive breakin.
     min_cycles : int, optional
         Minimum accumulation cycles between convergence checks.
     max_cycles : int, optional
-        Hard cap on accumulation cycles.  Default 5000.
+        Hard cap on accumulation cycles.  Default 2000.
     rtol : float, optional
         Relative convergence tolerance (0 = run to max_cycles).
     epsilon : float, optional
@@ -305,9 +476,13 @@ def known_system_test(
         Convergence criterion: ``"ky_dim"`` (default), ``"lambda_1"``, or
         ``"all"``.
     space : str, optional
-        Ignored (KS always uses real-space representation).
+        Ignored (reserved for future use).
     display : bool, optional
-        Show convergence plots.
+        Forward to ``_lyapunov`` as ``progress_bar`` to show tqdm bars.
+    force : bool, optional
+        If ``True``, skip the cached spectrum and recompute from scratch.
+    verbose : bool, optional
+        Print cache-hit/miss status lines.
 
     Returns
     -------
@@ -316,35 +491,27 @@ def known_system_test(
     """
     factory = _SYSTEMS.get(system_name)
     if factory is None:
-        raise ValueError(f"Unknown system: {system_name!r}")
+        raise ValueError(f"Unknown system: {system_name!r}.  Known: {sorted(_SYSTEMS)}")
 
     model = factory()
-    cache = _load_cache()
-    row = cache.get(model.cache_key)
-    if row is not None and row["ic"] is not None:
-        model.state = row["ic"].copy()
-        model.stdev = row["stdev"]
-    else:
-        model.state, model.stdev = model.initial_state()
-        cache[model.cache_key] = {
-            "stdev": model.stdev,
-            "ic": model.state.copy(),
-            "spectrum": None,
-            "spectrum_ci": None,
-        }
-        _save_cache(cache)
+    model.state = model.x0.copy()
 
-    k = k if k is not None else model.k_default
+    k          = k if k is not None else model.k_default
     min_cycles = min_cycles if min_cycles is not None else model.min_cycles_default
     max_cycles = max_cycles if max_cycles is not None else 2000
-    # breakin_cycles = breakin_cycles if breakin_cycles is not None else 4000
 
-    # Fast path: return cached spectrum when available and sufficient.
-    cached_spec = row["spectrum"] if row is not None else None
-    cached_ci   = row["spectrum_ci"] if row is not None else None
-    if (cached_spec is not None and len(cached_spec) >= k
+    # Fast path: return cached spectrum when available, sufficient, and not forced.
+    spectra   = _load_true_spectra()
+    row       = spectra.get(system_name)
+    cached_sp = row["spectrum"] if row else None
+    cached_ci = row["spectrum_ci"] if row else None
+
+    if (not force
+            and cached_sp is not None and len(cached_sp) >= k
             and cached_ci is not None and len(cached_ci) >= k):
-        spec = cached_spec[:k]
+        if verbose:
+            print(f"  {system_name} Lyapunov spectrum loaded from cache  (k={k})")
+        spec = cached_sp[:k]
         ci   = cached_ci[:k]
         ky_dim    = _kaplan_yorke(spec)
         ky_dim_ci = _kaplan_yorke_ci(spec, ci)
@@ -364,8 +531,12 @@ def known_system_test(
             "h":                    model.t_step,
         }
 
+    if verbose:
+        print(f"  Finding {system_name} True Lyapunov Spectrum  (k={k})...")
+
+    stepper = _SystemStepper(model)
     result = _lyapunov(
-        model,
+        stepper,
         k=k,
         cycle_length=cycle_length,
         breakin_cycles=breakin_cycles,
@@ -374,308 +545,196 @@ def known_system_test(
         rtol=rtol,
         epsilon=epsilon,
         convergence=convergence,
-        display=display,
+        progress_bar=display,
     )
     result["system"] = system_name
-    result["h"] = model.t_step
+    result["h"]      = model.t_step
 
-    entry = cache.setdefault(model.cache_key, {
-        "stdev": model.stdev, "ic": model.state.copy(),
-        "spectrum": None, "spectrum_ci": None,
-    })
-    entry["spectrum"] = np.asarray(result["spectrum"])
-    entry["spectrum_ci"] = np.asarray(result["spectrum_ci"])
-    _save_cache(cache)
+    # Update cache
+    spectra = _load_true_spectra()
+    if system_name not in spectra:
+        spectra[system_name] = {}
+    spectra[system_name]["spectrum"]    = np.asarray(result["spectrum"])
+    spectra[system_name]["spectrum_ci"] = np.asarray(result["spectrum_ci"])
+    _save_true_spectra(spectra)
 
     return result
 
 
 # ---------------------------------------------------------------------------
-# Item-3 driver: run all systems, write true_values.csv, print comparison
+# Hyperparameter CSV  (hyperparameters.csv)
 # ---------------------------------------------------------------------------
 
-_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "..", "..", ".."))
-_SUMMARY_STATS = os.path.join(
-    _REPO_ROOT, "dataset_builder", "summary_stats_new_standards.csv"
-)
-_TRUE_VALUES_CSV = os.path.join(_THIS_DIR, "true_values.csv")
-_CACHE_CSV = os.path.join(_THIS_DIR, "attractor_cache.csv")
+# Canonical column order.
+_HP_CSV_FIELDNAMES = [
+    "system", "class", "select_dims", "reg_method", "stepper_substeps",
+    "time_step", "size", "seed", "leak", "radius", "in_scale",
+    "bias_scale", "spinup", "spinup_arch", "sparse", "subsample_t",
+    "ridge", "noise_reg", "vt_0_2_std_med",
+    "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
+]
 
-
-def _load_cache() -> dict:
-    """Load attractor_cache.csv; return {cache_key: {stdev, ic, spectrum, spectrum_ci}}."""
-    if not os.path.exists(_CACHE_CSV):
-        return {}
-    import csv
-
-    def _parse(s):
-        s = (s or "").strip()
-        return np.array([float(x) for x in s.split()]) if s else None
-
-    out = {}
-    with open(_CACHE_CSV, newline="") as f:
-        for row in csv.DictReader(f):
-            out[row["system"]] = {
-                "stdev": float(row["stdev"]),
-                "ic": _parse(row["ic"]),
-                "spectrum": _parse(row.get("spectrum", "")),
-                "spectrum_ci": _parse(row.get("spectrum_ci", "")),
-            }
-    return out
-
-
-def _save_cache(cache: dict) -> None:
-    """Write cache dict back to attractor_cache.csv."""
-    import csv
-
-    def _fmt(arr):
-        return "" if arr is None else " ".join(repr(float(x)) for x in arr)
-
-    fieldnames = ["system", "stdev", "ic", "spectrum", "spectrum_ci"]
-    with open(_CACHE_CSV, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
-        w.writeheader()
-        for key, v in cache.items():
-            w.writerow({
-                "system": key,
-                "stdev": repr(float(v["stdev"])),
-                "ic": _fmt(v["ic"]),
-                "spectrum": _fmt(v.get("spectrum")),
-                "spectrum_ci": _fmt(v.get("spectrum_ci")),
-            })
-
-
-
-def _load_summary_stats():
-    if not os.path.exists(_SUMMARY_STATS):
-        return None
-    import csv
-
-    rows = {}
-    with open(_SUMMARY_STATS) as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            rows[row["System"].lower().replace(" ", "_")] = row
-    return rows
-
-
-def run_item3(verbose: bool = True):
-    """Run known_system_test for all item-3 systems and write true_values.csv."""
-    systems = [
-        # ("lorenz", {}),
-        # ("lorenz96", {}),
-        # ("rabinovich_fabrikant", {}),
-        # ("mackey_glass", {}),
-        ("kuramoto_sivashinsky", {}),
-    ]
-
-    summary = _load_summary_stats()
-    ss_key_map = {
-        "lorenz": "lorenz",
-        "lorenz96": "lorenz96_10",
-        "rabinovich_fabrikant": "rabfab",
-        "mackey_glass": "mg",
-    }
-
-    rows = []
-    all_results = {}
-
-    for sys_name, kwargs in systems:
-        space_suffix = kwargs.get("space", "")
-        label = f"{sys_name}_{space_suffix}" if space_suffix else sys_name
-        if verbose:
-            sep = "=" * 60
-            print(f"\n{sep}")
-            print(f"  {label}")
-            print(sep)
-
-        result = known_system_test(sys_name, **kwargs)
-        all_results[label] = result
-        spec = result["spectrum"]
-        ci = result["spectrum_ci"]
-
-        if verbose:
-            pairs = "  ".join(
-                (f"{l:+.4f}±{c:.4f}" if np.isfinite(l) else f"[collapsed]±{c:.4f}")
-                for l, c in zip(spec, ci)
-            )
-            ky_dim = result["ky_dim"]
-            ky_dim_ci = result["ky_dim_ci"]
-            n_cycles = result["n_cycles"]
-            converged = result["converged"]
-            ky_str = (f"{ky_dim:.3f} ± {ky_dim_ci:.3f}"
-                      if ky_dim is not None else "undefined")
-            probe = result["lambda_1_probe"]
-            probe_str = f"{probe:.4f}" if probe is not None else "n/a (manual)"
-            print(f"  Spectrum:  {pairs}")
-            print(f"  KY dim:    {ky_str}")
-            print(f"  Cycles:    {n_cycles}  converged={converged}")
-            print(f"  λ₁ probe:  {probe_str}  "
-                  f"cycle_length={result['cycle_length']}  "
-                  f"breakin={result['breakin_cycles']}")
-
-            ss_key = ss_key_map.get(label)
-            if summary and ss_key and ss_key in summary:
-                row_ss = summary[ss_key]
-                ref = []
-                for i in range(1, 11):
-                    v = row_ss.get(f"l{i}", "").strip()
-                    if v:
-                        try:
-                            ref.append(float(v))
-                        except ValueError:
-                            break
-                if ref:
-                    ref_str = [f"{x:+.4f}" for x in ref]
-                    print(f"  summary_stats ref: {ref_str}")
-                    print("  (parameters differ — see note below)")
-
-        ky = result["ky_dim"]
-        row_out = {
-            "system": label,
-            "h": result["h"],
-            "ky_dim": round(ky, 4) if ky is not None else None,
-            "n_cycles": result["n_cycles"],
-        }
-        for i, (lam, c) in enumerate(zip(spec, ci)):
-            row_out[f"l{i+1}"] = round(float(lam), 6)
-            row_out[f"l{i+1}_ci"] = round(float(c), 6)
-        rows.append(row_out)
-
-    import csv
-
-    if rows:
-        max_k = max(
-            sum(1 for key in r if key.startswith("l") and "_" not in key) for r in rows
-        )
-        fieldnames = ["system", "h", "ky_dim", "n_cycles"]
-        for i in range(1, max_k + 1):
-            fieldnames += [f"l{i}", f"l{i}_ci"]
-
-        with open(_TRUE_VALUES_CSV, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(rows)
-
-        if verbose:
-            print(f"\nWritten: {_TRUE_VALUES_CSV}")
-
-    return all_results
-
-
-# ---------------------------------------------------------------------------
-# Item-5 infrastructure: ESN builder, caching, valid-prediction-time check
-# ---------------------------------------------------------------------------
-
-# Parent project root: Reservoir/  (4 levels up from tests/lyapunov/)
-_REPO_ROOT_5 = os.path.normpath(os.path.join(_THIS_DIR, "..", "..", "..", ".."))
-_FULL_LOSSES_DIR = os.path.join(
-    _REPO_ROOT_5, "reservoir", "results",
-    "4_24_26_a_esn2221_multireg_main", "full_losses",
-)
-_MODEL_CACHE_DIR = os.path.join(_THIS_DIR, "model_cache")
-_DATA_CACHE_DIR = os.path.join(_THIS_DIR, "data_cache")
-
-# Per-system configuration for data generation and HP lookup.
-# subsample_t       : keep every nth *sampled* step (matches the /results CSV's
-#                     "subsample t" column, i.e. the effective downsampling after
-#                     the IC generator)
-# stepper_substeps  : extra integration steps per sampled point, used when the
-#                     integrator runs at a finer dt than the standard sampling
-#                     interval.  Omit (defaults to 1) when stepper dt already
-#                     equals the standard sampling dt.  The total integrator steps
-#                     per collected sample = subsample_t × stepper_substeps, and
-#                     the effective physical t_step = stepper.t_step × that product.
-#                     Only Mackey-Glass is non-trivial: integrates at dt=0.1 but
-#                     samples at dt=1.0, so stepper_substeps=10.
-# select_dims       : list of state indices to use as the RC input/output; None = all
-# losses_file       : filename under _FULL_LOSSES_DIR
-_SYSTEM_CONFIGS_5 = {
-    "lorenz_x": {
-        "class": "Lorenz",
-        "subsample_t": 3,
-        "select_dims": [0],    # x component only
-        "losses_file": "lor_x_2221_cr.csv",
-        "reg_method":  "ridge",
-    },
-    "lorenz_f": {
-        "class": "Lorenz",
-        "subsample_t": 1,
-        "select_dims": None,   # all 3 dims
-        "losses_file": "lor_f_2221_cr.csv",
-        "reg_method":  "ridge",
-    },
-    "lorenz96": {
-        "class": "Lorenz96",
-        "subsample_t": 3,
-        "select_dims": None,   # all 10 dims
-        # cn (noise regularization) yields far better stable results than cr (ridge)
-        "losses_file": "lor96_2221_cn_an0.csv",
-        "reg_method":  "noise",
-    },
-    "kuramoto_sivashinsky": {
-        "class": "KuramotoSivashinsky",
-        "subsample_t": 1,
-        "select_dims": None,   # full 128-dim real-space field
-        # cn (noise regularization) yields far better stable results than cr (ridge)
-        "losses_file": "ks22_2221_cn.csv",
-        "reg_method":  "noise",
-    },
-    "mackey_glass": {
-        "class": "MackeyGlass",
-        "subsample_t": 1,
-        "stepper_substeps": 10,   # integrate at dt=0.1, sample at dt=1.0  (1.0/0.1=10)
-        "select_dims": [-1],      # last element of DDE history = observable x[t]
-        "losses_file": "mg_2221_cr_an0.csv",
-        "reg_method":  "ridge",
-    },
-}
-
-# ---------------------------------------------------------------------------
-# Item-5 constants — shared by run_item5 and (via import) esn_test
-# ---------------------------------------------------------------------------
-
-_N_TRAIN   = 20000  # training trajectory length
-_N_VAL     = 10000  # validation block length
-_N_WINDOWS = 50     # validation windows (sampled with replacement)
-_KS        = [4, 16, 64, 256]  # RMSE horizons
-_PRED_LEN  = 256    # prediction horizon steps (minimum / plotting default)
-_SPINUP    = 200    # open-loop warmup steps (fixed fallback)
-#: Ridge β candidates for ridge-regularised systems (mirrors solve_square defaults).
-_RIDGE_BETAS = [0.0, 1e-3, 1e-6, 1e-9, 1e-12, 1e-15, 1e-18]
-
-# Map item-5 system names → item-3 known-system names (for true spectrum lookup).
-_ITEM5_TO_ITEM3 = {
-    "lorenz_x":             "lorenz",
-    "lorenz_f":             "lorenz",
-    "lorenz96":             "lorenz96",
-    "mackey_glass":         "mackey_glass",
-    "kuramoto_sivashinsky": "kuramoto_sivashinsky",
+_HP_INT_KEYS   = {"size", "seed", "spinup", "spinup_arch", "subsample_t", "stepper_substeps"}
+_HP_FLOAT_KEYS = {
+    "time_step", "leak", "radius", "in_scale", "bias_scale",
+    "sparse", "ridge", "noise_reg", "vt_0_2_std_med",
+    "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
 }
 
 
-def _pred_len_for(hp: dict, t_step: float) -> int:
-    """Return a prediction-window length sufficient to measure the expected VT.
+def _hp_csv_path() -> str:
+    """Path to ``hyperparameters.csv``."""
+    return os.path.join(_THIS_DIR, "hyperparameters.csv")
 
-    Uses 1.3× the expected valid-time (in steps) as the window, floored at
-    ``_PRED_LEN`` so that systems with short VT are unaffected.
 
-    For Mackey-Glass (expected VT = 715 steps at t_step = 1.0) this gives
-    ``ceil(1.3 × 715) = 930``, so windows are ``_SPINUP + 930 = 1130`` steps
-    — short enough to sample easily from ``_N_VAL = 10000``.
+def _load_hp_csv(system_name: str) -> dict:
+    """Load the HP dict for *system_name* from ``hyperparameters.csv``.
 
-    Parameters
-    ----------
-    hp : dict
-        Hyperparameter dict with key ``"vt_0_2_std_med"`` (expected VT in
-        physical time units) and ``"time_step"`` (not used here; ``t_step``
-        is passed explicitly).
-    t_step : float
-        Physical time per step.
+    Raises ``FileNotFoundError`` if the file is absent and ``KeyError`` if the
+    system row is missing.  Converts numeric fields; parses ``select_dims`` via
+    ``ast.literal_eval`` (empty string → ``None``).
     """
-    vt_steps = hp["vt_0_2_std_med"] / t_step  # expected VT in steps
-    return max(_PRED_LEN, int(np.ceil(1.3 * vt_steps)))
+    import csv  # noqa: PLC0415
+    path = _hp_csv_path()
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"hyperparameters.csv not found at {path!r}."
+        )
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            if row["system"] == system_name:
+                hp: dict = {}
+                for col, val in row.items():
+                    if col == "system":
+                        continue
+                    elif col == "select_dims":
+                        hp[col] = ast.literal_eval(val) if val.strip() else None
+                    elif col in _HP_INT_KEYS:
+                        hp[col] = int(val)
+                    elif col in _HP_FLOAT_KEYS:
+                        hp[col] = float(val)
+                    else:
+                        hp[col] = val
+                return hp
+    raise KeyError(
+        f"No row for system {system_name!r} in {path!r}."
+    )
+
+
+# Legacy alias used by research_files/*.py.
+_load_best_hp = _load_hp_csv
+
+
+def _write_hp_csv(system_name: str, save_row: dict) -> None:
+    """Upsert *save_row* for *system_name* into ``hyperparameters.csv``.
+
+    Reads existing rows (preserving all other systems), replaces or appends
+    the row for *system_name*, and rewrites the full file.  Handles
+    ``select_dims`` serialization: ``None`` → ``""``; lists use ``repr()``.
+    """
+    import csv  # noqa: PLC0415
+    # Normalize select_dims for CSV serialization before writing.
+    save_row = dict(save_row)
+    if "select_dims" in save_row:
+        sd = save_row["select_dims"]
+        save_row["select_dims"] = repr(sd) if sd is not None else ""
+
+    path = _hp_csv_path()
+    rows: dict = {}
+    if os.path.exists(path):
+        with open(path, newline="") as f:
+            for row in csv.DictReader(f):
+                rows[row["system"]] = row
+    rows[system_name] = {"system": system_name, **save_row}
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=_HP_CSV_FIELDNAMES, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows.values())
+
+
+# ---------------------------------------------------------------------------
+# System factory and data generation
+# ---------------------------------------------------------------------------
+
+_CLASS_MAP = {
+    "Lorenz":               Lorenz,
+    "Lorenz96":             Lorenz96,
+    "MackeyGlass":          MackeyGlass,
+    "KuramotoSivashinsky":  KuramotoSivashinsky,
+}
+
+
+def _system_factory(hp: dict) -> _KnownSystem:
+    """Instantiate the ``_KnownSystem`` described by *hp*'s ``class`` field."""
+    cls_name = hp["class"]
+    cls = _CLASS_MAP.get(cls_name)
+    if cls is None:
+        raise ValueError(f"Unknown system class {cls_name!r}. Known: {sorted(_CLASS_MAP)}")
+    return cls()
+
+
+def generate_train_val(
+    system_name: str,
+    n_train: int = _N_TRAIN,
+    n_val: int = _N_VAL,
+) -> tuple:
+    """Generate (or load from cache) training data and a contiguous validation block.
+
+    Uses the system's on-attractor ``x0`` as the starting state — no warmup.
+    Configuration (``class``, ``select_dims``, ``subsample_t``,
+    ``stepper_substeps``) is read from ``hyperparameters.csv``.
+
+    Returns
+    -------
+    (train_data, val_block, t_step)
+    train_data : np.ndarray, shape (n_train, n_dims)
+    val_block  : np.ndarray, shape (n_val, n_dims)
+    t_step     : effective physical timestep (system.t_step × subsample_t × stepper_substeps)
+    """
+    tag = f"{system_name}_nt{n_train}_nv{n_val}"
+    os.makedirs(_DATA_CACHE_DIR, exist_ok=True)
+    cache_path = os.path.join(_DATA_CACHE_DIR, f"{tag}.npz")
+
+    if os.path.exists(cache_path):
+        data = np.load(cache_path, allow_pickle=True)
+        train_data = data["train_data"]
+        val_block  = data["val_block"]
+        t_step     = float(data["t_step"])
+        print(f"  [data cache] loaded {os.path.basename(cache_path)}")
+        return train_data, val_block, t_step
+
+    hp       = _load_hp_csv(system_name)
+    sub_t    = hp["subsample_t"]
+    substeps = hp.get("stepper_substeps", 1)
+    gen_sub  = sub_t * substeps          # total integrator steps per collected point
+    sel      = hp["select_dims"]
+
+    sys = _system_factory(hp)
+    sys.state = sys.x0.copy()
+
+    def _step_and_collect(n_subsampled):
+        out = []
+        for _ in range(n_subsampled):
+            sys.state = sys.step(sys.state, gen_sub)
+            raw = np.asarray(sys.state, float).ravel()
+            if sel is not None:
+                raw = raw[sel]
+            out.append(raw)
+        return np.stack(out, axis=0)
+
+    print(f"  [data cache] generating {os.path.basename(cache_path)}...")
+    train_data = _step_and_collect(n_train)
+    val_block  = _step_and_collect(n_val)
+
+    t_step = sys.t_step * gen_sub
+    np.savez(cache_path, train_data=train_data, val_block=val_block, t_step=t_step)
+    print(f"  [data cache] saved    {os.path.basename(cache_path)}")
+    return train_data, val_block, t_step
+
+
+# ---------------------------------------------------------------------------
+# Spinup helpers
+# ---------------------------------------------------------------------------
 
 
 def _analytic_spinup(hp: dict, train_data: np.ndarray,
@@ -694,10 +753,9 @@ def _analytic_spinup(hp: dict, train_data: np.ndarray,
     Parameters
     ----------
     hp : dict
-        Hyperparameter dict (as returned by ``_load_best_hp``).
+        Hyperparameter dict (as returned by ``_load_hp_csv``).
     train_data : np.ndarray, shape (N, d)
-        Raw (un-normalised) training trajectory.  Used to normalise inputs and
-        warm up the reservoir.
+        Raw (un-normalised) training trajectory.
     arch_components : bool, default False
         When True, use ``architectures.basic_res`` / ``basic_in`` weight
         matrices (matching the framework's exact matrices).  When False, use
@@ -715,27 +773,25 @@ def _analytic_spinup(hp: dict, train_data: np.ndarray,
         sys.path.insert(0, _reservoir_dir)
     import architectures as _arch  # noqa: PLC0415
 
-    d_in = train_data.shape[1]
+    d_in   = train_data.shape[1]
     x_mean = train_data[:-1].mean(axis=0)
     x_std  = np.maximum(train_data[:-1].std(axis=0), 1e-8)
     x_norm = (train_data[:-1] - x_mean) / x_std
     y_norm = (train_data[1:]  - x_mean) / x_std
 
-    # Build and initialise reservoir (fit() also initialises node shapes).
     model = build_esn(hp, d_in, len(x_norm))
     if arch_components:
         W_arr, Win_arr, bias_arr = _arch_components(hp, d_in)
         model.reservoir.W    = W_arr
         model.reservoir.Win  = Win_arr
         model.reservoir.bias = bias_arr
-    model.fit(x_norm, y_norm)          # readout result discarded; just initialises
+    model.fit(x_norm, y_norm)
 
-    # Collect reservoir states on a clean run.
     model.reservoir.reset()
-    R = model.reservoir.run(x_norm)    # (T, size)
+    R = model.reservoir.run(x_norm)
 
-    leak    = float(model.reservoir.lr)
-    size    = int(hp["size"])
+    leak     = float(model.reservoir.lr)
+    size     = int(hp["size"])
     w_res_sp = _sparse.csr_matrix(model.reservoir.W)
     rng_sync = np.random.default_rng(42)
     contraction = _arch.analytic_synchrony(
@@ -743,7 +799,7 @@ def _analytic_spinup(hp: dict, train_data: np.ndarray,
 
     if np.isfinite(contraction) and contraction < 1.0:
         sync_time = -1.0 / np.log2(contraction)
-        eps_term  = -np.log2(np.finfo(float).eps)   # ≈ 52.0  (mach_eps_power=0)
+        eps_term  = -np.log2(np.finfo(float).eps)
         size_term =  np.log2(np.sqrt(size))
         rec_spin  = min(int(sync_time * (size_term + eps_term)) + 1, 1000)
     else:
@@ -756,358 +812,46 @@ def _analytic_spinup(hp: dict, train_data: np.ndarray,
 
 
 def _spinup_for(hp: dict, arch_components: bool = False) -> int:
-    """Return the saved analytic spinup matching the reservoir builder in use.
+    """Return the saved analytic spinup for this HP row.
 
-    Reads ``hp["spinup_arch"]`` when *arch_components* is True (architectures
-    basic_res/basic_in matrices), ``hp["spinup"]`` otherwise (default
-    reservoirpy uniform matrices).  Falls back to ``_SPINUP`` if the key is
-    absent (old CSV without ``spinup`` key or key = 200).
+    Reads ``hp["spinup_arch"]`` when *arch_components* is True,
+    ``hp["spinup"]`` otherwise.  Falls back to ``_SPINUP`` if absent.
     """
     if arch_components and "spinup_arch" in hp:
         return int(hp["spinup_arch"])
     return int(hp.get("spinup", _SPINUP))
 
 
-def _system_factory(cfg: dict):
-    """Instantiate the _KnownSystem described by *cfg*."""
-    cls_name = cfg["class"]
-    cls_map = {
-        "Lorenz": Lorenz,
-        "Lorenz96": lambda: Lorenz96(N=10),
-        "KuramotoSivashinsky": KuramotoSivashinsky,
-        "MackeyGlass": MackeyGlass,
-    }
-    return cls_map[cls_name]()
-
-
-def generate_train_val(
-    system_name: str,
-    n_train: int = 20000,
-    n_val: int = 10000,
-) -> tuple:
-    """Generate (or load from cache) training data and a contiguous validation block.
-
-    Returns
-    -------
-    (train_data, val_block, t_step)
-    train_data : np.ndarray of shape (n_train, n_dims)
-    val_block  : np.ndarray of shape (n_val, n_dims)
-    t_step     : effective physical timestep (system t_step × subsample_t)
-    """
-    tag = f"{system_name}_nt{n_train}_nv{n_val}"
-    os.makedirs(_DATA_CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(_DATA_CACHE_DIR, f"{tag}.npz")
-
-    if os.path.exists(cache_path):
-        data = np.load(cache_path, allow_pickle=True)
-        train_data = data["train_data"]
-        val_block = data["val_block"]
-        t_step = float(data["t_step"])
-        print(f"  [data cache] loaded {os.path.basename(cache_path)}")
-        return train_data, val_block, t_step
-
-    cfg = _SYSTEM_CONFIGS_5[system_name]
-    sub_t    = cfg["subsample_t"]
-    substeps = cfg.get("stepper_substeps", 1)   # extra integration steps per sample
-    gen_sub  = sub_t * substeps                  # total integrator steps per collected pt
-    sel      = cfg["select_dims"]
-
-    sys = _system_factory(cfg)
-    ic_cache = _load_cache()
-    row = ic_cache.get(sys.cache_key)
-    if row is not None and row["ic"] is not None:
-        sys.state = row["ic"].copy()
-    else:
-        sys.state, sys.stdev = sys.initial_state()
-
-    def _step_and_collect(n_subsampled):
-        out = []
-        for _ in range(n_subsampled):
-            sys.evolve(gen_sub)
-            raw = np.asarray(sys.state, float).ravel()
-            if sel is not None:
-                raw = raw[sel]
-            out.append(raw)
-        return np.stack(out, axis=0)
-
-    train_data = _step_and_collect(n_train)
-    val_block = _step_and_collect(n_val)
-
-    t_step = sys.t_step * gen_sub
-    np.savez(cache_path, train_data=train_data, val_block=val_block, t_step=t_step)
-    print(f"  [data cache] saved  {os.path.basename(cache_path)}")
-    return train_data, val_block, t_step
-
-
-def sample_val_windows(
-    val_block: np.ndarray,
-    n: int = 50,
-    spinup: int = 1000,
-    pred_len: int = 256,
-    seed: Optional[int] = None,
-) -> list:
-    """Sample *n* windows (with replacement) from *val_block*.
-
-    Each window has shape ``(spinup + pred_len, n_dims)``.  Start indices are
-    drawn uniformly at random (with replacement) from the set of valid starts
-    ``[0, len(val_block) - (spinup + pred_len)]``.
-
-    Parameters
-    ----------
-    val_block : np.ndarray of shape (T, d)
-        Contiguous validation block.
-    n : int
-        Number of windows to sample.
-    spinup : int
-        Open-loop warmup steps (prepended to each window).
-    pred_len : int
-        Prediction horizon steps (follow the spinup in each window).
-    seed : int or None
-        RNG seed for reproducibility.
-
-    Returns
-    -------
-    list of np.ndarray, each of shape (spinup + pred_len, d)
-    """
-    win_len = spinup + pred_len
-    n_valid = len(val_block) - win_len
-    if n_valid <= 0:
-        raise ValueError(
-            f"val_block length {len(val_block)} is too short for "
-            f"spinup={spinup} + pred_len={pred_len}."
-        )
-    rng = np.random.default_rng(seed)
-    starts = rng.integers(0, n_valid + 1, size=n)
-    return [val_block[s: s + win_len] for s in starts]
-
-
-def _load_best_hp(system_name: str) -> dict:
-    """Read the best-VT row from the *_cr* full_losses CSV.
-
-    Selects the row with the highest ``prediction valid time 0.2 std med``
-    (median VPT at the 0.2×std threshold), which is the primary comparison
-    target for item-5 verification.
-
-    Returns a dict with keys: size, seed, leak, radius, in_scale, bias_scale,
-    sparse, subsample_t, ridge, vt_0_2_std_med, l2_gmean_4, l2_gmean_16,
-    l2_gmean_64, l2_gmean_256.
-    """
-    import pandas as pd
-
-    cfg = _SYSTEM_CONFIGS_5[system_name]
-    path = os.path.join(_FULL_LOSSES_DIR, cfg["losses_file"])
-    df = pd.read_csv(path)
-    _l2_cols = [
-        "prediction 4 step L2 error gmean",
-        "prediction 16 step L2 error gmean",
-        "prediction 64 step L2 error gmean",
-        "prediction 256 step L2 error gmean",
-    ]
-    df = df[(df[_l2_cols] < 2).all(axis=1)]
-    if df.empty:
-        raise ValueError(f"No rows pass the l2<2 stability filter for {system_name!r}.")
-    best = df.loc[df["prediction valid time 0.2 std med"].idxmax()]
-
-    # Parse reg key — format is "<method>=<value>", e.g. "ridge=1e-12" or "noise=0.01".
-    reg_name, reg_str = best["reg key"].split("=")
-    reg_val = float(reg_str)
-    method = cfg["reg_method"]
-    if reg_name != method:
-        raise ValueError(
-            f"reg key method {reg_name!r} does not match reg_method {method!r} "
-            f"for {system_name!r}."
-        )
-    ridge     = reg_val if method == "ridge" else 0.0
-    noise_reg = reg_val if method == "noise" else 0.0
-
-    # Verify subsample_t matches the system config
-    csv_sub_t = int(best["subsample t"])
-    expected_sub_t = cfg["subsample_t"]
-    if csv_sub_t != expected_sub_t:
-        raise ValueError(
-            f"subsample t mismatch for {system_name!r}: "
-            f"CSV has {csv_sub_t}, _SYSTEM_CONFIGS_5 has {expected_sub_t}."
-        )
-
-    return {
-        "size": int(best["size"]),
-        "seed": int(best.get("seed", 0)),
-        "leak": float(best["leak"]),
-        "radius": float(best["radius"]),
-        "in_scale": float(best["in scale"]),
-        "bias_scale": float(best["bias scale"]),
-        "sparse": float(best["sparse"]),
-        "subsample_t": csv_sub_t,
-        "ridge":     ridge,
-        "noise_reg": noise_reg,
-        "vt_0_2_std_med": float(best["prediction valid time 0.2 std med"]),
-        "l2_gmean_4":  float(best["prediction 4 step L2 error gmean"]),
-        "l2_gmean_16": float(best["prediction 16 step L2 error gmean"]),
-        "l2_gmean_64": float(best["prediction 64 step L2 error gmean"]),
-        "l2_gmean_256": float(best["prediction 256 step L2 error gmean"]),
-    }
-
-
-def _load_reg_sweep(system_name: str) -> list:
-    """Return one entry per reg_key row that matches the best-HP config.
-
-    The best HP row is identified by the same max-VPT + l2<2 criterion as
-    ``_load_best_hp``.  All rows sharing the same (size, seed, leak, radius,
-    in_scale, bias_scale, sparse) — across **all** reg values in the CSV, not
-    just the l2-filtered ones — are collected so the full regularization sweep
-    is visible in task_e.
-
-    Returns
-    -------
-    list of dict, sorted by reg_value, each with keys:
-        reg_value, vt_0_2_std_med, l2_gmean_4, l2_gmean_16, l2_gmean_64, l2_gmean_256
-    """
-    import pandas as pd
-
-    cfg = _SYSTEM_CONFIGS_5[system_name]
-    path = os.path.join(_FULL_LOSSES_DIR, cfg["losses_file"])
-    df_full = pd.read_csv(path)
-
-    # Identify the best row using the l2<2 stability filter (same as _load_best_hp).
-    _l2_cols = [
-        "prediction 4 step L2 error gmean",
-        "prediction 16 step L2 error gmean",
-        "prediction 64 step L2 error gmean",
-        "prediction 256 step L2 error gmean",
-    ]
-    df_stable = df_full[(df_full[_l2_cols] < 2).all(axis=1)]
-    if df_stable.empty:
-        raise ValueError(f"No rows pass the l2<2 stability filter for {system_name!r}.")
-    best = df_stable.loc[df_stable["prediction valid time 0.2 std med"].idxmax()]
-
-    # Collect all reg-sweep rows for that HP config from the *full* (unfiltered) CSV
-    # so the sweep covers every reg value, not just the stable ones.
-    match_cols = ["size", "seed", "leak", "radius", "in scale", "bias scale", "sparse"]
-    mask = np.ones(len(df_full), dtype=bool)
-    for col in match_cols:
-        mask &= df_full[col].values == best[col]
-    sweep_rows = df_full[mask].copy()
-
-    results = []
-    for _, row in sweep_rows.iterrows():
-        reg_val = float(row["reg key"].split("=")[1])
-        results.append({
-            "reg_value":     reg_val,
-            "vt_0_2_std_med": float(row["prediction valid time 0.2 std med"]),
-            "l2_gmean_4":  float(row["prediction 4 step L2 error gmean"]),
-            "l2_gmean_16": float(row["prediction 16 step L2 error gmean"]),
-            "l2_gmean_64": float(row["prediction 64 step L2 error gmean"]),
-            "l2_gmean_256": float(row["prediction 256 step L2 error gmean"]),
-        })
-    results.sort(key=lambda r: r["reg_value"])
-    return results
-
-
-def _hp_csv_path() -> str:
-    """Path to the combined best-HP CSV (one row per system, written by run_ridge_sweep / task_b_hp)."""
-    return os.path.join(_THIS_DIR, "best_hp.csv")
-
-
-# Canonical column order for best_hp.csv.
-_HP_CSV_FIELDNAMES = [
-    "system", "time_step", "size", "seed", "leak", "radius", "in_scale",
-    "bias_scale", "spinup", "spinup_arch", "sparse", "subsample_t",
-    "ridge", "noise_reg", "vt_0_2_std_med",
-    "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
-]
-
-
-def _load_hp_csv(system_name: str) -> dict:
-    """Load the HP dict for *system_name* from ``best_hp.csv``.
-
-    Raises ``FileNotFoundError`` if ``best_hp.csv`` is absent (run
-    ``esn_test.run_ridge_sweep`` first) and ``KeyError`` if the system row
-    is missing.
-    """
-    import csv  # noqa: PLC0415
-    path = _hp_csv_path()
-    if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"HP CSV not found at {path!r}. Run esn_test.run_ridge_sweep() first."
-        )
-    int_keys = {"size", "seed", "spinup", "spinup_arch", "subsample_t"}
-    float_keys = {
-        "time_step", "leak", "radius", "in_scale", "bias_scale",
-        "sparse", "ridge", "noise_reg", "vt_0_2_std_med",
-        "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
-    }
-    with open(path, newline="") as f:
-        for row in csv.DictReader(f):
-            if row["system"] == system_name:
-                hp = {}
-                for k, v in row.items():
-                    if k == "system":
-                        continue
-                    if k in int_keys:
-                        hp[k] = int(v)
-                    elif k in float_keys:
-                        hp[k] = float(v)
-                    else:
-                        hp[k] = v
-                return hp
-    raise KeyError(
-        f"No row for system {system_name!r} in {path!r}. "
-        "Run esn_test.run_ridge_sweep() for this system first."
-    )
-
-
-def _write_hp_csv(system_name: str, save_row: dict) -> None:
-    """Upsert *save_row* for *system_name* into ``best_hp.csv``.
-
-    Reads existing rows (if the file exists), replaces or appends the row for
-    *system_name*, and rewrites the full file — preserving all other systems'
-    rows.  *save_row* should contain the 18 HP keys; the ``system`` key is
-    injected automatically.
-    """
-    import csv  # noqa: PLC0415
-    path = _hp_csv_path()
-    rows = {}
-    if os.path.exists(path):
-        with open(path, newline="") as f:
-            for row in csv.DictReader(f):
-                rows[row["system"]] = row
-    rows[system_name] = {"system": system_name, **save_row}
-    with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=_HP_CSV_FIELDNAMES, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows.values())
+# ---------------------------------------------------------------------------
+# ESN builders
+# ---------------------------------------------------------------------------
 
 
 def _arch_components(hp: dict, input_dim: int):
     """Return (W, Win, bias) built by ``architectures.basic_res`` / ``basic_in``.
 
-    Lazy-imports ``architectures`` from ``../../../../reservoir`` (the framework
-    directory) so the dependency is only paid when this function is called.
+    Lazy-imports ``architectures`` from the framework's ``reservoir/`` directory.
 
     Parameters
     ----------
     hp : dict
-        Hyperparameter dict with keys: ``size``, ``seed``, ``radius``, ``sparse``,
+        HP dict with keys: ``size``, ``seed``, ``radius``, ``sparse``,
         ``in_scale``, ``bias_scale``.
     input_dim : int
-        Number of input dimensions (columns in *x*).
+        Number of input dimensions.
 
     Returns
     -------
     W : ndarray, shape (size, size)
-        Dense reservoir matrix, spectral radius scaled to ``hp['radius']``.
     Win : ndarray, shape (size, input_dim)
-        Dense input weight matrix (in_scale applied).
     bias : ndarray, shape (size,)
-        Dense bias vector (bias_scale applied) — the last column of ``basic_in``.
     """
     _reservoir_dir = os.path.normpath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../reservoir")
     )
     if _reservoir_dir not in sys.path:
         sys.path.insert(0, _reservoir_dir)
-
-    import architectures as _arch  # noqa: PLC0415 (lazy import by design)
+    import architectures as _arch  # noqa: PLC0415
 
     p = {
         "size":       hp["size"],
@@ -1126,44 +870,24 @@ def _arch_components(hp: dict, input_dim: int):
 
 
 _2RES_SEED_OFFSET    = 1      # seed gap between the two reservoir instances
-_2RES_COMBINER_FLOOR = 1e-6  # small positive ridge for the combiner; avoids singular solve
+_2RES_COMBINER_FLOOR = 1e-6  # small positive ridge for the combiner
 
 
 def build_esn(hp: dict, input_dim: int, n_train_samples: int):
     """Construct (but do not train) a reservoirpy ESN matching *hp*.
 
-    Uses input_connectivity = 1/input_dim, reservoir connectivity from
-    hp["sparse"], and Uniform[−1,1] distributions for Win, W, and bias
-    (matching architectures.basic_in / basic_res).
-    input_to_readout=True so that the readout receives [reservoir_state,
-    input] as features — matching the TradRC setup.
-
-    Ridge convention: the framework's classic_ridge (4/24/26) pre-scaled the
-    training data by 1/√T before solving, i.e. it regularised the *averaged*
-    Gram XᵀX/T with β·I — equivalent to penalty β·T on the *summed* Gram.
-    reservoirpy's Ridge regularises the summed Gram XᵀX directly, so β is
-    scaled by ``n_train_samples`` (the training length T) here to reproduce the
-    same effective regularisation, letting the framework's CSV ridge
-    hyperparameters translate directly.
-
-    When using noise regularisation (hp["noise_reg"] > 0), the noise acts as
-    an implicit regulariser on XXT, so hp["ridge"] is set to 0.  The edge case
-    of both ridge=0 and noise_reg=0 (the noise=0 sweep point) is handled by a
-    tiny ridge floor to avoid a singular solve.
+    Ridge β is scaled by ``n_train_samples`` to match the framework's
+    averaged-Gram convention (β·T → summed-Gram β·T·1/T = β).
+    ``input_to_readout=True`` so the readout receives [reservoir_state, input],
+    matching the TradRC setup.
     """
     from reservoirpy import ESN
     from reservoirpy.nodes import Reservoir, Ridge
     from reservoirpy.mat_gen import uniform
 
     ridge_beta = float(hp.get("ridge", 0.0))
-    noise_reg  = float(hp.get("noise_reg", 0.0))
-    # Ridge floor: prevent singular solve when both regularisers are zero.
-    # if ridge_beta == 0.0 and noise_reg == 0.0:
-    #     ridge_beta = 1e-10
-
-    # In the framework, p['sparse'] is connections per row, so connectivity = sparse/size.
-    rc_conn = hp["sparse"] / hp["size"]
-    reservoir = Reservoir(
+    rc_conn    = hp["sparse"] / hp["size"]
+    reservoir  = Reservoir(
         units=hp["size"],
         sr=hp["radius"],
         lr=hp["leak"],
@@ -1175,8 +899,7 @@ def build_esn(hp: dict, input_dim: int, n_train_samples: int):
         bias=uniform(input_scaling=hp["bias_scale"]),
         seed=hp["seed"],
     )
-    # β·T to match classic_ridge's averaged-Gram convention (see docstring).
-    readout = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True) #
+    readout = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True)
     return ESN(reservoir=reservoir, readout=readout, input_to_readout=True)
 
 
@@ -1188,43 +911,14 @@ def build_two_res_esn(
 ):
     """Construct (but do not train) a two-reservoir averaging ensemble.
 
-    Two named Reservoir nodes receive the same input (``map_input`` broadcasts a
-    plain array to all input nodes when there are multiple named ones).  Each
-    feeds its own named Ridge readout; both readouts feed a "combiner" Ridge.
-    ``Model.fit`` uses forced-teaching (same target ``y`` for all trainable
-    nodes), so each readout converges to the same mapping; the combiner —
-    trained on two collinear parent outputs with a small positive ridge
-    (``_2RES_COMBINER_FLOOR``) — converges to an exact 0.5 / 0.5 average.
-
-    **Why no explicit Input node**: an explicit ``Input`` node would appear
-    first in ``model.nodes`` (topological order), consuming perturbation dims
-    0..2 in ``_flatten_model_state``.  Those dims get immediately overwritten
-    by every ``model.run()`` call, collapsing all Lyapunov exponents to −∞.
-    Instead, the two Reservoir nodes are named so ``check_unnamed_in_out``
-    passes.  ``model.nodes`` then starts with the Reservoir states, giving
-    meaningful perturbation directions.
+    Two named Reservoir nodes receive the same input; each feeds its own Ridge
+    readout; both readouts feed a combiner Ridge.  The combiner converges to an
+    exact 0.5/0.5 average.
 
     Topology::
 
         model = [res1("2res_res1") >> ro1("2res_readout1"),
                  res2("2res_res2") >> ro2("2res_readout2")] >> comb("2res_combiner")
-
-    Parameters
-    ----------
-    hp : dict
-        Hyperparameter row (same schema as ``best_hp.csv``).
-    input_dim : int
-        Dimensionality of the input signal.
-    n_train_samples : int
-        Training length *T* — used to scale the readout ridge (β·T convention,
-        matching ``build_esn``).
-    seed_offset : int, default ``_2RES_SEED_OFFSET``
-        Added to ``hp["seed"]`` for the second reservoir.
-
-    Returns
-    -------
-    reservoirpy.Model
-        An untrained 5-node model (Reservoir×2, Ridge×2, combiner).
     """
     from reservoirpy.nodes import Reservoir, Ridge
     from reservoirpy.mat_gen import uniform
@@ -1247,44 +941,26 @@ def build_two_res_esn(
             name=name,
         )
 
-    res1 = _make_reservoir(int(hp["seed"]),              "2res_res1")
+    res1 = _make_reservoir(int(hp["seed"]),               "2res_res1")
     res2 = _make_reservoir(int(hp["seed"]) + seed_offset, "2res_res2")
     ro1  = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout1")
     ro2  = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout2")
     comb = Ridge(ridge=_2RES_COMBINER_FLOOR,          fit_bias=True, name="2res_combiner")
-
     return [res1 >> ro1, res2 >> ro2] >> comb
 
 
-def _two_res_cache_path(base_system_name: str, hp: dict, seed_offset: int) -> str:
-    """Return pickle path for a cached two-reservoir (model, norm) tuple.
-
-    Suffix ``_2res_n1r1z1u1_ni``:
-      ``2res`` — two-reservoir ensemble (no explicit Input node)
-      ``n1``   — std-normalised training data
-      ``r1``   — Ridge β scaled by training length (β·T)
-      ``z1``   — noise_reg included in tag
-      ``u1``   — uniform[−1,1] Win/W/bias distributions
-      ``ni``   — no input-to-readout skip connection
-    """
-    noise_reg = float(hp.get("noise_reg", 0.0))
-    tag = (f"{base_system_name}_2res_off{seed_offset}"
-           f"_sz{hp['size']}_sr{hp['radius']:.4f}"
-           f"_lr{hp['leak']:.4f}_is{hp['in_scale']:.4f}"
-           f"_bs{hp['bias_scale']:.4f}_rg{hp['ridge']:.2e}"
-           f"_nz{noise_reg:.2e}_sd{hp['seed']}_n1r1z1u1_ni")
-    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
-    return os.path.join(_MODEL_CACHE_DIR, f"{tag}.pkl")
+# ---------------------------------------------------------------------------
+# Model cache helpers
+# ---------------------------------------------------------------------------
 
 
 def _esn_cache_path(system_name: str, hp: dict) -> str:
-    """Return pickle path for a cached (model, norm) tuple.
+    """Return pickle path for a cached ``(model, norm)`` tuple.
 
-    Suffix ``_n1r1z1u1``:
-      ``n1`` — std-normalised training data (mean 0 std 1)
-      ``r1`` — Ridge β scaled by training length (β·T), matching classic_ridge's
-               averaged-Gram convention; supersedes the old ``r0`` (raw β) tag
-      ``z1`` — noise_reg included in tag (distinguishes noise vs ridge variants)
+    Tag suffix ``_n1r1z1u1``:
+      ``n1`` — std-normalised training data
+      ``r1`` — Ridge β scaled by training length (β·T)
+      ``z1`` — noise_reg included in tag
       ``u1`` — uniform[−1,1] Win/W/bias distributions
     """
     noise_reg = float(hp.get("noise_reg", 0.0))
@@ -1296,6 +972,18 @@ def _esn_cache_path(system_name: str, hp: dict) -> str:
     return os.path.join(_MODEL_CACHE_DIR, f"{tag}.pkl")
 
 
+def _two_res_cache_path(base_system_name: str, hp: dict, seed_offset: int) -> str:
+    """Return pickle path for a cached two-reservoir ``(model, norm)`` tuple."""
+    noise_reg = float(hp.get("noise_reg", 0.0))
+    tag = (f"{base_system_name}_2res_off{seed_offset}"
+           f"_sz{hp['size']}_sr{hp['radius']:.4f}"
+           f"_lr{hp['leak']:.4f}_is{hp['in_scale']:.4f}"
+           f"_bs{hp['bias_scale']:.4f}_rg{hp['ridge']:.2e}"
+           f"_nz{noise_reg:.2e}_sd{hp['seed']}_n1r1z1u1_ni")
+    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
+    return os.path.join(_MODEL_CACHE_DIR, f"{tag}.pkl")
+
+
 def load_or_train_esn(
     system_name: str,
     hp: dict,
@@ -1303,29 +991,16 @@ def load_or_train_esn(
     spinup: Optional[int] = None,
     cache: bool = True,
 ):
-    """Return ``(model, norm)`` — a trained ESN and its normalization stats.
+    """Return ``(model, norm)`` — a trained ESN and its normalisation stats.
 
-    In ``architectures.py`` the readout receives std-normalised input
-    (``(u - input_means) / input_stds``) alongside raw reservoir states, and
-    the target is also std-normalised.  We replicate this by normalising all
-    training (and later validation) data with the training mean/std before
-    feeding the model, which preserves the effective ridge regularisation
-    scale relative to the feature magnitudes.
-
-    ``norm`` is a dict ``{"mean": x_mean, "std": x_std}`` where the arrays
-    have shape ``(input_dim,)``.  Apply to any new data as
-    ``(x - norm["mean"]) / norm["std"]`` before passing to the model.
+    Normalises training data to zero mean / unit std (per-feature), optionally
+    adds input noise after normalisation (matching the framework's noise
+    regression), and trains via ``model.fit(warmup=spinup)``.
 
     Parameters
     ----------
-    spinup : int or None
-        Number of warmup steps passed to ``model.fit(..., warmup=spinup)``.
-        When None or 0 no warmup is applied.  Mirrors the *spinup* argument of
-        ``_setup_esn`` in ``esn_test.py``.
     cache : bool, default True
-        When False, skip both cache-load and cache-save — always train fresh.
-        Useful for sweep loops that vary hp across calls (same cache key would
-        alias to the same pickle file).
+        When False, skip both cache-load and cache-save.
     """
     cache_path = _esn_cache_path(system_name, hp)
     if cache and os.path.exists(cache_path):
@@ -1334,16 +1009,10 @@ def load_or_train_esn(
         print(f"  [cache] loaded {os.path.basename(cache_path)}")
         return cached["model"], cached["norm"]
 
-    # Compute normalization from clean training inputs; clip std away from zero.
     x_mean = train_data[:-1].mean(axis=0)
     x_std  = np.maximum(train_data[:-1].std(axis=0), 1e-8)
-    norm = {"mean": x_mean, "std": x_std}
+    norm   = {"mean": x_mean, "std": x_std}
 
-    # Normalize the full trajectory, then optionally add input noise.
-    # Noise is added AFTER normalization (std=noise_reg in normalized units),
-    # matching the framework's 'noise' regression which perturbs the already-
-    # normalized reservoir inputs and targets consistently.
-    # Validation data is never noised — norm stats are from the clean trajectory.
     traj_norm = (train_data - x_mean) / x_std
     noise_reg = float(hp.get("noise_reg", 0.0))
     if noise_reg > 0.0:
@@ -1353,18 +1022,10 @@ def load_or_train_esn(
     x_norm = traj_norm[:-1]
     y_norm = traj_norm[1:]
 
-    input_dim = train_data.shape[1]
-    model = build_esn(hp, input_dim, len(x_norm))
-
-    # Explicit reset: guarantee the reservoir starts training from r=0 instead of
-    # relying on initialize()'s implicit zeroing.  Model.fit() does NOT reset node
-    # state (reservoirpy/model.py:519), so this makes the training pass robust to
-    # any reuse / re-fit of the model object.  initialize() must run first to create
-    # the state dict; fit() will skip re-initialization via its own guard.
+    model = build_esn(hp, train_data.shape[1], len(x_norm))
     if not model.initialized:
         model.initialize(x_norm, y_norm)
     model.reset()
-
     model.fit(x_norm, y_norm, warmup=(spinup or 0))
 
     if cache:
@@ -1384,20 +1045,14 @@ def load_or_train_two_res_esn(
 ):
     """Return ``(model, norm)`` for a trained two-reservoir averaging ensemble.
 
-    Mirrors :func:`load_or_train_esn` exactly: same normalization, same optional
-    input noise, same ``warmup`` argument — but builds the model via
-    :func:`build_two_res_esn` and caches under a ``_2res_off{offset}``-tagged
-    path so it never aliases a single-ESN cache entry.
+    Mirrors :func:`load_or_train_esn` exactly: same normalisation, same
+    optional input noise, same ``warmup`` — but builds via
+    :func:`build_two_res_esn` and caches under a ``_2res``-tagged path.
 
     Parameters
     ----------
     base_system_name : str
-        System name without the ``_2res`` suffix (e.g. ``"lorenz_f"``).  Used
-        for the cache filename and HP lookup.
-    hp, train_data, spinup, cache
-        Same semantics as :func:`load_or_train_esn`.
-    seed_offset : int, default ``_2RES_SEED_OFFSET``
-        Forwarded to :func:`build_two_res_esn`.
+        System name without the ``_2res`` suffix.
     """
     cache_path = _two_res_cache_path(base_system_name, hp, seed_offset)
     if cache and os.path.exists(cache_path):
@@ -1419,13 +1074,10 @@ def load_or_train_two_res_esn(
     x_norm = traj_norm[:-1]
     y_norm = traj_norm[1:]
 
-    input_dim = train_data.shape[1]
-    model = build_two_res_esn(hp, input_dim, len(x_norm), seed_offset=seed_offset)
-
+    model = build_two_res_esn(hp, train_data.shape[1], len(x_norm), seed_offset=seed_offset)
     if not model.initialized:
         model.initialize(x_norm, y_norm)
     model.reset()
-
     model.fit(x_norm, y_norm, warmup=(spinup or 0))
 
     if cache:
@@ -1435,345 +1087,439 @@ def load_or_train_two_res_esn(
     return model, norm
 
 
-def verify_valid_time(
-    system_name: str,
-    n_train: int = 20000,
-    n_val: int = 10000,
-    n_windows: int = 50,
-    spinup: int = 1000,
-    pred_len: int = 256,
-    verbose: bool = True,
-) -> dict:
-    """Train an ESN with best-*_cr* HPs and measure valid prediction time.
+# ---------------------------------------------------------------------------
+# _assess_one  (single ESN vs. true system)
+# ---------------------------------------------------------------------------
 
-    Compares the reproduced median VPT at 0.2×std against the saved value
-    (``prediction valid time 0.2 std med``) from the original framework.
-    All training and validation data are std-normalised before the model sees
-    them, matching the per-feature normalisation in ``architectures.py``.
+
+def _spectra_pass(true_spec, esn_spec, esn_ci):
+    """Return True if every positive true exponent lies within the ESN 95% CI band.
+
+    "Positive" means greater than 1% of the largest positive true exponent.
+    Comparison is index-by-index on descending spectra.
     """
-    hp = _load_best_hp(system_name)
-    if verbose:
-        print(f"\n{'='*60}")
-        print(f"  verify_valid_time: {system_name}")
-        print(f"  size={hp['size']}  sr={hp['radius']:.4f}  lr={hp['leak']:.4f}")
-        print(f"  in_scale={hp['in_scale']:.4f}  bias_scale={hp['bias_scale']:.4f}")
-        print(f"  sparse={hp['sparse']:.4f}  ridge={hp['ridge']:.2e}  seed={hp['seed']}")
-        print(f"  saved vt_0_2_std_med={hp['vt_0_2_std_med']:.4f}")
-        print(f"{'='*60}")
-
-    train_data, val_block, t_step = generate_train_val(
-        system_name, n_train=n_train, n_val=n_val,
-    )
-    if verbose:
-        print(f"  data: train={train_data.shape}  val_block={val_block.shape}"
-              f"  t_step={t_step:.4f}")
-
-    model, norm = load_or_train_esn(system_name, hp, train_data)
-
-    # Sample 50 windows with replacement and normalise with training statistics.
-    windows = sample_val_windows(val_block, n=n_windows, spinup=spinup, pred_len=pred_len)
-    windows_norm = [(w - norm["mean"]) / norm["std"] for w in windows]
-
-    results = valid_time_multitest(
-        model, windows_norm, n_segments=n_windows,
-        spinup=spinup, eps=[0.2, 0.4], ks=[4, 16, 64, 256],
-        block=pred_len, t_step=t_step,
+    true_spec = np.asarray(true_spec)
+    esn_spec  = np.asarray(esn_spec)
+    esn_ci    = np.asarray(esn_ci)
+    pos_true  = true_spec[true_spec > 0]
+    if len(pos_true) == 0:
+        return True
+    pos_mask = true_spec > 1e-2 * np.max(pos_true)
+    k_min = min(len(true_spec), len(esn_spec), len(esn_ci))
+    return not any(
+        pos_mask[i] and abs(true_spec[i] - esn_spec[i]) > esn_ci[i]
+        for i in range(k_min)
     )
 
-    reproduced = results.get("valid_time_0.2_median", float("nan"))
-    saved = hp["vt_0_2_std_med"]
-    if verbose:
-        print(f"\n  Results:")
-        print(f"    valid_time_0.2_median  = {reproduced:.4f}  (saved: {saved:.4f})")
-        print(f"    valid_time_0.4_median  = {results.get('valid_time_0.4_median', float('nan')):.4f}")
-        print(f"    valid_time_fitness     = {results.get('valid_time_fitness', float('nan')):.4f}")
-        for k in [4, 16, 64, 256]:
-            obs = results.get(f"rmse_{k}_gmean", float("nan"))
-            exp = hp.get(f"l2_gmean_{k}", float("nan"))
-            print(f"    rmse_{k:3d}_gmean = {obs:.4f}  (saved: {exp:.4f})")
-        ratio = reproduced / saved if saved > 0 else float("nan")
-        print(f"    ratio (reprod/saved)   = {ratio:.3f}")
 
-    return {
-        "system": system_name,
-        "hp": hp,
-        "norm": norm,
-        "results": results,
-        "vt_0_2_median_reproduced": reproduced,
-        "vt_0_2_median_saved": saved,
-        "t_step": t_step,
-    }
-
-
-def run_item5(systems=None, verbose: bool = True) -> list:
-    """Verify VPT for the swept-best HPs loaded from each system's HP CSV.
-
-    Requires that ``esn_test.run_ridge_sweep`` has already been run and
-    written rows to ``best_hp.csv`` for each system.  Reads those HPs
-    (including the swept-best regularisation value and analytic spinup),
-    trains a single ESN per system with ``warmup=spinup``, and reports VPT
-    vs. the baseline.
-
-    Results match the best-beta row of ``esn_test.run_ridge_sweep`` because
-    the two paths use identical HPs, spinup, window seed, and pred_len.
-
-    Parameters
-    ----------
-    systems : list of str or None
-        System names from ``_SYSTEM_CONFIGS_5``.  ``None`` runs all five.
-    verbose : bool
-        When True, print per-system details and the final summary table.
-
-    Returns
-    -------
-    list of dict, one per system, with keys:
-        ``system``, ``reg_method``, ``best_reg``, ``best_vt``,
-        ``baseline_vt``, ``ratio``.
-    """
-    if systems is None:
-        systems = list(_SYSTEM_CONFIGS_5.keys())
-
-    all_rows = []
-
-    for sys_name in systems:
-        reg_method = _SYSTEM_CONFIGS_5[sys_name]["reg_method"]
-
-        if verbose:
-            print(f"\n{'='*60}")
-            print(f"  run_item5: {sys_name}  (reg_method={reg_method})")
-            print(f"{'='*60}")
-
-        # 1. Swept HPs from HP CSV (written by run_ridge_sweep / task_b_hp).
-        hp = _load_hp_csv(sys_name)
-        best_reg = hp["noise_reg"] if reg_method == "noise" else hp["ridge"]
-        spinup = _spinup_for(hp, arch_components=False)
-
-        if verbose:
-            print(f"  spinup={spinup}  ridge={hp['ridge']:.2e}  "
-                  f"noise_reg={hp['noise_reg']:.2e}  "
-                  f"(from best_hp.csv)")
-
-        # 2. Train + val data and physical t_step.
-        train_data, val_block, t_step = generate_train_val(
-            sys_name, n_train=_N_TRAIN, n_val=_N_VAL,
-        )
-
-        # 3. Prediction window length.
-        pred_len = _pred_len_for(hp, t_step)
-
-        # 4. Validation windows — seed=1 matches run_ridge_sweep.
-        windows = sample_val_windows(
-            val_block, n=_N_WINDOWS, spinup=spinup, pred_len=pred_len, seed=1,
-        )
-
-        # 5. Train once (no cache) and score.
-        model, norm = load_or_train_esn(
-            sys_name, hp, train_data, spinup=spinup, cache=False,
-        )
-        windows_norm = [(w - norm["mean"]) / norm["std"] for w in windows]
-        res = valid_time_multitest(
-            model, windows_norm, n_segments=_N_WINDOWS,
-            spinup=spinup, eps=[0.2, 0.4], ks=_KS,
-            block=pred_len, t_step=t_step,
-        )
-        best_vt = res.get("valid_time_0.2_median", float("nan"))
-
-        # 6. Ratio vs baseline.
-        baseline_vt = hp["vt_0_2_std_med"]
-        ratio = (best_vt / baseline_vt
-                 if baseline_vt > 0 and np.isfinite(best_vt) else float("nan"))
-
-        if verbose:
-            print(f"  best_vt={best_vt:.4f}  baseline_vt={baseline_vt:.4f}  "
-                  f"ratio={ratio:.3f}")
-
-        all_rows.append({
-            "system":      sys_name,
-            "reg_method":  reg_method,
-            "best_reg":    best_reg,
-            "best_vt":     best_vt,
-            "baseline_vt": baseline_vt,
-            "ratio":       ratio,
-        })
-
-    if verbose:
-        sep = "=" * 70
-        print(f"\n{sep}")
-        print("  Item-5 summary")
-        print(sep)
-        print(f"  {'System':<28} {'Reg':>6} {'Best reg':>12} {'VT':>10} {'Baseline':>10} {'Ratio':>7}")
-        print(f"  {'-'*28} {'-'*6} {'-'*12} {'-'*10} {'-'*10} {'-'*7}")
-        for r in all_rows:
-            br_str = f"{r['best_reg']:.2e}" if r["best_reg"] > 0 else "0"
-            bvt_str = f"{r['best_vt']:.4f}" if np.isfinite(r["best_vt"]) else "nan"
-            print(f"  {r['system']:<28} {r['reg_method']:>6} {br_str:>12} "
-                  f"{bvt_str:>10} {r['baseline_vt']:>10.4f} {r['ratio']:>7.3f}")
-        print(sep)
-
-    return all_rows
-
-
-def assess_lyapunov(
-    system_name: str,
-    k: Optional[int] = None,
+def _assess_one(
+    esn_name: str,
+    true_result: dict,
+    *,
     min_cycles: int = 500,
     max_cycles: int = 2000,
     rtol: float = 0.01,
-    display: bool = False,
     progress_bar: bool = True,
     verbose: bool = True,
 ) -> dict:
-    """Train an ESN on *system_name* and compare its Lyapunov spectrum to the true system.
-
-    Workflow:
-    1. Load HPs from ``best_hp.csv`` (written by
-       ``esn_test.run_ridge_sweep``).
-    2. Generate / load train data; train ESN via ``load_or_train_esn``.
-    3. Compute the true spectrum via ``known_system_test`` (result is cached in
-       ``attractor_cache.csv`` after the first run).
-    4. Compute the ESN spectrum via ``reservoirpy.observables.lyapunov``.
-       Internally ``_RCAdapter.t_step = 1.0`` so raw exponents are in per-step
-       units; divide by ``t_step`` to convert to physical-time units matching
-       the true spectrum.
-    5. Print a per-exponent comparison table and KY dimension.
+    """Train an ESN and compare its Lyapunov spectrum to the true system.
 
     Parameters
     ----------
-    system_name : str
-        Key into ``_SYSTEM_CONFIGS_5`` (e.g. ``"lorenz_x"``).
-    k : int or None
-        Number of Lyapunov exponents for the ESN.  Defaults to
-        ``min(6, true_sys.k_default)``: 3 (Lorenz), 5 (Mackey-Glass),
-        6 (Lorenz96 / KS).  The true-system count is additionally capped at
-        ``true_sys.k_default`` (``true_k`` in the return dict).
+    esn_name : str
+        Key into ``hyperparameters.csv``.  A ``_2res`` suffix triggers the
+        two-reservoir ensemble path.
+    true_result : dict
+        Return value of ``known_system_test`` for the underlying system.
     min_cycles, max_cycles, rtol
-        Forwarded to ``_lyapunov`` for both the true system and the ESN.
-    display : bool
-        Show convergence plots (blocks until window closed).
-    progress_bar : bool, default True
-        Show a plain-stdout progress bar during breakin and accumulation.
-        When ``verbose=True`` (the default) each mark is a status line;
-        otherwise a ruler ``____`` / mark ``||||`` pair is printed.
+        Forwarded to ``_lyapunov`` for the ESN spectrum computation.
+    progress_bar : bool
+        Show tqdm bars during the ESN Lyapunov computation.
     verbose : bool
-        Print per-exponent table and KY dimension.
+        Print per-step status lines.
 
     Returns
     -------
-    dict with keys:
-        ``system``, ``k``, ``t_step``,
-        ``true_spectrum``, ``true_ci``, ``true_ky_dim``,
-        ``esn_spectrum``, ``esn_ci``, ``esn_ky_dim``.
+    dict with keys: ``esn_name``, ``underlying_sys``, ``t_step``,
+        ``true_spectrum``, ``true_ci``, ``true_ky``,
+        ``esn_spectrum``, ``esn_ci``, ``esn_ky``, ``passed``.
     """
-    import time as _time  # noqa: PLC0415
     from reservoirpy.observables import lyapunov as _lyap_esn  # noqa: PLC0415
 
-    _t0 = _time.perf_counter()
+    _t0 = time.perf_counter()
 
-    # Support the "_2res" suffix: strip it and resolve everything from base_name.
-    is_2res   = system_name.endswith("_2res")
-    base_name = system_name[: -len("_2res")] if is_2res else system_name
+    is_2res   = esn_name.endswith("_2res")
+    base_name = esn_name[: -len("_2res")] if is_2res else esn_name
 
-    item3_name = _ITEM5_TO_ITEM3.get(base_name)
-    if item3_name is None:
-        raise ValueError(
-            f"Unknown system {system_name!r} (base={base_name!r}). "
-            f"Known: {sorted(_ITEM5_TO_ITEM3)}"
-        )
+    hp        = _load_hp_csv(base_name)
+    spinup    = _spinup_for(hp)
+    sys_inst  = _system_factory(hp)
+    underlying = sys_inst.name
 
-    true_sys = _SYSTEMS[item3_name]()
-    if k is None:
-        k = min(6, true_sys.k_default)
-    true_k = min(k, true_sys.k_default)
+    true_spec = np.asarray(true_result["spectrum"])
+    true_ci   = np.asarray(true_result["spectrum_ci"])
+    true_ky   = true_result["ky_dim"]
+    k = len(true_spec)
 
     if verbose:
-        print(f"\n{'='*60}")
-        print(f"  assess_lyapunov: {system_name}  "
-              f"(item3={item3_name}  k_esn={k}  k_true={true_k})")
-        print(f"{'='*60}")
+        model_tag = "2-reservoir" if is_2res else "ESN"
+        print(f"\n  [{esn_name}]  {model_tag}  k={k}  spinup={spinup}"
+              f"  ridge={hp['ridge']:.2e}  noise_reg={hp['noise_reg']:.2e}")
 
-    # --- Step 1: load HP and train ESN ---
-    hp     = _load_hp_csv(base_name)
-    spinup = _spinup_for(hp, arch_components=False)
+    # Training data
+    train_data, _val, t_step = generate_train_val(base_name)
 
-    if verbose:
-        model_tag = "2-reservoir ensemble" if is_2res else "ESN"
-        print(f"  model={model_tag}  spinup={spinup}  ridge={hp['ridge']:.2e}  "
-              f"noise_reg={hp['noise_reg']:.2e}")
-
-    train_data, _val, t_step = generate_train_val(
-        base_name, n_train=_N_TRAIN, n_val=_N_VAL,
-    )
+    # Model
     if is_2res:
         model, norm = load_or_train_two_res_esn(base_name, hp, train_data, spinup=spinup)
     else:
         model, norm = load_or_train_esn(base_name, hp, train_data, spinup=spinup)
     x_norm = (train_data - norm["mean"]) / norm["std"]
 
-    # --- Step 2: true system Lyapunov spectrum ---
+    # ESN Lyapunov spectrum (raw exponents in per-step units → rescale by t_step)
     if verbose:
-        print(f"\n  [true] known_system_test({item3_name!r}, k={true_k}) ...")
-    true_result = known_system_test(
-        item3_name, k=true_k,
-        min_cycles=min_cycles, max_cycles=max_cycles,
-        rtol=rtol, display=display,
-    )
-    true_spec = np.asarray(true_result["spectrum"])
-    true_ci   = np.asarray(true_result["spectrum_ci"])
-    true_ky   = true_result["ky_dim"]
-
-    # --- Step 3: ESN Lyapunov spectrum ---
-    # lyapunov() uses _RCAdapter.t_step=1.0, giving exponents in per-step units.
-    # Dividing by t_step converts to physical-time units (same scale as true_spec).
-    if verbose:
-        print(f"  [ESN]  lyapunov(k={k}, spinup={spinup}) ...")
+        print(f"  [{esn_name}]  Computing ESN Lyapunov spectrum...")
     esn_raw = _lyap_esn(
         model,
-        init=x_norm,            # n_spinup=1 default ensures m=1 regardless of array length
+        init=x_norm,
         spinup=spinup,
         k=k,
         min_cycles=min_cycles,
         max_cycles=max_cycles,
         rtol=rtol,
-        display=display,
         progress_bar=progress_bar,
-        probe_sub_cycle_cap=50,   # ESN state is not a ring buffer; cap the slow probe
+        probe_sub_cycle_cap=50,
     )
     esn_spec = np.asarray(esn_raw["spectrum"]) / t_step
     esn_ci   = np.asarray(esn_raw["spectrum_ci"]) / t_step
-    esn_ky   = esn_raw["ky_dim"]   # KY dim is invariant to t_step rescaling
+    esn_ky   = esn_raw["ky_dim"]
 
-    # --- Step 4: print comparison ---
+    # Pass/Fail: every positive true exponent must fall within the ESN 95% CI.
+    passed = _spectra_pass(true_spec, esn_spec, esn_ci)
+
+    # Reduced spectra: strip exponents with |λ| < 1% of principal |λ|.
+    nz_thresh   = 1e-2 * abs(float(true_spec[0])) if len(true_spec) else 0.0
+    keep_true   = np.abs(true_spec) >= nz_thresh
+    keep_esn    = np.abs(esn_spec)  >= nz_thresh
+    true_spec_red = true_spec[keep_true]
+    true_ci_red   = true_ci[keep_true]
+    esn_spec_red  = esn_spec[keep_esn]
+    esn_ci_red    = esn_ci[keep_esn]
+    passed_reduced = _spectra_pass(true_spec_red, esn_spec_red, esn_ci_red)
+    true_ky_red    = _kaplan_yorke(true_spec_red)
+    esn_ky_red     = _kaplan_yorke(esn_spec_red)
+
+    elapsed = time.perf_counter() - _t0
     if verbose:
-        print(f"\n  Spectrum  [physical time, t_step={t_step:.5f}]")
-        print(f"  {'':>3}  {'True λ':>10}  {'±CI':>8}  "
-              f"{'ESN λ':>10}  {'±CI':>8}  {'|Δλ|':>8}  {'ratio':>7}")
-        print(f"  {'─'*3}  {'─'*10}  {'─'*8}  {'─'*10}  {'─'*8}  {'─'*8}  {'─'*7}")
-        for i, (tl, tc, el, ec) in enumerate(zip(true_spec, true_ci, esn_spec, esn_ci)):
-            fin = np.isfinite(tl) and np.isfinite(el)
-            delta = abs(el - tl) if fin else float("nan")
-            ratio = (el / tl) if (fin and tl != 0) else float("nan")
-            tl_s = f"{tl:+.4f}" if np.isfinite(tl) else "  [nan]"
-            el_s = f"{el:+.4f}" if np.isfinite(el) else "  [nan]"
-            print(f"  λ{i+1:<2}  {tl_s:>10}  {tc:>8.4f}  "
-                  f"{el_s:>10}  {ec:>8.4f}  {delta:>8.4f}  {ratio:>7.3f}")
-        ky_t = f"{true_ky:.3f}" if true_ky is not None else "None"
-        ky_e = f"{esn_ky:.3f}"  if esn_ky  is not None else "None"
-        print(f"\n  KY dim:  true={ky_t}  ESN={ky_e}")
-
-    print(f"\n  Total time: {_time.perf_counter() - _t0:.1f}s", flush=True)
+        verdict = "PASS" if passed else "FAIL"
+        print(f"  [{esn_name}]  {verdict}  ({elapsed:.1f}s)")
 
     return {
-        "system":        system_name,
-        "k":             k,
-        "true_k":        true_k,
-        "t_step":        t_step,
-        "true_spectrum": true_spec,
-        "true_ci":       true_ci,
-        "true_ky_dim":   true_ky,
-        "esn_spectrum":  esn_spec,
-        "esn_ci":        esn_ci,
-        "esn_ky_dim":    esn_ky,
+        "esn_name":            esn_name,
+        "underlying_sys":      underlying,
+        "t_step":              t_step,
+        "true_spectrum":       true_spec,
+        "true_ci":             true_ci,
+        "true_ky":             true_ky,
+        "esn_spectrum":        esn_spec,
+        "esn_ci":              esn_ci,
+        "esn_ky":              esn_ky,
+        "passed":              passed,
+        "true_spectrum_reduced": true_spec_red,
+        "true_ci_reduced":       true_ci_red,
+        "esn_spectrum_reduced":  esn_spec_red,
+        "esn_ci_reduced":        esn_ci_red,
+        "passed_reduced":        passed_reduced,
+        "true_ky_reduced":       true_ky_red,
+        "esn_ky_reduced":        esn_ky_red,
     }
+
+
+# ---------------------------------------------------------------------------
+# Per-system ASCII results table
+# ---------------------------------------------------------------------------
+
+
+def _lam_str(val: float) -> str:
+    """Format a single Lyapunov exponent value for the table."""
+    if not np.isfinite(val):
+        return "[nan]"
+    return f"{val:+.4f}"
+
+
+def _ky_str(ky, marked: bool = False) -> str:
+    """Format a Kaplan-Yorke dimension for the table."""
+    if ky is None:
+        return ""
+    return f"{ky:.3f} + n" if marked else f"{ky:.3f}"
+
+
+def _print_system_table(
+    sys_name: str,
+    group: list,
+    known_row,
+    *,
+    reduced: bool = False,
+) -> None:
+    """Print one bordered ASCII table for a single underlying system.
+
+    Row order: literature (if available) → computed-true → ESN rows.
+
+    Parameters
+    ----------
+    sys_name : str
+        Underlying dynamical system name (e.g. ``"lorenz"``).
+    group : list of dict
+        :func:`_assess_one` results whose ``underlying_sys`` is *sys_name*.
+    known_row : dict or None
+        Entry from :func:`_load_known_specs` for *sys_name*, or ``None`` when
+        no literature spectrum is available.
+    reduced : bool
+        When True, use near-zero-removed spectra and ``*`` column suffixes.
+    """
+    spec_key  = "true_spectrum_reduced" if reduced else "true_spectrum"
+    espec_key = "esn_spectrum_reduced"  if reduced else "esn_spectrum"
+    tky_key   = "true_ky_reduced"       if reduced else "true_ky"
+    eky_key   = "esn_ky_reduced"        if reduced else "esn_ky"
+    pf_key    = "passed_reduced"        if reduced else "passed"
+
+    # ---- compute column width ------------------------------------------- #
+    max_k = max(
+        max(len(r[spec_key]), len(r[espec_key])) for r in group
+    )
+    if reduced and known_row is not None and len(known_row["spectrum"]) > 0:
+        # In reduced mode, apply the same near-zero filter to the literature
+        # spectrum so it is consistent with the pruned true/esn columns.
+        lit_spec_full = known_row["spectrum"]
+        nz_thresh_lit = 1e-2 * abs(float(lit_spec_full[0])) if len(lit_spec_full) else 0.0
+        lit_spec_disp = lit_spec_full[np.abs(lit_spec_full) >= nz_thresh_lit]
+    elif known_row is not None:
+        lit_spec_disp = known_row["spectrum"]
+    else:
+        lit_spec_disp = None
+    if lit_spec_disp is not None:
+        max_k = max(max_k, len(lit_spec_disp))
+
+    lbl_w  = 28
+    lam_w  = 9
+    ky_w   = 12 if reduced else 8
+    pf_w   = 6
+    suffix = "*" if reduced else ""
+
+    # ---- header ------------------------------------------------------------ #
+    hdr = f"  {'System / kind':<{lbl_w}}"
+    for i in range(max_k):
+        hdr += f"  {('λ' + str(i + 1) + suffix):>{lam_w}}"
+    hdr += f"  {'KY dim':>{ky_w}}  {'P/F':>{pf_w}}"
+    total_w = len(hdr) - 2   # exclude the leading "  "
+    sep      = "  " + "─" * total_w
+    title    = f"  ── {sys_name} " + "─" * max(0, total_w - len(sys_name) - 5)
+
+    print(f"\n{title}")
+    print(hdr)
+    print(sep)
+
+    # ---- literature row (optional, top) ------------------------------------ #
+    if lit_spec_disp is not None and len(lit_spec_disp) > 0:
+        lit_label = f"{sys_name} (lit.)"
+        row_s = f"  {lit_label:<{lbl_w}}"
+        for i in range(max_k):
+            row_s += (f"  {_lam_str(lit_spec_disp[i]):>{lam_w}}"
+                      if i < len(lit_spec_disp) else f"  {'':>{lam_w}}")
+        ky_lit = known_row.get("ky_dim") if known_row else None
+        row_s += f"  {_ky_str(ky_lit):>{ky_w}}"
+        row_s += f"  {'':>{pf_w}}"
+        print(row_s)
+
+    # ---- computed-true row (one per system) -------------------------------- #
+    # Use the first result in the group for the true-spectrum data.
+    r0       = group[0]
+    t_spec   = r0[spec_key]
+    row_s    = f"  {sys_name + ' (true)':<{lbl_w}}"
+    for i in range(max_k):
+        row_s += (f"  {_lam_str(t_spec[i]):>{lam_w}}"
+                  if i < len(t_spec) else f"  {'':>{lam_w}}")
+    dropped_true = len(r0["true_spectrum_reduced"]) < len(r0["true_spectrum"])
+    row_s += f"  {_ky_str(r0[tky_key], reduced and dropped_true):>{ky_w}}"
+    row_s += f"  {'':>{pf_w}}"
+    print(row_s)
+
+    # ---- ESN rows ---------------------------------------------------------- #
+    for r in group:
+        e_spec  = r[espec_key]
+        row_s   = f"  {r['esn_name']:<{lbl_w}}"
+        for i in range(max_k):
+            row_s += (f"  {_lam_str(e_spec[i]):>{lam_w}}"
+                      if i < len(e_spec) else f"  {'':>{lam_w}}")
+        dropped_esn = len(r["esn_spectrum_reduced"]) < len(r["esn_spectrum"])
+        row_s += f"  {_ky_str(r[eky_key], reduced and dropped_esn):>{ky_w}}"
+        pf     = "PASS" if r[pf_key] else "FAIL"
+        row_s += f"  {pf:>{pf_w}}"
+        print(row_s)
+
+    print(sep)
+
+    # ---- literature footnote (below bottom separator) ---------------------- #
+    if known_row is not None and known_row.get("source"):
+        footnote = f"  lit.: {known_row['source']}"
+        if known_row.get("url"):
+            footnote += f"  {known_row['url']}"
+        print(footnote)
+
+
+def _print_results_table(results: list, reduced: bool = False) -> None:
+    """Print one ASCII comparison table per underlying dynamical system.
+
+    Each table has row order: literature (if available) → computed-true →
+    ESN rows.  Literature exponent columns are taken from
+    ``known_lyapunov_specs.csv``; table width widens to fit them when they
+    exceed the computed spectrum length.
+
+    Parameters
+    ----------
+    results : list of dict
+        Return values of :func:`_assess_one`.
+    reduced : bool
+        If True, use the near-zero-removed spectra (``*_spectrum_reduced`` /
+        ``*_ci_reduced`` fields) and label columns ``λ1*``, ``λ2*``, etc.
+        The pass/fail verdict is taken from ``passed_reduced``.  Default False.
+    """
+    if not results:
+        return
+
+    # Group results by underlying system, preserving encounter order.
+    groups: dict = {}
+    for r in results:
+        groups.setdefault(r["underlying_sys"], []).append(r)
+
+    # Load literature spectra once.
+    known = _load_known_specs()
+
+    for sys_name, group in groups.items():
+        _print_system_table(sys_name, group, known.get(sys_name), reduced=reduced)
+
+
+# ---------------------------------------------------------------------------
+# run_lyapunov_test  — main entry point
+# ---------------------------------------------------------------------------
+
+
+def run_lyapunov_test(
+    esn_names=None,
+    *,
+    min_cycles: int = 500,
+    max_cycles: int = 2000,
+    rtol: float = 0.00,
+    progress_bar: bool = True,
+    verbose: bool = True,
+    force_true_spectra: bool = False,
+) -> list:
+    """Train ESNs and compare their Lyapunov spectra to the true system spectra.
+
+    For each unique underlying dynamical system represented in *esn_names*,
+    the true spectrum is computed or loaded from cache (once), then each ESN
+    that maps to that system is trained and assessed.  A combined ASCII
+    comparison table with Pass/Fail verdicts is printed at the end.
+
+    Pass criterion (per ESN): every positive true exponent
+    (> ``max_positive_λ × 1e-2``) must lie within the ESN's 95 % CI band
+    (``|true_λ − esn_λ| ≤ esn_ci``).
+
+    Parameters
+    ----------
+    esn_names : list of str or None
+        System names from ``hyperparameters.csv``.  ``None`` runs all rows.
+        The ``_2res`` suffix triggers the two-reservoir ensemble path.
+    min_cycles, max_cycles, rtol
+        Forwarded to ``_lyapunov`` for both true-system and ESN computations.
+    progress_bar : bool
+        Show tqdm progress bars.
+    verbose : bool
+        Print status messages and the results table.
+    force_true_spectra : bool
+        If True, recompute and overwrite the cached true spectrum for every
+        underlying system, even when a cached entry with sufficient length
+        already exists.  Default False.
+
+    Returns
+    -------
+    list of dict, one per ESN, as returned by :func:`_assess_one`.
+    """
+    import csv  # noqa: PLC0415
+
+    _t0 = time.perf_counter()
+
+    # Resolve names from hyperparameters.csv if not provided.
+    if esn_names is None:
+        hp_path = _hp_csv_path()
+        if not os.path.exists(hp_path):
+            raise FileNotFoundError(f"hyperparameters.csv not found at {hp_path!r}.")
+        with open(hp_path, newline="") as f:
+            esn_names = [row["system"] for row in csv.DictReader(f)]
+
+    # Map each ESN to its underlying dynamical system.
+    # (lorenz_x and lorenz_f both map to "lorenz"; lorenz_x_2res maps to "lorenz")
+    underlying_groups: dict = {}   # underlying_sys_name -> [esn_name, ...]
+    for esn_name in esn_names:
+        base = esn_name[: -len("_2res")] if esn_name.endswith("_2res") else esn_name
+        hp  = _load_hp_csv(base)
+        sys_inst = _system_factory(hp)
+        underlying_groups.setdefault(sys_inst.name, []).append(esn_name)
+
+    all_results: list = []
+
+    for sys_name, esn_list in underlying_groups.items():
+        if verbose:
+            print(f"\n{'=' * 64}")
+            print(f"  Underlying system : {sys_name}")
+            print(f"  ESN(s)            : {esn_list}")
+            print(f"{'=' * 64}")
+
+        # True spectrum — k set by the system's k_default.
+        k = _SYSTEMS[sys_name].k_default
+        true_result = known_system_test(
+            sys_name, k=k,
+            min_cycles=min_cycles, max_cycles=max_cycles,
+            rtol=rtol, display=progress_bar, verbose=verbose,
+            force=force_true_spectra,
+        )
+
+        # Assess each ESN.
+        for esn_name in esn_list:
+            result = _assess_one(
+                esn_name, true_result,
+                min_cycles=min_cycles, max_cycles=max_cycles,
+                rtol=rtol, progress_bar=progress_bar, verbose=verbose,
+            )
+            all_results.append(result)
+
+    # Combined table and overall verdict.
+    if verbose and all_results:
+        _print_results_table(all_results)
+
+    overall = all(r["passed"] for r in all_results) if all_results else True
+
+    # If any row failed, try the near-zero-removed re-test.
+    if all_results and not overall:
+        if verbose:
+            print(
+                "\nComparison failed — removing near-zero exponents"
+                " (|λ| < 1% of principal λ) and re-testing:"
+            )
+            _print_results_table(all_results, reduced=True)
+        overall_reduced = all(
+            r["passed"] or r["passed_reduced"] for r in all_results
+        )
+        if overall_reduced:
+            overall = True
+            if verbose:
+                print("Overall PASS after near-zero exponent removal.")
+
+    elapsed = time.perf_counter() - _t0
+    verdict = "PASS" if overall else "FAIL"
+    print(f"\nOverall: {verdict}  Runtime: {elapsed:.1f}s", flush=True)
+
+    return all_results
 
 
 # ---------------------------------------------------------------------------
@@ -1781,39 +1527,9 @@ def assess_lyapunov(
 # ---------------------------------------------------------------------------
 #
 # Usage:
-#   python lyapunov_test.py                       → run_item3 (Lyapunov, all systems)
-#   python lyapunov_test.py lorenz                → known_system_test("lorenz")
-#   python lyapunov_test.py item5                 → run_item5 (VPT, all systems)
-#   python lyapunov_test.py item5 lorenz_x mg     → run_item5 for named systems
+#   python -m reservoirpy.tests.lyapunov.lyapunov_test                → all ESNs
+#   python -m reservoirpy.tests.lyapunov.lyapunov_test lorenz_x       → named ESN(s)
+#   python -m reservoirpy.tests.lyapunov.lyapunov_test --true lorenz  → true system only
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        cmd = sys.argv[1]
-        if cmd == "item5":
-            systems = list(sys.argv[2:]) if len(sys.argv) > 2 else None
-            run_item5(systems, verbose=True)
-        else:
-            result = known_system_test(cmd, display=True)
-            spec = result["spectrum"]
-            ci = result["spectrum_ci"]
-            ky = result["ky_dim"]
-            ky_ci = result["ky_dim_ci"]
-            nc = result["n_cycles"]
-            conv = result["converged"]
-            probe = result["lambda_1_probe"]
-            ky_str = f"{ky:.4f} ± {ky_ci:.4f}" if ky is not None else "undefined"
-            probe_str = f"{probe:.4f}" if probe is not None else "n/a (manual)"
-            print(f"\nSpectrum: {spec}")
-            print(f"CI:       {ci}")
-            print(f"KY dim:   {ky_str}")
-            print(f"Cycles:   {nc}  converged={conv}")
-            print(f"λ₁ probe: {probe_str}  cycle_length={result['cycle_length']}  breakin={result['breakin_cycles']}")
-    else:
-        # run_item5(verbose=True)
-        # assess_lyapunov("lorenz_x")
-        # assess_lyapunov("lorenz_f")
-        # assess_lyapunov("lorenz96")
-        # assess_lyapunov("kuramoto_sivashinsky")
-        # assess_lyapunov("mackey_glass")
-        assess_lyapunov("lorenz_f_2res")
-
+    run_lyapunov_test(["lorenz_x_2res", "lorenz_f", "lorenz_x", "kuramoto_sivashinsky"], force_true_spectra=False)
