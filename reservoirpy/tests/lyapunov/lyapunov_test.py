@@ -15,6 +15,7 @@ Usage::
 """
 
 import ast
+import csv
 import os
 import pickle
 import sys
@@ -24,31 +25,25 @@ from typing import Optional
 # Ensure the local reservoirpy fork takes precedence over any installed copy.
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../..")))
 
-import numpy as np
-import scipy.fft
+import numpy as np  # noqa: E402
+import scipy.fft  # noqa: E402
 
-from reservoirpy.datasets._chaos import _kuramoto_sivashinsky_etdrk4
-from reservoirpy.observables import (
-    _lyapunov,
-    _kaplan_yorke,
-    _kaplan_yorke_ci,
-)
-
+from reservoirpy.datasets._chaos import _kuramoto_sivashinsky_etdrk4  # noqa: E402
+from reservoirpy.observables import _kaplan_yorke, _lyapunov  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Path constants
 # ---------------------------------------------------------------------------
 
-_THIS_DIR        = os.path.dirname(os.path.abspath(__file__))
-_IC_DIR          = os.path.join(_THIS_DIR, "initial_conditions")
-_TRUE_SPECTRA_CSV  = os.path.join(_THIS_DIR, "true_lyapunov_spectra.csv")
-_KNOWN_SPECS_CSV   = os.path.join(_THIS_DIR, "known_lyapunov_specs.csv")
-_MODEL_CACHE_DIR   = os.path.join(_THIS_DIR, "model_cache")
-_DATA_CACHE_DIR  = os.path.join(_THIS_DIR, "data_cache")
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+_IC_DIR = os.path.join(_THIS_DIR, "initial_conditions")
+_TRUE_SPECTRA_CSV = os.path.join(_THIS_DIR, "true_system_lyapunov_spectra.csv")
+_KNOWN_SPECS_CSV = os.path.join(_THIS_DIR, "literature_lyapunov_spectra.csv")
+_MODEL_CACHE_DIR = os.path.join(_THIS_DIR, "model_cache")
+_TRAIN_DATA_CACHE_DIR = os.path.join(_THIS_DIR, "training_data_cache")
 
-_N_TRAIN = 20000   # training trajectory length
-_N_VAL   = 10000   # validation block length
-_SPINUP  = 200     # open-loop warmup steps (fixed fallback)
+_N_TRAIN = 20000
+_SPINUP = 200
 
 
 # ---------------------------------------------------------------------------
@@ -59,10 +54,21 @@ _SPINUP  = 200     # open-loop warmup steps (fixed fallback)
 def _ks_etdrk4_setup(N: int, M: int, h: float, d: float) -> dict:
     """Precompute ETDRK4 scalars for Kuramoto-Sivashinsky integration.
 
-    N: number of spatial grid points.
-    M: number of Cauchy quadrature points (16 is standard).
-    h: time step.
-    d: domain length L.
+    Parameters
+    ----------
+    N : int
+        Number of spatial grid points.
+    M : int
+        Number of Cauchy quadrature points (16 is standard).
+    h : float
+        Time step.
+    d : float
+        Domain length L.
+
+    Returns
+    -------
+    dict
+        ETDRK4 scalars ``g``, ``E``, ``E2``, ``Q``, ``f1``, ``f2``, ``f3``.
     """
     k = np.conj(np.r_[np.arange(0, N / 2), [0], np.arange(-N / 2 + 1, 0)]) * (2 * np.pi / d)
     L = k**2 - k**4
@@ -136,8 +142,8 @@ class _SystemStepper:
 
     def __init__(self, system: _KnownSystem):
         self._system = system
-        self.state  = system.state
-        self.stdev  = system.stdev
+        self.state = system.state
+        self.stdev = system.stdev
         self.t_step = system.t_step
 
     def run(self, n_steps: int) -> None:
@@ -190,39 +196,45 @@ class _ODESystem(_KnownSystem):
 class Lorenz(_ODESystem):
     """Lorenz (1963) attractor, σ=10, ρ=28, β=8/3."""
 
-    name         = "lorenz"
-    formal_name  = "Lorenz63"
-    method       = "ODE RK4"
+    name = "lorenz"
+    formal_name = "Lorenz63"
+    method = "ODE RK4"
     k_default = 3
-    stdev     = 14.282866422209104
+    stdev = 14.282866422209104
     sigma, rho, beta = 10.0, 28.0, 8.0 / 3.0
     t_step = 0.02
     x0 = np.array([-14.534641402422949, -9.213263792189714, 39.81952304782705])
 
     def rhs(self, s):
         x, y, z = s
-        return np.array(
-            [self.sigma * (y - x), x * (self.rho - z) - y, x * y - self.beta * z]
-        )
+        return np.array([self.sigma * (y - x), x * (self.rho - z) - y, x * y - self.beta * z])
 
 
 class Lorenz96(_ODESystem):
     """Lorenz (1996) model, N=10, F=8."""
 
-    name         = "lorenz96"
-    formal_name  = "Lorenz96 10d"
-    method       = "ODE RK4"
+    name = "lorenz96"
+    formal_name = "Lorenz96 10d"
+    method = "ODE RK4"
     k_default = 10
-    stdev     = 3.622654737513749
-    F      = 8.0
+    stdev = 3.622654737513749
+    F = 8.0
     t_step = 0.02
-    N      = 10
-    x0 = np.array([
-         1.538644901557219,   2.6612631824750546,  8.92197688363573,
-        -1.4017919582755187, -1.5123381827246805,  0.13260794908701265,
-         2.900132447269597,   5.747863245706213,   1.7267896821355198,
-        -2.798819138645696,
-    ])
+    N = 10
+    x0 = np.array(
+        [
+            1.538644901557219,
+            2.6612631824750546,
+            8.92197688363573,
+            -1.4017919582755187,
+            -1.5123381827246805,
+            0.13260794908701265,
+            2.900132447269597,
+            5.747863245706213,
+            1.7267896821355198,
+            -2.798819138645696,
+        ]
+    )
 
     def rhs(self, s):
         return (np.roll(s, -1) - np.roll(s, 2)) * np.roll(s, 1) - s + self.F
@@ -231,11 +243,11 @@ class Lorenz96(_ODESystem):
 class MackeyGlass(_KnownSystem):
     """Mackey-Glass delay-differential equation, τ=20, a=0.2, b=0.1, n=10."""
 
-    name         = "mackey_glass"
-    formal_name  = "Mackey-Glass"
-    method       = "DDE RK4"
+    name = "mackey_glass"
+    formal_name = "Mackey-Glass"
+    method = "DDE RK4"
     k_default = 10
-    stdev     = 0.2252707719024293
+    stdev = 0.2252707719024293
     tau, a, b, n_mg = 20.0, 0.2, 0.1, 10
     t_step = 0.1
 
@@ -279,11 +291,11 @@ class MackeyGlass(_KnownSystem):
 class KuramotoSivashinsky(_KnownSystem):
     """Kuramoto-Sivashinsky PDE on a periodic domain, L=22, N=128."""
 
-    name         = "kuramoto_sivashinsky"
-    formal_name  = "Kuramoto-Sivashinsky"
-    method       = "PDE ETDRK4"
+    name = "kuramoto_sivashinsky"
+    formal_name = "Kuramoto-Sivashinsky"
+    method = "PDE ETDRK4"
     k_default = 10
-    stdev     = 1.1297214457875504
+    stdev = 1.1297214457875504
     N, M = 128, 16
     L = 22.0
     t_step = 0.25
@@ -315,124 +327,82 @@ class KuramotoSivashinsky(_KnownSystem):
 # ---------------------------------------------------------------------------
 
 _SYSTEMS = {
-    "lorenz":               Lorenz,
-    "lorenz96":             Lorenz96,
-    "mackey_glass":         MackeyGlass,
+    "lorenz": Lorenz,
+    "lorenz96": Lorenz96,
+    "mackey_glass": MackeyGlass,
     "kuramoto_sivashinsky": KuramotoSivashinsky,
 }
 
 
 # ---------------------------------------------------------------------------
-# True-spectrum cache  (true_lyapunov_spectra.csv)
+# Lyapunov-spectra CSV helpers  (shared by both CSV files)
 # ---------------------------------------------------------------------------
 
 
-def _load_true_spectra() -> dict:
-    """Load ``true_lyapunov_spectra.csv``; return ``{sys: {spectrum, spectrum_ci}}``.
+def _load_spectra(path: str) -> dict:
+    """Load a Lyapunov-spectra CSV into a per-system dict.
 
-    Rows are interleaved: one ``spectrum`` row then one ``ci`` row per system.
-    Columns are ``system``, ``kind``, ``l1``, ``l2``, … (ragged; trailing cells
-    may be empty).
+    The returned mapping is ``{system: {"spectrum": array, **extras}}``.  The
+    CSV must have a ``system`` column and ragged ``l1, l2, …`` columns.  Any
+    other non-empty columns (e.g. ``source``, ``url``, ``ky_dim``) are returned
+    as extras — cast to ``float`` where possible, otherwise kept as strings.
+    Returns ``{}`` if *path* does not exist.  When a system appears more than
+    once, the first row wins.
     """
-    if not os.path.exists(_TRUE_SPECTRA_CSV):
+    if not os.path.exists(path):
         return {}
-    import csv
 
     out: dict = {}
-    with open(_TRUE_SPECTRA_CSV, newline="") as f:
-        for row in csv.DictReader(f):
-            sys_name = row["system"]
-            kind     = row["kind"]   # "spectrum" or "ci"
-            # Collect lN values in order until an empty cell
-            vals = []
-            i = 1
-            while f"l{i}" in row and row[f"l{i}"].strip():
-                vals.append(float(row[f"l{i}"]))
-                i += 1
-            if sys_name not in out:
-                out[sys_name] = {"spectrum": None, "spectrum_ci": None}
-            key = "spectrum_ci" if kind == "ci" else "spectrum"
-            out[sys_name][key] = np.array(vals) if vals else None
-    return out
-
-
-def _save_true_spectra(spectra: dict) -> None:
-    """Write *spectra* dict to ``true_lyapunov_spectra.csv`` (interleaved rows).
-
-    Parameters
-    ----------
-    spectra : dict
-        ``{sys_name: {"spectrum": np.ndarray, "spectrum_ci": np.ndarray}}``.
-    """
-    import csv
-
-    max_k = 0
-    for val in spectra.values():
-        for arr in (val.get("spectrum"), val.get("spectrum_ci")):
-            if arr is not None:
-                max_k = max(max_k, len(arr))
-
-    fieldnames = ["system", "kind"] + [f"l{i + 1}" for i in range(max_k)]
-    with open(_TRUE_SPECTRA_CSV, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(fieldnames)
-        for sys_name, val in spectra.items():
-            for kind_key, arr_key in (("spectrum", "spectrum"), ("ci", "spectrum_ci")):
-                arr = val.get(arr_key)
-                if arr is not None:
-                    pad = [""] * (max_k - len(arr))
-                    w.writerow([sys_name, kind_key] + [repr(float(x)) for x in arr] + pad)
-
-
-# ---------------------------------------------------------------------------
-# Known-literature spectra  (known_lyapunov_specs.csv)
-# ---------------------------------------------------------------------------
-
-
-def _load_known_specs() -> dict:
-    """Load ``known_lyapunov_specs.csv``; return per-system literature entries.
-
-    Returns
-    -------
-    dict
-        ``{system_name: {"spectrum": np.ndarray, "source": str, "url": str,
-        "ky_dim": float or None}}``.  Returns ``{}`` if the file does not exist.
-
-    Notes
-    -----
-    The CSV stores individual exponents in columns ``l1``, ``l2``, … (ragged;
-    trailing columns may be absent for a given row).  ``l2`` may legitimately
-    be ``0``, so the presence check is ``cell.strip() != ""`` rather than
-    truthiness of the float.
-    """
-    if not os.path.exists(_KNOWN_SPECS_CSV):
-        return {}
-    import csv
-
-    out: dict = {}
-    with open(_KNOWN_SPECS_CSV, newline="") as f:
+    with open(path, newline="") as f:
         for row in csv.DictReader(f):
             sys_name = row.get("system", "").strip()
             if not sys_name:
                 continue
-            # Collect l1, l2, … in order until a column is absent or empty.
             vals = []
             i = 1
             while f"l{i}" in row and row[f"l{i}"].strip() != "":
                 vals.append(float(row[f"l{i}"]))
                 i += 1
-            ky_raw  = row.get("ky_dim", "").strip()
-            ky_dim  = float(ky_raw) if ky_raw else None
-            # If a system appears more than once (multiple literature rows),
-            # keep the first entry — it typically has the fullest spectrum.
+            entry: dict = {"spectrum": np.array(vals) if vals else np.array([])}
+            for col, raw in row.items():
+                if col == "system" or (col.startswith("l") and col[1:].isdigit()):
+                    continue
+                cell = raw.strip()
+                if not cell:
+                    continue
+                try:
+                    entry[col] = float(cell)
+                except ValueError:
+                    entry[col] = cell
             if sys_name not in out:
-                out[sys_name] = {
-                    "spectrum": np.array(vals) if vals else np.array([]),
-                    "source":   row.get("source", "").strip(),
-                    "url":      row.get("url", "").strip(),
-                    "ky_dim":   ky_dim,
-                }
+                out[sys_name] = entry
     return out
+
+
+def _save_spectra(path: str, spectra: dict) -> None:
+    """Write *spectra* to a ``system, l1, l2, …`` CSV.
+
+    If *path* already exists, rows for systems not in *spectra* are preserved.
+
+    Parameters
+    ----------
+    spectra : dict
+        ``{sys_name: array-like}`` mapping system names to Lyapunov spectra.
+    """
+    existing = _load_spectra(path) if os.path.exists(path) else {}
+    merged = {name: val for name, val in existing.items()}
+    for name, sp in spectra.items():
+        merged[name] = {"spectrum": np.asarray(sp)}
+
+    max_k = max((len(v["spectrum"]) for v in merged.values()), default=0)
+    fieldnames = ["system"] + [f"l{i + 1}" for i in range(max_k)]
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(fieldnames)
+        for name, val in merged.items():
+            sp = val["spectrum"]
+            pad = [""] * (max_k - len(sp))
+            w.writerow([name] + [repr(float(x)) for x in sp] + pad)
 
 
 # ---------------------------------------------------------------------------
@@ -459,7 +429,7 @@ def known_system_test(
 
     Uses the class's on-attractor ``x0`` and ``stdev`` as the starting state —
     no warmup is required.  Caches computed spectra to
-    ``true_lyapunov_spectra.csv`` and returns from cache on subsequent calls
+    ``true_system_lyapunov_spectra.csv`` and returns from cache on subsequent calls
     (unless *force* is True or the cache has fewer than *k* exponents).
 
     Parameters
@@ -506,49 +476,39 @@ def known_system_test(
     model = factory()
     model.state = model.x0.copy()
 
-    k          = k if k is not None else model.k_default
+    k = k if k is not None else model.k_default
     min_cycles = min_cycles if min_cycles is not None else model.min_cycles_default
     max_cycles = max_cycles if max_cycles is not None else 2000
 
-    # Fast path: return cached spectrum when available, sufficient, and not forced.
-    spectra   = _load_true_spectra()
-    row       = spectra.get(system_name)
+    spectra = _load_spectra(_TRUE_SPECTRA_CSV)
+    row = spectra.get(system_name)
     cached_sp = row["spectrum"] if row else None
-    cached_ci = row["spectrum_ci"] if row else None
 
-    if (not force
-            and cached_sp is not None and len(cached_sp) >= k
-            and cached_ci is not None and len(cached_ci) >= k):
+    if not force and cached_sp is not None and len(cached_sp) >= k:
         if verbose:
             _fn = _SYSTEMS[system_name].formal_name or system_name
             _mt = _SYSTEMS[system_name].method or "direct"
-            print(f"  [lyapunov spectrum cache] loaded {_fn} {_mt}"
-                  f" lyapunov spectrum from cache  (k={k})")
+            print(f"  [lyapunov spectrum cache] loaded {_fn} {_mt}" f" lyapunov spectrum from cache  (k={k})")
         spec = cached_sp[:k]
-        ci   = cached_ci[:k]
-        ky_dim    = _kaplan_yorke(spec)
-        ky_dim_ci = _kaplan_yorke_ci(spec, ci)
+        ky_dim = _kaplan_yorke(spec)
         return {
-            "spectrum":             spec,
-            "spectrum_ci":          ci,
-            "ky_dim":               ky_dim,
-            "ky_dim_ci":            ky_dim_ci,
-            "n_cycles":             0,
-            "converged":            True,
-            "log_growths":          np.zeros((0, k)),
+            "spectrum": spec,
+            "ky_dim": ky_dim,
+            "n_cycles": 0,
+            "converged": True,
+            "log_growths": np.zeros((0, k)),
             "collapsed_directions": np.zeros(k, dtype=bool),
-            "cycle_length":         0,
-            "breakin_cycles":       0,
-            "lambda_1_probe":       float(spec[0]) if len(spec) > 0 else None,
-            "system":               system_name,
-            "h":                    model.t_step,
+            "cycle_length": 0,
+            "breakin_cycles": 0,
+            "lambda_1_probe": float(spec[0]) if len(spec) > 0 else None,
+            "system": system_name,
+            "h": model.t_step,
         }
 
     if verbose:
         _fn = _SYSTEMS[system_name].formal_name or system_name
         _mt = _SYSTEMS[system_name].method or "direct"
-        print(f"  [true system lyapunov spectrum] computing {_fn} {_mt}"
-              f" lyapunov spectrum  (k={k})...")
+        print(f"  [true system lyapunov spectrum] computing {_fn} {_mt}" f" lyapunov spectrum  (k={k})...")
 
     stepper = _SystemStepper(model)
     result = _lyapunov(
@@ -564,15 +524,9 @@ def known_system_test(
         progress_bar=display,
     )
     result["system"] = system_name
-    result["h"]      = model.t_step
+    result["h"] = model.t_step
 
-    # Update cache
-    spectra = _load_true_spectra()
-    if system_name not in spectra:
-        spectra[system_name] = {}
-    spectra[system_name]["spectrum"]    = np.asarray(result["spectrum"])
-    spectra[system_name]["spectrum_ci"] = np.asarray(result["spectrum_ci"])
-    _save_true_spectra(spectra)
+    _save_spectra(_TRUE_SPECTRA_CSV, {system_name: np.asarray(result["spectrum"])})
 
     return result
 
@@ -581,21 +535,8 @@ def known_system_test(
 # Hyperparameter CSV  (hyperparameters.csv)
 # ---------------------------------------------------------------------------
 
-# Canonical column order.
-_HP_CSV_FIELDNAMES = [
-    "system", "class", "select_dims", "reg_method", "stepper_substeps",
-    "time_step", "size", "seed", "leak", "radius", "in_scale",
-    "bias_scale", "spinup", "spinup_arch", "sparse", "subsample_t",
-    "ridge", "noise_reg", "vt_0_2_std_med",
-    "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
-]
-
-_HP_INT_KEYS   = {"size", "seed", "spinup", "spinup_arch", "subsample_t", "stepper_substeps"}
-_HP_FLOAT_KEYS = {
-    "time_step", "leak", "radius", "in_scale", "bias_scale",
-    "sparse", "ridge", "noise_reg", "vt_0_2_std_med",
-    "l2_gmean_4", "l2_gmean_16", "l2_gmean_64", "l2_gmean_256",
-}
+_HP_INT_KEYS = {"size", "seed", "spinup", "subsample_t", "stepper_substeps"}
+_HP_FLOAT_KEYS = {"leak", "radius", "in_scale", "bias_scale", "sparse", "ridge", "noise_reg"}
 
 
 def _hp_csv_path() -> str:
@@ -610,12 +551,9 @@ def _load_hp_csv(system_name: str) -> dict:
     system row is missing.  Converts numeric fields; parses ``select_dims`` via
     ``ast.literal_eval`` (empty string → ``None``).
     """
-    import csv  # noqa: PLC0415
     path = _hp_csv_path()
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"hyperparameters.csv not found at {path!r}."
-        )
+        raise FileNotFoundError(f"hyperparameters.csv not found at {path!r}.")
     with open(path, newline="") as f:
         for row in csv.DictReader(f):
             if row["system"] == system_name:
@@ -632,40 +570,7 @@ def _load_hp_csv(system_name: str) -> dict:
                     else:
                         hp[col] = val
                 return hp
-    raise KeyError(
-        f"No row for system {system_name!r} in {path!r}."
-    )
-
-
-# Legacy alias used by research_files/*.py.
-_load_best_hp = _load_hp_csv
-
-
-def _write_hp_csv(system_name: str, save_row: dict) -> None:
-    """Upsert *save_row* for *system_name* into ``hyperparameters.csv``.
-
-    Reads existing rows (preserving all other systems), replaces or appends
-    the row for *system_name*, and rewrites the full file.  Handles
-    ``select_dims`` serialization: ``None`` → ``""``; lists use ``repr()``.
-    """
-    import csv  # noqa: PLC0415
-    # Normalize select_dims for CSV serialization before writing.
-    save_row = dict(save_row)
-    if "select_dims" in save_row:
-        sd = save_row["select_dims"]
-        save_row["select_dims"] = repr(sd) if sd is not None else ""
-
-    path = _hp_csv_path()
-    rows: dict = {}
-    if os.path.exists(path):
-        with open(path, newline="") as f:
-            for row in csv.DictReader(f):
-                rows[row["system"]] = row
-    rows[system_name] = {"system": system_name, **save_row}
-    with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=_HP_CSV_FIELDNAMES, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows.values())
+    raise KeyError(f"No row for system {system_name!r} in {path!r}.")
 
 
 # ---------------------------------------------------------------------------
@@ -673,10 +578,10 @@ def _write_hp_csv(system_name: str, save_row: dict) -> None:
 # ---------------------------------------------------------------------------
 
 _CLASS_MAP = {
-    "Lorenz":               Lorenz,
-    "Lorenz96":             Lorenz96,
-    "MackeyGlass":          MackeyGlass,
-    "KuramotoSivashinsky":  KuramotoSivashinsky,
+    "Lorenz": Lorenz,
+    "Lorenz96": Lorenz96,
+    "MackeyGlass": MackeyGlass,
+    "KuramotoSivashinsky": KuramotoSivashinsky,
 }
 
 
@@ -704,7 +609,7 @@ def _input_label(hp: dict) -> str:
     ``KuramotoSivashinsky``             → ``"64 point discretization of [0, L)"``
     """
     cls_name = hp.get("class", "")
-    sel = hp.get("select_dims")   # None or list of ints
+    sel = hp.get("select_dims")
     if cls_name == "Lorenz":
         if sel is not None and len(sel) == 1 and sel[0] == 0:
             return "x"
@@ -718,12 +623,11 @@ def _input_label(hp: dict) -> str:
     return ""
 
 
-def generate_train_val(
+def generate_train(
     system_name: str,
     n_train: int = _N_TRAIN,
-    n_val: int = _N_VAL,
 ) -> tuple:
-    """Generate (or load from cache) training data and a contiguous validation block.
+    """Generate (or load from cache) training data for *system_name*.
 
     Uses the system's on-attractor ``x0`` as the starting state — no warmup.
     Configuration (``class``, ``select_dims``, ``subsample_t``,
@@ -731,28 +635,26 @@ def generate_train_val(
 
     Returns
     -------
-    (train_data, val_block, t_step)
+    (train_data, t_step)
     train_data : np.ndarray, shape (n_train, n_dims)
-    val_block  : np.ndarray, shape (n_val, n_dims)
     t_step     : effective physical timestep (system.t_step × subsample_t × stepper_substeps)
     """
-    tag = f"{system_name}_nt{n_train}_nv{n_val}"
-    os.makedirs(_DATA_CACHE_DIR, exist_ok=True)
-    cache_path = os.path.join(_DATA_CACHE_DIR, f"{tag}.npz")
+    tag = f"{system_name}_nt{n_train}"
+    os.makedirs(_TRAIN_DATA_CACHE_DIR, exist_ok=True)
+    cache_path = os.path.join(_TRAIN_DATA_CACHE_DIR, f"{tag}.npz")
 
     if os.path.exists(cache_path):
         data = np.load(cache_path, allow_pickle=True)
         train_data = data["train_data"]
-        val_block  = data["val_block"]
-        t_step     = float(data["t_step"])
+        t_step = float(data["t_step"])
         print(f"  [training data cache] loaded {os.path.basename(cache_path)}")
-        return train_data, val_block, t_step
+        return train_data, t_step
 
-    hp       = _load_hp_csv(system_name)
-    sub_t    = hp["subsample_t"]
+    hp = _load_hp_csv(system_name)
+    sub_t = hp["subsample_t"]
     substeps = hp.get("stepper_substeps", 1)
-    gen_sub  = sub_t * substeps          # total integrator steps per collected point
-    sel      = hp["select_dims"]
+    gen_sub = sub_t * substeps
+    sel = hp["select_dims"]
 
     sys = _system_factory(hp)
     sys.state = sys.x0.copy()
@@ -769,102 +671,11 @@ def generate_train_val(
 
     print(f"  [training data cache] generating {os.path.basename(cache_path)}...")
     train_data = _step_and_collect(n_train)
-    val_block  = _step_and_collect(n_val)
 
     t_step = sys.t_step * gen_sub
-    np.savez(cache_path, train_data=train_data, val_block=val_block, t_step=t_step)
+    np.savez(cache_path, train_data=train_data, t_step=t_step)
     print(f"  [training data cache] saved    {os.path.basename(cache_path)}")
-    return train_data, val_block, t_step
-
-
-# ---------------------------------------------------------------------------
-# Spinup helpers
-# ---------------------------------------------------------------------------
-
-
-def _analytic_spinup(hp: dict, train_data: np.ndarray,
-                     arch_components: bool = False) -> dict:
-    """Estimate analytic synchronisation time and recommended spinup for *hp*.
-
-    Mirrors ``architectures.py:1683–1708``: runs the reservoir on *train_data*,
-    estimates the leading per-step contraction eigenvalue via
-    ``architectures.analytic_synchrony``, then converts to a recommended spinup:
-
-    .. code-block::
-
-        rec_spin = sync_time × (log2(√size) − log2(ε))   [mach_eps_power=0]
-        spinup   = min(max(100, rec_spin), 1000)
-
-    Parameters
-    ----------
-    hp : dict
-        Hyperparameter dict (as returned by ``_load_hp_csv``).
-    train_data : np.ndarray, shape (N, d)
-        Raw (un-normalised) training trajectory.
-    arch_components : bool, default False
-        When True, use ``architectures.basic_res`` / ``basic_in`` weight
-        matrices (matching the framework's exact matrices).  When False, use
-        ``build_esn``'s uniform[−1,1] matrices.
-
-    Returns
-    -------
-    dict with keys: ``contraction``, ``sync_time``, ``rec_spin``, ``spinup``.
-    """
-    from scipy import sparse as _sparse  # noqa: PLC0415
-    _reservoir_dir = os.path.normpath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../reservoir")
-    )
-    if _reservoir_dir not in sys.path:
-        sys.path.insert(0, _reservoir_dir)
-    import architectures as _arch  # noqa: PLC0415
-
-    d_in   = train_data.shape[1]
-    x_mean = train_data[:-1].mean(axis=0)
-    x_std  = np.maximum(train_data[:-1].std(axis=0), 1e-8)
-    x_norm = (train_data[:-1] - x_mean) / x_std
-    y_norm = (train_data[1:]  - x_mean) / x_std
-
-    model = build_esn(hp, d_in, len(x_norm))
-    if arch_components:
-        W_arr, Win_arr, bias_arr = _arch_components(hp, d_in)
-        model.reservoir.W    = W_arr
-        model.reservoir.Win  = Win_arr
-        model.reservoir.bias = bias_arr
-    model.fit(x_norm, y_norm)
-
-    model.reservoir.reset()
-    R = model.reservoir.run(x_norm)
-
-    leak     = float(model.reservoir.lr)
-    size     = int(hp["size"])
-    w_res_sp = _sparse.csr_matrix(model.reservoir.W)
-    rng_sync = np.random.default_rng(42)
-    contraction = _arch.analytic_synchrony(
-        R[-100:], leak, w_res_sp, samples=20, rng=rng_sync)
-
-    if np.isfinite(contraction) and contraction < 1.0:
-        sync_time = -1.0 / np.log2(contraction)
-        eps_term  = -np.log2(np.finfo(float).eps)
-        size_term =  np.log2(np.sqrt(size))
-        rec_spin  = min(int(sync_time * (size_term + eps_term)) + 1, 1000)
-    else:
-        sync_time = np.inf
-        rec_spin  = 1000
-    spinup = max(100, rec_spin)
-
-    return {"contraction": contraction, "sync_time": sync_time,
-            "rec_spin": rec_spin, "spinup": spinup}
-
-
-def _spinup_for(hp: dict, arch_components: bool = False) -> int:
-    """Return the saved analytic spinup for this HP row.
-
-    Reads ``hp["spinup_arch"]`` when *arch_components* is True,
-    ``hp["spinup"]`` otherwise.  Falls back to ``_SPINUP`` if absent.
-    """
-    if arch_components and "spinup_arch" in hp:
-        return int(hp["spinup_arch"])
-    return int(hp.get("spinup", _SPINUP))
+    return train_data, t_step
 
 
 # ---------------------------------------------------------------------------
@@ -872,50 +683,8 @@ def _spinup_for(hp: dict, arch_components: bool = False) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _arch_components(hp: dict, input_dim: int):
-    """Return (W, Win, bias) built by ``architectures.basic_res`` / ``basic_in``.
-
-    Lazy-imports ``architectures`` from the framework's ``reservoir/`` directory.
-
-    Parameters
-    ----------
-    hp : dict
-        HP dict with keys: ``size``, ``seed``, ``radius``, ``sparse``,
-        ``in_scale``, ``bias_scale``.
-    input_dim : int
-        Number of input dimensions.
-
-    Returns
-    -------
-    W : ndarray, shape (size, size)
-    Win : ndarray, shape (size, input_dim)
-    bias : ndarray, shape (size,)
-    """
-    _reservoir_dir = os.path.normpath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../reservoir")
-    )
-    if _reservoir_dir not in sys.path:
-        sys.path.insert(0, _reservoir_dir)
-    import architectures as _arch  # noqa: PLC0415
-
-    p = {
-        "size":       hp["size"],
-        "seed":       hp["seed"],
-        "radius":     hp["radius"],
-        "sparse":     hp["sparse"],
-        "in scale":   hp["in_scale"],
-        "bias scale": hp["bias_scale"],
-        "d in":       input_dim,
-        "w in bias":  True,
-        "sparse in":  True,
-    }
-    W = _arch.basic_res(p).toarray()
-    M = _arch.basic_in(p).toarray()
-    return W, M[:, :input_dim], M[:, input_dim]
-
-
-_2RES_SEED_OFFSET    = 1      # seed gap between the two reservoir instances
-_2RES_COMBINER_FLOOR = 1e-6  # small positive ridge for the combiner
+_2RES_SEED_OFFSET = 1
+_2RES_COMBINER_FLOOR = 1e-6
 
 
 def build_esn(hp: dict, input_dim: int, n_train_samples: int):
@@ -927,12 +696,12 @@ def build_esn(hp: dict, input_dim: int, n_train_samples: int):
     matching the TradRC setup.
     """
     from reservoirpy import ESN
-    from reservoirpy.nodes import Reservoir, Ridge
     from reservoirpy.mat_gen import uniform
+    from reservoirpy.nodes import Reservoir, Ridge
 
     ridge_beta = float(hp.get("ridge", 0.0))
-    rc_conn    = hp["sparse"] / hp["size"]
-    reservoir  = Reservoir(
+    rc_conn = hp["sparse"] / hp["size"]
+    reservoir = Reservoir(
         units=hp["size"],
         sr=hp["radius"],
         lr=hp["leak"],
@@ -965,11 +734,11 @@ def build_two_res_esn(
         model = [res1("2res_res1") >> ro1("2res_readout1"),
                  res2("2res_res2") >> ro2("2res_readout2")] >> comb("2res_combiner")
     """
-    from reservoirpy.nodes import Reservoir, Ridge
     from reservoirpy.mat_gen import uniform
+    from reservoirpy.nodes import Reservoir, Ridge
 
     ridge_beta = float(hp.get("ridge", 0.0))
-    rc_conn    = hp["sparse"] / hp["size"]
+    rc_conn = hp["sparse"] / hp["size"]
 
     def _make_reservoir(seed, name):
         return Reservoir(
@@ -986,41 +755,12 @@ def build_two_res_esn(
             name=name,
         )
 
-    res1 = _make_reservoir(int(hp["seed"]),               "2res_res1")
+    res1 = _make_reservoir(int(hp["seed"]), "2res_res1")
     res2 = _make_reservoir(int(hp["seed"]) + seed_offset, "2res_res2")
-    ro1  = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout1")
-    ro2  = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout2")
-    comb = Ridge(ridge=_2RES_COMBINER_FLOOR,          fit_bias=True, name="2res_combiner")
+    ro1 = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout1")
+    ro2 = Ridge(ridge=ridge_beta * n_train_samples, fit_bias=True, name="2res_readout2")
+    comb = Ridge(ridge=_2RES_COMBINER_FLOOR, fit_bias=True, name="2res_combiner")
     return [res1 >> ro1, res2 >> ro2] >> comb
-
-
-# ---------------------------------------------------------------------------
-# Model cache helpers
-# ---------------------------------------------------------------------------
-
-
-def _esn_cache_path(system_name: str, hp: dict) -> str:
-    """Return pickle path for a cached ``(model, norm)`` tuple.
-
-    The filename is just the system name: hyperparameters are loaded
-    deterministically from the HP CSV, so they do not distinguish cache
-    entries.  Note: this means editing a hyperparameter in the CSV will reuse
-    the existing cache — delete the ``.pkl`` to force a retrain.
-    """
-    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
-    return os.path.join(_MODEL_CACHE_DIR, f"{system_name}.pkl")
-
-
-def _two_res_cache_path(base_system_name: str, hp: dict, seed_offset: int) -> str:
-    """Return pickle path for a cached two-reservoir ``(model, norm)`` tuple.
-
-    See :func:`_esn_cache_path` for the naming rationale and the
-    stale-cache caveat.
-    """
-    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
-    return os.path.join(
-        _MODEL_CACHE_DIR, f"{base_system_name}_2res_off{seed_offset}.pkl"
-    )
 
 
 def load_or_train_esn(
@@ -1041,7 +781,8 @@ def load_or_train_esn(
     cache : bool, default True
         When False, skip both cache-load and cache-save.
     """
-    cache_path = _esn_cache_path(system_name, hp)
+    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
+    cache_path = os.path.join(_MODEL_CACHE_DIR, f"{system_name}.pkl")
     if cache and os.path.exists(cache_path):
         with open(cache_path, "rb") as f:
             cached = pickle.load(f)
@@ -1049,8 +790,8 @@ def load_or_train_esn(
         return cached["model"], cached["norm"]
 
     x_mean = train_data[:-1].mean(axis=0)
-    x_std  = np.maximum(train_data[:-1].std(axis=0), 1e-8)
-    norm   = {"mean": x_mean, "std": x_std}
+    x_std = np.maximum(train_data[:-1].std(axis=0), 1e-8)
+    norm = {"mean": x_mean, "std": x_std}
 
     traj_norm = (train_data - x_mean) / x_std
     noise_reg = float(hp.get("noise_reg", 0.0))
@@ -1093,7 +834,8 @@ def load_or_train_two_res_esn(
     base_system_name : str
         System name without the ``_2res`` suffix.
     """
-    cache_path = _two_res_cache_path(base_system_name, hp, seed_offset)
+    os.makedirs(_MODEL_CACHE_DIR, exist_ok=True)
+    cache_path = os.path.join(_MODEL_CACHE_DIR, f"{base_system_name}_2res_off{seed_offset}.pkl")
     if cache and os.path.exists(cache_path):
         with open(cache_path, "rb") as f:
             cached = pickle.load(f)
@@ -1101,8 +843,8 @@ def load_or_train_two_res_esn(
         return cached["model"], cached["norm"]
 
     x_mean = train_data[:-1].mean(axis=0)
-    x_std  = np.maximum(train_data[:-1].std(axis=0), 1e-8)
-    norm   = {"mean": x_mean, "std": x_std}
+    x_std = np.maximum(train_data[:-1].std(axis=0), 1e-8)
+    norm = {"mean": x_mean, "std": x_std}
 
     traj_norm = (train_data - x_mean) / x_std
     noise_reg = float(hp.get("noise_reg", 0.0))
@@ -1129,26 +871,6 @@ def load_or_train_two_res_esn(
 # ---------------------------------------------------------------------------
 # _assess_one  (single ESN vs. true system)
 # ---------------------------------------------------------------------------
-
-
-def _spectra_pass(true_spec, esn_spec, esn_ci):
-    """Return True if every positive true exponent lies within the ESN 95% CI band.
-
-    "Positive" means greater than 1% of the largest positive true exponent.
-    Comparison is index-by-index on descending spectra.
-    """
-    true_spec = np.asarray(true_spec)
-    esn_spec  = np.asarray(esn_spec)
-    esn_ci    = np.asarray(esn_ci)
-    pos_true  = true_spec[true_spec > 0]
-    if len(pos_true) == 0:
-        return True
-    pos_mask = true_spec > 1e-2 * np.max(pos_true)
-    k_min = min(len(true_spec), len(esn_spec), len(esn_ci))
-    return not any(
-        pos_mask[i] and abs(true_spec[i] - esn_spec[i]) > esn_ci[i]
-        for i in range(k_min)
-    )
 
 
 def _assess_one(
@@ -1180,24 +902,30 @@ def _assess_one(
     Returns
     -------
     dict with keys: ``esn_name``, ``underlying_sys``, ``t_step``,
-        ``true_spectrum``, ``true_ci``, ``true_ky``,
-        ``esn_spectrum``, ``esn_ci``, ``esn_ky``, ``passed``.
+        ``true_spectrum``, ``true_ky``, ``esn_spectrum``, ``esn_ky``.
+
+    Notes
+    -----
+    The raw ESN exponents are returned in per-step units and rescaled to
+    physical units by dividing by ``t_step``.  The ``*_reduced`` keys hold
+    spectra with near-zero exponents removed (those whose ``|λ|`` is below 1 %
+    of the principal ``|λ|``), with Kaplan-Yorke dimensions recomputed from the
+    reduced spectra.
     """
-    from reservoirpy.observables import lyapunov as _lyap_esn  # noqa: PLC0415
+    from reservoirpy.observables import lyapunov
 
     _t0 = time.perf_counter()
 
-    is_2res   = esn_name.endswith("_2res")
+    is_2res = esn_name.endswith("_2res")
     base_name = esn_name[: -len("_2res")] if is_2res else esn_name
 
-    hp        = _load_hp_csv(base_name)
-    spinup    = _spinup_for(hp)
-    sys_inst  = _system_factory(hp)
+    hp = _load_hp_csv(base_name)
+    spinup = int(hp.get("spinup", _SPINUP))
+    sys_inst = _system_factory(hp)
     underlying = sys_inst.name
 
     true_spec = np.asarray(true_result["spectrum"])
-    true_ci   = np.asarray(true_result["spectrum_ci"])
-    true_ky   = true_result["ky_dim"]
+    true_ky = true_result["ky_dim"]
     k = len(true_spec)
 
     if verbose:
@@ -1209,20 +937,17 @@ def _assess_one(
             model_desc = f"Basic ESN, size={size}, input={input_lbl}"
         print(f"\n  [{esn_name}]  {model_desc}")
 
-    # Training data
-    train_data, _val, t_step = generate_train_val(base_name)
+    train_data, t_step = generate_train(base_name)
 
-    # Model
     if is_2res:
         model, norm = load_or_train_two_res_esn(base_name, hp, train_data, spinup=spinup)
     else:
         model, norm = load_or_train_esn(base_name, hp, train_data, spinup=spinup)
     x_norm = (train_data - norm["mean"]) / norm["std"]
 
-    # ESN Lyapunov spectrum (raw exponents in per-step units → rescale by t_step)
     if verbose:
         print(f"  [{esn_name}]  Computing RC Lyapunov spectrum...")
-    esn_raw = _lyap_esn(
+    esn_raw = lyapunov(
         model,
         init=x_norm,
         spinup=spinup,
@@ -1234,50 +959,35 @@ def _assess_one(
         probe_sub_cycle_cap=50,
     )
     esn_spec = np.asarray(esn_raw["spectrum"]) / t_step
-    esn_ci   = np.asarray(esn_raw["spectrum_ci"]) / t_step
-    esn_ky   = esn_raw["ky_dim"]
+    esn_ky = esn_raw["ky_dim"]
 
-    # Pass/Fail: every positive true exponent must fall within the ESN 95% CI.
-    passed = _spectra_pass(true_spec, esn_spec, esn_ci)
-
-    # Reduced spectra: strip exponents with |λ| < 1% of principal |λ|.
-    nz_thresh   = 1e-2 * abs(float(true_spec[0])) if len(true_spec) else 0.0
-    keep_true   = np.abs(true_spec) >= nz_thresh
-    keep_esn    = np.abs(esn_spec)  >= nz_thresh
+    nz_thresh = 1e-2 * abs(float(true_spec[0])) if len(true_spec) else 0.0
+    keep_true = np.abs(true_spec) >= nz_thresh
+    keep_esn = np.abs(esn_spec) >= nz_thresh
     true_spec_red = true_spec[keep_true]
-    true_ci_red   = true_ci[keep_true]
-    esn_spec_red  = esn_spec[keep_esn]
-    esn_ci_red    = esn_ci[keep_esn]
-    passed_reduced = _spectra_pass(true_spec_red, esn_spec_red, esn_ci_red)
-    true_ky_red    = _kaplan_yorke(true_spec_red)
-    esn_ky_red     = _kaplan_yorke(esn_spec_red)
+    esn_spec_red = esn_spec[keep_esn]
+    true_ky_red = _kaplan_yorke(true_spec_red)
+    esn_ky_red = _kaplan_yorke(esn_spec_red)
 
     elapsed = time.perf_counter() - _t0
     if verbose:
         print(f"  [{esn_name}]  DONE  ({elapsed:.1f}s)")
 
     return {
-        "esn_name":            esn_name,
-        "underlying_sys":      underlying,
-        "t_step":              t_step,
-        "true_spectrum":       true_spec,
-        "true_ci":             true_ci,
-        "true_ky":             true_ky,
-        "esn_spectrum":        esn_spec,
-        "esn_ci":              esn_ci,
-        "esn_ky":              esn_ky,
-        "passed":              passed,
+        "esn_name": esn_name,
+        "underlying_sys": underlying,
+        "t_step": t_step,
+        "true_spectrum": true_spec,
+        "true_ky": true_ky,
+        "esn_spectrum": esn_spec,
+        "esn_ky": esn_ky,
         "true_spectrum_reduced": true_spec_red,
-        "true_ci_reduced":       true_ci_red,
-        "esn_spectrum_reduced":  esn_spec_red,
-        "esn_ci_reduced":        esn_ci_red,
-        "passed_reduced":        passed_reduced,
-        "true_ky_reduced":       true_ky_red,
-        "esn_ky_reduced":        esn_ky_red,
-        # presentation metadata
-        "is_2res":             is_2res,
-        "input_label":         _input_label(hp),
-        "size":                int(hp.get("size", 0)),
+        "esn_spectrum_reduced": esn_spec_red,
+        "true_ky_reduced": true_ky_red,
+        "esn_ky_reduced": esn_ky_red,
+        "is_2res": is_2res,
+        "input_label": _input_label(hp),
+        "size": int(hp.get("size", 0)),
     }
 
 
@@ -1331,7 +1041,7 @@ def _print_system_table(
     group : list of dict
         :func:`_assess_one` results whose ``underlying_sys`` is *sys_name*.
     known_row : dict or None
-        Entry from :func:`_load_known_specs` for *sys_name*, or ``None`` when
+        Entry from :func:`_load_spectra` for *sys_name*, or ``None`` when
         no literature spectrum is available.
     reduced : bool
         When True, use near-zero-removed spectra and ``*`` column suffixes.
@@ -1339,41 +1049,32 @@ def _print_system_table(
         exponents (l3 and l4) stripped by hardcoded index rather than by the
         1%-of-principal threshold (which would not remove them).
     """
-    spec_key  = "true_spectrum_reduced" if reduced else "true_spectrum"
-    espec_key = "esn_spectrum_reduced"  if reduced else "esn_spectrum"
-    tky_key   = "true_ky_reduced"       if reduced else "true_ky"
-    eky_key   = "esn_ky_reduced"        if reduced else "esn_ky"
+    spec_key = "true_spectrum_reduced" if reduced else "true_spectrum"
+    espec_key = "esn_spectrum_reduced" if reduced else "esn_spectrum"
+    tky_key = "true_ky_reduced" if reduced else "true_ky"
+    eky_key = "esn_ky_reduced" if reduced else "esn_ky"
 
-    # ---- system formal name and method ------------------------------------ #
-    sys_cls     = _SYSTEMS.get(sys_name)
+    sys_cls = _SYSTEMS.get(sys_name)
     formal_name = sys_cls.formal_name if sys_cls else sys_name
-    method      = sys_cls.method      if sys_cls else "direct"
+    method = sys_cls.method if sys_cls else "direct"
 
-    # ---- literature spectrum for this mode -------------------------------- #
     if known_row is not None and known_row.get("spectrum") is not None:
         lit_spec_full = np.asarray(known_row["spectrum"])
         if reduced and sys_name == "kuramoto_sivashinsky":
-            # Hardcode: drop indices 2 and 3 (l3=0.002, l4=-0.004) for KS.
             keep = [i for i in range(len(lit_spec_full)) if i not in (2, 3)]
             lit_spec_disp = lit_spec_full[keep]
         elif reduced:
-            # For other systems apply the 1%-of-principal near-zero filter.
-            nz_thresh_lit = (1e-2 * abs(float(lit_spec_full[0]))
-                             if len(lit_spec_full) else 0.0)
+            nz_thresh_lit = 1e-2 * abs(float(lit_spec_full[0])) if len(lit_spec_full) else 0.0
             lit_spec_disp = lit_spec_full[np.abs(lit_spec_full) >= nz_thresh_lit]
         else:
             lit_spec_disp = lit_spec_full
     else:
         lit_spec_disp = None
 
-    # ---- compute column widths ------------------------------------------- #
-    max_k = max(
-        max(len(r[spec_key]), len(r[espec_key])) for r in group
-    )
+    max_k = max(max(len(r[spec_key]), len(r[espec_key])) for r in group)
     if lit_spec_disp is not None:
         max_k = max(max_k, len(lit_spec_disp))
 
-    # Determine label column width from the longest row label we will print.
     multi_rc = len(group) > 1
     source_str = known_row.get("source", "") if known_row else ""
     candidate_labels = [
@@ -1382,30 +1083,27 @@ def _print_system_table(
     ] + [_rc_row_label(r, multi_rc) for r in group]
     lbl_w = max(28, max(len(lbl) for lbl in candidate_labels) + 2)
 
-    lam_w  = 9
-    ky_w   = 12 if reduced else 8
+    lam_w = 9
+    ky_w = 12 if reduced else 8
     suffix = "*" if reduced else ""
 
-    # ---- header ------------------------------------------------------------ #
     hdr = f"  {'System / kind':<{lbl_w}}"
     for i in range(max_k):
         hdr += f"  {('λ' + str(i + 1) + suffix):>{lam_w}}"
     hdr += f"  {'KY dim':>{ky_w}}"
-    total_w = len(hdr) - 2   # exclude the leading "  "
-    sep      = "  " + "─" * total_w
-    title    = f"  ── {formal_name} " + "─" * max(0, total_w - len(formal_name) - 5)
+    total_w = len(hdr) - 2
+    sep = "  " + "─" * total_w
+    title = f"  ── {formal_name} " + "─" * max(0, total_w - len(formal_name) - 5)
 
     print(f"\n{title}")
     print(hdr)
     print(sep)
 
-    # ---- literature row (optional, top) ------------------------------------ #
     if lit_spec_disp is not None and len(lit_spec_disp) > 0:
         lit_label = f"Literature: {source_str}" if source_str else "Literature"
         row_s = f"  {lit_label:<{lbl_w}}"
         for i in range(max_k):
-            row_s += (f"  {_lam_str(lit_spec_disp[i]):>{lam_w}}"
-                      if i < len(lit_spec_disp) else f"  {'':>{lam_w}}")
+            row_s += f"  {_lam_str(lit_spec_disp[i]):>{lam_w}}" if i < len(lit_spec_disp) else f"  {'':>{lam_w}}"
         if reduced:
             ky_lit = _kaplan_yorke(lit_spec_disp)
             row_s += f"  {_ky_str(ky_lit, marked=True):>{ky_w}}"
@@ -1414,26 +1112,21 @@ def _print_system_table(
             row_s += f"  {_ky_str(ky_lit):>{ky_w}}"
         print(row_s)
 
-    # ---- computed-true row (one per system) -------------------------------- #
-    # Use the first result in the group for the true-spectrum data.
-    r0     = group[0]
+    r0 = group[0]
     t_spec = r0[spec_key]
-    row_s  = f"  {method:<{lbl_w}}"
+    row_s = f"  {method:<{lbl_w}}"
     for i in range(max_k):
-        row_s += (f"  {_lam_str(t_spec[i]):>{lam_w}}"
-                  if i < len(t_spec) else f"  {'':>{lam_w}}")
+        row_s += f"  {_lam_str(t_spec[i]):>{lam_w}}" if i < len(t_spec) else f"  {'':>{lam_w}}"
     dropped_true = len(r0["true_spectrum_reduced"]) < len(r0["true_spectrum"])
     row_s += f"  {_ky_str(r0[tky_key], reduced and dropped_true):>{ky_w}}"
     print(row_s)
 
-    # ---- RC rows ---------------------------------------------------------- #
     for r in group:
-        e_spec   = r[espec_key]
+        e_spec = r[espec_key]
         rc_label = _rc_row_label(r, multi_rc)
-        row_s    = f"  {rc_label:<{lbl_w}}"
+        row_s = f"  {rc_label:<{lbl_w}}"
         for i in range(max_k):
-            row_s += (f"  {_lam_str(e_spec[i]):>{lam_w}}"
-                      if i < len(e_spec) else f"  {'':>{lam_w}}")
+            row_s += f"  {_lam_str(e_spec[i]):>{lam_w}}" if i < len(e_spec) else f"  {'':>{lam_w}}"
         dropped_esn = len(r["esn_spectrum_reduced"]) < len(r["esn_spectrum"])
         row_s += f"  {_ky_str(r[eky_key], reduced and dropped_esn):>{ky_w}}"
         print(row_s)
@@ -1441,41 +1134,8 @@ def _print_system_table(
     print(sep)
 
 
-def _print_results_table(results: list, reduced: bool = False) -> None:
-    """Print one ASCII comparison table per underlying dynamical system.
-
-    Each table has row order: literature (if available) → computed-true →
-    RC rows.  Literature exponent columns are taken from
-    ``known_lyapunov_specs.csv``; table width widens to fit them when they
-    exceed the computed spectrum length.
-
-    Parameters
-    ----------
-    results : list of dict
-        Return values of :func:`_assess_one`.
-    reduced : bool
-        If True, use the near-zero-removed spectra (``*_spectrum_reduced`` /
-        ``*_ci_reduced`` fields) and label columns ``λ1*``, ``λ2*``, etc.
-        Default False.
-    """
-    if not results:
-        return
-
-    # Group results by underlying system, preserving encounter order.
-    groups: dict = {}
-    for r in results:
-        groups.setdefault(r["underlying_sys"], []).append(r)
-
-    # Load literature spectra once.
-    known = _load_known_specs()
-
-    for sys_name, group in groups.items():
-        _print_system_table(sys_name, group, known.get(sys_name), reduced=reduced)
-
-
-
 def main(
-    esn_names=['lorenz_f', 'lorenz_x_2res', 'lorenz_x', 'lorenz96', 'mackey_glass', 'kuramoto_sivashinsky'],
+    esn_names=["lorenz_f", "lorenz_x_2res", "lorenz_x", "lorenz96", "mackey_glass", "kuramoto_sivashinsky"],
     *,
     min_cycles: int = 500,
     max_cycles: int = 2000,
@@ -1484,13 +1144,17 @@ def main(
     verbose: bool = True,
     force_true_spectra: bool = False,
 ) -> list:
-    """Train Reservoir Computers and compare their Lyapunov spectra to the true system spectra.
+    """Compare trained-RC Lyapunov spectra to true-system spectra.
 
     For each unique underlying dynamical system represented in *esn_names*,
     the true spectrum is computed or loaded from cache (once), then each RC
     that maps to that system is trained and assessed.  A combined ASCII
     comparison table is printed at the end.  For Kuramoto-Sivashinsky, an
     additional reduced table (near-zero exponents removed) is always printed.
+
+    Several RC names may share one underlying system: ``lorenz_x``,
+    ``lorenz_f``, and ``lorenz_x_2res`` all map to ``"lorenz"``, so they are
+    grouped under a single true-spectrum computation.
 
     Parameters
     ----------
@@ -1512,11 +1176,8 @@ def main(
     -------
     list of dict, one per RC, as returned by :func:`_assess_one`.
     """
-    import csv  # noqa: PLC0415
-
     _t0 = time.perf_counter()
 
-    # Resolve names from hyperparameters.csv if not provided.
     if esn_names is None:
         hp_path = _hp_csv_path()
         if not os.path.exists(hp_path):
@@ -1524,17 +1185,15 @@ def main(
         with open(hp_path, newline="") as f:
             esn_names = [row["system"] for row in csv.DictReader(f)]
 
-    # Map each ESN to its underlying dynamical system.
-    # (lorenz_x and lorenz_f both map to "lorenz"; lorenz_x_2res maps to "lorenz")
-    underlying_groups: dict = {}   # underlying_sys_name -> [esn_name, ...]
+    underlying_groups: dict = {}
     for esn_name in esn_names:
         base = esn_name[: -len("_2res")] if esn_name.endswith("_2res") else esn_name
-        hp  = _load_hp_csv(base)
+        hp = _load_hp_csv(base)
         sys_inst = _system_factory(hp)
         underlying_groups.setdefault(sys_inst.name, []).append(esn_name)
 
     all_results: list = []
-    known = _load_known_specs()
+    known = _load_spectra(_KNOWN_SPECS_CSV)
 
     if verbose:
         print(f"\n{'=' * 64}")
@@ -1543,7 +1202,7 @@ def main(
 
     for sys_name, esn_list in underlying_groups.items():
         if verbose:
-            sys_cls     = _SYSTEMS.get(sys_name)
+            sys_cls = _SYSTEMS.get(sys_name)
             formal_name = sys_cls.formal_name if sys_cls else sys_name
             rc_list_str = ", ".join(esn_list)
             print(f"\n{'=' * 64}")
@@ -1551,30 +1210,34 @@ def main(
             print(f"  {'Reservoir Computer(s)':<21}: {rc_list_str}")
             print(f"{'=' * 64}")
 
-        # True spectrum — k set by the system's k_default.
         k = _SYSTEMS[sys_name].k_default
         true_result = known_system_test(
-            sys_name, k=k,
-            min_cycles=min_cycles, max_cycles=max_cycles,
-            rtol=rtol, display=progress_bar, verbose=verbose,
+            sys_name,
+            k=k,
+            min_cycles=min_cycles,
+            max_cycles=max_cycles,
+            rtol=rtol,
+            display=progress_bar,
+            verbose=verbose,
             force=force_true_spectra,
         )
 
-        # Assess each ESN.
         for esn_name in esn_list:
             result = _assess_one(
-                esn_name, true_result,
-                min_cycles=min_cycles, max_cycles=max_cycles,
-                rtol=rtol, progress_bar=progress_bar, verbose=verbose,
+                esn_name,
+                true_result,
+                min_cycles=min_cycles,
+                max_cycles=max_cycles,
+                rtol=rtol,
+                progress_bar=progress_bar,
+                verbose=verbose,
             )
             all_results.append(result)
 
-        # Print this system's results table before moving to the next system.
         if verbose:
             group = [r for r in all_results if r["underlying_sys"] == sys_name]
             _print_system_table(sys_name, group, known.get(sys_name))
 
-            # Kuramoto-Sivashinsky: also print the reduced near-zero exponent table.
             if sys_name == "kuramoto_sivashinsky":
                 print("\nRemoving near-zero exponents:")
                 for r in group:
@@ -1595,11 +1258,6 @@ def main(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
-#
-# Usage:
-#   python -m reservoirpy.tests.lyapunov.lyapunov_test                → all ESNs
-#   python -m reservoirpy.tests.lyapunov.lyapunov_test lorenz_x       → named ESN(s)
-#   python -m reservoirpy.tests.lyapunov.lyapunov_test --true lorenz  → true system only
 
 if __name__ == "__main__":
-    main(force_true_spectra=True)
+    main(["lorenz_f", "lorenz_x", "lorenz96"], force_true_spectra=True)
