@@ -23,15 +23,14 @@
 ---
 
 **Feature overview:**
-- easy creation of [complex architectures](https://reservoirpy.readthedocs.io/en/latest/user_guide/model.html) with multiple reservoirs (e.g. *deep reservoirs*),
-readouts
+- easy creation of [complex architectures](https://reservoirpy.readthedocs.io/en/latest/user_guide/model.html) with multiple reservoirs, including deep reservoirs and multiple readouts
 - [feedback loops](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Feedback-connections)
 - [offline and online training](https://reservoirpy.readthedocs.io/en/latest/user_guide/learning_rules.html)
 - [parallelization across sequences](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Parallelization)
-- [sparse matrix computation](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Custom-weight-matrices)
-- advanced learning rules (e.g. [*Intrinsic Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.IPReservoir.html), [*Local Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.LocalPlasticityReservoir.html) or [*NVAR* (Next-Generation RC)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.NVAR.html))
+- [sparse matrix computations](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Custom-weight-matrices)
+- advanced learning rules (such as [*Intrinsic Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.IPReservoir.html), [*Local Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.LocalPlasticityReservoir.html) or [*NVAR* (Next-Generation Reservoir Computing)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.NVAR.html))
 - interfacing with [scikit-learn](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.ScikitLearnNode.html) models
-- and many more!
+- and much more!
 
 Moreover, graphical tools are included to **easily explore hyperparameters**
 with the help of the *hyperopt* library.
