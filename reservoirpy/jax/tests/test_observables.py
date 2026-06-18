@@ -4,6 +4,7 @@
 import jax.numpy as jnp
 import pytest
 
+from reservoirpy.datasets import mackey_glass
 from reservoirpy.jax.nodes import ES2N, LIF, IPReservoir, Reservoir
 from reservoirpy.jax.observables import maximal_lyapunov_exponent
 
@@ -40,17 +41,30 @@ def test_mle_stable_reservoir(X):
     assert mle < 0.0
 
 
-def test_mle_chaotic_reservoir():
-    """A reservoir with sr >> 1 driven by zero input should have positive MLE.
+def test_mle_zero_input_matches_log_sr():
+    """Under zero input the MLE has a closed form, used here as ground truth.
 
-    With zero input the state stays at zero, f'(0)=1 for tanh, so the
-    Jacobian is W and MLE converges to log(sr). Constant non-zero input
-    saturates tanh (f'(z)→0), collapsing the effective spectral radius.
+    The JAX ``Reservoir`` defaults to ``bias=0.0`` and ``lr=1.0``, so with
+    zero input the state stays at zero, f'(0)=1 for tanh, the Jacobian is
+    exactly ``W``, and the MLE converges to ``log(rho(W)) = log(sr)``.
     """
-    X_zero = jnp.zeros((500, 1))
-    res = initialized_reservoir(sr=3.0)
-    mle = maximal_lyapunov_exponent(res, X_zero, warmup=50)
+    sr = 3.0
+    X_zero = jnp.zeros((1500, 1))
+    res = initialized_reservoir(sr=sr)
+    mle = maximal_lyapunov_exponent(res, X_zero, warmup=500)
     assert mle > 0.0
+    assert mle == pytest.approx(jnp.log(sr), abs=0.05)
+
+
+def test_mle_chaotic_driving_signal():
+    """Driven by a chaotic signal, the conditional MLE is finite and the
+    function runs end-to-end on a non-trivial (non-constant) input."""
+    X = jnp.asarray(mackey_glass(1500))
+    res = Reservoir(50, sr=1.2, seed=0)
+    res.initialize(X[:1])
+    mle = maximal_lyapunov_exponent(res, X, warmup=500)
+    assert isinstance(mle, float)
+    assert jnp.isfinite(mle)
 
 
 def test_mle_different_seeds_same_result(X):
