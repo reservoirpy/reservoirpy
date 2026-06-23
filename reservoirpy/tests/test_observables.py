@@ -7,7 +7,10 @@ from scipy.sparse import csr_array
 
 from ..nodes import Reservoir, Ridge
 from ..observables import (
+    _lyapunov,
     effective_spectral_radius,
+    ky_dim,
+    lyapunov,
     memory_capacity,
     mse,
     nrmse,
@@ -133,3 +136,97 @@ def test_effective_spectral_radius():
 
     esr = effective_spectral_radius(W=reservoir.W, lr=reservoir.lr)
     assert isinstance(esr, float)
+
+
+def test_lyapunov_logistic_map():
+    """_lyapunov recovers the Lyapunov exponent of the logistic map within tolerance.
+
+    The logistic map x -> r*x*(1-x) with r=3.9 has a numerically known
+    leading Lyapunov exponent of approximately 0.494.
+    """
+    r = 3.9
+
+    class LogisticModel:
+        def __init__(self, x):
+            self.state = np.array([float(x)])
+            self.t_step = 1.0
+            self.stdev = 0.2  # rough std of logistic map attractor
+
+        def run(self, steps):
+            x = self.state[0]
+            for _ in range(steps):
+                x = r * x * (1.0 - x)
+            self.state = np.array([x])
+
+    model = LogisticModel(0.5)
+    result = _lyapunov(
+        model,
+        k=1,
+        cycle_length=1,
+        breakin_cycles=500,
+        min_cycles=500,
+        max_cycles=5000,
+    )
+
+    assert "spectrum" in result
+    assert "ky_dim" in result
+    assert "n_cycles" in result
+    lam = result["spectrum"][0]
+    assert 0.4 < lam < 0.6, f"Expected λ_1 ≈ 0.494 for logistic r=3.9, got {lam:.4f}"
+
+
+def test_ky_dim():
+    """ky_dim returns correct dimension and CI for a simple known spectrum."""
+    # Lorenz63 true spectrum is approximately [0.9, 0.0, -14.6]
+    spec = np.array([0.9, 0.0, -14.6])
+    # Without CI: returns a float
+    d = ky_dim(spec)
+    assert isinstance(d, float)
+    assert 2.0 < d < 3.0
+
+    # With CI: returns (dim, ci) tuple
+    ci_half = np.array([0.01, 0.01, 0.1])
+    d2, ci = ky_dim(spec, ci_half=ci_half)
+    assert isinstance(d2, float)
+    assert isinstance(ci, float)
+    assert ci > 0
+    assert abs(d2 - d) < 1e-10
+
+    # Purely contracting spectrum → dimension 0
+    assert ky_dim(np.array([-1.0, -2.0])) == 0.0
+
+    # All-positive cumsum (dimension ≥ spectrum length) → float(len)
+    with pytest.warns(RuntimeWarning):
+        assert ky_dim(np.array([1.0, 1.0])) == 2.0
+
+
+def test_lyapunov():
+    """lyapunov() Model wrapper produces a finite, ordered Lyapunov spectrum.
+
+    Smoke test: verifies the public wrapper runs to completion and returns
+    the expected dict structure and array shape.  Sign convergence of the
+    leading exponent is not asserted here because the small ESN and low
+    cycle count used to keep the test fast may not converge to the true
+    attractor dynamics within the allowed budget.
+    """
+    from ..datasets import lorenz
+
+    data = lorenz(3000, seed=0)
+    x_train, y_train = data[:2000], data[1:2001]
+    esn = Reservoir(50, sr=0.95, seed=0) >> Ridge(ridge=1e-6)
+    esn = esn.fit(x_train, y_train, warmup=100)
+
+    result = lyapunov(esn, init_traj=x_train[:100], k=3, min_cycles=200, max_cycles=500)
+
+    assert "spectrum" in result
+    assert "ky_dim" in result
+    assert "ky_dim_ci" in result
+    assert "spectrum_ci" in result
+    assert "n_cycles" in result
+    assert "converged" in result
+    assert result["spectrum"].shape == (3,)
+    assert np.all(np.isfinite(result["spectrum"])), "Spectrum should not contain NaN or Inf"
+    lam = result["spectrum"]
+    assert lam[0] >= lam[1] >= lam[2], (
+        f"Benettin algorithm should produce an ordered spectrum; got {lam}"
+    )
