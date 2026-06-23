@@ -16,6 +16,7 @@ from ..observables import (
     nrmse,
     rmse,
     rsquare,
+    mae,
     spectral_radius,
 )
 
@@ -31,10 +32,12 @@ from ..observables import (
         (nrmse, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {"norm": "foo"}, "raise"),
         (nrmse, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {"norm_value": 3.0}, None),
         (rsquare, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {}, None),
+        (mae, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5], {}, None),
         (mse, [1.0, 2.0, 3.0, 4.0], [1.5, 2.5, 3.5], {}, "raise"),
         (rmse, [[1.0, 2.0, 3.0]], [1.5, 2.5, 3.5], {}, "raise"),
         (nrmse, [1.0, 2.0, 3.0], [1.5, 2.5, 3.5, 4.2], {}, "raise"),
         (rsquare, [1.0, 2.0, 3.0, 0.0], [1.5, 2.5, 3.5], {}, "raise"),
+        (mae, [1.0, 2.0, 3.0, 0.0], [1.5, 2.5, 3.5], {}, "raise"),
     ],
 )
 def test_observable(obs, ytest, ypred, kwargs, expects):
@@ -72,7 +75,7 @@ def test_spectral_radius():
         rho = spectral_radius(w)
 
 
-@pytest.mark.parametrize("observable", [mse, rmse, nrmse, rsquare])
+@pytest.mark.parametrize("observable", [mse, rmse, nrmse, rsquare, mae])
 def test_dimensionwise(observable):
     rng = np.random.default_rng(1234)
     # single series

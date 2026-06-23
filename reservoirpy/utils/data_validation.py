@@ -1,9 +1,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 
-from reservoirpy.type import is_array
+import numpy as np
+
+from reservoirpy.type import NodeInput, is_array
 
 
 def check_timestep(x, *, expected_dim=None):
@@ -115,7 +117,7 @@ def is_model_timestep(x):
     try:
         check_model_timestep(x)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -139,5 +141,22 @@ def is_model_input(x):
     try:
         check_model_input(x)
         return True
-    except:
+    except Exception:
         return False
+
+
+def filter_nan_targets(x: NodeInput, y: Optional[NodeInput]) -> tuple[NodeInput, Optional[NodeInput]]:
+    if y is None:
+        return x, y
+
+    if is_multiseries(y):
+        # don't change the 3D arrays into lists if not necessary
+        if hasattr(y, "ndim") and y.ndim == 3 and not np.any(np.isnan(y)):
+            return x, y
+        return (
+            [x_[~np.any(np.isnan(y_), axis=-1)] for (x_, y_) in zip(x, y)],
+            [y_[~np.any(np.isnan(y_), axis=-1)] for (x_, y_) in zip(x, y)],
+        )
+    else:
+        non_nan_idx = ~np.any(np.isnan(y), axis=-1)
+        return x[non_nan_idx], y[non_nan_idx]

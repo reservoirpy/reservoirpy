@@ -63,7 +63,7 @@ or the ``>>`` operator to define models:
 
 .. code-block:: python
 
-    from reservoirpy import link
+    from reservoirpy.ops import link
 
     model = link(nodeA, nodeB)
 
@@ -90,8 +90,8 @@ We can call or run this model:
 
 .. code-block:: python
 
-    # using 'call' on a single timestep of data x_t0
-    s_t1 = model.call(x_t0)
+    # using 'step' on a single timestep of data x_t0
+    s_t1 = model.step(x_t0)
     # using model as a function
     s_t1 = model(x_t0)
     # running on a sequence X
@@ -107,9 +107,9 @@ using the node instances:
 
 .. code-block:: python
 
-    s_t1 = model.call(x_t0)
+    s_t1 = model.step(x_t0)
     # now that we have called the model, nodeB is updated
-    assert np.all(nodeB.state() == s_t1)
+    assert np.all(nodeB.state["out"] == s_t1)
 
 Access nodes attributes
 -----------------------
@@ -151,7 +151,7 @@ one neuron.
     from reservoirpy.nodes import Reservoir, Ridge
 
     reservoir = Reservoir(100)
-    readout = Ridge(output_dim=1)
+    readout = Ridge(ridge=1e-7)
 
 Next, we can link these two nodes together to create our first ESN:
 

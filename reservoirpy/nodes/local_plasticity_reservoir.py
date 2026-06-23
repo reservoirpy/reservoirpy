@@ -6,7 +6,7 @@ from typing import Callable, Literal, Optional, Sequence, Union
 import numpy as np
 import scipy.sparse as sp
 
-from reservoirpy.utils.data_validation import check_node_input
+from reservoirpy.utils.data_validation import check_node_input, filter_nan_targets
 
 from ..activationsfunc import get_function, tanh
 from ..mat_gen import bernoulli, uniform
@@ -149,6 +149,7 @@ class LocalPlasticityReservoir(TrainableNode):
 
     Example
     -------
+    >>> from reservoirpy.nodes import LocalPlasticityReservoir
     >>> reservoir = LocalPlasticityReservoir(
     ...     units=100, sr=0.9, local_rule="hebbian",
     ...     eta=1e-3, epochs=5, synapse_normalization=True
@@ -285,7 +286,7 @@ class LocalPlasticityReservoir(TrainableNode):
 
         self.increment = rules[local_rule]
 
-    def initialize(self, x: Optional[Union[NodeInput, Timestep]]):
+    def initialize(self, x: Optional[Union[NodeInput, Timestep]], y: None = None):
 
         # set input_dim
         self._set_input_dim(x)
@@ -342,6 +343,7 @@ class LocalPlasticityReservoir(TrainableNode):
 
     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "LocalPlasticityReservoir":
         check_node_input(x, expected_dim=self.input_dim)
+        x, y = filter_nan_targets(x, y)
 
         if not self.initialized:
             self.initialize(x)

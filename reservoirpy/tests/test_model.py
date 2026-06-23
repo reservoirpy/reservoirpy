@@ -27,14 +27,14 @@ def test_node_initialize():
     assert set(model1.nodes) == set(model2.nodes)
 
     # 2-circular graph
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _model3 = Model(
             [plus_node, minus_node],
             [(minus_node, 0, plus_node), (plus_node, 0, minus_node)],
         )
 
     # 1-circular graph
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _model4 = Model([plus_node, minus_node], [(plus_node, 0, plus_node)])
 
 
@@ -121,12 +121,14 @@ def test_complex_node_link():
 def test_model_complex():
     r1 = Reservoir(10)
     r2 = Reservoir(10)
-    read1 = Ridge()
-    read2 = Ridge()
-    read3 = Ridge()
+    read1 = Ridge(name="1")
+    read2 = Ridge(name="2")
+    read3 = Ridge(name="3")
+    x = y = np.ones(10)
 
     model = r1 >> read1 >> r2 >> read2 >> read3
     model &= r2 & [(r1 << r2), (r1 << read1), read1] & (r2 << read2) & r2
+    # model.initialize(x, y)
 
     assert set(model.edges) == {
         (r1, 0, read1),
@@ -138,13 +140,9 @@ def test_model_complex():
         (read2, 1, r2),
     }
 
-    r1 = Reservoir(10)
-    r2 = Reservoir(10)
-    read1 = Ridge()
-    read2 = Ridge()
-
     model = (r1 >> read1) & (r2 >> read2)
     model &= [r1, r2] << read1
+    # model.initialize(x, y)
 
     assert set(model.edges) == {
         (r1, 0, read1),
@@ -156,21 +154,34 @@ def test_model_complex():
     r1 = Reservoir(10)
     read1 = Ridge()
     model = r1 << (r1 >> read1)
+    # model.initialize(x, y)
 
     assert set(model.edges) == {(r1, 0, read1), (read1, 1, r1)}
 
     model = [r2] & (r1 >> read1)
+    # model.initialize(x, y)
     model = (r2 >> read1) & [r1]
+    # model.initialize(x, y)
     model = r2 & (r1 >> read1)
+    # model.initialize(x, y)
     model = (r2 >> read1) & r1
+    # model.initialize(x, y)
     model = [r2] >> (r1 >> read1)
+    # model.initialize(x, y)
     model = (r2 >> read1) >> [r1]
+    # model.initialize(x, y)
     model = r2 >> (r1 >> read1)
+    # model.initialize(x, y)
     model = (r2 >> read1) >> r1
+    # model.initialize(x, y)
     model = [r2] << (r1 >> read1)
+    # model.initialize(x, y)
     model = (r2 >> read1) << [r1]
+    # model.initialize(x, y)
     model = r2 << (r1 >> read1)
+    # model.initialize(x, y)
     model = (r2 >> read1) << r1
+    # model.initialize(x, y)
 
 
 def test_model_call():

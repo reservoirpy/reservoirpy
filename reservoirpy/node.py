@@ -71,6 +71,7 @@ from reservoirpy.utils.data_validation import (
     check_node_input,
     check_timeseries,
     check_timestep,
+    filter_nan_targets,
 )
 
 from .type import NodeInput, State, Timeseries, Timestep, is_array, is_multiseries
@@ -280,38 +281,57 @@ class Node(ABC):
         # base_name = self.name if self.name is not None else self.__class__.__name__
         base_name = self.__class__.__name__
         arguments = get_non_defaults(self)
-        arguments_str = ", ".join(f"{arg}:{val}" for arg, val in arguments.items())
+        arguments_str = ", ".join(f"{arg}={val}" for arg, val in arguments.items())
         return f"{base_name}({arguments_str})"
 
     def __repr__(self):
         return self.__str__()
 
-    def __rshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link
+    def __rshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Union[Model, ModelBuilderUtil]":
+        """self >> other"""
+        from .ops import ModelBuilderUtil, link
+
+        if isinstance(other, int):
+            return ModelBuilderUtil(node=self, delay=other, node_is_first=True)
+        if isinstance(other, ModelBuilderUtil):
+            # calls ModelBuilderUtil.__rrshift__ instead
+            return NotImplemented
 
         return link(self, other)
 
-    def __rrshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
-        from .ops import link
+    def __rrshift__(
+        self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]
+    ) -> "Union[Model, ModelBuilderUtil]":
+        """other >> self"""
+        from .ops import ModelBuilderUtil, link
+
+        if isinstance(other, int):
+            return ModelBuilderUtil(node=self, delay=other, node_is_first=False)
 
         return link(other, self)
 
     def __lshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """self << other"""
         from .ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
     def __rlshift__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """other << self"""
         from .ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
     def __and__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """self & other"""
         from .ops import merge
 
         return merge(self, other)
 
     def __rand__(self, other: Union["Node", "Model", Sequence[Union["Node", "Model"]]]) -> "Model":
+        """other & self"""
         from .ops import merge
 
         return merge(other, self)
@@ -407,6 +427,7 @@ class OnlineNode(TrainableNode):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
+        x, y = filter_nan_targets(x, y)
 
         if is_multiseries(x):
             for i in range(len(x)):
@@ -444,6 +465,7 @@ class ParallelNode(TrainableNode, ABC):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
+        x, y = filter_nan_targets(x, y)
 
         if not self.initialized:
             self.initialize(x, y)

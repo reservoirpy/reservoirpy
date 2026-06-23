@@ -11,6 +11,7 @@ from .esn import ESN
 from .model import Model
 from .node import Node
 from .utils.random import set_seed
+from .utils.save_load import load, save
 
 # Generate a unique temporary directory to prevent permission errors
 _TEMPDIR = os.path.join(tempfile.gettempdir(), f"reservoirpy-temp-{uuid.uuid4()}")
@@ -32,6 +33,8 @@ __all__ = [
     "set_seed",
     "ESN",
     "type",
+    "save",
+    "load",
 ]
 
 

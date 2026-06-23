@@ -13,6 +13,7 @@ Metrics and observables for Reservoir Computing:
     rmse
     nrmse
     rsquare
+    mae
     memory_capacity
     effective_spectral_radius
     lyapunov
@@ -89,7 +90,7 @@ def spectral_radius(W: Weights, maxiter: Optional[int] = None) -> float:
     >>> from reservoirpy.mat_gen import normal
     >>> W = normal(1000, 1000, degree=8)
     >>> print(spectral_radius(W))
-    2.8758915077733564
+    2.886926160973429
     """
     if issparse(W):
         if maxiter is None:
@@ -108,7 +109,7 @@ def spectral_radius(W: Weights, maxiter: Optional[int] = None) -> float:
             )
         )
 
-    return max(abs(linalg.eig(W)[0]))
+    return max(abs(linalg.eigvals(W)))
 
 
 def mse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
@@ -135,14 +136,14 @@ def mse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> 
 
     Examples
     --------
-    >>> from reservoirpy.nodes import ESN
+    >>> from reservoirpy import ESN
     >>> from reservoirpy.datasets import mackey_glass, to_forecasting
     >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
     >>> y_pred = ESN(units=100, sr=1).fit(x_train, y_train).run(x_test)
 
     >>> from reservoirpy.observables import mse
     >>> print(mse(y_true=y_test, y_pred=y_pred))
-    0.03962918253990291
+    1.0103865448822693e-07
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 
@@ -189,7 +190,7 @@ def rmse(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) ->
 
     >>> from reservoirpy.observables import rmse
     >>> print(rmse(y_true=y_test, y_pred=y_pred))
-    0.00034475744480521534
+    0.0004845326475756944
     """
     return np.sqrt(mse(y_true, y_pred, dimensionwise=dimensionwise))
 
@@ -244,7 +245,7 @@ def nrmse(
 
     >>> from reservoirpy.observables import nrmse
     >>> print(nrmse(y_true=y_test, y_pred=y_pred, norm="var"))
-    0.007854318015438394
+    0.007249877565336089
     """
     error = rmse(y_true, y_pred, dimensionwise=dimensionwise)
     if norm_value is not None:
@@ -310,7 +311,7 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False)
 
     >>> from reservoirpy.observables import rsquare
     >>> print(rsquare(y_true=y_test, y_pred=y_pred))
-    0.9999972921653904
+    0.9999970566302174
     """
     y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
 
@@ -325,6 +326,55 @@ def rsquare(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False)
     d = (y_true_array - y_pred_array) ** 2
     D = (y_true_array - y_true_array.mean(axis=axis)) ** 2
     return 1 - np.sum(d, axis=axis) / np.sum(D, axis=axis)
+
+
+def mae(y_true: np.ndarray, y_pred: np.ndarray, dimensionwise: bool = False) -> float:
+    """Mean absolute error metric:
+
+    .. math::
+
+        \\frac{1}{N} \sum_{i=0}^{N-1} |y_i - \hat{y}_i|
+
+
+    Parameters
+    ----------
+    y_true : array-like of shape (N, features)
+        Ground truth values.
+    y_pred : array-like of shape (N, features)
+        Predicted values.
+    dimensionwise: boolean, optional
+        If True, return a mean absolute error for each dimension of the timeseries.
+
+    Returns
+    -------
+    float
+        Mean absolute error. If `dimensionwise` is True, returns a Numpy array of shape $(features, )$.
+
+    Examples
+    --------
+    >>> from reservoirpy.nodes import Reservoir, Ridge
+    >>> model = Reservoir(units=100, sr=1) >> Ridge(ridge=1e-8)
+
+    >>> from reservoirpy.datasets import mackey_glass, to_forecasting
+    >>> x_train, x_test, y_train, y_test = to_forecasting(mackey_glass(1000), test_size=0.2)
+    >>> y_pred = model.fit(x_train, y_train).run(x_test)
+
+    >>> from reservoirpy.observables import mae
+    >>> print(mae(y_true=y_test, y_pred=y_pred))
+    0.00025325136638810585
+    """
+    y_true_array, y_pred_array = _check_arrays(y_true, y_pred)
+
+    if dimensionwise:
+        if len(y_true_array.shape) == 3:
+            axis = (0, 1)
+        else:
+            axis = 0
+    else:
+        axis = None
+
+    error = np.abs(y_true_array - y_pred_array)
+    return np.mean(error, axis=axis)
 
 
 def memory_capacity(
@@ -380,7 +430,7 @@ def memory_capacity(
     >>> model = Reservoir(100, sr=1, seed=1) >> Ridge(ridge=1e-4)
     >>> mcs = memory_capacity(model, k_max=50, as_list=True, seed=1)
     >>> print(f"Memory capacity of the model: {np.sum(mcs):.4}")
-    Memory capacity of Model-0: 12.77
+    Memory capacity of the model: 18.78
 
     .. plot::
 
@@ -492,9 +542,9 @@ def effective_spectral_radius(W: np.ndarray, lr: float = 1.0, maxiter: Optional[
     >>> W = uniform(100, 100, sr=0.5, seed=0)
     >>> lr = 0.5
     >>> print(f"{spectral_radius(W)=:.3}")
-    >>> print(f"{effective_spectral_radius(W, lr=lr)=:.3}")
     spectral_radius(W)=0.5
-    effective_spectral_radius(W, lr=lr)=0.701
+    >>> print(f"{effective_spectral_radius(W, lr=lr)=:.3}")
+    effective_spectral_radius(W, lr=lr)=0.731
 
     References
     ----------

@@ -109,9 +109,9 @@ class Model:
 
     Parameters
     ----------
-    nodes : list of Node, optional
+    nodes : list of Node
         Nodes to include in the Model.
-    edges : list of (Node, int, Node), optional
+    edges : list of (Node, int, Node)
         Edges between Nodes in the graph. An edge between a
         Node A and a Node B with a delay of :math:`d` is created as a tuple ``(A, d, B)``.
     """
@@ -200,29 +200,22 @@ class Model:
         check_input_output_connections(self.edges)
         check_unnamed_trainable(self)
 
-        y_ = map_teacher(self, y)
+        x_map = map_input(self, x)
+        y_map = map_teacher(self, y)
 
         # Infer node input dimensions from the input they receive
-
         node_input_dims = {node: 0 for node in self.nodes}
-
-        if isinstance(x, dict):
-            for node_name, val in x.items():
-                node = self.named_nodes[node_name]
-                node_input_dims[node] += get_data_dimension(val)
-        else:
-            for node in self.inputs:
-                node_input_dims[node] += get_data_dimension(x)
+        node_input_dims |= {node: get_data_dimension(x_map[node]) for node in x_map}
 
         # also use y as forced teachers. Useful for models with feedback
         indirect_children = find_indirect_children(nodes=self.nodes, edges=self.edges)
-        for supervised_node, y_teacher in y_.items():
+        for supervised_node, y_teacher in y_map.items():
             for child in indirect_children[supervised_node]:
                 node_input_dims[child] += get_data_dimension(y_teacher)
 
         # execution order / cycle detection (with teacher forcing)
-        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
-        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_]
+        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_map)
+        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_map]
         self.pseudo_execution_order = topological_sort(self.nodes, pseudo_edges, inputs=pseudo_inputs)
         # Initialize each node in execution_order
         for node in self.pseudo_execution_order:
@@ -234,15 +227,15 @@ class Model:
                         f"but receives input of dimension {node_input_dim}."
                     )
             else:
-                if node in y_:
-                    node.initialize(x=np.zeros((node_input_dim,)), y=y_[node])
+                if node in y_map:
+                    node.initialize(x=np.zeros((node_input_dim,)), y=y_map[node])
                 else:
                     node.initialize(x=np.zeros((node_input_dim,)))
-            if node in y_.keys():
-                if get_data_dimension(y_[node]) != node.output_dim:
+            if node in y_map.keys():
+                if get_data_dimension(y_map[node]) != node.output_dim:
                     raise ValueError(
                         f"{node} expects training data of dimension {node.output_dim} "
-                        f"but receives data of dimension {get_data_dimension(y_[node])}."
+                        f"but receives data of dimension {get_data_dimension(y_map[node])}."
                     )
             else:
                 for child in self.children[node]:
@@ -492,17 +485,17 @@ class Model:
         if not self.initialized:
             self.initialize(x, y)
 
-        x_ = map_input(self, x)
-        y_ = map_teacher(self, y)
+        x_map = map_input(self, x)
+        y_map = map_teacher(self, y)
 
-        n_timesteps = x_[list(x_.keys())[0]].shape[0]
+        n_timesteps = x_map[list(x_map.keys())[0]].shape[0]
         output_timeseries: dict[Node, Timeseries] = {
             node: np.zeros((n_timesteps, node.output_dim)) for node in self.nodes
         }
 
         states = {node: node.state for node in self.nodes}
         buffers = self.feedback_buffers
-        for i, (x_timestep, y_timestep) in enumerate(mapping_iterator(x_, y_)):
+        for i, (x_timestep, y_timestep) in enumerate(mapping_iterator(x_map, y_map)):
             buffers, states = self._learning_step((buffers, states), x_timestep, y_timestep)
             for node in self.nodes:
                 output_timeseries[node][i] = states[node]["out"]
@@ -548,31 +541,30 @@ class Model:
         if not self.initialized:
             self.initialize(x, y)
 
-        # TODO: try removing the default list
         result: dict[Node, NodeInput] = defaultdict(list)
         buffers = self.feedback_buffers
 
-        x_ = map_input(self, x)
-        y_ = map_teacher(self, y)
+        x_map = map_input(self, x)
+        y_map = map_teacher(self, y)
 
         # forced teaching
-        for supervised in y_:
-            # TODO: handle Unsupervised has children
-            result[supervised] = y_[supervised]
+        for supervised in y_map:
+            result[supervised] = y_map[supervised]
 
         for node in self.pseudo_execution_order:
             inputs: list[NodeInput] = []
-            if node in x_:
-                inputs.append(x_[node])
+            if node in x_map:
+                inputs.append(x_map[node])
             inputs += [result[parent] for parent in self.parents[node]]
-            for (p, _d, c), buffer in buffers.items():
-                if c == node:
-                    new_buffer, data = data_from_buffer(buffer, result[p])
-                    buffers[(p, _d, c)] = new_buffer
+            for (parent, _d, child), buffer in buffers.items():
+                if child == node:
+                    new_buffer, data = data_from_buffer(buffer, result[parent])
+                    buffers[(parent, _d, child)] = new_buffer
                     inputs.append(data)
             node_input = join_data(*inputs)
+
             if isinstance(node, TrainableNode):
-                node_target = y_.get(node, None)
+                node_target = y_map.get(node, None)
                 if isinstance(node, ParallelNode):
                     node.fit(node_input, node_target, warmup=warmup, workers=workers)
                 else:
@@ -604,32 +596,47 @@ class Model:
     def __repr__(self):
         return self.__str__()
 
-    def __rshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
-        from .ops import link
+    def __rshift__(self, other: Union[int, Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
+        """self >> other"""
+        from .ops import ModelBuilderUtil, link
+
+        if isinstance(other, int):
+            return ModelBuilderUtil(node=self, delay=other, node_is_first=True)
+        if isinstance(other, ModelBuilderUtil):
+            # calls ModelBuilderUtil.__rrshift__ instead
+            return NotImplemented
 
         return link(self, other)
 
-    def __rrshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
-        from .ops import link
+    def __rrshift__(self, other: Union[int, Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
+        """other >> self"""
+        from .ops import ModelBuilderUtil, link
+
+        if isinstance(other, int):
+            return ModelBuilderUtil(node=self, delay=other, node_is_first=False)
 
         return link(other, self)
 
     def __lshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
+        """self << other"""
         from .ops import link_feedback
 
         return link_feedback(sender=other, receiver=self)
 
     def __rlshift__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
+        """other << self"""
         from .ops import link_feedback
 
         return link_feedback(sender=self, receiver=other)
 
     def __and__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
+        """self & other"""
         from .ops import merge
 
         return merge(self, other)
 
     def __rand__(self, other: Union[Node, "Model", Sequence[Union[Node, "Model"]]]) -> "Model":
+        """other & self"""
         from .ops import merge
 
         return merge(other, self)

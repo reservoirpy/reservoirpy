@@ -1,5 +1,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from .random import rand_generator
 
 EXCLUDED_PARAMETERS = ["Win", "W", "bias", "Wout"]

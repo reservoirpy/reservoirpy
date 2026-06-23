@@ -60,7 +60,7 @@ Here is the general outline of a new node:
 .. code-block:: python
 
     from reservoirpy import Node
-
+    from reservoirpy.type import Timestep,Timeseries, MultiTimeseries, State
 
     class NodeName(Node):
         def __init__(self, params):
@@ -73,6 +73,8 @@ Here is the general outline of a new node:
             self.initialized = True
 
         def _step(self, state: State, x: Timestep) -> State:
+            # get the last node output
+            s = state["out"]
             # compute the new_state
             y = ...
             return {"out": y}
@@ -131,6 +133,7 @@ override the default implementation of ``_run``.
 
     import numpy as np
     from reservoirpy import Node
+    from reservoirpy.type import Timestep,Timeseries, State
 
 
     class MyNode(Node):
@@ -194,7 +197,8 @@ dimension. In the predicting phase, we will just add this value to the input.
 .. code-block:: python
 
     import numpy as np
-    from reservoirpy import Node
+    from reservoirpy.type import Timestep, State
+    from reservoirpy.node import TrainableNode, Sequence
 
 
     class MyNode(TrainableNode):

@@ -21,7 +21,7 @@ def find_parents_and_children(nodes: list[T], edges: list[tuple[T, int, T]]):
 
 
 def find_indirect_children(nodes: list[T], edges: list[tuple[T, int, T]]):
-    """Returns two dicts linking nodes to their children in the graph."""
+    """Returns a dict linking nodes to their children in the graph, regardless of the delay."""
 
     children = {parent: unique_ordered([c for p, d, c in edges if p is parent]) for parent in nodes}
 
@@ -48,7 +48,7 @@ def topological_sort(nodes: list[T], edges: list[tuple[T, int, T]], inputs: Opti
             if parents.get(m) is None or len(parents[m]) < 1:
                 inputs_deque.append(m)
     if len(edges_set) > 0:
-        raise RuntimeError(
+        raise ValueError(
             "Model has a cycle: impossible " "to automatically determine operations " "order in the model."
         )
     else:

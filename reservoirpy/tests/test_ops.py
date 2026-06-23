@@ -4,6 +4,9 @@
 import numpy as np
 import pytest
 
+from reservoirpy import Model
+
+from ..ops import ModelBuilderUtil
 from .dummy_nodes import MinusNode, Offline, PlusNode
 
 
@@ -33,13 +36,13 @@ def test_node_link():
     assert set(model.nodes) == set(model3.nodes) | set(model4.nodes)
 
     # cycles in the model!
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = model1 & model2
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = plus_node >> minus_node >> plus_node
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = plus_node >> plus_node
 
     x = np.ones((5,))
@@ -99,3 +102,80 @@ def test_model_merge():
         (plus_node, 0, minus_node),
         (plus_node, 0, offline_node),
     }
+
+    model = plus_node & minus_node
+    assert model.nodes == [plus_node, minus_node]
+    assert model.edges == []
+
+    model = [plus_node, minus_node] & offline_node
+    assert model.nodes == [plus_node, minus_node, offline_node]
+    assert model.edges == []
+
+    model = plus_node & [minus_node, offline_node]
+    assert model.nodes == [plus_node, minus_node, offline_node]
+    assert model.edges == []
+
+
+def test_delayed_connections():
+    plus_node = PlusNode(name="Plus")
+    minus_node = MinusNode(name="Minus")
+    third_node = PlusNode(name="ThirdNode")
+    model = plus_node >> minus_node
+
+    # node with delayed output
+    intermediate_model = plus_node >> 2
+    assert isinstance(intermediate_model, ModelBuilderUtil)
+    assert intermediate_model.node_is_first
+    assert intermediate_model.delay == 2
+    assert intermediate_model.node == plus_node
+
+    final_model = intermediate_model >> third_node
+    assert isinstance(final_model, Model)
+    assert final_model.nodes == [plus_node, third_node]
+    assert final_model.edges == [(plus_node, 2, third_node)]
+
+    # node with delayed input
+    intermediate_model = 2 >> minus_node
+    assert isinstance(intermediate_model, ModelBuilderUtil)
+    assert not intermediate_model.node_is_first
+    assert intermediate_model.delay == 2
+    assert intermediate_model.node == minus_node
+
+    final_model = third_node >> intermediate_model
+    assert isinstance(final_model, Model)
+    assert final_model.nodes == [third_node, minus_node]
+    assert final_model.edges == [(third_node, 2, minus_node)]
+
+    # model with delayed output
+    intermediate_model = model >> 2
+    assert isinstance(intermediate_model, ModelBuilderUtil)
+    assert intermediate_model.node_is_first
+    assert intermediate_model.delay == 2
+    assert intermediate_model.node == model
+
+    final_model = intermediate_model >> third_node
+    assert isinstance(final_model, Model)
+    assert final_model.nodes == [plus_node, minus_node, third_node]
+    assert final_model.edges == [(plus_node, 0, minus_node), (minus_node, 2, third_node)]
+
+    # model with delayed input
+    intermediate_model = 2 >> model
+    assert isinstance(intermediate_model, ModelBuilderUtil)
+    assert not intermediate_model.node_is_first
+    assert intermediate_model.delay == 2
+    assert intermediate_model.node == model
+
+    final_model = third_node >> intermediate_model
+    assert isinstance(final_model, Model)
+    assert final_model.nodes == [third_node, plus_node, minus_node]
+    assert final_model.edges == [(plus_node, 0, minus_node), (third_node, 2, plus_node)]
+
+
+def test_invalid_input():
+    node = PlusNode()
+
+    with pytest.raises(TypeError):
+        model = "string" >> node
+
+    with pytest.raises(TypeError):
+        model = node >> "string"

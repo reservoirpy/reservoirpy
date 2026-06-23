@@ -1,9 +1,20 @@
-# This is much more simple than reservoirpy.activationsfunc
-# since those activation functions are defined in jax.nn
+# Licence: MIT License
+# Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from typing import Callable, Union
 
-from jax.nn import identity, relu, sigmoid, softmax, softplus, tanh
+import jax.numpy as jnp
+
+# This is simpler than reservoirpy.activationsfunc
+# since those activation functions are defined in jax.nn
+from jax.nn import relu, sigmoid, softmax, softplus, tanh
+
+
+# jax.nn.identity was introduced in jax v0.6.0.
+# To be able to use previous jax versions, we reimplement
+# this one.
+def identity(x):
+    return jnp.asarray(x)
 
 
 def get_function(name: Union[Callable, str]) -> Callable:

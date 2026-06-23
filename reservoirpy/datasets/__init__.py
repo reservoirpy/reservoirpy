@@ -157,6 +157,8 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 
+from reservoirpy.type import DeprecatedError
+
 from ._chaos import (
     doublescroll,
     henon_map,
@@ -203,7 +205,7 @@ __all__ = [
 def to_forecasting(
     timeseries: np.ndarray,
     forecast: int = 1,
-    axis: int = 0,
+    axis: None = None,
     test_size: Optional[Union[int, float]] = None,
 ):
     """Split a timeseries for forecasting tasks.
@@ -217,7 +219,7 @@ def to_forecasting(
 
     Parameters
     ----------
-    timeseries : np.ndarray
+    timeseries : np.ndarray or list
         Timeseries to split.
     forecast : int, optional
         Number of time lag steps between
@@ -226,7 +228,7 @@ def to_forecasting(
         i.e. returns two timeseries with a time difference
         of 1 timesteps.
     axis : int, optional
-        Time axis of the timeseries, by default 0
+        Deprecated. The time axis of `timeseries` is now inferred.
     test_size : int or float, optional
         If set, will also split the timeseries
         into a training phase and a testing phase of
@@ -250,7 +252,7 @@ def to_forecasting(
 
     >>> from reservoirpy.datasets import to_forecasting
     >>> from numpy import linspace, sin
-    >>> t = linspace(0, 500, 1000)
+    >>> t = linspace(0, 500, 1000).reshape(-1, 1)
     >>> timeseries = sin(0.2*t) + sin(0.311*t)
     >>> X_train, X_test, y_train, y_test = to_forecasting(timeseries, forecast=10, test_size=200)
 
@@ -258,7 +260,7 @@ def to_forecasting(
 
         from reservoirpy.datasets import to_forecasting
         from numpy import linspace, sin
-        t = linspace(0, 500, 1000); h=10
+        t = linspace(0, 500, 1000).reshape(-1, 1); h=10
         timeseries = sin(0.2*t) + sin(0.311*t)
         X_train, X_test, y_train, y_test = to_forecasting(timeseries, forecast=h, test_size=200)
         plt.figure(figsize=(12, 3))
@@ -273,9 +275,26 @@ def to_forecasting(
     ------
     ValueError
         If ``test_size`` is a float, it must be in [0, 1[.
+    DeprecatedError
+        ``axis`` argument should be None.
     """
+    if axis is not None:
+        raise DeprecatedError("`axis` argument is deprecated. The time axis of `timeseries` is now inferred.")
 
-    series_ = np.moveaxis(timeseries.view(), axis, 0)
+    if isinstance(timeseries, list):
+
+        results = [
+            to_forecasting(timeseries=temp_array, forecast=forecast, test_size=test_size) for temp_array in timeseries
+        ]
+
+        # results is a list of tuples ((X, y) or (X_train, X_test, y_train, y_test))
+        # zip(*x) transposes the nested iterables
+        return tuple(map(list, zip(*results)))
+
+    time_axis = -2
+
+    series_ = np.moveaxis(timeseries.view(), time_axis, 0)
+
     time_len = series_.shape[0]
 
     if test_size is not None:
@@ -301,14 +320,14 @@ def to_forecasting(
         X = X[:-test_len]
         y = y[:-test_len]
 
-        X = np.moveaxis(X, 0, axis)
-        X_t = np.moveaxis(X_t, 0, axis)
-        y = np.moveaxis(y, 0, axis)
-        y_t = np.moveaxis(y_t, 0, axis)
+        X = np.moveaxis(X, 0, time_axis)
+        X_t = np.moveaxis(X_t, 0, time_axis)
+        y = np.moveaxis(y, 0, time_axis)
+        y_t = np.moveaxis(y_t, 0, time_axis)
 
         return X, X_t, y, y_t
 
-    return np.moveaxis(X, 0, axis), np.moveaxis(y, 0, axis)
+    return np.moveaxis(X, 0, time_axis), np.moveaxis(y, 0, time_axis)
 
 
 def mso(n_timesteps: int, freqs: Sequence[float], normalize: bool = True):
@@ -397,7 +416,7 @@ def mso2(n_timesteps: int, normalize: bool = True):
     --------
 
     >>> from reservoirpy.datasets import mso2
-    >>> timeseries = mso(500)
+    >>> timeseries = mso2(500)
     >>> print(timeseries.shape)
     (500, 1)
 
@@ -443,7 +462,7 @@ def mso8(n_timesteps: int, normalize: bool = True):
     --------
 
     >>> from reservoirpy.datasets import mso8
-    >>> timeseries = mso(500)
+    >>> timeseries = mso8(500)
     >>> print(timeseries.shape)
     (500, 1)
 

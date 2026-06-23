@@ -70,6 +70,17 @@ editable mode using `pip` :
 Additional dependencies and requirements
 ========================================
 
+Some ReservoirPy submodules uses specific libraries. Since we want ReservoirPy to keep its core features
+as simple as possible, those libraries are not included in the default install process. However, you
+can install of the additional dependencies by running:
+
+.. code-block::
+
+    pip install "reservoirpy[all]"
+
+For a more fine-grained control of your environmnent, you can only install the optional dependencies you
+need:
+
 **Hyperoptimization and visualization tools**
 
 All basic dependencies of ReservoirPy should be installed when using `pip` as package manager.
@@ -79,17 +90,27 @@ more dependencies in your virtual environment, namely `hyperopt`, `matplotlib` a
 
 .. code-block::
 
-    pip install reservoirpy[hyper]
+    pip install "reservoirpy[hyper]"
 
 **ScikitLearnNode**
 
 You can use some of scikit-learn's linear models through the use of the the ScikitLearnNode.
+While even the ScikitLearnNode does not require scikit-learn to be installed since
+it is never imported, this installation ensures that the correct model API version is used
 
 In the same manner, you can install scikit-learn with the appropriate version using:
 
 .. code-block::
 
-    pip install reservoirpy[sklearn]
+    pip install "reservoirpy[sklearn]"
+
+**Jax**
+
+If you want to use the ``reservoirpy.jax`` submodule:
+
+.. code-block::
+
+    pip install "reservoirpy[jax]"
 
 **Development tools**
 
@@ -120,7 +141,7 @@ can be found in the table below:
       - 1.4.1
       - build, install
     * - joblib
-      - 0.14.1
+      - 1.3.0
       - build, install
     * - hyperopt
       - 0.2.5
@@ -139,7 +160,10 @@ can be found in the table below:
       - tests
     * - scikit-learn
       - 0.24.1
-      - tests
+      - reservoirpy.nodes.ScikitLearnNode, tests
+    * - jax
+      - 0.4.38
+      - reservoirpy.jax, tests
     * - sphinx
       - 7.2.6
       - docs

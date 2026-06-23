@@ -148,6 +148,7 @@
 
 #     Example
 #     -------
+#     >>> from reservoirpy.jax.nodes import LocalPlasticityReservoir
 #     >>> reservoir = LocalPlasticityReservoir(
 #     ...     units=100, sr=0.9, local_rule="hebbian",
 #     ...     eta=1e-3, epochs=5, synapse_normalization=True
@@ -346,6 +347,7 @@
 
 #     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "LocalPlasticityReservoir":
 #         check_node_input(x, expected_dim=self.input_dim)
+#         x, y = filter_nan_target(x, y)
 
 #         if not self.initialized:
 #             self.initialize(x)

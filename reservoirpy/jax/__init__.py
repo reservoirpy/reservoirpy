@@ -1,5 +1,6 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
+
 from . import activationsfunc, mat_gen, nodes, type, utils
 from .esn import ESN
 from .model import Model
