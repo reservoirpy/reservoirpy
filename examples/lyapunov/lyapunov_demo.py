@@ -12,7 +12,7 @@ import time
 from typing import Optional
 
 # Ensure the local reservoirpy fork takes precedence over any installed copy.
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../..")))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../..")))
 
 import numpy as np
 import scipy.fft
