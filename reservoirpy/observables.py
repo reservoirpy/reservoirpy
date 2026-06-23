@@ -16,6 +16,7 @@ Metrics and observables for Reservoir Computing:
     memory_capacity
     effective_spectral_radius
     lyapunov
+    ky_dim
 """
 
 # Licence: MIT License
@@ -506,29 +507,12 @@ def effective_spectral_radius(W: np.ndarray, lr: float = 1.0, maxiter: Optional[
 
 
 def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5, probe_sub_cycle_cap=None, progress_bar=False):
-    """Estimate the largest Lyapunov exponent via a Benettin probe.
+    """Estimates the first Lyapunov exponent, using a simplified version of
+    the Bennetin algorithm with a single perturbation. This is used by
+    `_lyapunov()` to determine the characteristic timescale 1/λ1 of the
+    reservoir computing system, which that function uses to set
+    reorthonormalization cycle length"""
 
-    Primary pass (``"lyapunov time probe"``):
-    ``sub_cycle = max(50, state_dim)`` — each window spans at least one full
-    ring-buffer traversal, so the DDE delayed-feedback channel has time to act
-    before renormalization resets the perturbation direction.  The first half
-    of windows is discarded as an alignment transient.
-    The primary pass uses ``min_windows=200`` (about 100 recording windows
-    after the half-discard), enough to average out Lorenz-scale variance while
-    spanning the full ring buffer.
-    Fallback pass (``"lyapunov time probe"``): ``sub_cycle=5`` — runs only if
-    the primary pass returns ``None`` (divergence or degenerate perturbation
-    norm).  Returns ``None`` only if both passes fail.
-    Leaves ``model.state`` restored to its pre-probe value.
-
-    ``probe_sub_cycle_cap`` caps the primary-pass sub_cycle (useful for
-    large-state models like ESNs where the state dimension is not a ring-buffer
-    length).
-
-    When ``model.state`` is a list (multiple initial conditions), the probe
-    runs from the first element only; ``_lyapunov`` saves the init states
-    before calling this, so the list is unchanged for the actual computation.
-    """
     t_step = getattr(model, "t_step", 1.0)
     stdev = getattr(model, "stdev", 1.0)
     pert_scale = epsilon * stdev
@@ -585,62 +569,66 @@ def _estimate_lambda_1(model, epsilon, n_probe=1000, sub_cycle=5, probe_sub_cycl
     return result_fast
 
 
-def _ordering_violated(log_growths, cycle_length, t_step):
-    """Return True if adjacent spectrum entries are significantly out of order.
+def _ordering_violated(log_growths, prob_threshold=0.8):
+    """Return True if adjacent spectrum entries are probably out of order.
 
-    Uses a max-adjacent-violation criterion: a pair is out of order when the
-    later exponent exceeds the earlier one by more than their combined 95 % CI.
+    The Benettin algorithm for Lyapunov exponents should produce an ordered
+    spectrum if it is properly broken in. This helper function takes the growth
+    factors used to determine that spectrum, and checks if the probability of
+    mis-ordering is greated than `prob_threshold`.
     """
+    from scipy.special import ndtr
+
     n, k = log_growths.shape
     if k < 2 or n < 2:
         return False
-    rate_scale = 1.0 / (cycle_length * t_step)
-    spec = log_growths.mean(axis=0) * rate_scale
-    std = log_growths.std(axis=0, ddof=1)
-    ci = 1.96 * std / np.sqrt(n) * rate_scale
-    for i in range(k - 1):
-        diff = spec[i + 1] - spec[i]
-        combined_ci = np.sqrt(ci[i] ** 2 + ci[i + 1] ** 2)
-        if diff > combined_ci:
-            return True
-    return False
+    mean = log_growths.mean(axis=0)
+    se = log_growths.std(axis=0, ddof=1) / np.sqrt(n)
+    diff = mean[1:] - mean[:-1]
+    se_diff = np.sqrt(se[:-1] ** 2 + se[1:] ** 2)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        prob = ndtr(diff / se_diff)
+    # Zero-variance pairs: determined purely by the sign of the mean gap.
+    prob = np.where(se_diff == 0, (diff > 0).astype(float), prob)
+    prob = prob[np.isfinite(prob)]  # drop collapsed (NaN std) directions
+    if prob.size == 0:
+        return False
+    return bool(prob.max() > prob_threshold)
 
 
-def _is_converged(spectrum, ci_half_rate, ky_dim, ky_dim_ci, rtol, mode):
-    """Check Lyapunov convergence under the selected criterion."""
-    if rtol <= 0:
+def _is_converged(spectrum, ci_half_rate, ky_dim, ky_dim_ci, rtol, mode, atol=0.0):
+    """Check Lyapunov convergence under the selected criterion.
+
+    Converged when EITHER the absolute CI half-width is below ``atol`` OR the
+    relative CI half-width is below ``rtol`` times the reference magnitude. For
+    covergence type "all", this either/or is evaluated for each element.
+    """
+    if rtol <= 0 and atol <= 0:
         return False
     effective = mode
     if mode == "ky_dim" and (ky_dim is None or ky_dim_ci is None):
         effective = "all"
     if effective == "ky_dim":
-        return ky_dim != 0 and ky_dim_ci < rtol * abs(ky_dim)
-    if effective == "lambda_1":
+        if ky_dim == 0 or not np.isfinite(ky_dim_ci):
+            return False
+        ci, scale = ky_dim_ci, abs(ky_dim)
+    elif effective == "lambda_1":
         lam = spectrum[0]
-        return bool(np.isfinite(lam) and lam != 0 and ci_half_rate[0] < rtol * abs(lam))
-    if effective == "all":
+        if not (np.isfinite(lam) and lam != 0 and np.isfinite(ci_half_rate[0])):
+            return False
+        ci, scale = ci_half_rate[0], abs(lam)
+    elif effective == "all":
         finite = np.isfinite(ci_half_rate)
         lam1 = spectrum[0]
         if not finite.any() or not np.isfinite(lam1) or lam1 == 0:
             return False
-        return bool(np.max(ci_half_rate[finite]) < rtol * abs(lam1))
-    raise ValueError(f"unknown convergence mode: {mode!r}")
+        ci, scale = float(np.max(ci_half_rate[finite])), abs(lam1)
+    else:
+        raise ValueError(f"unknown convergence mode: {mode!r}")
+    return bool((atol > 0 and ci < atol) or (rtol > 0 and ci < rtol * scale))
 
 
 def _warn_in_order(message: str, stacklevel: int = 3) -> None:
-    """Emit a RuntimeWarning to stdout so it stays in order with progress bars.
-
-    Progress bars and status prints go to stdout; the default ``warnings.warn``
-    writes to stderr.  Stdout and stderr are independent streams — flushing
-    both does not guarantee display order at the terminal level.  This helper
-    temporarily redirects warning output to stdout (the same stream as tqdm),
-    which guarantees the warning appears immediately after the bar that
-    triggered it.
-
-    ``stacklevel=3`` (default) makes the reported call-site point to
-    *_lyapunov*'s caller rather than to the helper itself — equivalent to
-    ``stacklevel=2`` in a direct ``warnings.warn`` call inside ``_lyapunov``.
-    """
     sys.stdout.flush()
     orig_showwarning = warnings.showwarning
 
@@ -659,109 +647,141 @@ def _lyapunov(
     model,
     k: int,
     cycle_length: Optional[int] = None,
-    breakin_cycles: Optional[int] = None,
+    breakin_cycles: int = 500,
+    breakin_groups: int = 3,
+    ordering_threshold: float = 0.8,
     min_cycles: int = 500,
     max_cycles: int = 2000,
-    rtol: float = 0.0,
-    epsilon: float = 1e-5,
     lyap_time_per_cycle: float = 0.5,
+    epsilon: float = 1e-5,
     convergence: str = "ky_dim",
+    rtol: float = 0.0,
+    atol: float = 0.0,
     progress_bar: bool = False,
-    probe_sub_cycle_cap: Optional[int] = None,
+    probe_sub_cycle_cap: int = 50,
 ) -> dict:
-    """Compute the Lyapunov spectrum of a dynamical system via QR-Benettin.
+    """Calculate the Lyapunov spectrum for a dynamical system, using the Benettin
+    algorithm [1]_.
 
-    Uses a modified Benettin algorithm with QR reorthonormalization. Growth
-    factors are read from ``|diag(R)|`` of the QR step, which is equivalent
-    to computing parallelotope volumes but simpler and numerically stabler.
+    The algorithm works by creating a set of small orthonormal perturbations of
+    the state of a dynamical system. It then evolves each of these perturbed trajectories
+    along with a fiducial trajectory. After some interval of time, the growth factor of
+    these perturbations is measured, and the perturbations are reorthonormalized
+    using the QR factorization. For a detailed and clear exposition of the
+    Benettin algorith, see Wolf et al. (1985) [2]_. Note that [1]_ and [2]_
+    reorthonormalize the perturbed states by Gram-Schmidt process instead of QR
+    factorization used here.
+
+    Solver works in three steps:
+    - Initial Probe: Gives a rough estimate of the maximal
+    Lyapunov exponent, which is used to determine the characteristic timescale
+    of the system and set the reorthonormalization cycle length
+    - Break-in: Initializes perturbed states, then goes through cycles of
+    evolution and reorthonormalization to allow all transients to decay
+    - Main iterative solving: Performs reorthormalization cycles and records growth
+    factors, continues until estimated spectrum converges or maximum number of
+    cycles is reached.
+
 
     Parameters
     ----------
-    model : :class:`ReservoirStepper` or equivalent
-        A stepper object implementing the following contract (reservoirs via
-        :class:`ReservoirStepper`; baseline ODE systems via a compatible
-        wrapper):
-
-        - ``state`` : array of shape ``(dim,)``, or list of ``m`` such arrays
-          for multiple input states.  Readable and writable.
-        - ``run(steps: int)`` : advance the model ``steps`` iterations,
-          updating ``model.state`` in place.
-        - ``t_step`` : float, default 1 — real time per iteration.
-        - ``stdev`` : float, default 1 — attractor data standard deviation,
-          used to scale perturbations.
-
+    model : class, with the following attributes:
+        - `state`: array-like
+            The dynamical system's internal state as a 1-D array.
+        - `run(n_steps)`: callable, with integer inputs
+            Evolves the dynamical system `n_steps` forward. Assumes the system
+            is discrete.
+        - `t_step`: float, optional, defaults to 1.0
+            Time per discrete system step. Used for converting spectrum units
+            in final output.
+        - `stdev`: float, optional, defaults to 1.0
+            Used to set scale of perturbations
     k : int
-        Number of Lyapunov exponents to compute.
-    cycle_length : int or None, optional
-        Number of model steps between QR reorthonormalizations.  If ``None``
-        (default), a 100-step probe estimates λ₁ and sets ``cycle_length``
-        to approximately half the Lyapunov time.
-    breakin_cycles : int or None, optional
-        Cycles run before accumulation begins (discarded).  If ``None``
-        (default), an adaptive scheme runs a 500-cycle break-in, checks
-        spectrum ordering, and reruns up to two more times (1500 cycles
-        total) if ordering is still violated.
-    min_cycles : int, optional
-        Minimum post-breakin cycles between convergence checks.  Default 500.
-    max_cycles : int, optional
-        Hard cap on total post-breakin cycles.  Default 5000.
-    rtol : float, optional
-        Relative convergence tolerance.  Default 0 runs to ``max_cycles``.
-    epsilon : float, optional
-        Relative perturbation magnitude; actual size is ``epsilon * stdev``.
-    lyap_time_per_cycle : float, optional
-        Target number of Lyapunov times spanned per QR cycle when
-        ``cycle_length`` is auto-estimated from the λ₁ probe.  Ignored if
-        ``cycle_length`` is supplied explicitly.  Default 0.5.
-    convergence : str, optional
-        Which quantity the ``rtol`` criterion is applied to.  One of
-        ``"ky_dim"`` (default — falls back to ``"all"`` when KY is undefined),
-        ``"lambda_1"`` (CI of λ₁ only), or ``"all"`` (max CI vs |λ₁|).
-    progress_bar : bool, optional
-        If True, show tqdm progress bars for the probe, break-in, and
-        accumulation phases.  Default False.
+        Number of lyapunov exponents to find. Maximum is the length of
+        `model.state`
+    cycle_length: int, optional, defaults to None
+        Length of reorthonormalization cycle. If not provided, found by probe
+    breakin_cycles: int, defaults to 500
+        Orthonormalization cycles per break-in group.
+    breakin_groups: int, defaults to 3
+        Break-in uses a maximum of `breakin_cycles` x 'breakin_groups` cycles.
+        After each group of `breakin_cycles` cycles, a fast diagnostic checks
+        if the estimated spectrum is ordered. A lack of ordering indicated
+        undecayed transients; in this case another `breakin_cycles` cycles are
+        run. If the estimated spectrum is properly ordered, break-in stops early.
+    ordering_threshold: float, defaults to 0.8
+        Minimum probability of the spectrum being out-of-order that will lead
+        to additional break-in cycles.
+    min_cycles: int, defaults to 500
+        Number of cycles in main iterative phase before convergence check.
+        Algorithm will iterate forward `min_cycles` and check convergence until
+        convergence or `max_cycles` is reached.
+    max_cycles: int, defaults to 2000
+        Maximum number of cycles in main iterative phase
+    lyap_time_per_cycle: float, defaults to 0.5
+        Reorthonormalization cycle length, in units of lyapunov time (1/λ_1).
+        Used for break-in and iterative solving steps, with λ_1 approximated
+        by initial probe step.
+    epsilon: float, defaults to 1e-5
+        Perturbation scale: perturbation size after reorthonormalization is
+        `epsilon` x `model.stdev`
+    convergence: str, defaults to "ky_dim"
+        Convergence criteria for early termination of iterative solving
+        - "ky_dim" (default): 95% confidence interval for Kaplan-Yorke
+        dimension (D_KY) is less than `atol` or estimated D_KY x 'rtol'
+        - "lambda_1": 95% confidence interval of maximal lyapunpov exponent (λ1)
+        is less than `atol` or λ1 x `rtol`
+        - "all": 95% confidence interval of each spectral element λ_i is less
+        than `atol` or λ1 x `rtol`
+    rtol: float, defaults to 0.0
+        Relative tolerance for convergence
+    atol: float, defaults to 0.0
+        Absolute tolerance for convergence
+    progress_bar: bool, defaults to False
+        Displays a tqdm progress bar for each solver stage
+    probe_sub_cycle_cap: int, optional, defaults to 50
+        Number of cycles used in probe phase for rough estimate of λ1
 
     Returns
     -------
-    dict with keys:
+    dict of results:
 
-    - ``"spectrum"`` : array of shape ``(k,)`` — Lyapunov exponents, descending.
-      ``nan`` for collapsed directions.
-    - ``"spectrum_ci"`` : array of shape ``(k,)`` — 95 % CI half-widths.
-    - ``"ky_dim"`` : float or None — Kaplan-Yorke dimension; ``None`` if the
-      spectrum does not support the KY formula.
-    - ``"ky_dim_ci"`` : float or None — 95 % CI half-width of KY dimension.
-    - ``"n_cycles"`` : int — post-breakin cycles used.
-    - ``"converged"`` : bool — True if ``rtol`` criterion was met.
-    - ``"log_growths"`` : array of shape ``(n_cycles, k)`` — per-cycle log
-      expansion/contraction factors; ``nan`` for collapsed directions.
-    - ``"collapsed_directions"`` : bool array of shape ``(k,)`` — True for
-      directions whose R_ii was saturated in >50% of cycles.
-    - ``"cycle_length"`` : int — cycle_length used (auto or supplied).
-    - ``"breakin_cycles"`` : int — breakin cycles actually run.
-    - ``"lambda_1_probe"`` : float or None — λ₁ estimate from the probe;
-      ``None`` if ``cycle_length`` was supplied explicitly.
-
-    Notes
-    -----
-    For multiple input states (``m > 1``), each state collection is broken in
-    independently, then cycled ``min_cycles // m`` times per batch before a
-    shared convergence check.  ``max_cycles`` is the total across all
-    collections.
+    spectrum : ndarray of shape (k,)
+        Lyapunov exponents in descending order, in base e
+    spectrum_ci : ndarray of shape (k,)
+        Half-width of the 95 % confidence interval for each exponent
+    ky_dim : float
+        Kaplan-Yorke dimension estimated from ``spectrum``.
+    ky_dim_ci : float
+        Half-width of the 95 % confidence interval for ``ky_dim``
+    n_cycles : int
+        Number of reorthonormalization cycles completed in the main solver.
+    converged : bool
+        ``True`` if the convergence criterion was satisfied before
+        ``max_cycles`` was reached; ``False`` otherwise.
+    cycle_length : int
+        Reorthonormalization cycle length used (in discrete steps), either as
+        provided or as determined by the initial probe.
+    breakin_cycles : int
+        Total number of break-in cycles actually run across all break-in groups.
+    lambda_1_probe : float or None
+        Rough estimate of the maximal Lyapunov exponent from the initial probe
+        phase, used to set ``cycle_length``. ``None`` if ``cycle_length`` was
+        provided by the caller.
 
     References
     ----------
     .. [1] Benettin, G., Galgani, L., Giorgilli, A., & Strelcyn, J.-M. (1980).
-           Lyapunov characteristic exponents for smooth dynamical systems and
-           for Hamiltonian systems; a method for computing all of them.
-           Meccanica, 15(1), 9-20.
+       Lyapunov characteristic exponents for smooth dynamical systems and for
+       Hamiltonian systems; a method for computing all of them. Part 1: Theory.
+       *Meccanica*, 15(1), 9–20. https://doi.org/10.1007/BF02128236
+
+    .. [2] Wolf, A., Swift, J. B., Swinney, H. L., & Vastano, J. A. (1985).
+       Determining Lyapunov exponents from a time series.
+       *Physica D: Nonlinear Phenomena*, 16(3), 285–317.
+       https://doi.org/10.1016/0167-2789(85)90011-9
     """
-    raw_state = model.state
-    if isinstance(raw_state, list):
-        init_states = [np.asarray(s, dtype=float) for s in raw_state]
-    else:
-        init_states = [np.asarray(raw_state, dtype=float)]
-    m = len(init_states)
+    state0 = np.asarray(model.state, dtype=float)
     t_step = getattr(model, "t_step", 1.0)
     stdev = getattr(model, "stdev", 1.0)
     pert_scale = epsilon * stdev
@@ -777,72 +797,55 @@ def _lyapunov(
     else:
         lambda_1_probe = None
 
-    perturbed_states = []
-    for s in init_states:
-        dim = s.size
-        collection = np.empty((k + 1, dim))
-        collection[0] = s
-        for j in range(k):
-            collection[j + 1] = s.copy()
-            collection[j + 1, j % dim] += pert_scale
-        perturbed_states.append(collection)
+    dim = state0.size
+    perturbed_states = np.empty((k + 1, dim))
+    perturbed_states[0] = state0
+    for j in range(k):
+        perturbed_states[j + 1] = state0.copy()
+        perturbed_states[j + 1, j % dim] += pert_scale
 
     def _do_qr_cycles(n, record=False, pbar=None):
-        """Run n QR-Benettin cycles over all m collections; optionally record log-growths."""
-        buf = np.empty((n * m, k)) if record else None
+        """Run n QR-Benettin cycles; optionally record log-growths."""
+        buf = np.empty((n, k)) if record else None
         c = 0
         for _ in range(n):
-            for i in range(m):
-                for j in range(k + 1):
-                    model.state = perturbed_states[i][j]
-                    model.run(cycle_length)
-                    perturbed_states[i][j] = np.asarray(model.state, dtype=float)
-                fiducial = perturbed_states[i][0]
-                error = perturbed_states[i][1:] - fiducial
-                Q, R = np.linalg.qr(error.T)
-                diag_R = np.abs(np.diag(R))
-                diag_R = np.where(diag_R > 0, diag_R, np.finfo(float).tiny)
-                if record:
-                    buf[c] = np.log(diag_R / pert_scale)
-                    c += 1
-                signs = np.sign(np.diag(R))
-                signs[signs == 0] = 1.0
-                Q = Q * signs
-                perturbed_states[i][1:] = fiducial + (Q[:, :k] * pert_scale).T
+            for j in range(k + 1):
+                model.state = perturbed_states[j]
+                model.run(cycle_length)
+                perturbed_states[j] = np.asarray(model.state, dtype=float)
+            fiducial = perturbed_states[0]
+            error = perturbed_states[1:] - fiducial
+            Q, R = np.linalg.qr(error.T)
+            diag_R = np.abs(np.diag(R))
+            diag_R = np.where(diag_R > 0, diag_R, np.finfo(float).tiny)
+            if record:
+                buf[c] = np.log(diag_R / pert_scale)
+                c += 1
+            signs = np.sign(np.diag(R))
+            signs[signs == 0] = 1.0
+            Q = Q * signs
+            perturbed_states[1:] = fiducial + (Q[:, :k] * pert_scale).T
             if pbar is not None:
                 pbar.update(1)
         return buf[:c] if record else None
 
     breakin_used = 0
-    if breakin_cycles is not None:
+    _DIAG_CYCLES = 50
+    for group in range(1, breakin_groups + 1):
+        _bi_label = "perturbation breakin" if group == 1 else "perturbation breakin ext"
         pbar_bi = tqdm(
             total=breakin_cycles,
-            desc="  " + "perturbation breakin".ljust(24),
+            desc="  " + _bi_label.ljust(24),
             unit="cyc",
             disable=not progress_bar,
             file=sys.stdout,
         )
         _do_qr_cycles(breakin_cycles, pbar=pbar_bi)
-        breakin_used = breakin_cycles
+        breakin_used += breakin_cycles
         pbar_bi.close()
-    else:
-        _BREAKIN_CHUNK = 500
-        _DIAG_CYCLES = 50
-        _MAX_ATTEMPTS = 3
-        for attempt in range(1, _MAX_ATTEMPTS + 1):
-            _bi_label = "perturbation breakin" if attempt == 1 else "perturbation breakin ext"
-            pbar_bi = tqdm(
-                total=_BREAKIN_CHUNK,
-                desc="  " + _bi_label.ljust(24),
-                unit="cyc",
-                disable=not progress_bar,
-                file=sys.stdout,
-            )
-            _do_qr_cycles(_BREAKIN_CHUNK, pbar=pbar_bi)
-            breakin_used += _BREAKIN_CHUNK
-            pbar_bi.close()
+        if group < breakin_groups:
             sample = _do_qr_cycles(_DIAG_CYCLES, record=True)
-            if not _ordering_violated(sample, cycle_length, t_step):
+            if not _ordering_violated(sample, prob_threshold=ordering_threshold):
                 break
 
     _SAT_LOG_THRESH = np.log(1e-12)
@@ -852,7 +855,7 @@ def _lyapunov(
     converged = False
     collapsed = np.zeros(k, dtype=bool)
 
-    cycles_per_batch = max(1, min_cycles // m)
+    cycles_per_batch = max(1, min_cycles)
 
     pbar = tqdm(
         total=max_cycles, desc="  " + "lyapunov spectrum finder", unit="cyc", disable=not progress_bar, file=sys.stdout
@@ -861,32 +864,31 @@ def _lyapunov(
     while n_cycles < max_cycles and not converged:
         batch = min(cycles_per_batch, max_cycles - n_cycles)
         for _ in range(batch):
-            for i in range(m):
-                if n_cycles >= max_cycles:
-                    break
-                for j in range(k + 1):
-                    model.state = perturbed_states[i][j]
-                    model.run(cycle_length)
-                    perturbed_states[i][j] = np.asarray(model.state, dtype=float)
+            if n_cycles >= max_cycles:
+                break
+            for j in range(k + 1):
+                model.state = perturbed_states[j]
+                model.run(cycle_length)
+                perturbed_states[j] = np.asarray(model.state, dtype=float)
 
-                fiducial = perturbed_states[i][0]
-                if not np.isfinite(fiducial).all():
-                    break
+            fiducial = perturbed_states[0]
+            if not np.isfinite(fiducial).all():
+                break
 
-                error = perturbed_states[i][1:] - fiducial
-                Q, R = np.linalg.qr(error.T)
-                diag_R = np.abs(np.diag(R))
-                diag_R = np.where(diag_R > 0, diag_R, np.finfo(float).tiny)
-                lg = np.log(diag_R / pert_scale)
-                log_growths[n_cycles] = lg
-                sat_count += lg < _SAT_LOG_THRESH
-                n_cycles += 1
-                pbar.update(1)
+            error = perturbed_states[1:] - fiducial
+            Q, R = np.linalg.qr(error.T)
+            diag_R = np.abs(np.diag(R))
+            diag_R = np.where(diag_R > 0, diag_R, np.finfo(float).tiny)
+            lg = np.log(diag_R / pert_scale)
+            log_growths[n_cycles] = lg
+            sat_count += lg < _SAT_LOG_THRESH
+            n_cycles += 1
+            pbar.update(1)
 
-                signs = np.sign(np.diag(R))
-                signs[signs == 0] = 1.0
-                Q = Q * signs
-                perturbed_states[i][1:] = fiducial + (Q[:, :k] * pert_scale).T
+            signs = np.sign(np.diag(R))
+            signs[signs == 0] = 1.0
+            Q = Q * signs
+            perturbed_states[1:] = fiducial + (Q[:, :k] * pert_scale).T
 
         if n_cycles == 0:
             break
@@ -902,11 +904,10 @@ def _lyapunov(
         ci_half = 1.96 * std / np.sqrt(n_cycles)
         ci_half_rate = ci_half / (cycle_length * t_step)
 
-        ky_dim = _kaplan_yorke(spectrum)
-        ky_dim_ci = _kaplan_yorke_ci(spectrum, ci_half_rate)
+        ky, ky_ci = ky_dim(spectrum, ci_half_rate, warn=False)
 
-        if rtol > 0:
-            converged = _is_converged(spectrum, ci_half_rate, ky_dim, ky_dim_ci, rtol, convergence)
+        if rtol > 0 or atol > 0:
+            converged = _is_converged(spectrum, ci_half_rate, ky, ky_ci, rtol, convergence, atol)
 
     pbar.close()
 
@@ -918,10 +919,9 @@ def _lyapunov(
     std_final = np.nanstd(recorded, axis=0, ddof=1) if n_cycles > 1 else np.full(k, np.inf)
     ci_half_rate = 1.96 * std_final / np.sqrt(max(n_cycles, 1)) / (cycle_length * t_step)
 
-    ky_dim = _kaplan_yorke(spectrum)
-    ky_dim_ci = _kaplan_yorke_ci(spectrum, ci_half_rate)
+    ky, ky_ci = ky_dim(spectrum, ci_half_rate)
 
-    if _ordering_violated(recorded, cycle_length, t_step):
+    if _ordering_violated(recorded, prob_threshold=ordering_threshold):
         _warn_in_order(
             "Final Lyapunov spectrum has statistically significant out-of-order "
             "adjacent exponents — consider increasing max_cycles or breakin_cycles.",
@@ -929,77 +929,113 @@ def _lyapunov(
 
     finite_spec = spectrum[np.isfinite(spectrum)]
     if len(finite_spec) >= 2 and np.isfinite(spectrum[0]) and spectrum[0] != 0:
-        n_near_zero = int(np.sum(np.abs(finite_spec) < 1e-3 * np.abs(spectrum[0])))
+        n_near_zero = int(np.sum(np.abs(finite_spec) < 1e-2 * np.abs(spectrum[0])))
         if n_near_zero >= 2:
             _warn_in_order(
-                f"{n_near_zero} Lyapunov exponents are within 1e-3·|λ₁| of zero; "
+                f"{n_near_zero} Lyapunov exponents are within 0.01·|λ₁| of zero; "
                 "some may be spurious and the Kaplan-Yorke dimension may be off by one.",
             )
 
     return {
         "spectrum": spectrum,
         "spectrum_ci": ci_half_rate,
-        "ky_dim": ky_dim,
-        "ky_dim_ci": ky_dim_ci,
+        "ky_dim": ky,
+        "ky_dim_ci": ky_ci,
         "n_cycles": n_cycles,
         "converged": converged,
-        "log_growths": recorded,
-        "collapsed_directions": collapsed,
         "cycle_length": cycle_length,
         "breakin_cycles": breakin_used,
         "lambda_1_probe": lambda_1_probe,
     }
 
 
-def _kaplan_yorke(spectrum: np.ndarray) -> Optional[float]:
-    """Compute Kaplan-Yorke dimension from a Lyapunov spectrum.
+def ky_dim(spectrum, ci_half=None, warn=True):
+    """Compute the Kaplan-Yorke dimension [1]_ from a Lyapunov spectrum.
 
-    Returns ``None`` if the KY formula is not applicable: no positive
-    cumulative sum, all cumulative sums positive, or the j+1 entry is
-    nan/zero.  NaN entries (collapsed directions) contribute 0 to the
-    cumulative sum so trailing collapsed directions don't prevent computation.
+    .. math::
+
+        D_{KY} = j + \\frac{\\sum_{i=1}^{j} \\lambda_i}{|\\lambda_{j+1}|}
+
+    where :math:`j` is the largest index such that:
+
+    .. math::
+
+        `\\sum_{i=1}^{j} \\lambda_i \\geq 0`.
+
+    Parameters
+    ----------
+    spectrum : array-like
+        Lyapunov exponents in descending order.
+    ci_half : array-like, optional
+        Half-width 95 % confidence intervals per exponent (same length as
+        ``spectrum``).  When given, the CI on :math:`D_{KY}` is propagated
+        via first-order error propagation
+    warn : bool
+        When ``True`` (default), emit a :class:`RuntimeWarning` if all
+        cumulative sums are positive (dimension exceeds the spectrum length).
+        Set to ``False`` inside convergence loops to suppress repeated
+        warnings.
+
+    Returns
+    -------
+    float or None, or tuple of (float or None, float or None)
+        Normal case: returns :math:`D_{KY}` as a float.
+
+        Degenerate cases:
+
+        * All cumulative sums :math:`\\leq 0` (purely contracting spectrum):
+          returns ``0.0``.
+        * Total sum :math:`> 0` True dimension is greater than or equal to
+        spectrum length: returns ``float(len(spectrum))`` and, if ``warn`` is
+         ``True``, emits a ``RuntimeWarning``.
+        * :math:`\\lambda_{j+1}` non-finite: returns ``None``.
+
+        When ``ci_half`` is provided each case returns the corresponding pair
+        ``(dim, dim_ci)``; the CI is ``None`` for all three degenerate cases.
+
+    References
+    ----------
+    .. [1] Kaplan, J. L., & Yorke, J. A. (1979). Chaotic behavior of
+       multidimensional difference equations. In H.-O. Peitgen & H.-O. Walther
+       (Eds.), *Functional Differential Equations and Approximation of Fixed
+       Points*, Lecture Notes in Mathematics, vol. 730, pp. 204–227. Springer.
+       https://doi.org/10.1007/BFb0064319
     """
     s = np.asarray(spectrum, dtype=float)
+    n = len(s)
     cum = np.cumsum(np.where(np.isfinite(s), s, 0.0))
     pos = np.where(cum > 0)[0]
+
+    def _ret(dim, dim_ci=None):
+        return (dim, dim_ci) if ci_half is not None else dim
+
     if len(pos) == 0:
-        return None
+        return _ret(0.0)
+
     j = pos[-1]
-    if j + 1 >= len(s):
-        return None
-    if not np.isfinite(s[j + 1]) or s[j + 1] == 0:
-        return None
-    return float(j + 1) + cum[j] / np.abs(s[j + 1])
 
+    if j + 1 >= n:
+        if warn:
+            warnings.warn(
+                f"Dimension not found, greater than or equal to {n}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        return _ret(float(n))
 
-def _kaplan_yorke_ci(spectrum: np.ndarray, ci_half: np.ndarray) -> Optional[float]:
-    """Propagate CI half-widths through the Kaplan-Yorke formula.
-
-    Returns ``None`` in the same cases as ``_kaplan_yorke``.
-
-    Notes
-    -----
-    With :math:`D_{KY} = j + 1 + \\sum_{i \\le j} \\lambda_i / |\\lambda_{j+1}|`,
-    the propagated variance combines :math:`\\partial D / \\partial \\lambda_i =
-    1 / |\\lambda_{j+1}|` for :math:`i \\le j` and
-    :math:`\\partial D / \\partial \\lambda_{j+1} = -\\sum_{i \\le j} \\lambda_i
-    / \\lambda_{j+1}^2`.
-    """
-    s = np.asarray(spectrum, dtype=float)
-    cum = np.cumsum(np.where(np.isfinite(s), s, 0.0))
-    pos = np.where(cum > 0)[0]
-    if len(pos) == 0:
-        return None
-    j = pos[-1]
-    if j + 1 >= len(s):
-        return None
     lam_j1 = s[j + 1]
     if not np.isfinite(lam_j1) or lam_j1 == 0:
-        return None
+        return _ret(None)
+
+    dim = float(j + 1) + cum[j] / np.abs(lam_j1)
+
+    if ci_half is None:
+        return dim
+
     ci = np.asarray(ci_half, dtype=float)
     var = float(np.nansum((ci[: j + 1] / np.abs(lam_j1)) ** 2))
     var += float((ci[j + 1] * cum[j] / lam_j1**2) ** 2)
-    return float(np.sqrt(var))
+    return dim, float(np.sqrt(var))
 
 
 # ---------------------------------------------------------------------------
@@ -1007,61 +1043,31 @@ def _kaplan_yorke_ci(spectrum: np.ndarray, ci_half: np.ndarray) -> Optional[floa
 # ---------------------------------------------------------------------------
 
 
-def _flatten_model_state(model) -> np.ndarray:
-    """Return a 1-D concatenation of every node's ``state["out"]`` vector."""
-    return np.concatenate([np.asarray(n.state["out"], float).ravel() for n in model.nodes])
+class _ReservoirStepper:
+    """Wrapper for :class:`reservoirpy.Model` that exposes the full model state
+    as a single flat vector for use by :func:`_lyapunov`.
 
+    **State representation**
 
-def _unflatten_model_state(model, flat: np.ndarray) -> None:
-    """Write a flat state vector back into each node's ``state["out"]``."""
-    idx = 0
-    for n in model.nodes:
-        d = n.state["out"].size
-        end = idx + d
-        n.state["out"] = flat[idx:end].reshape(n.state["out"].shape)
-        idx = end
+    The dynamical state tracked by the Benettin algorithm is the concatenation
+    of every node's ``state["out"]`` array, in the order returned by
+    ``model.nodes``.  :meth:`_get_model_state` concatenates them into a 1-D
+    array; :meth:`_set_model_state` writes a flat vector back by splitting it at
+    breakpoints cached in ``self._splits`` (computed once in ``__init__`` via
+    ``np.cumsum`` of per-node sizes) and reshaping each segment to the
+    corresponding ``self._shapes`` entry.  For a single-reservoir ESN the flat
+    state is just the reservoir activation vector.  For a model with multiple
+    stateful nodes (e.g. two reservoirs in series) the state is the
+    concatenation of all their activation vectors.
 
+    **Closed-loop stepping**
 
-def _parse_init(init, kind: str):
-    """Return a list of arrays ready for spin-up.
-
-    For ``kind="trajectory"`` each element is shape ``(T, input_dim)``.
-    For ``kind="state"`` each element is a 1-D flat array.
-    """
-    if isinstance(init, (list, tuple)):
-        items = [np.asarray(x, float) for x in init]
-    else:
-        a = np.asarray(init, float)
-        if kind == "trajectory":
-            items = [a] if a.ndim <= 2 else list(a)
-        else:
-            items = [a] if a.ndim == 1 else list(a)
-    if kind == "trajectory":
-        items = [x[:, None] if x.ndim == 1 else x for x in items]
-    return items
-
-
-class ReservoirStepper:
-    """Stepper that drives a trained reservoirpy :class:`Model` for :func:`_lyapunov`.
-
-    This is the **primary** object fed to the QR-Benettin engine.  It wraps a
-    trained model and exposes the stepper contract:
-
-    - ``state`` — flat 1-D array (or list of arrays for multi-IC runs),
-      readable and writable.
-    - ``run(n_steps)`` — advance the model ``n_steps`` closed-loop steps,
-      updating ``state`` in place.
-    - ``t_step`` — real time per step (default 1.0; ``lyapunov()`` sets this
-      from the model's training ``time_step`` HP if available).
-    - ``stdev`` — attractor scale used to size perturbations; set by
-      :meth:`probe_stdev` or supplied directly.
-
-    Closed-loop stepping: if the model has delayed-feedback edges
-    (``feedback_buffers`` is non-empty), each step calls
-    ``model.run(iters=1)``, which routes output through the buffer
-    automatically.  Otherwise the current output-node state is read and fed
-    back as the next-step input — the common case of a plain
-    ``Reservoir >> Ridge`` model without explicit feedback wiring.
+    ``run(n_steps)`` unflatten the current ``self.state`` into the model,
+    advances ``n_steps`` closed-loop steps, then re-flattens.  Each step feeds
+    the current output node(s) back as the next input.  If the model has
+    feedback buffers (``model.feedback_buffers`` is non-empty), the model's own
+    feedback mechanism is used (``model.run(iters=1)``); otherwise the output is
+    assembled manually from ``model.outputs`` and fed in as a ``(1, d)`` array.
     """
 
     t_step: float = 1.0
@@ -1071,13 +1077,25 @@ class ReservoirStepper:
         self.state = init_states[0] if len(init_states) == 1 else init_states
         self.stdev = stdev
         self.t_step = t_step
+        sizes = [n.state["out"].size for n in model.nodes]
+        self._splits = np.cumsum(sizes)[:-1]
+        self._shapes = [n.state["out"].shape for n in model.nodes]
+
+    def _get_model_state(self) -> np.ndarray:
+        """Flat 1-D concatenation of every node's ``state["out"]``."""
+        return np.concatenate([np.asarray(n.state["out"], float).ravel() for n in self._model.nodes])
+
+    def _set_model_state(self, flat: np.ndarray) -> None:
+        """Write a flat state vector back into each node using cached segment boundaries."""
+        for n, seg, shape in zip(self._model.nodes, np.split(flat, self._splits), self._shapes):
+            n.state["out"] = seg.reshape(shape)
 
     def run(self, n_steps: int) -> None:
         """Advance ``n_steps`` closed-loop steps; update ``self.state``."""
-        _unflatten_model_state(self._model, np.asarray(self.state, float))
+        self._set_model_state(np.asarray(self.state, float))
         for _ in range(n_steps):
             self._closed_loop_step()
-        self.state = _flatten_model_state(self._model)
+        self.state = self._get_model_state()
 
     def _closed_loop_step(self) -> None:
         """Advance the underlying model one step in closed-loop mode."""
@@ -1096,71 +1114,77 @@ class ReservoirStepper:
         so perturbation scaling is never zero.
         """
         saved = np.asarray(self.state if not isinstance(self.state, list) else self.state[0], float).copy()
-        _unflatten_model_state(self._model, saved)
+        self._set_model_state(saved)
         records = []
         for _ in range(n_probe):
             self._closed_loop_step()
-            records.append(_flatten_model_state(self._model))
-        _unflatten_model_state(self._model, saved)
+            records.append(self._get_model_state())
+        self._set_model_state(saved)
         stdev = float(np.std(np.stack(records)))
         return stdev if stdev > 0 else 1.0
 
 
 def lyapunov(
     model,
-    init,
-    kind: Literal["trajectory", "state"] = "trajectory",
-    spinup: int = 200,
-    n_spinup: Optional[int] = 1,
-    k: Optional[int] = None,
+    init_traj=None,
+    init_state=None,
+    k: int = 10,
     **lyap_kwargs,
 ) -> dict:
-    """Compute the Lyapunov spectrum of a trained reservoir computer.
+    """Compute the Lyapunov spectrum of a trained reservoir computer, using
+    a version of the Benettin algorithm [1]_.
+
+    The Lyapunov spectrum describes the way in which the distance between
+    nearby trajectories of a dynamical system grow or shrink as the dynamical
+    system evolves. The most positive exponent :math:`\\lambda_1` measures the
+    rate at which almost all pairs of initially nearby trajectories diverge:
+
+    For two trajectories :math:`x_1(t), x_2(t); x_2(t_0) = x_1(t_0) + \\delta_0`:
+
+    .. math::
+        \\lambda_1 = \\lim_{t\\rightarrow\\infty}\\lim_{\\delta_0 \\rightarrow 0}
+        \\frac{1}{t}\\ln\\frac{\\|\\delta(t)\\|}{\\|\\delta_0\\|}
+
+    where :math:`\\delta(t) = x_2(t) - x_1(t),\\; t > t_0`, or more simply:
+
+    .. math::
+        \\|x_1(t) - x_2(t)\\| \\approx \\delta_0 e^{\\lambda_1 t}
+
+    Additional elements of the Lyapunov spectrum :math:`\\lambda_2, \\lambda_3, \\ldots`
+    characterize the rate at which perturbations to a trajectory grow or decay
+    in spaces orthogonal to the direction of growth measured by :math:`\\lambda_1`.
+    For a thorough explanation see the paper by Wolf et al (1985) [2]_.
+
+    The algorithm for finding the Lyapunov spectrum assumes that the dynamical
+    system is ergodic; that is that almost every trajectory eventually passes
+    arbitrarily close to any point on the attractor. If a system has multiple
+    basins of attraction, these basins may have different lyapunov spectra.
 
     Wraps :func:`_lyapunov` for use with a trained reservoirpy :class:`Model`
-    via a :class:`ReservoirStepper`.  The model is driven in closed-loop
-    (autoregressive) mode: at each step the output-node prediction is fed back
-    as the next-step input.  Models with explicit feedback wiring (``<<``) and
-    plain ``Reservoir >> Ridge`` models are both supported.
+    via a :class:`_ReservoirStepper`. For details of the actual solver used,
+    see documentation for :func:`_lyapunov`.
 
     Parameters
     ----------
     model : :class:`reservoirpy.Model`
-        A trained reservoirpy model.  The standard construction
-        ``Reservoir(...) >> Ridge(...)`` works directly; explicit feedback
-        wiring (``<<``) is also supported.
-    init : array-like or list of array-like
-        Initialising data.  Interpretation depends on ``kind``:
-
-        - ``"trajectory"`` (default): one or more input timeseries of shape
-          ``(T, input_dim)`` or ``(T,)`` for scalar input.  Each is split into
-          ``spinup``-length chunks; the model is run on each chunk to produce
-          one initialised reservoir state.  Chunks shorter than ``spinup`` are
-          discarded.
-        - ``"state"``: one or more pre-computed flat state vectors of length
-          equal to the total concatenated ``node.state["out"]`` dimension.
-          Loaded directly without spin-up.
-    kind : {"trajectory", "state"}, default "trajectory"
-        How to interpret ``init``.  Use ``"trajectory"`` when you have
-        training/validation data; ``"state"`` when you already have a
-        post-spinup reservoir state.
-    spinup : int, default 200
-        Length of each spin-up chunk in timesteps.  Ignored when
-        ``kind="state"``.
-    n_spinup : int or None, default 1
-        Number of spin-up trajectories (initial reservoir states) to use.
-        ``1`` (default) uses a single state — the fastest option and sufficient
-        for most purposes.  ``None`` uses every chunk that fits in ``init``,
-        which can improve spectral averaging but multiplies cost by the number
-        of chunks.  Ignored when ``kind="state"`` (all provided states are used
-        unless capped here).
-    k : int, optional
-        Number of Lyapunov exponents to compute.  Defaults to the full flat
-        state dimension (``Σ node.units``), which is the maximum meaningful
-        value.
+        A trained reservoirpy model.  Both simple echo state networks (ESNs)
+        and more complex models with multiple components with internal states
+        are supported (e.g. a model with multiple reservoirs)
+    init_traj : array-like of shape (T, input_dim) or (T,), optional
+        Timeseries used to initalize the reservoir state. Must be provided if
+        `init_state` is not provided.
+    init_state : array-like of shape (D,), optional
+        a flat state vector of length equal to the dimension
+        of the flattened state of ``model``. For a ``model`` with multiple
+        state-preserving components, see :class:`_ReservoirStepper` for
+        parsing details. If both `init_traj` and `init_state` are provided,
+        uses `init_state` by default.
+    k : int, default is 10
+        Number of Lyapunov exponents to compute.
     **lyap_kwargs
         Additional keyword arguments forwarded to :func:`_lyapunov`
-        (e.g. ``breakin_cycles``, ``min_cycles``, ``max_cycles``, ``rtol``,
+        (e.g. ``breakin_cycles``, ``breakin_groups``, ``ordering_threshold``,
+        ``min_cycles``, ``max_cycles``, ``rtol``, ``atol``,
         ``epsilon``, ``lyap_time_per_cycle``, ``progress_bar``).
 
     Returns
@@ -1168,8 +1192,7 @@ def lyapunov(
     dict
         Same output as :func:`_lyapunov`: ``"spectrum"``, ``"spectrum_ci"``,
         ``"ky_dim"``, ``"ky_dim_ci"``, ``"n_cycles"``, ``"converged"``,
-        ``"log_growths"``, ``"collapsed_directions"``, ``"cycle_length"``,
-        ``"breakin_cycles"``, ``"lambda_1_probe"``.
+        ``"cycle_length"``, ``"breakin_cycles"``, ``"lambda_1_probe"``.
 
     Examples
     --------
@@ -1180,36 +1203,26 @@ def lyapunov(
     >>> x_train, y_train = data[:10000], data[1:10001]
     >>> esn = Reservoir(300, sr=0.95) >> Ridge(ridge=1e-6)
     >>> esn = esn.fit(x_train, y_train)
-    >>> result = lyapunov(esn, init=x_train, spinup=200, k=3,
+    >>> result = lyapunov(esn, init_traj=x_train[:200], k=3,
     ...                   min_cycles=1000, max_cycles=2000)
     >>> print(result["spectrum"])
     """
-    items = _parse_init(init, kind)
-    init_states = []
+    if init_state is not None:
+        init_states = [np.asarray(init_state, dtype=float).ravel()]
+        probe = False
+    elif init_traj is not None:
+        init_arr = np.asarray(init_traj, dtype=float)
+        if init_arr.ndim == 1:
+            init_arr = init_arr[:, None]
+        model.reset()
+        model.run(init_arr)
+        init_states = [np.concatenate([np.asarray(n.state["out"], float).ravel() for n in model.nodes])]
+        probe = True
+    else:
+        raise ValueError("lyapunov() requires either init_traj or init_state.")
 
-    for item in items:
-        if kind == "state":
-            init_states.append(np.asarray(item, float).ravel())
-        else:
-            for i in range(0, len(item) - spinup + 1, spinup):
-                end = i + spinup
-                chunk = item[i:end]
-                model.reset()
-                model.run(chunk)
-                init_states.append(_flatten_model_state(model))
-                if n_spinup is not None and len(init_states) >= n_spinup:
-                    break
-        if n_spinup is not None and len(init_states) >= n_spinup:
-            break
-
-    if not init_states:
-        raise ValueError("init produced zero spin-up states — " "are all trajectories shorter than spinup?")
-
-    stepper = ReservoirStepper(model, init_states)
-    if kind == "trajectory":
+    stepper = _ReservoirStepper(model, init_states)
+    if probe:
         stepper.stdev = stepper.probe_stdev()
-
-    if k is None:
-        k = init_states[0].size
 
     return _lyapunov(stepper, k=k, **lyap_kwargs)
