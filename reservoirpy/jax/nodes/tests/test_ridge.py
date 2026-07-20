@@ -8,6 +8,7 @@ from joblib import Parallel, delayed
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 from reservoirpy.jax.nodes import Ridge
+from reservoirpy.nodes import Ridge as NumpyRidge
 
 
 def test_ridge_init():
@@ -97,6 +98,27 @@ def test_ridge_fit_multiseries():
     assert node.output_dim == 10
     assert node.Wout.shape == (100, 10)
     assert_array_equal(node.bias, jnp.zeros((10,)))
+
+
+def test_ridge_fit_multiseries_warmup_matches_numpy_backend():
+    rng = numpy.random.default_rng(seed=0)
+    X = rng.uniform(size=(4, 60, 3))
+    Y = X @ rng.uniform(size=(3, 2)) + 0.5
+    # corrupt the warmup region: a correct warmup must discard it entirely
+    Y_corrupted = numpy.copy(Y)
+    Y_corrupted[:, :30, :] += 100.0 * rng.normal(size=(4, 30, 2))
+
+    jax_node = Ridge(1e-6)
+    jax_node.fit(X, Y_corrupted, warmup=30)
+    numpy_node = NumpyRidge(1e-6)
+    numpy_node.fit(X, Y_corrupted, warmup=30)
+    assert_array_almost_equal(jax_node.Wout, numpy_node.Wout, decimal=3)
+    assert_array_almost_equal(jax_node.bias, numpy_node.bias, decimal=3)
+
+    # and warmup must actually change the fit (guards against ignoring it)
+    no_warmup = Ridge(1e-6)
+    no_warmup.fit(X, Y_corrupted, warmup=0)
+    assert numpy.abs(numpy.asarray(jax_node.Wout) - numpy.asarray(no_warmup.Wout)).max() > 0.1
 
 
 def test_ridge_fit_parallel():

@@ -447,11 +447,11 @@ class OnlineNode(NOnlineNode, TrainableNode, ABC):
             for i, (x_, y_) in enumerate(zip(x, y)):
                 y_pred_ = self._learning_step(x_, y_)
                 # TODO: find a better way if necessary
-                y_pred.at[i].set(y_pred_)
+                y_pred = y_pred.at[i].set(y_pred_)
         else:
             for i, x_ in enumerate(x):
                 y_pred_ = self._learning_step(x_, None)
-                y_pred.at[i].set(y_pred_)
+                y_pred = y_pred.at[i].set(y_pred_)
 
         self.state = {"out": y_pred_}
         return y_pred
@@ -506,6 +506,12 @@ class ParallelNode(NParallelNode, TrainableNode, ABC):
 
         # Multi-series
         if is_multiseries(x):
+            if isinstance(x, Sequence):
+                x = [x_series[warmup:] for x_series in x]
+                y = [y_series[warmup:] for y_series in y] if y is not None else None
+            else:
+                x = x[:, warmup:]
+                y = y[:, warmup:] if y is not None else None
             if y is None:
                 results = jax.vmap(self.worker)(x, None)
             else:

@@ -6,6 +6,7 @@ from typing import Callable, Optional, Sequence, Union
 
 import jax
 import jax.numpy as jnp
+from jax.experimental import sparse as jsparse
 from numpy.random import Generator
 
 from ...type import is_array
@@ -242,7 +243,13 @@ class LIF(Node):
                 seed=W_rng,
             )
             n_inhibitory = int(self.inhibitory * self.units)
-            self.W.at[:, :n_inhibitory].multiply(-1)
+            if n_inhibitory > 0:
+                if isinstance(self.W, jsparse.BCOO):
+                    inhibitory_columns = self.W.indices[:, 1] < n_inhibitory
+                    new_data = jnp.where(inhibitory_columns, -self.W.data, self.W.data)
+                    self.W = jsparse.BCOO((new_data, self.W.indices), shape=self.W.shape)
+                else:
+                    self.W = jnp.asarray(self.W).at[:, :n_inhibitory].multiply(-1)
 
         self.state = {
             "internal": jnp.zeros((self.units,)),

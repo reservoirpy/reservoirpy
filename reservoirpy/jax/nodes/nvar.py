@@ -176,7 +176,7 @@ class NVAR(Node):
 
         # store the current input
         new_store = jnp.roll(store, 1, axis=0)
-        new_store.at[0].set(x)
+        new_store = new_store.at[0].set(x)
 
         output = jnp.zeros((output_dim,))
 
@@ -184,9 +184,9 @@ class NVAR(Node):
         linear_feats = jnp.ravel(new_store[::strides, :])
         linear_len = linear_feats.shape[0]
 
-        output.at[:linear_len].set(linear_feats)
+        output = output.at[:linear_len].set(linear_feats)
 
         # select monomial terms and compute them
-        output.at[linear_len:].set(jnp.prod(linear_feats[idxs], axis=1))
+        output = output.at[linear_len:].set(jnp.prod(linear_feats[idxs], axis=1))
 
         return {"out": output, "store": new_store}
