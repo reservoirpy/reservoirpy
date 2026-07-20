@@ -210,7 +210,7 @@ class Node(NNode, ABC):
                 states, result = zip(*output)
                 final_state = states[-1]
             else:
-                output = jax.lax.map(partial(self._run, initial_state), x)
+                output = jax.vmap(partial(self._run, initial_state))(x)
                 states, result = output
                 # take the final state from the last timeseries run
                 final_state = {key: val[-1] for key, val in states.items()}

@@ -4,9 +4,11 @@
 import pickle
 
 import jax.numpy as jnp
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
+from ..nodes import Reservoir
 from .dummy_nodes import AccumulateNode, Offline, OnlineUnsupervised, PlusNode
 
 
@@ -93,6 +95,25 @@ def test_node_run():
 
     # assert_array_equal(res3, expected)
     # assert_array_equal(res[-1][jnp.newaxis, :], plus_node.state["out"])
+
+
+def test_run_multiseries_matches_single_series():
+    rng = np.random.default_rng(seed=0)
+    units = 10
+    win = rng.uniform(-1, 1, size=(units, 1))
+    w = rng.uniform(-1, 1, size=(units, units)) * 0.2
+    series = rng.normal(size=(3, 20, 1))
+
+    node = Reservoir(lr=0.3, Win=win, W=w, bias=0.0)
+    batched = node.run(series)
+    assert batched.shape == (3, 20, units)
+
+    # each series in a batched run must produce the same output as a fresh
+    # single-series run
+    for i in range(series.shape[0]):
+        fresh = Reservoir(lr=0.3, Win=win, W=w, bias=0.0)
+        single = fresh.run(series[i])
+        assert_allclose(batched[i], single, atol=1e-5)
 
 
 def test_offline_fit():
