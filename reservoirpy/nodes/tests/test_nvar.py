@@ -32,3 +32,15 @@ def test_nvar():
     res = node.run(data)
 
     assert res.shape == (1000, _get_output_dim(10, 3, 2))
+
+
+def test_nvar_multiseries_resets_store():
+    rng = np.random.default_rng(seed=0)
+    xs = rng.normal(size=(3, 12, 2))
+
+    multi = np.asarray(NVAR(2, 2).run(xs))
+    # each series in a batched run must start from a fresh delay store, so it
+    # must equal its own fresh single-series run
+    for i in range(xs.shape[0]):
+        single = np.asarray(NVAR(2, 2).run(xs[i]))
+        assert np.abs(multi[i] - single).max() < 1e-6
