@@ -298,7 +298,11 @@ class IPReservoir(TrainableNode):
         self.initialized = True
 
     @partial(jax.jit, static_argnums=(0,))
-    def _step(self, state: State, x: Timestep) -> State:
+    def _step_core(self, state: State, x: Timestep, a: jax.Array, b: jax.Array) -> State:
+        # `a` and `b` are passed as traced arguments instead of being read from
+        # the static `self`: intrinsic plasticity updates them during training,
+        # and a jit over a static `self` would bake their initial values as
+        # constants and ignore later updates.
         W = self.W  # NxN
         Win = self.Win  # NxI
         bias = self.bias  # N or float
@@ -309,9 +313,12 @@ class IPReservoir(TrainableNode):
         next_state = W @ external + Win @ x + bias
         next_state = (1 - lr) * internal + lr * next_state
 
-        next_external = f(self.a * next_state + self.b)
+        next_external = f(a * next_state + b)
 
         return {"internal": next_state, "out": next_external}
+
+    def _step(self, state: State, x: Timestep) -> State:
+        return self._step_core(state, x, self.a, self.b)
 
     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "IPReservoir":
         check_node_input(x, expected_dim=self.input_dim)

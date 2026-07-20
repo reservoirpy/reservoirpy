@@ -1,9 +1,13 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+import jax.numpy as jnp
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
+
+from reservoirpy.model import Model as NumpyModel
+from reservoirpy.nodes import Reservoir as NumpyReservoir
 
 from ..model import Model
 from ..nodes import RLS, Input, Output, Reservoir, Ridge
@@ -434,3 +438,43 @@ def test_delayed_connections():
     assert isinstance(final_model, Model)
     assert final_model.nodes == [third_node, plus_node, minus_node]
     assert final_model.edges == [(plus_node, 0, minus_node), (third_node, 2, plus_node)]
+
+
+def test_feedback_matches_numpy_backend():
+    rng = np.random.default_rng(seed=0)
+    units = 5
+    win = rng.uniform(-1, 1, size=(units, 1))
+    wfb = rng.uniform(-1, 1, size=(units, units))
+    w = rng.uniform(-1, 1, size=(units, units)) * 0.2
+    win_full = np.concatenate([win, wfb], axis=1)
+    xs = rng.normal(size=(5, 1))
+
+    # jax model with a delay-1 feedback edge, manually initialized (a feedback
+    # model cannot be auto-initialized: it has a cycle)
+    jr = Reservoir(lr=0.5, Win=win_full, W=w, bias=0.0)
+    js = Reservoir(lr=0.5, Win=np.eye(units), W=w, bias=0.0)
+    jmodel = Model(nodes=[jr, js], edges=[(jr, 0, js), (js, 1, jr)])
+    jr.initialize(np.zeros((1 + units,)))
+    js.initialize(np.zeros((units,)))
+    jmodel.feedback_buffers = {(js, 1, jr): jnp.zeros((1, units))}
+    jmodel.initialized = True
+
+    # identical numpy-backend model
+    nr = NumpyReservoir(lr=0.5, Win=win_full, W=w, bias=0.0)
+    ns = NumpyReservoir(lr=0.5, Win=np.eye(units), W=w, bias=0.0)
+    nmodel = NumpyModel(nodes=[nr, ns], edges=[(nr, 0, ns), (ns, 1, nr)])
+    nr.initialize(np.zeros((1 + units,)))
+    ns.initialize(np.zeros((units,)))
+    nmodel.feedback_buffers = {(ns, 1, nr): np.zeros((1, units))}
+    nmodel.initialized = True
+
+    for t in range(5):
+        jmodel.step(xs[t])
+        nmodel.step(xs[t])
+
+    jbuf = np.asarray(jmodel.feedback_buffers[(js, 1, jr)])
+    nbuf = np.asarray(nmodel.feedback_buffers[(ns, 1, nr)])
+    # the buffer must actually be filled (not left at zero) and match numpy
+    assert np.abs(jbuf).max() > 0.0
+    assert_allclose(jbuf, nbuf, atol=1e-5)
+    assert_allclose(np.asarray(js.state["out"]), np.asarray(ns.state["out"]), atol=1e-5)
