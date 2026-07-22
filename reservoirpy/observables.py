@@ -16,6 +16,7 @@ Metrics and observables for Reservoir Computing:
     mae
     memory_capacity
     effective_spectral_radius
+    lyapunov_exponent
 """
 
 # Licence: MIT License
@@ -549,3 +550,123 @@ def effective_spectral_radius(W: np.ndarray, lr: float = 1.0, maxiter: Optional[
     """
     units = W.shape[0]
     return spectral_radius(W=lr * W + (1 - lr) * np.eye(units), maxiter=maxiter)
+
+
+def lyapunov_exponent(
+    reservoir: "Node",
+    x: np.ndarray,
+    warmup: int = 0,
+    initial_distance: float = 1e-8,
+    seed: Optional[Union[int, np.random.Generator]] = None,
+) -> float:
+    """Largest Lyapunov exponent of a reservoir driven by an input timeseries.
+
+    The largest Lyapunov exponent :math:`\\lambda_{max}` measures the average
+    exponential rate at which two infinitesimally close reservoir states diverge
+    (or converge) when the reservoir is driven by the same input. It is a standard
+    way to locate the *edge of chaos* of an Echo State Network [1]_:
+
+    - :math:`\\lambda_{max} < 0`: nearby trajectories contract. The reservoir has
+      the echo state property (its state asymptotically depends only on the input).
+    - :math:`\\lambda_{max} > 0`: nearby trajectories diverge. The reservoir is in
+      a chaotic regime and does not have the echo state property.
+
+    It is estimated with the two-trajectory algorithm of Benettin et al. [2]_: a
+    reference trajectory and a copy perturbed by a small distance ``initial_distance``
+    are evolved under the same input; at each timestep the log-ratio of the new to
+    the initial separation is accumulated and the perturbed state is rescaled back to
+    ``initial_distance``. The exponent (per timestep) is the mean of these log-ratios.
+
+    Parameters
+    ----------
+    reservoir : :class:`reservoirpy.Node`
+        A reservoir (or any recurrent node) whose internal state is used to measure
+        the divergence of nearby trajectories.
+    x : array of shape (timesteps, input_dim)
+        Input timeseries used to drive the reservoir. The exponent is conditioned
+        on this input.
+    warmup : int, defaults to 0
+        Number of initial timesteps used to let the reservoir reach its attractor.
+        These timesteps are discarded from the exponent estimate. Must be strictly
+        smaller than the number of timesteps.
+    initial_distance : float, defaults to 1e-8
+        Distance between the reference and the perturbed state, kept constant by
+        rescaling at each timestep. Should be small enough to stay in the linear
+        regime of the dynamics.
+    seed : int or :py:class:`numpy.random.Generator`, optional
+        Random state seed for the initial perturbation direction, for reproducibility.
+
+    Returns
+    -------
+    float
+        Estimate of the largest Lyapunov exponent (per timestep).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from reservoirpy.nodes import Reservoir
+    >>> from reservoirpy.observables import lyapunov_exponent
+    >>> rng = np.random.default_rng(seed=2504)
+    >>> x = rng.uniform(-0.8, 0.8, size=(2000, 1))
+    >>> reservoir = Reservoir(100, sr=0.9, lr=1.0, seed=1)
+    >>> print(f"{lyapunov_exponent(reservoir, x, warmup=200, seed=1):.3f}")
+    -0.147
+
+    References
+    ----------
+    .. [1] Boedecker, J., Obst, O., Lizier, J. T., Mayer, N. M., & Asada, M. (2012).
+        Information processing in echo state networks at the edge of chaos.
+        Theory in Biosciences, 131(3), 205-213.
+    .. [2] Benettin, G., Galgani, L., Giorgilli, A., & Strelcyn, J. M. (1980).
+        Lyapunov characteristic exponents for smooth dynamical systems and for
+        Hamiltonian systems; a method for computing all of them. Meccanica, 15, 9-20.
+    """
+    x = np.asarray(x)
+    if x.ndim < 2:
+        raise ValueError(f"x must be a timeseries of shape (timesteps, input_dim), but has shape {x.shape}.")
+    n_timesteps = x.shape[-2]
+    if warmup >= n_timesteps:
+        raise ValueError(f"warmup ({warmup}) must be strictly smaller than the number of timesteps ({n_timesteps}).")
+
+    reservoir = deepcopy(reservoir)
+    if not reservoir.initialized:
+        reservoir.initialize(x)
+    reservoir.reset()
+    if warmup > 0:
+        reservoir.run(x[:warmup])
+    ref_state = reservoir.state
+
+    # The recurrent state may hold several arrays: flatten them into a single
+    # vector to measure the distance between two trajectories.
+    keys = list(ref_state.keys())
+
+    def flatten(state):
+        return np.concatenate([np.ravel(state[k]) for k in keys])
+
+    def unflatten(vec, template):
+        state, start = {}, 0
+        for k in keys:
+            stop = start + np.size(template[k])
+            state[k] = vec[start:stop].reshape(np.shape(template[k]))
+            start = stop
+        return state
+
+    rng = rand_generator(seed)
+    ref_vec = flatten(ref_state)
+    direction = rng.normal(size=ref_vec.shape)
+    direction /= np.linalg.norm(direction)
+    pert_vec = ref_vec + initial_distance * direction
+
+    log_divergences = np.empty((n_timesteps - warmup,))
+    for i, t in enumerate(range(warmup, n_timesteps)):
+        ref_state = reservoir._step(ref_state, x[t])
+        pert_state = reservoir._step(unflatten(pert_vec, ref_state), x[t])
+        ref_vec = flatten(ref_state)
+        pert_vec = flatten(pert_state)
+        difference = pert_vec - ref_vec
+        distance = np.linalg.norm(difference)
+        log_divergences[i] = np.log(distance / initial_distance)
+        # Rescale the perturbed state back to `initial_distance` from the reference.
+        pert_vec = ref_vec + (initial_distance / distance) * difference
+
+    return float(np.mean(log_divergences))

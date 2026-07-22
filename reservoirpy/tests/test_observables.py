@@ -8,6 +8,7 @@ from scipy.sparse import csr_array
 from ..nodes import Reservoir, Ridge
 from ..observables import (
     effective_spectral_radius,
+    lyapunov_exponent,
     memory_capacity,
     mse,
     nrmse,
@@ -133,3 +134,30 @@ def test_effective_spectral_radius():
 
     esr = effective_spectral_radius(W=reservoir.W, lr=reservoir.lr)
     assert isinstance(esr, float)
+
+
+def test_lyapunov_exponent():
+    # https://github.com/reservoirpy/reservoirpy/issues/109
+    rng = np.random.default_rng(1234)
+    x = rng.uniform(-0.8, 0.8, size=(1000, 1))
+
+    le = lyapunov_exponent(Reservoir(100, sr=0.5, lr=1.0, seed=1), x, warmup=100, seed=1)
+    assert isinstance(le, float)
+    # A contracting reservoir (small spectral radius) has the echo state
+    # property: nearby trajectories converge, so the exponent is negative.
+    assert le < 0
+
+    # The exponent increases with the spectral radius, up to a positive
+    # (chaotic) regime for large spectral radii.
+    le_contracting = lyapunov_exponent(Reservoir(100, sr=0.3, lr=1.0, seed=1), x, warmup=100, seed=1)
+    le_chaotic = lyapunov_exponent(Reservoir(100, sr=2.0, lr=1.0, seed=1), x, warmup=100, seed=1)
+    assert le_contracting < le_chaotic
+    assert le_chaotic > 0
+
+    # Reproducible given a fixed seed.
+    reservoir = Reservoir(100, sr=0.9, lr=1.0, seed=1)
+    assert lyapunov_exponent(reservoir, x, warmup=100, seed=1) == lyapunov_exponent(reservoir, x, warmup=100, seed=1)
+
+    # warmup must leave at least one timestep for the estimate.
+    with pytest.raises(ValueError):
+        lyapunov_exponent(Reservoir(100, seed=1), x, warmup=1000)
