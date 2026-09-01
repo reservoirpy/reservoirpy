@@ -8,7 +8,7 @@ T = TypeVar("T")
 
 
 def unique_ordered(x: Sequence[T]) -> list[T]:
-    """Returns a list with the same elements as x occuring only once, and in the same order"""
+    """Remove duplicates in sequence, returning a list, preserve ordering"""
     return list(dict.fromkeys(x))
 
 
@@ -26,6 +26,14 @@ def find_indirect_children(nodes: list[T], edges: list[tuple[T, int, T]]):
     children = {parent: unique_ordered([c for p, d, c in edges if p is parent]) for parent in nodes}
 
     return children
+
+
+def find_indirect_parents(nodes: list[T], edges: list[tuple[T, int, T]]):
+    """Returns a dict linking nodes to their parents in the graph, regardless of the delay."""
+
+    parents = {child: unique_ordered([p for p, d, c in edges if c is child]) for child in nodes}
+
+    return parents
 
 
 def topological_sort(nodes: list[T], edges: list[tuple[T, int, T]], inputs: Optional[list[T]] = None) -> list[T]:

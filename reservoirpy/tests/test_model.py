@@ -390,3 +390,18 @@ def test_multiinputs():
     # model = source1 >> [res1, res2] & source2 >> [res1, res2]
     model = [source1, source2] >> res1 & [source1, source2] >> res2
     outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})
+
+
+def test_julien():
+    res1 = Reservoir(10)
+    res2 = Reservoir(10)
+    in_ = Input()
+    output = Output()
+
+    model = in_ >> res1 >> res2 >> output
+    model &= res1 << res2
+    model &= res1 >> output
+
+    out = model.run(np.ones((100, 2)))
+
+    assert out.shape == (100, 20)
