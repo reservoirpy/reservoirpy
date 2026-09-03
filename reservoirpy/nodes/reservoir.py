@@ -232,7 +232,7 @@ class Reservoir(Node):
                 seed=bias_rng,
             )
 
-        self.state = {"out": np.zeros((self.units,))}
+        self.state = {"out": np.zeros((self.units,), dtype=self.dtype)}
 
         self.initialized = True
 
