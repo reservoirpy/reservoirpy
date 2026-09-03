@@ -152,7 +152,7 @@ class Node(ABC):
         current_state = state
         n_timesteps = x.shape[-2]
 
-        output = np.empty((n_timesteps, self.output_dim))
+        output = np.empty((n_timesteps, self.output_dim), dtype=state["out"].dtype)
         for i, x_step in enumerate(x):
             current_state = self._step(state=current_state, x=x_step)
             output[i] = current_state["out"]
@@ -241,7 +241,7 @@ class Node(ABC):
         dict[str, np.array]: previous state of the Node.
         """
         previous_state = self.state
-        self.state = {key: np.zeros(val.shape) for key, val in self.state.items()}
+        self.state = {key: np.zeros(val.shape, dtype=val.dtype) for key, val in self.state.items()}
         return previous_state
 
     def _set_input_dim(self, x: Optional[Union[NodeInput, Timestep]]):

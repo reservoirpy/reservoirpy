@@ -322,8 +322,8 @@ class LocalPlasticityReservoir(TrainableNode):
             )
 
         self.state = {
-            "out": np.zeros((self.units,)),
-            "internal": np.zeros((self.units,)),
+            "out": np.zeros((self.units,), dtype=self.dtype),
+            "internal": np.zeros((self.units,), dtype=self.dtype),
         }
 
         self.initialized = True
