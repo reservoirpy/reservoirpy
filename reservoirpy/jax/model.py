@@ -113,9 +113,9 @@ class Model(NumpyModel):
 
     Parameters
     ----------
-    nodes : list of Node, optional
+    nodes : list of Node
         Nodes to include in the Model.
-    edges : list of (Node, int, Node), optional
+    edges : list of (Node, int, Node)
         Edges between Nodes in the graph. An edge between a
         Node A and a Node B with a delay of :math:`d` is created as a tuple ``(A, d, B)``.
     """
@@ -204,29 +204,22 @@ class Model(NumpyModel):
         check_input_output_connections(self.edges)
         check_unnamed_trainable(self)
 
-        y_ = map_teacher(self, y)
+        x_map = map_input(self, x)
+        y_map = map_teacher(self, y)
 
         # Infer node input dimensions from the input they receive
-
         node_input_dims = {node: 0 for node in self.nodes}
-
-        if isinstance(x, dict):
-            for node_name, val in x.items():
-                node = self.named_nodes[node_name]
-                node_input_dims[node] += get_data_dimension(val)
-        else:
-            for node in self.inputs:
-                node_input_dims[node] += get_data_dimension(x)
+        node_input_dims |= {node: get_data_dimension(x_map[node]) for node in x_map}
 
         # also use y as forced teachers. Useful for models with feedback
         indirect_children = find_indirect_children(nodes=self.nodes, edges=self.edges)
-        for supervised_node, y_teacher in y_.items():
+        for supervised_node, y_teacher in y_map.items():
             for child in indirect_children[supervised_node]:
                 node_input_dims[child] += get_data_dimension(y_teacher)
 
         # execution order / cycle detection (with teacher forcing)
-        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_)
-        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_]
+        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_map)
+        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_map]
         self.pseudo_execution_order = topological_sort(self.nodes, pseudo_edges, inputs=pseudo_inputs)
         # Initialize each node in execution_order
         for node in self.pseudo_execution_order:
@@ -238,15 +231,15 @@ class Model(NumpyModel):
                         f"but receives input of dimension {node_input_dim}."
                     )
             else:
-                if node in y_:
-                    node.initialize(x=np.zeros((node_input_dim,)), y=y_[node])
+                if node in y_map:
+                    node.initialize(x=np.zeros((node_input_dim,)), y=y_map[node])
                 else:
                     node.initialize(x=np.zeros((node_input_dim,)))
-            if node in y_.keys():
-                if get_data_dimension(y_[node]) != node.output_dim:
+            if node in y_map.keys():
+                if get_data_dimension(y_map[node]) != node.output_dim:
                     raise ValueError(
                         f"{node} expects training data of dimension {node.output_dim} "
-                        f"but receives data of dimension {get_data_dimension(y_[node])}."
+                        f"but receives data of dimension {get_data_dimension(y_map[node])}."
                     )
             else:
                 for child in self.children[node]:
@@ -538,18 +531,18 @@ class Model(NumpyModel):
         result: dict[Node, NodeInput] = defaultdict(list)
         buffers = self.feedback_buffers
 
-        x_ = map_input(self, x)
-        y_ = map_teacher(self, y)
+        x_map = map_input(self, x)
+        y_map = map_teacher(self, y)
 
         # forced teaching
-        for supervised in y_:
+        for supervised in y_map:
             # TODO: handle Unsupervised has children
-            result[supervised] = y_[supervised]
+            result[supervised] = y_map[supervised]
 
         for node in self.pseudo_execution_order:
             inputs: list[NodeInput] = []
-            if node in x_:
-                inputs.append(x_[node])
+            if node in x_map:
+                inputs.append(x_map[node])
             inputs += [result[parent] for parent in self.parents[node]]
             for (p, _d, c), buffer in buffers.items():
                 if c == node:
@@ -558,7 +551,7 @@ class Model(NumpyModel):
                     inputs.append(data)
             node_input = join_data(*inputs)
             if isinstance(node, NTrainableNode):
-                node_target = y_.get(node, None)
+                node_target = y_map.get(node, None)
                 if isinstance(node, NParallelNode):
                     node.fit(node_input, node_target, warmup=warmup, workers=workers)
                 else:
