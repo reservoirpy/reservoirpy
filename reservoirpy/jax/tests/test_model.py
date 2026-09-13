@@ -1,7 +1,7 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
-import numpy as np
+import jax.numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
@@ -434,3 +434,18 @@ def test_delayed_connections():
     assert isinstance(final_model, Model)
     assert final_model.nodes == [third_node, plus_node, minus_node]
     assert final_model.edges == [(plus_node, 0, minus_node), (third_node, 2, plus_node)]
+
+
+def test_julien():
+    res1 = Reservoir(10)
+    res2 = Reservoir(10)
+    in_ = Input()
+    output = Output()
+
+    model = in_ >> res1 >> res2 >> output
+    model &= res1 << res2
+    model &= res1 >> output
+
+    out = model.run(np.ones((100, 2)))
+
+    assert out.shape == (100, 20)

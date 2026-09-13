@@ -76,6 +76,7 @@ from ..node import TrainableNode as NTrainableNode
 from ..utils.data_validation import check_model_input, check_model_timestep
 from ..utils.graphflow import (
     find_indirect_children,
+    find_indirect_parents,
     find_inputs,
     find_outputs,
     find_parents_and_children,
@@ -207,45 +208,49 @@ class Model(NumpyModel):
         x_map = map_input(self, x)
         y_map = map_teacher(self, y)
 
-        # Infer node input dimensions from the input they receive
-        node_input_dims = {node: 0 for node in self.nodes}
-        node_input_dims |= {node: get_data_dimension(x_map[node]) for node in x_map}
-
-        # also use y as forced teachers. Useful for models with feedback
-        indirect_children = find_indirect_children(nodes=self.nodes, edges=self.edges)
-        for supervised_node, y_teacher in y_map.items():
-            for child in indirect_children[supervised_node]:
-                node_input_dims[child] += get_data_dimension(y_teacher)
-
-        # execution order / cycle detection (with teacher forcing)
-        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_map)
-        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_map]
-        self.pseudo_execution_order = topological_sort(self.nodes, pseudo_edges, inputs=pseudo_inputs)
         # Initialize each node in execution_order
-        for node in self.pseudo_execution_order:
-            node_input_dim = node_input_dims[node]
-            if node.initialized:
-                if node_input_dim != node.input_dim:
-                    raise ValueError(
-                        f"{node} expects input of dimension {node.input_dim} "
-                        f"but receives input of dimension {node_input_dim}."
-                    )
-            else:
-                if node in y_map:
-                    node.initialize(x=np.zeros((node_input_dim,)), y=y_map[node])
-                else:
-                    node.initialize(x=np.zeros((node_input_dim,)))
-            if node in y_map.keys():
-                if get_data_dimension(y_map[node]) != node.output_dim:
-                    raise ValueError(
-                        f"{node} expects training data of dimension {node.output_dim} "
-                        f"but receives data of dimension {get_data_dimension(y_map[node])}."
-                    )
-            else:
-                for child in self.children[node]:
-                    node_input_dims[child] += node.output_dim
+        indirect_parents = find_indirect_parents(self.nodes, self.edges)
 
-        self.feedback_buffers = {(p, d, c): np.zeros((d, p.output_dim)) for p, d, c in self.edges if d > 0}
+        while True:
+            # Stopping condition: strictly increasing number of initialized nodes until all are initialized
+            # if there is no update, an error is raised
+            new_updates = False
+            for node in self.execution_order:
+
+                node_input_dim = 0
+                if node in x_map:
+                    node_input_dim += get_data_dimension(x_map[node])
+                for parent in indirect_parents[node]:
+                    if parent in y_map:  # forced teaching
+                        node_input_dim += get_data_dimension(y_map[parent])
+                    elif parent.output_dim is not None:
+                        node_input_dim += parent.output_dim
+                    else:  # parent is not initialized yet
+                        continue
+                if node.initialized:
+                    if not node.input_dim == node_input_dim:
+                        raise ValueError(
+                            f"input_dim of {node} is {node.input_dim}, but the model expects it to be {node_input_dim}."
+                        )
+                    else:
+                        continue
+
+                if node in y_map:
+                    node.initialize(x=jnp.zeros((node_input_dim,)), y=y_map[node])
+                else:
+                    node.initialize(x=jnp.zeros((node_input_dim,)))
+                new_updates = True
+
+            if all([node.initialized for node in self.nodes]):
+                break  # escape the loop
+
+            if not new_updates:
+                # no update during loop iteration and some nodes are not initialized, there is an error somewhere, avoid infinite loop
+                raise ValueError(
+                    "Could not infer the nodes dimensions in the model. Make sure your model doesn't have a 0-delay cycle, or try manually initializing nodes."
+                )
+
+        self.feedback_buffers = {(p, d, c): jnp.zeros((d, p.output_dim)) for p, d, c in self.edges if d > 0}
 
         # TODO: Jax compilation
         self.initialized = True
@@ -538,6 +543,11 @@ class Model(NumpyModel):
         for supervised in y_map:
             # TODO: handle Unsupervised has children
             result[supervised] = y_map[supervised]
+
+        # execution order / cycle detection (with teacher forcing)
+        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_map)
+        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_map]
+        self.pseudo_execution_order = topological_sort(self.nodes, pseudo_edges, inputs=pseudo_inputs)
 
         for node in self.pseudo_execution_order:
             inputs: list[NodeInput] = []
