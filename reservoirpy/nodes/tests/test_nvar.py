@@ -20,7 +20,7 @@ def test_nvar():
     data = np.ones((10,))
     res = node(data)
 
-    assert node.store is not None
+    assert node.state["store"] is not None
     assert node.strides == 1
     assert node.delay == 3
     assert node.order == 2
@@ -32,3 +32,16 @@ def test_nvar():
     res = node.run(data)
 
     assert res.shape == (1000, _get_output_dim(10, 3, 2))
+
+
+def test_nvar_multiseries_does_not_leak_state():
+    # regression test: the delay store must be reset between series in a
+    # multi-series (batched) run, instead of leaking the previous series'
+    # tail into the next one.
+    rng = np.random.default_rng(0)
+    xs = rng.normal(size=(3, 12, 2))
+
+    multi = NVAR(2, 2).run(xs)
+    for i in range(3):
+        single = NVAR(2, 2).run(xs[i])
+        assert np.allclose(multi[i], single)
