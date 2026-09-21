@@ -26,3 +26,4 @@ see :doc:`quickstart`.
     create_new_node
     v0.4_transition_guide
     jax_backend
+    reset
