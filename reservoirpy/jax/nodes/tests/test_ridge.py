@@ -99,6 +99,23 @@ def test_ridge_fit_multiseries():
     assert_array_equal(node.bias, jnp.zeros((10,)))
 
 
+def test_ridge_fit_multiseries_warmup():
+    # regression test: ParallelNode.fit used to only apply 'warmup' in the
+    # single-series branch, ignoring it entirely for multi-series (batched)
+    # input -- corrupting the warmup region of Y no longer changed the fit.
+    rng = numpy.random.default_rng(seed=0)
+    X: jax.Array = rng.uniform(size=(4, 60, 3))
+    Y: jax.Array = X @ rng.uniform(size=(3, 2)) + 0.5
+    Y[:, :30, :] += 100.0 * rng.normal(size=(4, 30, 2))
+
+    node0 = Ridge(1e-6)
+    node0.fit(X, Y, warmup=0)
+    node30 = Ridge(1e-6)
+    node30.fit(X, Y, warmup=30)
+
+    assert jnp.abs(node0.Wout - node30.Wout).max() > 1.0
+
+
 def test_ridge_fit_parallel():
     rng = numpy.random.default_rng(seed=0)
     X: jax.Array = rng.uniform(size=(15, 12, 100))

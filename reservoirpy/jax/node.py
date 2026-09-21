@@ -506,6 +506,13 @@ class ParallelNode(NParallelNode, TrainableNode, ABC):
 
         # Multi-series
         if is_multiseries(x):
+            if isinstance(x, Sequence):
+                x = [series[warmup:] for series in x]
+                y = None if y is None else [series[warmup:] for series in y]
+            else:
+                x = x[:, warmup:]
+                y = None if y is None else y[:, warmup:]
+
             if y is None:
                 results = jax.vmap(self.worker)(x, None)
             else:
