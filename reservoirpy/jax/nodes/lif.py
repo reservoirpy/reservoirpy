@@ -242,10 +242,9 @@ class LIF(Node):
                 seed=W_rng,
             )
             n_inhibitory = int(self.inhibitory * self.units)
-            # .at[...].multiply() is not supported on sparse (BCOO) arrays, which
-            # is what self.W is by default (rc_connectivity < 1.0). Multiplying by
-            # a per-column +-1 mask works uniformly for both dense and sparse W,
-            # without introducing or dropping any nonzero entries.
+            # Indexed .at[...].multiply() has no equivalent on sparse (BCOO)
+            # arrays, the default when rc_connectivity < 1.0. A per-column
+            # +-1 mask multiply works identically on dense and sparse W.
             sign = jnp.where(jnp.arange(self.units) < n_inhibitory, -1.0, 1.0)
             self.W = self.W * sign[None, :]
 
