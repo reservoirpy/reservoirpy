@@ -32,3 +32,6 @@ def test_nvar():
     res = node.run(data)
 
     assert res.shape == (1000, _get_output_dim(10, 3, 2))
+    # regression: discarded .at[].set() results used to make NVAR.run
+    # return all zeros regardless of the input
+    assert bool(jnp.any(res != 0.0))
