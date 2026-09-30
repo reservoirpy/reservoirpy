@@ -55,7 +55,8 @@ def test_local_synaptic_plasticity():
     x = rng.normal(size=(100, 5))
     X = [x[:10], x[:20]]
 
-    res = LocalPlasticityReservoir(100, local_rule="hebbian", epochs=2, seed=0)
+    # the Hebbian rule alone makes W diverge: normalize the rows
+    res = LocalPlasticityReservoir(100, local_rule="hebbian", epochs=2, synapse_normalization=True, seed=0)
 
     res.fit(x)
     res.fit(X)
@@ -91,3 +92,16 @@ def test_lsp_matrices():
     W = rng.normal(size=(10, 10))
     res = LocalPlasticityReservoir(W=W)
     res.fit(x)
+
+def test_lsp_fit_runs_reservoir():
+    # The local rule must see the reservoir dynamics: the state is updated at each timestep of fit.
+    rng = np.random.default_rng(seed=0)
+    x = rng.normal(size=(50, 5))
+    W = rng.normal(size=(20, 20)) * 0.1
+
+    res = LocalPlasticityReservoir(W=W.copy(), local_rule="hebbian", eta=1e-3, seed=0)
+    res.fit(x)
+
+    assert not np.allclose(res.state["out"], 0.0)
+    # with a pre-synaptic state stuck at zero, the Hebbian rule would leave W unchanged
+    assert not np.allclose(res.W, W)
