@@ -92,3 +92,16 @@ def test_lsp_matrices():
     W = rng.normal(size=(10, 10))
     res = LocalPlasticityReservoir(W=W)
     res.fit(x)
+
+def test_lsp_fit_runs_reservoir():
+    # The local rule must see the reservoir dynamics: the state is updated at each timestep of fit.
+    rng = np.random.default_rng(seed=0)
+    x = rng.normal(size=(50, 5))
+    W = rng.normal(size=(20, 20)) * 0.1
+
+    res = LocalPlasticityReservoir(W=W.copy(), local_rule="hebbian", eta=1e-3, seed=0)
+    res.fit(x)
+
+    assert not np.allclose(res.state["out"], 0.0)
+    # with a pre-synaptic state stuck at zero, the Hebbian rule would leave W unchanged
+    assert not np.allclose(res.W, W)
