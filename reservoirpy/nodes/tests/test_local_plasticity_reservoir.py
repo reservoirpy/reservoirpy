@@ -55,7 +55,8 @@ def test_local_synaptic_plasticity():
     x = rng.normal(size=(100, 5))
     X = [x[:10], x[:20]]
 
-    res = LocalPlasticityReservoir(100, local_rule="hebbian", epochs=2, seed=0)
+    # the Hebbian rule alone makes W diverge: normalize the rows
+    res = LocalPlasticityReservoir(100, local_rule="hebbian", epochs=2, synapse_normalization=True, seed=0)
 
     res.fit(x)
     res.fit(X)
