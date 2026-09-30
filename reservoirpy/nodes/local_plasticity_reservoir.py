@@ -32,7 +32,7 @@ class LocalPlasticityReservoir(TrainableNode):
 
     .. math::
 
-        & r[t+1] = (1 - lr)*r[t] + lr*(W r[t] + W_{in} u[t+1] + bias) \\\\
+        & r[t+1] = (1 - lr)*x[t] + lr*(W x[t] + W_{in} u[t+1] + bias) \\\\
         & x[t+1] = f(r[t+1])
 
     Where :math:`f` is the activation function.
@@ -76,7 +76,7 @@ class LocalPlasticityReservoir(TrainableNode):
         Local learning rate for the weight update.
     bcm_theta : float, default to 0.0
         The threshold used in the "bcm" rule.
-    synapse_normalization : bool, default to True
+    synapse_normalization : bool, default to False
         If True, L2-normalize each row of W after its update.
     epochs : int, default to 1
         Number of training iterations.
@@ -361,7 +361,9 @@ class LocalPlasticityReservoir(TrainableNode):
             """
             for u in seq:
                 pre_state = self.state["internal"]  # (units,)
-                post_state = self._step(self.state, u)["internal"]  # (units,)
+                # Run the reservoir, so that the rule sees its dynamics.
+                self.state = self._step(self.state, u)
+                post_state = self.state["internal"]  # (units,)
                 # Vectorized update of nonzero elements based on the chosen rule.
                 (rows, cols, data) = sp.find(self.W)
                 self.W[rows, cols] += increment(data, pre_state[cols], post_state[rows])
