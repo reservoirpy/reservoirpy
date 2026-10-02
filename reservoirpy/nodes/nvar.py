@@ -108,8 +108,6 @@ class NVAR(Node):
 
     """
 
-    #: Time window over the inputs (of shape (delay * strides, features)).
-    store: np.ndarray
     #: Maximum delay of inputs (:math:`k`).
     delay: int
     #: Order of the non-linear monomials (:math:`n`).
@@ -125,7 +123,6 @@ class NVAR(Node):
         input_dim: Optional[int] = None,
         name: Optional[str] = None,
     ):
-        self.store = None
         self._monomial_idx = None
         self.delay = delay
         self.order = order
@@ -161,13 +158,15 @@ class NVAR(Node):
 
         self._monomial_idx = idx
 
-        # to store the k*s last inputs, k being the delay and s the strides
-        self.store = np.zeros((delay * strides, self.input_dim))
-        self.state = {"out": np.zeros((self.output_dim,))}
+        self.state = {
+            "out": np.zeros((self.output_dim,)),
+            # to store the k*s last inputs, k being the delay and s the strides
+            "store": np.zeros((delay * strides, self.input_dim)),
+        }
         self.initialized = True
 
     def _step(self, state: State, x: Timestep) -> State:
-        store = self.store
+        store = state["store"]
         strides = self.strides
         idxs = self._monomial_idx
         output_dim = self.output_dim
@@ -175,7 +174,6 @@ class NVAR(Node):
         # store the current input
         new_store = np.roll(store, 1, axis=0)
         new_store[0] = x
-        self.store = new_store
 
         output = np.zeros((output_dim,))
 
@@ -188,4 +186,4 @@ class NVAR(Node):
         # select monomial terms and compute them
         output[linear_len:] = np.prod(linear_feats[idxs], axis=1)
 
-        return {"out": output}
+        return {"out": output, "store": new_store}
