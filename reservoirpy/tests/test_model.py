@@ -392,13 +392,16 @@ def test_multiinputs():
     outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})
 
 
-def test_julien():
+def test_feedback_reservoirs_cycle():
     res1 = Reservoir(10)
     res2 = Reservoir(10)
     in_ = Input()
     output = Output()
 
+    # create model with two reservoirs 
     model = in_ >> res1 >> res2 >> output
+
+    # feedback connection from reservoir 2 to reservoir 1 (cycle)
     model &= res1 << res2
     model &= res1 >> output
 
