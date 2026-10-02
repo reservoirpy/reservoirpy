@@ -278,7 +278,7 @@ class Model(NumpyModel):
 
         new_buffers = {edge: buffer.copy() for edge, buffer in buffers.items()}
         for (p, d, c), buffer in new_buffers.items():
-            buffer.at[-1].set(new_state[p]["out"])
+            buffer = buffer.at[-1].set(new_state[p]["out"])
             new_buffers[(p, d, c)] = jnp.roll(buffer, 1, axis=0)
 
         return new_buffers, new_state

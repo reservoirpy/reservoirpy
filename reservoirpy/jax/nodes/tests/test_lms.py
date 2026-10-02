@@ -60,11 +60,17 @@ def test_lms_partial_fit():
     data = rng.normal(size=(1000, 2))
 
     node1 = LMS(1e-4)
+    partial_fit_outputs = []
     for x, y in zip(X, Y):
-        node1.partial_fit(x, y)
+        partial_fit_outputs.append(node1.partial_fit(x, y))
 
     assert node1.Wout.shape == (2, 10)
     assert node1.bias.shape == (10,)
+    # regression test: the per-step prediction writes inside partial_fit used
+    # to be discarded (jax .at[i].set() returns a new array instead of
+    # mutating in place), so partial_fit always returned all zeros even
+    # though the weights themselves trained correctly.
+    assert any(bool(jnp.any(out != 0.0)) for out in partial_fit_outputs)
 
     res1 = node1.run(data)
     assert res1.shape == (1000, 10)
