@@ -393,6 +393,10 @@ def test_multiinputs():
 
 
 def test_feedback_reservoirs_cycle():
+
+    # Testing feedback without teacher forcing between reservoirs
+    # Also testing cycle handling in multi-reservoirs models
+    
     res1 = Reservoir(10)
     res2 = Reservoir(10)
     in_ = Input()
