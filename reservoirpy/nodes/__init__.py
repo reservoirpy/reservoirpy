@@ -16,6 +16,7 @@ Reservoirs
    NVAR - Non-linear Vector Autoregressive machine (NG-RC)
    IPReservoir - Reservoir with intrinsic plasticity learning rule
    LocalPlasticityReservoir - Reservoir with weight plasticity
+   HAGReservoir - Reservoir with homeostatic structural plasticity (HAG)
    ES2N - Edge of Stability Echo State Network
    LIF - Leaky Integrate and Fire spiking neural network
 
@@ -71,6 +72,7 @@ Input and Output
 
 from .activations import Identity, ReLU, Sigmoid, Softmax, Softplus, Tanh
 from .es2n import ES2N
+from .hag_reservoir import HAGReservoir
 from .intrinsic_plasticity import IPReservoir
 from .io import Input, Output
 from .lif import LIF
@@ -101,6 +103,7 @@ __all__ = [
     "LIF",
     "LocalPlasticityReservoir",
     "ES2N",
+    "HAGReservoir",
 ]
 
 
