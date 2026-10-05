@@ -409,7 +409,7 @@ class HAGReservoir(TrainableNode):
                 self.n_pruned += 1
         # not active enough: one incoming connection from a correlated neuron is strengthened
         for neuron, partner in self._new_partners(neurons[delta_z <= -1], states.T):
-            self.W[neuron, partner] = max(self.W[neuron, partner] + self.weight_increment, 0)
+            self.W[neuron, partner] = self.W[neuron, partner] + self.weight_increment
             self.n_added += 1
         if self.homeostasis == "variance":
             # intrinsic homeostatic plasticity: weaker inputs for the neurons saturated on the whole window
@@ -444,16 +444,20 @@ class HAGReservoir(TrainableNode):
 
         state = {"out": self._plasticity_rng.uniform(0, 1, self.units)}
         if self.use_full_instance and multiple:
+            # Initialization
             # the first 3 sequences initialize the state, then one plasticity step per sequence
             state, _ = self._run_window(state, np.concatenate(sequences[:3]))
+            # Fit
             for seq in sequences[3:]:
                 state, states = self._run_window(state, seq)
                 self._plasticity(states)
         else:
+            # Initialization
             # sequences concatenated, initialization on 5 * min_window steps, then windows of random lengths
             inputs = np.concatenate(sequences)
             init_length = 5 * self.min_window
             state, _ = self._run_window(state, inputs[:init_length])
+            # Fit
             inputs = inputs[init_length:]
             lengths = np.unique(
                 np.round(np.logspace(np.log10(self.min_window), np.log10(self.max_window), num=10)).astype(int)
