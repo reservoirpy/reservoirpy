@@ -41,6 +41,10 @@ def test_hag_init():
     with pytest.raises(ValueError):
         _ = HAGReservoir(100, **dict(HAG_PARAMS, weight_increment=0.0))
     with pytest.raises(ValueError):
+        _ = HAGReservoir(100, **dict(HAG_PARAMS, min_window=2))
+    with pytest.raises(ValueError):
+        _ = HAGReservoir(100, **dict(HAG_PARAMS, min_window=10, max_window=5))
+    with pytest.raises(ValueError):
         _ = HAGReservoir(100, W=np.zeros((50, 50)), **HAG_PARAMS)
     with pytest.raises(ValueError):
         # units must be a multiple of the input dimension for the default input matrix
@@ -113,3 +117,17 @@ def test_hag_matrices():
     assert np.array_equal(res.bias, bias)
     assert np.count_nonzero(res.W) > 0
     assert np.all(W == 0.0)  # the given matrix is not modified
+
+
+def test_hag_undefined_correlations():
+    # undefined correlations (windows of one timestep after the first one, or constant activity) must not stop fit:
+    # the neurons concerned just get no new connection
+    X = [np.random.default_rng(i).uniform(size=(2, 5)) for i in range(10)]
+    res = HAGReservoir(100, use_full_instance=True, seed=0, **HAG_PARAMS)
+    res.fit(X)
+    assert np.all(res.W == 0.0)
+
+    # constant inputs: constant activity once the initial transient is over
+    res = HAGReservoir(100, seed=0, **HAG_PARAMS)
+    res.fit(np.full((300, 5), 0.5))
+    assert np.all(np.isfinite(res.W))

@@ -81,7 +81,8 @@ class HAGReservoir(TrainableNode):
         Weight added to (or removed from) a connection at each change. Must be
         positive: the weights of HAG are never negative.
     min_window : int
-        Minimal number of timesteps between two plasticity steps.
+        Minimal number of timesteps between two plasticity steps. Must be at least 3:
+        the correlations are computed over the window without its first timestep.
     max_window : int, optional
         Maximal number of timesteps between two plasticity steps. If None,
         ``min_window`` is used.
@@ -262,6 +263,10 @@ class HAGReservoir(TrainableNode):
             raise ValueError(f"HAGReservoir needs {', '.join(missing)}.")
         if weight_increment <= 0:
             raise ValueError(f"'weight_increment' must be positive, got {weight_increment}.")
+        if min_window < 3:
+            raise ValueError(f"'min_window' must be at least 3, got {min_window}.")
+        if max_window is not None and max_window < min_window:
+            raise ValueError(f"'max_window' ({max_window}) must be greater than or equal to 'min_window' ({min_window}).")
 
         self.homeostasis = homeostasis
         self.target = target
@@ -390,11 +395,12 @@ class HAGReservoir(TrainableNode):
             partners = self.W[neuron].nonzero()[0]
             # beyond max_partners, only the existing connections are strengthened
             available = partners if len(partners) >= self.max_partners else [n for n in pool if n != neuron]
-            # the most correlated neurons (ties drawn at random)
             scores = correlations[neuron, available]
+            if np.all(np.isnan(scores)):
+                # correlations undefined (e.g. constant activity over the window): no new connection
+                continue
+            # the most correlated neurons (ties drawn at random)
             candidates = np.array(available)[np.isclose(scores, np.nanmax(scores))]
-            if candidates.size == 0:
-                raise ValueError(f"No candidate presynaptic neuron for neuron {neuron}: undefined correlations.")
             pairs.append((neuron, self._plasticity_rng.choice(candidates)))
         return pairs
 
