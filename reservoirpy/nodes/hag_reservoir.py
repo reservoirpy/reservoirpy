@@ -78,7 +78,8 @@ class HAGReservoir(TrainableNode):
         Tolerance around the target: connections change when the activity is more
         than ``spread`` away from it.
     weight_increment : float
-        Weight added to (or removed from) a connection at each change.
+        Weight added to (or removed from) a connection at each change. Must be
+        positive: the weights of HAG are never negative.
     min_window : int
         Minimal number of timesteps between two plasticity steps.
     max_window : int, optional
@@ -184,7 +185,7 @@ class HAGReservoir(TrainableNode):
     target: float
     #: Tolerance around the target activity.
     spread: float
-    #: Weight added to (or removed from) a connection at each change.
+    #: Weight added to (or removed from) a connection at each change (positive).
     weight_increment: float
     #: Minimal number of timesteps between two plasticity steps.
     min_window: int
@@ -259,6 +260,8 @@ class HAGReservoir(TrainableNode):
         ]
         if missing:
             raise ValueError(f"HAGReservoir needs {', '.join(missing)}.")
+        if weight_increment <= 0:
+            raise ValueError(f"'weight_increment' must be positive, got {weight_increment}.")
 
         self.homeostasis = homeostasis
         self.target = target
