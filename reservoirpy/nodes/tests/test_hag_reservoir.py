@@ -37,6 +37,10 @@ def test_hag_init():
     with pytest.raises(ValueError):
         _ = HAGReservoir(100, homeostasis="max", **HAG_PARAMS)
     with pytest.raises(ValueError):
+        _ = HAGReservoir(100, **dict(HAG_PARAMS, weight_increment=-0.05))
+    with pytest.raises(ValueError):
+        _ = HAGReservoir(100, **dict(HAG_PARAMS, weight_increment=0.0))
+    with pytest.raises(ValueError):
         _ = HAGReservoir(100, W=np.zeros((50, 50)), **HAG_PARAMS)
     with pytest.raises(ValueError):
         # units must be a multiple of the input dimension for the default input matrix
