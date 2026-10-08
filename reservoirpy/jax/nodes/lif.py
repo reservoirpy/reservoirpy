@@ -242,7 +242,10 @@ class LIF(Node):
                 seed=W_rng,
             )
             n_inhibitory = int(self.inhibitory * self.units)
-            self.W.at[:, :n_inhibitory].multiply(-1)
+            # (dense: the sparse BCOO matrices of the initializers have no indexed updates; Jax arrays are
+            # immutable, the result of the update must be assigned)
+            W = self.W.todense() if hasattr(self.W, "todense") else self.W
+            self.W = W.at[:, :n_inhibitory].multiply(-1)
 
         self.state = {
             "internal": jnp.zeros((self.units,)),

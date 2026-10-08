@@ -18,6 +18,18 @@ from ..type import NodeInput, State, Timeseries, Timestep, Weights
 from ..utils import rand_generator
 
 
+@partial(jax.jit, static_argnames=("f",))
+def _forward(W, Win, bias, lr, a, b, internal, external, x, f):
+    """Next internal and external states. The parameters are arguments, not attributes of a static node: a and b
+    change during fit, and a jitted method with a static self would keep their values of its first call."""
+    next_state = W @ external + Win @ x + bias
+    next_state = (1 - lr) * internal + lr * next_state
+
+    next_external = f(a * next_state + b)
+
+    return next_state, next_external
+
+
 class IPReservoir(TrainableNode):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
@@ -297,19 +309,19 @@ class IPReservoir(TrainableNode):
 
         self.initialized = True
 
-    @partial(jax.jit, static_argnums=(0,))
     def _step(self, state: State, x: Timestep) -> State:
-        W = self.W  # NxN
-        Win = self.Win  # NxI
-        bias = self.bias  # N or float
-        f = self.activation
-        lr = self.lr
-        (internal, external) = state["internal"], state["out"]
-
-        next_state = W @ external + Win @ x + bias
-        next_state = (1 - lr) * internal + lr * next_state
-
-        next_external = f(self.a * next_state + self.b)
+        next_state, next_external = _forward(
+            self.W,  # NxN
+            self.Win,  # NxI
+            self.bias,  # N or float
+            self.lr,
+            self.a,
+            self.b,
+            state["internal"],
+            state["out"],
+            x,
+            f=self.activation,
+        )
 
         return {"internal": next_state, "out": next_external}
 
