@@ -413,10 +413,11 @@ def test_feedback_reservoirs_cycle():
 
     assert out.shape == (100, 20)
 
-def _fit_both(build, x, y, **kwargs):
+
+def _fit_both(build, x, y, workers=1, **kwargs):
     model_ref, model_opt = build(), build()
     model_ref.fit(x, y, **kwargs)
-    model_opt.fit_optimized(x, y, **kwargs)
+    model_opt.fit_optimized(x, y, workers=workers, **kwargs)
     return model_ref, model_opt
 
 
@@ -436,7 +437,12 @@ def test_fit_optimized_simple(warmup):
     assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
     assert_allclose(model_opt.run(X[0]), model_ref.run(X[0]))
 
+    # single 2D timeseries (falls back to fit)
+    model_ref, model_opt = _fit_both(lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5), X[0], Y[0])
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
 
+
+@pytest.mark.parametrize("workers", [1, 2])
 @pytest.mark.parametrize(
     "build, multi_target",
     [
@@ -446,17 +452,33 @@ def test_fit_optimized_simple(warmup):
     ],
     ids=["deep", "readouts_series", "feedback"],
 )
-def test_fit_optimized_complex(build, multi_target):
+def test_fit_optimized_complex(build, multi_target, workers):
     rng = np.random.default_rng(0)
     X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
     Y = [np.cumsum(x[:, :2], axis=0) for x in X]
-    y = {"ro1": Y, "ro2": Y} if multi_target else Y
+    y = {"ro1": Y, "ro2": [y_[:, :1] for y_ in Y]} if multi_target else Y
 
-    model_ref, model_opt = _fit_both(build, X, y, warmup=5)
+    model_ref, model_opt = _fit_both(build, X, y, workers=workers, warmup=5)
 
     for ref, opt in zip(model_ref.trainable_nodes, model_opt.trainable_nodes):
         assert_allclose(opt.Wout, ref.Wout)
     assert_allclose(model_opt.run(X[0]), model_ref.run(X[0]))
+
+
+def test_fit_optimized_multi_input():
+    rng = np.random.default_rng(0)
+    X1 = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
+    X2 = [rng.normal(size=(len(x), 2)) for x in X1]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X1]
+    x = {"r1": X1, "r2": X2}
+
+    def build():
+        return [Reservoir(20, sr=0.9, seed=1, name="r1"), Reservoir(20, sr=0.9, seed=2, name="r2")] >> Ridge(ridge=1e-5)
+
+    model_ref, model_opt = _fit_both(build, x, Y, workers=2)
+
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
+    assert_allclose(model_opt.run({"r1": X1[0], "r2": X2[0]}), model_ref.run({"r1": X1[0], "r2": X2[0]}))
 
 
 def test_fit_optimized_nan_targets():
@@ -470,6 +492,19 @@ def test_fit_optimized_nan_targets():
 
     assert not np.any(np.isnan(model_opt.trainable_nodes[0].Wout))
     assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
+
+
+def test_fit_optimized_parallel_is_exact():
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(8)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+
+    model_seq, model_par = _feedback_model(), _feedback_model()
+    model_seq.fit_optimized(X, Y, warmup=5, workers=1)
+    model_par.fit_optimized(X, Y, warmup=5, workers=2)
+
+    assert_array_equal(model_par.trainable_nodes[0].Wout, model_seq.trainable_nodes[0].Wout)
+    assert_array_equal(model_par.run(X[0]), model_seq.run(X[0]))
 
 
 def test_fit_optimized_online_readout():
