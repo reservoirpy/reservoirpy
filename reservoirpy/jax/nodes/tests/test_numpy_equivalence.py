@@ -109,6 +109,17 @@ def test_fit(case, fit_input):
         assert_same(jax_node.run(X[:50]), numpy_node.run(X[:50]))
 
 
+# Online training: the predictions made during training, step by step
+@pytest.mark.parametrize("case", ["LMS", "RLS"])
+def test_partial_fit(case):
+    trainable = TRAINABLE[case]
+    numpy_node, jax_node = numpy_and_jax(trainable.node, **trainable.params)
+
+    assert_same(jax_node.partial_fit(X, Y), numpy_node.partial_fit(X, Y))
+    for attribute in trainable.learned:
+        assert_same(getattr(jax_node, attribute), getattr(numpy_node, attribute))
+
+
 # Check if some nodes haven't been tested yet
 def test_every_trainable_node_is_tested():
     trainable_nodes = { name for name, node in vars(jax_nodes).items() if isinstance(node, type) and issubclass(node, TrainableNode)}
