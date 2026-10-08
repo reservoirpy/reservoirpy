@@ -46,6 +46,8 @@ def test_hag_init():
         _ = HAGReservoir(100, **dict(HAG_PARAMS, min_window=10, max_window=5))
     with pytest.raises(ValueError):
         _ = HAGReservoir(100, W=np.zeros((50, 50)), **HAG_PARAMS)
+    with pytest.raises(ValueError, match="'input_dim' and 'Win'"):
+        _ = HAGReservoir(100, input_dim=5, Win=np.ones((100, 4)), **HAG_PARAMS)
     with pytest.raises(ValueError):
         # units must be a multiple of the input dimension for the default input matrix
         HAGReservoir(101, **HAG_PARAMS).initialize(x)
@@ -131,3 +133,32 @@ def test_hag_undefined_correlations():
     res = HAGReservoir(100, seed=0, **HAG_PARAMS)
     res.fit(np.full((300, 5), 0.5))
     assert np.all(np.isfinite(res.W))
+
+
+def test_hag_fit_bad_input():
+    rng = np.random.default_rng(seed=4)
+
+    # input dimension different from the one of the node (input_dim, Win, or a previous fit)
+    with pytest.raises(ValueError):
+        HAGReservoir(100, input_dim=5, **HAG_PARAMS).fit(rng.uniform(size=(300, 3)))
+    with pytest.raises(ValueError):
+        HAGReservoir(W=np.zeros((40, 40)), Win=rng.uniform(size=(40, 4)), **HAG_PARAMS).fit(rng.uniform(size=(300, 5)))
+    res = HAGReservoir(100, seed=0, **HAG_PARAMS).fit(rng.uniform(size=(300, 5)))
+    with pytest.raises(ValueError):
+        res.fit(rng.uniform(size=(300, 4)))
+    with pytest.raises(ValueError):
+        res.fit([rng.uniform(size=(30, 4)) for _ in range(10)])
+
+    # series with different numbers of features
+    with pytest.raises(ValueError):
+        HAGReservoir(100, **HAG_PARAMS).fit([rng.uniform(size=(30, 5)), rng.uniform(size=(30, 4))])
+
+    # arrays that are not timeseries: one or four dimensions
+    with pytest.raises(ValueError):
+        HAGReservoir(100, **HAG_PARAMS).fit(rng.uniform(size=300))
+    with pytest.raises(ValueError):
+        HAGReservoir(100, **HAG_PARAMS).fit(rng.uniform(size=(2, 10, 30, 5)))
+
+    # not an array nor a sequence of arrays
+    with pytest.raises(TypeError):
+        HAGReservoir(100, **HAG_PARAMS).fit(5)
