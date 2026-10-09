@@ -447,11 +447,11 @@ class OnlineNode(NOnlineNode, TrainableNode, ABC):
             for i, (x_, y_) in enumerate(zip(x, y)):
                 y_pred_ = self._learning_step(x_, y_)
                 # TODO: find a better way if necessary
-                y_pred.at[i].set(y_pred_)
+                y_pred = y_pred.at[i].set(y_pred_)
         else:
             for i, x_ in enumerate(x):
                 y_pred_ = self._learning_step(x_, None)
-                y_pred.at[i].set(y_pred_)
+                y_pred = y_pred.at[i].set(y_pred_)
 
         self.state = {"out": y_pred_}
         return y_pred
@@ -506,10 +506,14 @@ class ParallelNode(NParallelNode, TrainableNode, ABC):
 
         # Multi-series
         if is_multiseries(x):
-            if y is None:
-                results = jax.vmap(self.worker)(x, None)
+            if is_array(x) and (y is None or is_array(y)):
+                # array of timeseries of the same length: one vectorized call
+                results = jax.vmap(self.worker)(x[:, warmup:], None if y is None else y[:, warmup:])
             else:
-                results = jax.vmap(self.worker)(x, y)
+                # list of timeseries, possibly of different lengths: one call per timeseries, the results stacked as jax.vmap would
+                ys = [None] * len(x) if y is None else y
+                results = [self.worker(x_ts[warmup:], None if y_ts is None else y_ts[warmup:]) for x_ts, y_ts in zip(x, ys)]
+                results = jax.tree.map(lambda *r: jnp.stack(r), *results)
 
         # Single timeseries
         else:
