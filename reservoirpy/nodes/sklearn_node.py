@@ -130,8 +130,6 @@ class ScikitLearnNode(TrainableNode):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y, expected_dim=self.output_dim)
-        x, y = filter_nan_targets(x, y)
-
         if not self.initialized:
             self.initialize(x, y)
 
@@ -139,15 +137,21 @@ class ScikitLearnNode(TrainableNode):
             # Concatenate all the batches as one np.ndarray
             # of shape (timeseries*timesteps, features)
             x = np.concatenate([x_[warmup:] for x_ in x], axis=0)
-        if is_array(x) and x.ndim == 3:
+        elif is_array(x) and x.ndim == 3:
             x = x[:, warmup:].reshape(-1, x.shape[-1])
+        elif is_array(x) and x.ndim == 2:
+            x = x[warmup:]
 
         if isinstance(y, Sequence):
             # Concatenate all the batches as one np.ndarray
             # of shape (timeseries*timesteps, features)
             y = np.concatenate([y_[warmup:] for y_ in y], axis=0)
-        if is_array(y) and y.ndim == 3:
+        elif is_array(y) and y.ndim == 3:
             y = y[:, warmup:].reshape(-1, y.shape[-1])
+        elif is_array(y) and y.ndim == 2:
+            y = y[warmup:]
+
+        x, y = filter_nan_targets(x, y)
 
         instances = self.instances
         if not isinstance(instances, list):

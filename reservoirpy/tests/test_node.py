@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
+from reservoirpy.nodes import LMS, RLS, Ridge
+
 from .dummy_nodes import AccumulateNode, Offline, OnlineUnsupervised, PlusNode
 
 
@@ -204,3 +206,27 @@ def test_node_bad_learning_method():
 
 #     with pytest.raises(ValueError):
 #         offline_node.fit(X, Y, warmup=10)
+
+
+@pytest.mark.parametrize("node_class", [Ridge, LMS, RLS])
+@pytest.mark.parametrize("layout", ["single", "array", "list"])
+def test_warmup_with_missing_targets(node_class, layout):
+    rng = np.random.default_rng(42)
+    x = rng.normal(size=(2, 10, 2))
+    y = rng.normal(size=(2, 10, 2))
+    y[:, [0, 2, 5], 0] = np.nan
+    valid = [3, 4, 6, 7, 8, 9]
+    if layout == "single":
+        x, y = x[0], y[0]
+        expected_x, expected_y = x[valid], y[valid]
+    elif layout == "array":
+        expected_x, expected_y = x[:, valid], y[:, valid]
+    else:
+        x, y = [x[0], x[1, :-1]], [y[0], y[1, :-1]]
+        expected_x, expected_y = [x[0][valid], x[1][valid[:-1]]], [y[0][valid], y[1][valid[:-1]]]
+
+    node = node_class().fit(x, y, warmup=3)
+    expected = node_class().fit(expected_x, expected_y)
+
+    assert_allclose(node.Wout, expected.Wout)
+    assert_allclose(node.bias, expected.bias)

@@ -427,14 +427,14 @@ class OnlineNode(TrainableNode):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
-        x, y = filter_nan_targets(x, y)
-
         if is_multiseries(x):
             for i in range(len(x)):
                 yi = y[i][warmup:] if y is not None else None
-                _y_pred_current = self.partial_fit(x[i][warmup:], yi)
+                xi, yi = filter_nan_targets(x[i][warmup:], yi)
+                _y_pred_current = self.partial_fit(xi, yi)
         else:
-            _y_pred = self.partial_fit(x[warmup:], y[warmup:] if y is not None else None)
+            x, y = filter_nan_targets(x[warmup:], y[warmup:] if y is not None else None)
+            _y_pred = self.partial_fit(x, y)
 
         return self
 
@@ -465,8 +465,6 @@ class ParallelNode(TrainableNode, ABC):
         check_node_input(x, expected_dim=self.input_dim)
         if y is not None:
             check_node_input(y)
-        x, y = filter_nan_targets(x, y)
-
         if not self.initialized:
             self.initialize(x, y)
 
@@ -477,12 +475,12 @@ class ParallelNode(TrainableNode, ABC):
                 results = parallel_operator(delayed(self.worker)(x_ts[warmup:]) for x_ts in x)
             else:
                 results = parallel_operator(
-                    delayed(self.worker)(x_ts[warmup:], y_ts[warmup:]) for x_ts, y_ts in zip(x, y)
+                    delayed(self.worker)(*filter_nan_targets(x_ts[warmup:], y_ts[warmup:])) for x_ts, y_ts in zip(x, y)
                 )
 
         # Single timeseries
         else:
-            results = (self.worker(x[warmup:], y[warmup:]) for _ in range(1))
+            results = (self.worker(*filter_nan_targets(x[warmup:], y[warmup:])) for _ in range(1))
 
         self.master(results)
 

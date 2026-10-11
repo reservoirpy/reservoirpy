@@ -224,3 +224,28 @@ def test_scikitlearn_reproductibility_rpy_seed():
     y_pred2 = ScikitLearnNode(model=SGDRegressor).fit(X_train, y_train).run(X_test)
 
     assert np.all(y_pred1 == y_pred2)
+
+
+@pytest.mark.parametrize("layout", ["single", "array", "list"])
+@pytest.mark.parametrize("missing", [False, True])
+def test_scikitlearn_warmup(layout, missing):
+    rng = np.random.default_rng(42)
+    x = rng.normal(size=(2, 10, 2))
+    y = rng.normal(size=(2, 10, 2))
+    if missing:
+        y[:, [0, 2, 5], 0] = np.nan
+    valid = [3, 4, 6, 7, 8, 9] if missing else list(range(3, 10))
+    if layout == "single":
+        x, y = x[0], y[0]
+        expected_x, expected_y = x[valid], y[valid]
+    elif layout == "array":
+        expected_x, expected_y = x[:, valid], y[:, valid]
+    else:
+        x, y = [x[0], x[1, :-1]], [y[0], y[1, :-1]]
+        expected_x, expected_y = [x[0][valid], x[1][valid[:-1]]], [y[0][valid], y[1][valid[:-1]]]
+
+    node = ScikitLearnNode(Ridge).fit(x, y, warmup=3)
+    expected = ScikitLearnNode(Ridge).fit(expected_x, expected_y)
+
+    np.testing.assert_allclose(node.instances.coef_, expected.instances.coef_)
+    np.testing.assert_allclose(node.instances.intercept_, expected.instances.intercept_)
