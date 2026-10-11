@@ -28,10 +28,6 @@ def numpy_and_jax(name, **params):
     """The node `name`, built with reservoirpy.nodes and with reservoirpy.jax.nodes."""
     return getattr(numpy_nodes, name)(**params), getattr(jax_nodes, name)(**params)
 
-def assert_same(jax_result, numpy_result):
-    assert_allclose(np.asarray(jax_result, dtype=float), np.asarray(numpy_result, dtype=float), rtol=1e-4, atol=1e-5)
-
-
 
 # Nodes without training
 NODES = {
@@ -41,11 +37,12 @@ NODES = {
     "NVAR": dict(delay=3, order=2, strides=2),
 }
 
+
 @pytest.mark.parametrize("name", NODES)
 def test_run(name):
     numpy_node, jax_node = numpy_and_jax(name, **NODES[name])
 
-    assert_same(jax_node.run(X), numpy_node.run(X))
+    assert_allclose(jax_node.run(X), numpy_node.run(X), atol=1e-5)
 
 
 # Trainable nodes
@@ -102,11 +99,11 @@ def test_fit(case, fit_input):
         jax_node.fit(x, y, warmup=warmup)
 
         for attribute in trainable.learned:
-            assert_same(getattr(jax_node, attribute), getattr(numpy_node, attribute))
+            assert_allclose(getattr(jax_node, attribute), getattr(numpy_node, attribute), atol=1e-5)
 
         numpy_node.reset()
         jax_node.reset()
-        assert_same(jax_node.run(X[:50]), numpy_node.run(X[:50]))
+        assert_allclose(jax_node.run(X[:50]), numpy_node.run(X[:50]), atol=1e-5)
 
 
 # Online training: the predictions made during training, step by step
@@ -115,9 +112,9 @@ def test_partial_fit(case):
     trainable = TRAINABLE[case]
     numpy_node, jax_node = numpy_and_jax(trainable.node, **trainable.params)
 
-    assert_same(jax_node.partial_fit(X, Y), numpy_node.partial_fit(X, Y))
+    assert_allclose(jax_node.partial_fit(X, Y), numpy_node.partial_fit(X, Y), atol=1e-5)
     for attribute in trainable.learned:
-        assert_same(getattr(jax_node, attribute), getattr(numpy_node, attribute))
+        assert_allclose(getattr(jax_node, attribute), getattr(numpy_node, attribute), atol=1e-5)
 
 
 # Check if some nodes haven't been tested yet
