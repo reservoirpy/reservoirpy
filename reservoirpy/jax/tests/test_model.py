@@ -439,15 +439,15 @@ def test_delayed_connections():
 def test_feedback_reservoirs_cycle():
     # Testing feedback without teacher forcing between reservoirs
     # Also testing cycle handling in multi-reservoirs models in Jax
-    
+
     res1 = Reservoir(10)
     res2 = Reservoir(10)
     in_ = Input()
     output = Output()
 
-    # create model with two reservoirs 
+    # create model with two reservoirs
     model = in_ >> res1 >> res2 >> output
-    
+
     # feedback connection from reservoir 2 to reservoir 1 (cycle)
     model &= res1 << res2
     model &= res1 >> output
