@@ -93,6 +93,7 @@ def test_lsp_matrices():
     res = LocalPlasticityReservoir(W=W)
     res.fit(x)
 
+
 def test_lsp_fit_runs_reservoir():
     # The local rule must see the reservoir dynamics: the state is updated at each timestep of fit.
     rng = np.random.default_rng(seed=0)

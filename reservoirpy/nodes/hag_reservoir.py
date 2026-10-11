@@ -266,7 +266,9 @@ class HAGReservoir(TrainableNode):
         if min_window < 3:
             raise ValueError(f"'min_window' must be at least 3, got {min_window}.")
         if max_window is not None and max_window < min_window:
-            raise ValueError(f"'max_window' ({max_window}) must be greater than or equal to 'min_window' ({min_window}).")
+            raise ValueError(
+                f"'max_window' ({max_window}) must be greater than or equal to 'min_window' ({min_window})."
+            )
 
         self.homeostasis = homeostasis
         self.target = target

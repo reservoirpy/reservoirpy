@@ -76,14 +76,20 @@ TRAINABLE = {
 # Forms of input accepted by fit, made from x and y: (x, y, warmup)
 def one_timeseries(x, y):
     return x, y, 0
+
+
 def array_of_timeseries(x, y):
     return np.stack([x[:100], x[100:]]), np.stack([y[:100], y[100:]]), 10
+
+
 def list_of_timeseries_of_different_lengths(x, y):
     return [x[:120], x[120:]], [y[:120], y[120:]], 10
 
 
 @pytest.mark.parametrize(
-    "fit_input", [one_timeseries, array_of_timeseries, list_of_timeseries_of_different_lengths], ids=lambda f: f.__name__
+    "fit_input",
+    [one_timeseries, array_of_timeseries, list_of_timeseries_of_different_lengths],
+    ids=lambda f: f.__name__,
 )
 @pytest.mark.parametrize("case", TRAINABLE)
 def test_fit(case, fit_input):
@@ -119,7 +125,9 @@ def test_partial_fit(case):
 
 # Check if some nodes haven't been tested yet
 def test_every_trainable_node_is_tested():
-    trainable_nodes = { name for name, node in vars(jax_nodes).items() if isinstance(node, type) and issubclass(node, TrainableNode)}
+    trainable_nodes = {
+        name for name, node in vars(jax_nodes).items() if isinstance(node, type) and issubclass(node, TrainableNode)
+    }
     tested = {trainable.node for trainable in TRAINABLE.values()}
 
     assert trainable_nodes <= tested, f"No fit test for {trainable_nodes - tested}"

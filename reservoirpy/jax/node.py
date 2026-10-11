@@ -512,7 +512,9 @@ class ParallelNode(NParallelNode, TrainableNode, ABC):
             else:
                 # list of timeseries, possibly of different lengths: one call per timeseries, the results stacked as jax.vmap would
                 ys = [None] * len(x) if y is None else y
-                results = [self.worker(x_ts[warmup:], None if y_ts is None else y_ts[warmup:]) for x_ts, y_ts in zip(x, ys)]
+                results = [
+                    self.worker(x_ts[warmup:], None if y_ts is None else y_ts[warmup:]) for x_ts, y_ts in zip(x, ys)
+                ]
                 results = jax.tree.map(lambda *r: jnp.stack(r), *results)
 
         # Single timeseries
