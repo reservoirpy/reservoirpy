@@ -220,7 +220,7 @@ class LIF(Node):
     ):
         self._set_input_dim(x)
 
-        [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
+        [Win_rng, W_rng] = self.rng.spawn(2)
 
         if callable(self.Win):
             self.Win = self.Win(
