@@ -55,13 +55,13 @@ class Trainable:
 
 
 TRAINABLE = {
-    "IPReservoir-tanh": Trainable(
+    "IPReservoir_tanh": Trainable(
         "IPReservoir",
         dict(units=100, sr=0.9, activation="tanh", mu=0.0, sigma=0.5, learning_rate=1e-2, seed=0),
         learned=("a", "b"),
         supervised=False,
     ),
-    "IPReservoir-sigmoid": Trainable(
+    "IPReservoir_sigmoid": Trainable(
         "IPReservoir",
         dict(units=100, sr=0.9, activation="sigmoid", mu=0.2, learning_rate=1e-2, seed=0),
         learned=("a", "b"),
