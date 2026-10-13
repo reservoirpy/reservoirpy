@@ -18,18 +18,6 @@ from ..type import NodeInput, State, Timeseries, Timestep, Weights
 from ..utils import rand_generator
 
 
-@partial(jax.jit, static_argnames=("f",))
-def _forward(W, Win, bias, lr, a, b, internal, external, x, f):
-    """Next internal and external states. The parameters are arguments, not attributes of a static node: a and b
-    change during fit, and a jitted method with a static self would keep their values of its first call."""
-    next_state = W @ external + Win @ x + bias
-    next_state = (1 - lr) * internal + lr * next_state
-
-    next_external = f(a * next_state + b)
-
-    return next_state, next_external
-
-
 class IPReservoir(TrainableNode):
     """Pool of neurons with random recurrent connexions, tuned using Intrinsic
     Plasticity.
@@ -309,21 +297,28 @@ class IPReservoir(TrainableNode):
 
         self.initialized = True
 
-    def _step(self, state: State, x: Timestep) -> State:
-        next_state, next_external = _forward(
-            self.W,  # NxN
-            self.Win,  # NxI
-            self.bias,  # N or float
-            self.lr,
-            self.a,
-            self.b,
-            state["internal"],
-            state["out"],
-            x,
-            f=self.activation,
-        )
+    @partial(jax.jit, static_argnums=(0,))
+    def _step_core(self, state: State, x: Timestep, a: jax.Array, b: jax.Array) -> State:
+        # `a` and `b` are passed as traced arguments instead of being read from
+        # the static `self`: intrinsic plasticity updates them during training,
+        # and a jit over a static `self` would bake their initial values as
+        # constants and ignore later updates.
+        W = self.W  # NxN
+        Win = self.Win  # NxI
+        bias = self.bias  # N or float
+        f = self.activation
+        lr = self.lr
+        (internal, external) = state["internal"], state["out"]
+
+        next_state = W @ external + Win @ x + bias
+        next_state = (1 - lr) * internal + lr * next_state
+
+        next_external = f(a * next_state + b)
 
         return {"internal": next_state, "out": next_external}
+
+    def _step(self, state: State, x: Timestep) -> State:
+        return self._step_core(state, x, self.a, self.b)
 
     def fit(self, x: NodeInput, y: None = None, warmup: int = 0) -> "IPReservoir":
         check_node_input(x, expected_dim=self.input_dim)
