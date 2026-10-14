@@ -1,9 +1,9 @@
 """
 ====================================================
-ReservoirPy Jax Nodes (:mod:`reservoirpy.nodes.jax`)
+ReservoirPy Jax Nodes (:mod:`reservoirpy.jax.nodes`)
 ====================================================
 
-.. currentmodule:: reservoirpy.nodes.jax
+.. currentmodule:: reservoirpy.jax.nodes
 
 Reservoirs
 ==========
@@ -15,8 +15,8 @@ Reservoirs
     Reservoir - Recurrent pool of leaky integrator neurons
     NVAR - Non-linear Vector Autoregressive machine (NG-RC)
     IPReservoir - Reservoir with intrinsic plasticity learning rule
-    LocalPlasticityReservoir - Reservoir with weight plasticity
     ES2N - Edge of Stability Echo State Network
+    LIF - Leaky Integrate and Fire spiking neural network
 
 Offline readouts
 ================

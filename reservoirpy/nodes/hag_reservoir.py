@@ -23,7 +23,9 @@ from ..utils.random import rand_generator
 
 class HAGReservoir(TrainableNode):
     """
-    A reservoir that learns its recurrent connections through HAG [1]_, a
+    Reservoir with homeostatic structural plasticity (HAG).
+
+    The reservoir learns its recurrent connections through HAG [1]_, a
     homeostatic structural plasticity rule [2]_: during ``fit``, the neurons
     whose activity is too high lose incoming connections and the ones whose
     activity is too low gain incoming connections from the neurons most
