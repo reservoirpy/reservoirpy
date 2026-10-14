@@ -1,3 +1,34 @@
+"""
+=============================================
+Jax backend (:mod:`reservoirpy.jax`)
+=============================================
+
+Jax implementations of the ReservoirPy nodes, models and tools, mirroring the
+:mod:`reservoirpy` API: ``reservoirpy.jax.nodes.Reservoir`` is the Jax version
+of :class:`reservoirpy.nodes.Reservoir`, and so on. Requires Jax
+(``pip install reservoirpy[jax]``).
+
+See :doc:`/user_guide/jax_backend` for an introduction.
+
+.. currentmodule:: reservoirpy.jax
+
+.. autosummary::
+   :toctree: generated/
+   :template: autosummary/class.rst
+
+   ESN - Simple Echo State Network.
+
+.. toctree::
+   :maxdepth: 1
+
+   reservoirpy.jax.nodes
+   reservoirpy.jax.mat_gen
+   reservoirpy.jax.activationsfunc
+   reservoirpy.jax.node
+   reservoirpy.jax.model
+   reservoirpy.jax.ops
+"""
+
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 

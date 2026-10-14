@@ -87,6 +87,7 @@ All modules
    reservoirpy.activationsfunc
    reservoirpy.observables
    reservoirpy.datasets
+   reservoirpy.jax
    reservoirpy.hyper
    reservoirpy.node
    reservoirpy.model

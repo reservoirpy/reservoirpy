@@ -1,3 +1,32 @@
+"""
+===========================================================
+Jax weights initialization (:mod:`reservoirpy.jax.mat_gen`)
+===========================================================
+
+Jax versions of the :mod:`reservoirpy.mat_gen` initializers: the matrices are
+generated as in :mod:`reservoirpy.mat_gen`, then converted to a
+:py:class:`jax.Array`, or to a :py:class:`jax.experimental.sparse.BCOO` array
+when sparse. ``random_sparse`` and ``fast_spectral_initialization`` have no
+Jax version.
+
+.. currentmodule:: reservoirpy.jax.mat_gen
+
+.. autosummary::
+   :toctree: generated/
+
+    uniform
+    normal
+    bernoulli
+    ring
+    line
+    orthogonal
+    cluster
+    small_world
+    zeros
+    ones
+    JaxInitializer
+"""
+
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 

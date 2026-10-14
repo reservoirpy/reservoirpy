@@ -278,5 +278,27 @@ def linkcode_resolve(domain, info):
         return None
 
 
+from sphinx.domains.python import PythonDomain
+
+_find_obj = PythonDomain.find_obj
+
+
+def find_obj(self, env, modname, classname, name, type, searchmode=0):
+    """
+    Relative references (e.g. ``:py:class:`~.Node```) match both the numpy and the Jax
+    object of the same name: keep the one of the backend being documented.
+    """
+    matches = _find_obj(self, env, modname, classname, name, type, searchmode)
+    if len(matches) > 1:
+        jax = (modname or "").startswith("reservoirpy.jax")
+        same_backend = [match for match in matches if match[0].startswith("reservoirpy.jax.") == jax]
+        if same_backend:
+            matches = same_backend
+    return matches
+
+
+PythonDomain.find_obj = find_obj
+
+
 def setup(app):
     app.connect("source-read", rstjinja)

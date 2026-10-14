@@ -5,7 +5,7 @@ Jax Node operations - link, merge (:py:mod:`reservoirpy.jax.ops`)
 
 Operations on :py:class:`~.Node` and :py:class:`~.Model`.
 
-.. currentmodule:: reservoirpy.ops
+.. currentmodule:: reservoirpy.jax.ops
 
 .. autosummary::
    :toctree: generated/

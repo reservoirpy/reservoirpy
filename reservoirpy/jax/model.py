@@ -19,7 +19,7 @@ architecture like *Deep Echo State Networks*.
 See :ref:`model` to learn more about how to create and manipulate
 a :py:class:`Model`.
 
-.. currentmodule:: reservoirpy.model
+.. currentmodule:: reservoirpy.jax.model
 
 .. autoclass:: Model
 

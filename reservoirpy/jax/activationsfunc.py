@@ -1,3 +1,20 @@
+"""
+===========================================================================
+Jax activation functions (:py:mod:`reservoirpy.jax.activationsfunc`)
+===========================================================================
+
+Jax versions of the :mod:`reservoirpy.activationsfunc` activation functions
+(those of :py:mod:`jax.nn`).
+
+.. currentmodule:: reservoirpy.jax.activationsfunc
+
+.. autosummary::
+   :toctree: generated/
+
+    get_function
+    identity
+"""
+
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
