@@ -582,7 +582,7 @@ class Model:
                 result[node] = node.run(node_input, workers=workers)
 
         return self
-    
+
     def _fit_sequence(
         self,
         x_seq: dict[int, Timeseries],
@@ -596,7 +596,7 @@ class Model:
         Used by :py:meth:`~.Model.fit_optimized`. This method may run in another
         process on a copy of the model, so its inputs and outputs are indexed by
         position (in ``self.nodes``, ``self.trainable_nodes`` and the delayed edges)
-        rather than by :py:class:`~.Node`. It does not modify the model.
+        rather than by :py:class:`~.Node`.
 
         Returns
         -------
@@ -656,6 +656,8 @@ class Model:
         readouts' sufficient statistics (:math:`HH^\\top`, :math:`YH^\\top`)
         are accumulated, and the states are discarded. Peak memory therefore
         depends on the longest sequence instead of the whole dataset.
+        Memory savings only apply when ``x`` contains several sequences.
+        With a single sequence, this method falls back to :py:meth:`~.Model.fit`.
 
         Only supports models whose trainable nodes are supervised
         :py:class:`~.ParallelNode` (e.g. :py:class:`~.Ridge`).
@@ -671,7 +673,7 @@ class Model:
             discard at the beginning of each timeseries before training.
         workers : int, default to 1
             Number of workers used for parallelization. If set to -1, all available
-            workers (threads or processes) are used. Peak memory grows with the
+            workers are used. Peak memory grows with the
             number of sequences processed at the same time.
 
         Returns
@@ -755,9 +757,7 @@ class Model:
         self.feedback_buffers = dict(zip(delayed_edges, buffers))
 
         return self
-
-
-        
+    
     def reset(self) -> tuple[dict[Node, State], FeedbackBuffers]:
         """Reset all Node states and buffers in the Model.
 
