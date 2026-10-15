@@ -141,6 +141,30 @@ We can then run the model to evaluate its predictions:
     plt.legend()
     plt.show()
 
+Memory-efficient offline learning with :py:meth:`~.Model.fit_optimized`
+-----------------------------------------------------------------------
+
+:py:meth:`~.Model.fit` runs the model on the whole dataset and keeps all the
+resulting states in memory before training the readout. With many or long
+sequences, this can exceed the available memory.
+
+:py:meth:`~.Model.fit_optimized` gives the same result, but processes the
+sequences one by one: for each sequence, the model is run, the readout's
+sufficient statistics are accumulated, and the states are discarded. Peak
+memory then depends on the length of one sequence instead of the whole dataset.
+Sequences can also be processed in parallel using the ``workers`` parameter.
+
+.. code-block:: python
+
+    # X and Y are lists of sequences (or 3D arrays)
+    esn = reservoir >> readout
+    esn.fit_optimized(X, Y, warmup=10, workers=4)
+
+This method only supports models whose trainable nodes are supervised
+offline readouts such as :py:class:`~.Ridge`. Memory savings only apply when
+``X`` contains several sequences; with a single sequence, it falls back to
+:py:meth:`~.Model.fit`.
+
 Online learning rules
 ---------------------
 
