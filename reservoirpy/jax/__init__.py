@@ -1,7 +1,7 @@
 """
-=============================================
+====================================
 Jax backend (:mod:`reservoirpy.jax`)
-=============================================
+====================================
 
 Jax implementations of the ReservoirPy nodes, models and tools, mirroring the
 :mod:`reservoirpy` API: ``reservoirpy.jax.nodes.Reservoir`` is the Jax version
