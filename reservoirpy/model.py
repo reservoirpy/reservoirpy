@@ -583,7 +583,7 @@ class Model:
 
         return self
 
-    def _fit_sequence(
+    def worker(
         self,
         x_seq: dict[int, Timeseries],
         y_seq: dict[int, Timeseries],
@@ -737,7 +737,7 @@ class Model:
         # Ordered generator: same summation order as the sequential case, whatever the
         # number of workers. With workers=1, joblib runs lazily in the main process.
         results = Parallel(n_jobs=workers, return_as="generator")(
-            delayed(self._fit_sequence)(x_seq, y_seq, init_states, init_buffers, warmup)
+            delayed(self.worker)(x_seq, y_seq, init_states, init_buffers, warmup)
             for x_seq, y_seq in sequences()
         )
         for contribs, final_states, buffers in results:
