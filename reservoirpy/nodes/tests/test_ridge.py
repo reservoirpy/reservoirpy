@@ -115,3 +115,60 @@ def test_ridge_fit_parallel():
     assert node.output_dim == 10
     assert node.Wout.shape == (100, 10)
     assert_array_equal(node.bias, np.zeros((10,)))
+
+
+def ridge_reference(X, Y, ridge, fit_bias=True):
+    # exact ridge regression: least squares of the centered data augmented with sqrt(ridge) * Id
+    x_mean = X.mean(axis=0) if fit_bias else np.zeros(X.shape[1])
+    y_mean = Y.mean(axis=0) if fit_bias else np.zeros(Y.shape[1])
+    A = np.vstack([X - x_mean, np.sqrt(ridge) * np.eye(X.shape[1])])
+    B = np.vstack([Y - y_mean, np.zeros((X.shape[1], Y.shape[1]))])
+    Wout = np.linalg.lstsq(A, B, rcond=None)[0]
+    return Wout, y_mean - x_mean @ Wout
+
+
+@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd", "lsqr"])
+@pytest.mark.parametrize("fit_bias", [True, False])
+def test_ridge_solvers(solver, fit_bias):
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(8, 50, 20)) + 3.0
+    Y = X @ rng.normal(size=(20, 4)) + 1.0 + 0.1 * rng.normal(size=(8, 50, 4))
+    Wout, bias = ridge_reference(X.reshape(-1, 20), Y.reshape(-1, 4), 1e-2, fit_bias)
+
+    # several timeseries, in parallel or not, and one timeseries
+    for x, y, workers in [(X, Y, 1), (list(X), list(Y), -1), (X.reshape(-1, 20), Y.reshape(-1, 4), 1)]:
+        node = Ridge(1e-2, fit_bias=fit_bias, solver=solver)
+        node.fit(x, y, workers=workers)
+        assert_array_almost_equal(node.Wout, Wout, decimal=6)
+        assert_array_almost_equal(node.bias, bias, decimal=6)
+
+
+@pytest.mark.parametrize("solver", ["cholesky", "qr", "svd"])
+def test_ridge_solvers_ill_conditioned(solver):
+    # inputs with a large mean and nearly dependent dimensions (as reservoir states), small ridge
+    rng = np.random.default_rng(1)
+    latent = rng.normal(size=(10, 200, 5))
+    X = 100.0 + latent @ rng.normal(size=(5, 40)) + 1e-6 * rng.normal(size=(10, 200, 40))
+    Y = latent @ rng.normal(size=(5, 3))
+    Wout, bias = ridge_reference(X.reshape(-1, 40), Y.reshape(-1, 3), 1e-12)
+
+    node = Ridge(1e-12, solver=solver)
+    node.fit(X, Y)
+    prediction = node.run(X.reshape(-1, 40))
+    reference = X.reshape(-1, 40) @ Wout + bias
+    assert np.max(np.abs(prediction - reference)) < 1e-5 * np.max(np.abs(Y))
+
+
+def test_ridge_unknown_solver():
+    with pytest.raises(ValueError):
+        Ridge(1e-6, solver="sag")
+
+
+def test_ridge_svd_no_ridge_rank_deficient():
+    # ridge=0 (default) with dependent inputs: minimum norm least squares, no NaN
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(100, 3)) @ rng.normal(size=(3, 6))
+    Y = X @ rng.normal(size=(6, 2))
+    node = Ridge(solver="svd").fit(X, Y)
+    assert np.all(np.isfinite(node.Wout))
+    assert_array_almost_equal(node.run(X), Y)
