@@ -195,8 +195,15 @@ class Ridge(ParallelNode):
         return XXT, YXT, x_sum, y_sum, sample_size
 
     def master(self, generator: Iterable):
-        if self.solver != "normal":
-            return self._master_centered(generator)
+        if self.solver == "normal":
+            Wout, bias = self._fit_from_moments(generator)
+        else:
+            Wout, bias = self._fit_from_samples(generator)
+
+        self.Wout = Wout
+        self.bias = bias
+
+    def _fit_from_moments(self, generator: Iterable):
         XXT = np.zeros((self.input_dim, self.input_dim))
         YXT = np.zeros((self.input_dim, self.output_dim))
         X_sum = 0.0
@@ -219,15 +226,17 @@ class Ridge(ParallelNode):
 
         Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="sym")
 
-        self.Wout = Wout
         if self.fit_bias:
-            self.bias = Y_means - X_means @ Wout
+            bias = Y_means - X_means @ Wout
         else:
-            self.bias = np.zeros((self.output_dim,))
+            bias = np.zeros((self.output_dim,))
 
-    def _master_centered(self, generator: Iterable):
+        return Wout, bias
+
+    def _fit_from_samples(self, generator: Iterable):
         xs, ys = zip(*generator)
         X, Y = np.concatenate(xs), np.concatenate(ys)
+
         if self.fit_bias:
             X_means, Y_means = X.mean(axis=0), Y.mean(axis=0)
             X, Y = X - X_means, Y - Y_means
@@ -247,8 +256,9 @@ class Ridge(ParallelNode):
             d = np.divide(s, s**2 + self.ridge, out=np.zeros_like(s), where=s > s[0] * np.finfo(float).eps * max(X.shape))
             Wout = Vt.T @ (d[:, None] * (U.T @ Y))
 
-        self.Wout = Wout
         if self.fit_bias:
-            self.bias = Y_means - X_means @ Wout
+            bias = Y_means - X_means @ Wout
         else:
-            self.bias = np.zeros((self.output_dim,))
+            bias = np.zeros((self.output_dim,))
+
+        return Wout, bias
