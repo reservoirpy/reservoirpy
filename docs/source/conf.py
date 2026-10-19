@@ -222,6 +222,13 @@ import inspect
 from os.path import dirname, relpath
 
 
+# Read the Docs checks out a tag (e.g. ``v0.4.2``) for a versioned build and a
+# branch (``master``) for ``latest``, and exposes its name in this variable.
+# Linking to that ref makes the ``[source]`` links of a version point at the
+# code of that version. Local builds fall back to the ``master`` branch.
+source_git_ref = os.environ.get("READTHEDOCS_GIT_IDENTIFIER", "master")
+
+
 # from scipy conf.py (https://github.com/scipy/scipy/blob/3da3fb3de8beffc79797b7b62ea3c98cc8075d2e/doc/source/conf.py)
 def linkcode_resolve(domain, info):
     """
@@ -270,7 +277,8 @@ def linkcode_resolve(domain, info):
     fn = relpath(fn, start=startdir).replace(os.path.sep, "/")
 
     if fn.startswith("reservoirpy/"):
-        return "https://github.com/reservoirpy/reservoirpy/blob/master/%s%s" % (
+        return "https://github.com/reservoirpy/reservoirpy/blob/%s/%s%s" % (
+            source_git_ref,
             fn,
             linespec,
         )
