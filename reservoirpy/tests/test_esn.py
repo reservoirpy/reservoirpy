@@ -3,8 +3,9 @@
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 
-from .. import ESN
+from .. import ESN, Model
 from ..mat_gen import normal
 from ..nodes import Reservoir, Ridge
 
@@ -117,19 +118,32 @@ def test_esn_freerunning():
     assert res.shape == (213, 3)
 
 
-def test_esn_feedback_buffer_updates():
-    esn = ESN(units=20, output_dim=3, lr=0.8, sr=0.4, ridge=1e-5, feedback=True, seed=0)
-
+def test_esn_fit_dispatch(monkeypatch):
     rng = np.random.default_rng(0)
-    x = rng.normal(size=(15, 5))
-    y = rng.normal(size=(15, 3))
-    esn.fit(x, y)
+    X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
 
-    edge = next(iter(esn.feedback_buffers))
-    before = np.array(esn.feedback_buffers[edge])
-    esn.step(x[0])
-    esn.step(x[1])
-    after = np.array(esn.feedback_buffers[edge])
+    calls = []
+    original = Model.fit_optimized
 
-    assert not np.allclose(before, after)
-    assert np.abs(after).max() > 0
+    def spy(self, *args, **kwargs):
+        calls.append(kwargs["workers"])
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Model, "fit_optimized", spy)
+
+    # several sequences and workers != 1: fit_optimized, same result as Model.fit
+    esn_ref = ESN(units=20, sr=0.9, ridge=1e-5, seed=1)
+    esn_opt = ESN(units=20, sr=0.9, ridge=1e-5, seed=1)
+    Model.fit(esn_ref, X, Y, warmup=5)
+    esn_opt.fit(X, Y, warmup=5, workers=2)
+    assert calls == [2]
+    assert_allclose(esn_opt.readout.Wout, esn_ref.readout.Wout)
+
+    # workers=1: classic fit
+    ESN(units=20, sr=0.9, ridge=1e-5, seed=1).fit(X, Y)
+    assert calls == [2]
+
+    # single sequence: classic fit, no recursion
+    ESN(units=20, sr=0.9, ridge=1e-5, seed=1).fit(X[0], Y[0], workers=2)
+    assert calls == [2]
