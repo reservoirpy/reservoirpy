@@ -61,6 +61,7 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+import warnings
 from collections import defaultdict
 from typing import Mapping, Optional, Sequence, Union
 
@@ -711,6 +712,7 @@ class Model:
 
         # TODO: a single (long) timeseries could still benefit from fit_optimized by segmenting it
         if not is_multiseries(x_map):
+            warnings.warn("fit_optimized received a single timeseries, falling back to Model.fit.")
             return self.fit(x, y, warmup=warmup, workers=workers)
 
         pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_map)

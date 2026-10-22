@@ -437,8 +437,9 @@ def test_fit_optimized_simple(warmup):
     assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
     assert_allclose(model_opt.run(X[0]), model_ref.run(X[0]))
 
-    # single 2D timeseries (falls back to fit)
-    model_ref, model_opt = _fit_both(lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5), X[0], Y[0])
+    # single 2D timeseries (falls back to fit, with a warning)
+    with pytest.warns(UserWarning, match="single timeseries"):
+        model_ref, model_opt = _fit_both(lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5), X[0], Y[0])
     assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
 
 
