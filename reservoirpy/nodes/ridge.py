@@ -1,10 +1,11 @@
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Literal, Optional, Union
 
 import numpy as np
 from scipy import linalg
+from scipy.sparse.linalg import lsqr
 
 from ..node import ParallelNode
 from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array
@@ -35,6 +36,33 @@ class Ridge(ParallelNode):
     If ``fit_bias`` is True, then :math:`\\mathbf{b}` is non-zero, and a constant
     term is added to :math:`\\mathbf{X}` to compute it.
 
+    The ``solver`` sets how the regression is solved:
+
+    - ``"normal"`` (default): the normal equations, with :math:`\\mathbf{XX}^\\top` and
+      :math:`\\mathbf{YX}^\\top` accumulated over the timeseries on the raw inputs,
+      centered afterwards (if ``fit_bias``) by subtracting the outer products of the
+      means, and solved with a symmetric (LDL) decomposition. Fast and memory-light,
+      but this centering loses precision when the inputs have a large mean compared to
+      their spread: with nearly dependent inputs and a small ``ridge``, the learned
+      weights can then be inaccurate.
+    - ``"cholesky"``: the normal equations formed on the centered inputs (no loss in
+      the centering), solved with a Cholesky decomposition. Forming
+      :math:`\\mathbf{XX}^\\top` still squares the condition number of the inputs.
+    - ``"qr"``: a QR decomposition of the centered inputs augmented with
+      :math:`\\sqrt{\\lambda}\\mathbf{Id}` (the least squares form of the ridge
+      regression), then a triangular solve: no normal equations, cheaper than
+      ``"svd"``. Needs ``ridge > 0`` or linearly independent inputs.
+    - ``"svd"``: the regression solved with a singular value decomposition of the
+      centered inputs themselves, as scikit-learn's ``Ridge(solver="svd")``: no normal
+      equations, the most stable choice for ill-conditioned inputs.
+    - ``"lsqr"``: the iterative least squares solver :py:func:`scipy.sparse.linalg.lsqr`
+      (damped by :math:`\\sqrt{\\lambda}`), for each output, as scikit-learn's
+      ``Ridge(solver="lsqr")``: no normal equations, its precision is set by its
+      stopping tolerance.
+
+    All the solvers except ``"normal"`` keep all the training data in memory during
+    ``fit``.
+
 
     Parameters
     ----------
@@ -56,6 +84,8 @@ class Ridge(ParallelNode):
         Input dimension. Can be inferred at first call.
     output_dim : int, optional
         Number of units in the readout, can be inferred at first call.
+    solver : {"normal", "cholesky", "qr", "svd", "lsqr"}, default to "normal"
+        Method used to solve the regression (see above).
     name : str, optional
         Node name.
 
@@ -82,6 +112,8 @@ class Ridge(ParallelNode):
     Wout: Weights
     #: Learned bias (:math:`\\mathbf{b}`).
     bias: Weights
+    #: Method used to solve the regression ("normal" by default).
+    solver: str
 
     def __init__(
         self,
@@ -91,10 +123,14 @@ class Ridge(ParallelNode):
         bias: Optional[Union[Weights, Callable]] = None,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
+        solver: Literal["normal", "cholesky", "qr", "svd", "lsqr"] = "normal",
         name: Optional[str] = None,
     ):
+        if solver not in ("normal", "cholesky", "qr", "svd", "lsqr"):
+            raise ValueError(f"Unknown solver '{solver}': must be 'normal', 'cholesky', 'qr', 'svd' or 'lsqr'.")
         self.ridge = ridge
         self.fit_bias = fit_bias
+        self.solver = solver
         self.Wout = Wout
         self.bias = bias
         self.name = name
@@ -149,6 +185,8 @@ class Ridge(ParallelNode):
         return {"out": out[-1]}, out
 
     def worker(self, x: Timeseries, y: Timeseries):
+        if self.solver != "normal":
+            return x, y  # solved on all the data at once in master
         x_sum = np.sum(x, axis=0)
         y_sum = np.sum(y, axis=0)
         sample_size = x.shape[0]
@@ -157,6 +195,15 @@ class Ridge(ParallelNode):
         return XXT, YXT, x_sum, y_sum, sample_size
 
     def master(self, generator: Iterable):
+        if self.solver == "normal":
+            Wout, bias = self._fit_from_moments(generator)
+        else:
+            Wout, bias = self._fit_from_samples(generator)
+
+        self.Wout = Wout
+        self.bias = bias
+
+    def _fit_from_moments(self, generator: Iterable):
         XXT = np.zeros((self.input_dim, self.input_dim))
         YXT = np.zeros((self.input_dim, self.output_dim))
         X_sum = 0.0
@@ -179,8 +226,39 @@ class Ridge(ParallelNode):
 
         Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="sym")
 
-        self.Wout = Wout
         if self.fit_bias:
-            self.bias = Y_means - X_means @ Wout
+            bias = Y_means - X_means @ Wout
         else:
-            self.bias = np.zeros((self.output_dim,))
+            bias = np.zeros((self.output_dim,))
+
+        return Wout, bias
+
+    def _fit_from_samples(self, generator: Iterable):
+        xs, ys = zip(*generator)
+        X, Y = np.concatenate(xs), np.concatenate(ys)
+
+        if self.fit_bias:
+            X_means, Y_means = X.mean(axis=0), Y.mean(axis=0)
+            X, Y = X - X_means, Y - Y_means
+
+        if self.solver == "cholesky":
+            Wout = linalg.solve(X.T @ X + self.ridge * np.eye(self.input_dim), X.T @ Y, assume_a="pos")
+        elif self.solver == "qr":
+            # [X; sqrt(ridge) Id] = QR, and the targets augmented with zeros: Q^T [Y; 0] = Q[:len(X)]^T Y
+            Q, R = np.linalg.qr(np.vstack([X, np.sqrt(self.ridge) * np.eye(self.input_dim)]))
+            Wout = linalg.solve_triangular(R, Q[: len(X)].T @ Y)
+        elif self.solver == "lsqr":
+            damp = np.sqrt(self.ridge)
+            Wout = np.stack([lsqr(X, y, damp=damp, atol=1e-12, btol=1e-12)[0] for y in Y.T], axis=1)
+        else:  # svd
+            U, s, Vt = np.linalg.svd(X, full_matrices=False)
+            # (negligible singular values ignored, tolerance of np.linalg.pinv: no division by 0 with ridge=0)
+            d = np.divide(s, s**2 + self.ridge, out=np.zeros_like(s), where=s > s[0] * np.finfo(float).eps * max(X.shape))
+            Wout = Vt.T @ (d[:, None] * (U.T @ Y))
+
+        if self.fit_bias:
+            bias = Y_means - X_means @ Wout
+        else:
+            bias = np.zeros((self.output_dim,))
+
+        return Wout, bias
