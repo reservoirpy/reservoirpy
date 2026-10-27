@@ -6,9 +6,10 @@ from typing import Optional
 from reservoirpy.type import Edge
 
 from .model import Model
-from .node import Node, TrainableNode
+from .node import Node, ParallelNode, TrainableNode
 from .nodes import Input, Output, Reservoir, Ridge
-from .utils.model_utils import obj_from_kwargs
+from .type import ModelInput, is_multiseries
+from .utils.model_utils import map_input, obj_from_kwargs
 
 
 class ESN(Model):
@@ -125,3 +126,43 @@ class ESN(Model):
         self.return_reservoir_activity = return_reservoir_activity
 
         super(ESN, self).__init__(nodes=nodes, edges=edges)
+ 
+    def fit(
+        self,
+        x: ModelInput,
+        y: Optional[ModelInput] = None,
+        warmup: int = 0,
+        workers: int = 1,
+    ) -> "ESN":
+        """Offline fitting method of an ESN.
+ 
+        If ``workers`` is not 1, the readout is a :py:class:`~.ParallelNode` and ``x``
+        contains several sequences, the ESN is trained with
+        :py:meth:`~.Model.fit_optimized`, which gives the same result with a much
+        smaller memory footprint. Otherwise, :py:meth:`~.Model.fit` is used.
+ 
+        Parameters
+        ----------
+        x : list or array-like of shape ([series, ] timesteps, input_dim) or a mapping of input, optional
+            Input sequences dataset.
+        y : list or array-like of shape ([series], timesteps, output_dim), or a mapping of input optional
+            Teacher signals dataset. If None, the method will try to fit the
+            Node in an unsupervised way, if possible.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the beginning of each timeseries before training.
+        workers : int, default to 1
+            Number of workers used for parallelization. If set to -1, all available
+            workers (threads or processes) are used.
+ 
+        Returns
+        -------
+        ESN
+            ESN trained offline.
+        """
+        # multiseries check also avoids an infinite loop: fit_optimized falls back to self.fit on a single sequence
+        if workers != 1 and isinstance(self.readout, ParallelNode) and is_multiseries(map_input(self, x)):
+            return self.fit_optimized(x, y, warmup=warmup, workers=workers)
+        return super(ESN, self).fit(x, y, warmup=warmup, workers=workers)
+ 
+

@@ -32,6 +32,7 @@ a :py:class:`Model`.
       ~Model.run
       ~Model.predict
       ~Model.fit
+      ~Model.fit_optimized
       ~Model.partial_fit
 
 
@@ -60,6 +61,7 @@ a :py:class:`Model`.
 # Licence: MIT License
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
+import warnings
 from collections import defaultdict
 from typing import Mapping, Optional, Sequence, Union
 
@@ -68,7 +70,7 @@ from joblib import Parallel, delayed
 
 from reservoirpy.node import Node
 from reservoirpy.type import FeedbackBuffers, NodeInput, State, Timestep
-from reservoirpy.utils.data_validation import check_model_input, check_model_timestep
+from reservoirpy.utils.data_validation import check_model_input, check_model_timestep, filter_nan_targets
 
 from .node import Node, OnlineNode, ParallelNode, TrainableNode
 from .type import (
@@ -582,6 +584,182 @@ class Model:
 
         return self
 
+    def worker(
+        self,
+        x_seq: dict[int, Timeseries],
+        y_seq: dict[int, Timeseries],
+        init_states: list[State],
+        init_buffers: list[np.ndarray],
+        warmup: int,
+    ) -> tuple[list[tuple], list[Optional[State]], list[np.ndarray]]:
+        """Run the model on a single sequence and compute the readouts' sufficient statistics.
+
+        Used by :py:meth:`~.Model.fit_optimized`. This method may run in another
+        process on a copy of the model, so its inputs and outputs are indexed by
+        position (in ``self.nodes``, ``self.trainable_nodes`` and the delayed edges)
+        rather than by :py:class:`~.Node`.
+
+        Returns
+        -------
+        tuple of (list, list, list)
+            Contributions returned by ``worker`` for each trainable node, final
+            state of each node (``None`` for trainable nodes), and final feedback buffers.
+        """
+        nodes = self.nodes
+        delayed_edges = [edge for edge in self.edges if edge[1] > 0]
+
+        # positions -> nodes of this (possibly copied) model
+        x_seq = {nodes[i]: data for i, data in x_seq.items()}
+        y_seq = {nodes[i]: data for i, data in y_seq.items()}
+        states = dict(zip(nodes, init_states))
+        buffers = dict(zip(delayed_edges, init_buffers))
+
+        result_seq = dict(y_seq)  # forced teaching: supervised nodes output their targets
+        contribs = {}
+        final_states = {}
+
+        for node in self.pseudo_execution_order:
+            inputs: list[NodeInput] = []
+            if node in x_seq:
+                inputs.append(x_seq[node])
+            inputs += [result_seq[parent] for parent in self.parents[node]]
+            for (parent, _d, child), buffer in buffers.items():
+                if child == node:
+                    new_buffer, data = data_from_buffer(buffer, result_seq[parent])
+                    buffers[(parent, _d, child)] = new_buffer
+                    inputs.append(data)
+            node_input = join_data(*inputs)
+
+            if isinstance(node, ParallelNode):
+                node_x, node_y = filter_nan_targets(node_input, y_seq[node])
+                contribs[node] = node.worker(node_x[warmup:], node_y[warmup:])
+            else:
+                final_states[node], result_seq[node] = node._run(states[node], node_input)
+
+        # nodes -> positions
+        return (
+            [contribs[node] for node in self.trainable_nodes],
+            [final_states.get(node) for node in nodes],
+            [buffers[edge] for edge in delayed_edges],
+        )
+
+    def fit_optimized(
+        self,
+        x: ModelInput,
+        y: Optional[ModelInput] = None,
+        warmup: int = 0,
+        workers: int = 1,
+    ) -> "Model":
+        """Memory-efficient offline fitting method of a Model.
+
+        Equivalent to :py:meth:`~.Model.fit`, but processes the training
+        sequences one by one: for each sequence, the model is run, the
+        readouts' sufficient statistics (:math:`HH^\\top`, :math:`YH^\\top`)
+        are accumulated, and the states are discarded. Peak memory therefore
+        depends on the longest sequence instead of the whole dataset.
+        Memory savings only apply when ``x`` contains several sequences.
+        With a single sequence, this method falls back to :py:meth:`~.Model.fit`.
+
+        Only supports models whose trainable nodes are supervised
+        :py:class:`~.ParallelNode` (e.g. :py:class:`~.Ridge`).
+
+        Parameters
+        ----------
+        x : list or array-like of shape ([series, ] timesteps, input_dim) or a mapping of input
+            Input sequences dataset.
+        y : list or array-like of shape ([series], timesteps, output_dim), or a mapping of input
+            Teacher signals dataset.
+        warmup : int, default to 0
+            Number of timesteps to consider as warmup and
+            discard at the beginning of each timeseries before training.
+        workers : int, default to 1
+            Number of workers used for parallelization. If set to -1, all available
+            workers are used. Peak memory grows with the
+            number of sequences processed at the same time.
+
+        Returns
+        -------
+        Model
+            Model trained offline.
+
+        Raises
+        ------
+        NotImplementedError
+            If a trainable node is not a :py:class:`~.ParallelNode` or has no target.
+
+        Note
+        ----
+        See Lukoševičius (2012), *A Practical Guide to Applying Echo State Networks*, section 4.3.
+        """
+        check_model_input(x)
+        if y is not None:
+            check_model_input(y)
+
+        if not self.initialized:
+            self.initialize(x, y)
+
+        x_map = map_input(self, x)
+        y_map = map_teacher(self, y)
+
+        # scope of fit_optimized: supervised ParallelNode readouts only
+        for node in self.trainable_nodes:
+            if not isinstance(node, ParallelNode):
+                raise NotImplementedError(f"fit_optimized only supports ParallelNode readouts, got {node}.")
+            if node not in y_map:
+                raise NotImplementedError(
+                    f"fit_optimized requires a target for every trainable node, missing for {node}."
+                )
+
+        # TODO: a single (long) timeseries could still benefit from fit_optimized by segmenting it
+        if not is_multiseries(x_map):
+            warnings.warn("fit_optimized received a single timeseries, falling back to Model.fit.")
+            return self.fit(x, y, warmup=warmup, workers=workers)
+
+        pseudo_inputs = find_pseudo_inputs(self.nodes, self.edges, y_mapping=y_map)
+        pseudo_edges = [edge for edge in self.edges if edge[0] not in y_map]
+        self.pseudo_execution_order = topological_sort(self.nodes, pseudo_edges, inputs=pseudo_inputs)
+
+        # Everything sent to the workers is indexed by position, as they may work on copies of the model
+        nodes = self.nodes
+        position = {node: i for i, node in enumerate(nodes)}
+        delayed_edges = [edge for edge in self.edges if edge[1] > 0]
+        init_states = [node.state for node in nodes]
+        init_buffers = [self.feedback_buffers[edge] for edge in delayed_edges]
+
+        def sequences():
+            for x_seq, y_seq in zip(unfold_mapping(x_map), unfold_mapping(y_map)):
+                yield (
+                    {position[node]: data for node, data in x_seq.items()},
+                    {position[node]: data for node, data in y_seq.items()},
+                )
+
+        accum = [None] * len(self.trainable_nodes)
+        final_states, buffers = init_states, init_buffers
+
+        # Ordered generator: same summation order as the sequential case, whatever the
+        # number of workers. With workers=1, joblib runs lazily in the main process.
+        results = Parallel(n_jobs=workers, return_as="generator")(
+            delayed(self.worker)(x_seq, y_seq, init_states, init_buffers, warmup)
+            for x_seq, y_seq in sequences()
+        )
+        for contribs, final_states, buffers in results:
+            for i, contrib in enumerate(contribs):
+                if accum[i] is None:
+                    accum[i] = contrib
+                else:
+                    accum[i] = tuple(a + b for a, b in zip(accum[i], contrib))
+
+        for node, stats in zip(self.trainable_nodes, accum):
+            node.master(iter([stats]))
+
+        # final states and buffers are those of the last sequence, as in fit
+        for node, state in zip(nodes, final_states):
+            if state is not None:
+                node.state = state
+        self.feedback_buffers = dict(zip(delayed_edges, buffers))
+
+        return self
+    
     def reset(self) -> tuple[dict[Node, State], FeedbackBuffers]:
         """Reset all Node states and buffers in the Model.
 
