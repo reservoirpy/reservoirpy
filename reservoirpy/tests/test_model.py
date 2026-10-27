@@ -466,6 +466,22 @@ def test_fit_optimized_complex(build, multi_target, workers):
     assert_allclose(model_opt.run(X[0]), model_ref.run(X[0]))
 
 
+@pytest.mark.parametrize("workers", [1, 2])
+@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd", "lsqr"])
+def test_fit_optimized_ridge_solvers(solver, workers):
+    # timeseries of the same length: their training data must be concatenated, not summed
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(40, 3)) for _ in range(4)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+
+    model_ref, model_opt = _fit_both(
+        lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5, solver=solver), X, Y, workers=workers
+    )
+
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout, atol=1e-10)
+    assert_allclose(model_opt.trainable_nodes[0].bias, model_ref.trainable_nodes[0].bias, atol=1e-10)
+
+
 def test_fit_optimized_multi_input():
     rng = np.random.default_rng(0)
     X1 = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]

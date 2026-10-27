@@ -61,7 +61,7 @@ class Ridge(ParallelNode):
       stopping tolerance.
 
     All the solvers except ``"normal"`` keep all the training data in memory during
-    ``fit``.
+    ``fit`` (and :py:meth:`~.Model.fit_optimized`).
 
 
     Parameters
@@ -186,7 +186,9 @@ class Ridge(ParallelNode):
 
     def worker(self, x: Timeseries, y: Timeseries):
         if self.solver != "normal":
-            return x, y  # solved on all the data at once in master
+            # solved on all the data at once in master; in lists, so that the contributions of several
+            # timeseries are concatenated when added (as Model.fit_optimized does), not summed
+            return [x], [y]
         x_sum = np.sum(x, axis=0)
         y_sum = np.sum(y, axis=0)
         sample_size = x.shape[0]
@@ -234,7 +236,10 @@ class Ridge(ParallelNode):
         return Wout, bias
 
     def _fit_from_samples(self, generator: Iterable):
-        xs, ys = zip(*generator)
+        xs, ys = [], []
+        for x, y in generator:
+            xs += x
+            ys += y
         X, Y = np.concatenate(xs), np.concatenate(ys)
 
         if self.fit_bias:
