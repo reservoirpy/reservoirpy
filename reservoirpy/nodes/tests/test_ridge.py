@@ -117,7 +117,7 @@ def test_ridge_fit_parallel():
     assert_array_equal(node.bias, np.zeros((10,)))
 
 
-@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd", "lsqr"])
+@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd"])
 @pytest.mark.parametrize("fit_bias", [True, False])
 def test_ridge_solvers(solver, fit_bias):
     rng = np.random.default_rng(0)

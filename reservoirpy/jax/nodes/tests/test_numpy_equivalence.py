@@ -68,6 +68,9 @@ TRAINABLE = {
         supervised=False,
     ),
     "Ridge": Trainable("Ridge", dict(ridge=1e-3), learned=("Wout", "bias")),
+    "Ridge_cholesky": Trainable("Ridge", dict(ridge=1e-3, solver="cholesky"), learned=("Wout", "bias")),
+    "Ridge_qr": Trainable("Ridge", dict(ridge=1e-3, solver="qr"), learned=("Wout", "bias")),
+    "Ridge_svd": Trainable("Ridge", dict(ridge=1e-3, solver="svd"), learned=("Wout", "bias")),
     "LMS": Trainable("LMS", dict(learning_rate=1e-2), learned=("Wout", "bias")),
     "RLS": Trainable("RLS", dict(alpha=1e-1), learned=("Wout", "bias")),
 }

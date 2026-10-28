@@ -2,14 +2,15 @@
 # Copyright: Xavier Hinaut (2018) <xavier.hinaut@inria.fr>
 
 from functools import partial
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Literal, Optional, Union
 
 import jax
 import jax.numpy as jnp
 from scipy import linalg
 
+from ...utils.data_validation import filter_nan_targets
 from ..node import ParallelNode
-from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array
+from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array, is_multiseries
 
 
 class Ridge(ParallelNode):
@@ -37,6 +38,29 @@ class Ridge(ParallelNode):
     If ``fit_bias`` is True, then :math:`\\mathbf{b}` is non-zero, and a constant
     term is added to :math:`\\mathbf{X}` to compute it.
 
+    The ``solver`` sets how the regression is solved:
+
+    - ``"normal"`` (default): the normal equations, with :math:`\\mathbf{XX}^\\top` and
+      :math:`\\mathbf{YX}^\\top` accumulated over the timeseries on the raw inputs,
+      centered afterwards (if ``fit_bias``) by subtracting the outer products of the
+      means, and solved with a symmetric (LDL) decomposition. Fast and memory-light,
+      but this centering loses precision when the inputs have a large mean compared to
+      their spread: with nearly dependent inputs and a small ``ridge``, the learned
+      weights can then be inaccurate.
+    - ``"cholesky"``: the normal equations formed on the centered inputs (no loss in
+      the centering), solved with a Cholesky decomposition. Forming
+      :math:`\\mathbf{XX}^\\top` still squares the condition number of the inputs.
+    - ``"qr"``: a QR decomposition of the centered inputs augmented with
+      :math:`\\sqrt{\\lambda}\\mathbf{Id}` (the least squares form of the ridge
+      regression), then a triangular solve: no normal equations, cheaper than
+      ``"svd"``. Needs ``ridge > 0`` or linearly independent inputs.
+    - ``"svd"``: the regression solved with a singular value decomposition of the
+      centered inputs themselves, as scikit-learn's ``Ridge(solver="svd")``: no normal
+      equations, the most stable choice for ill-conditioned inputs.
+
+    All the solvers except ``"normal"`` keep all the training data in memory during
+    ``fit``.
+
 
     Parameters
     ----------
@@ -58,6 +82,8 @@ class Ridge(ParallelNode):
         Input dimension. Can be inferred at first call.
     output_dim : int, optional
         Number of units in the readout, can be inferred at first call.
+    solver : {"normal", "cholesky", "qr", "svd"}, default to "normal"
+        Method used to solve the regression (see above).
     name : str, optional
         Node name.
 
@@ -84,6 +110,8 @@ class Ridge(ParallelNode):
     Wout: Weights
     #: Learned bias (:math:`\\mathbf{b}`).
     bias: Weights
+    #: Method used to solve the regression ("normal" by default).
+    solver: str
 
     def __init__(
         self,
@@ -93,10 +121,14 @@ class Ridge(ParallelNode):
         bias: Optional[Union[Weights, Callable]] = None,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
+        solver: Literal["normal", "cholesky", "qr", "svd"] = "normal",
         name: Optional[str] = None,
     ):
+        if solver not in ("normal", "cholesky", "qr", "svd"):
+            raise ValueError(f"Unknown solver '{solver}': must be 'normal', 'cholesky', 'qr' or 'svd'.")
         self.ridge = ridge
         self.fit_bias = fit_bias
+        self.solver = solver
         self.Wout = Wout
         self.bias = bias
         self.name = name
@@ -151,7 +183,19 @@ class Ridge(ParallelNode):
         out = x @ self.Wout + self.bias
         return {"out": out[-1]}, out
 
+    def fit(self, x: NodeInput, y: Optional[NodeInput] = None, warmup: int = 0, workers: int = 1) -> "Ridge":
+        if self.solver != "normal" and is_multiseries(x):
+            # solved on all the samples at once: the timeseries (possibly of different lengths, that the results of
+            # the workers could not be stacked with) are concatenated into one, each without its warmup
+            x, y = filter_nan_targets(x, y)
+            x = jnp.concatenate([x_ts[warmup:] for x_ts in x])
+            y = jnp.concatenate([y_ts[warmup:] for y_ts in y])
+            warmup = 0
+        return super().fit(x, y, warmup=warmup, workers=workers)
+
     def worker(self, x: Timeseries, y: Timeseries):
+        if self.solver != "normal":
+            return x, y
         x_sum = jnp.sum(x, axis=0)
         y_sum = jnp.sum(y, axis=0)
         sample_size = x.shape[0]
@@ -160,6 +204,17 @@ class Ridge(ParallelNode):
         return XXT, YXT, x_sum, y_sum, sample_size
 
     def master(self, generator: Iterable):
+        # "normal" centers the accumulated sums afterwards (X^T X - N mean mean^T): constant memory, but precision
+        # lost when the input means are large compared with their spread. The others center the samples first.
+        if self.solver == "normal":
+            Wout, bias = self._fit_from_accumulated_sums_centered_after(generator)
+        else:
+            Wout, bias = self._fit_from_all_samples_centered_before(generator)
+
+        self.Wout = Wout
+        self.bias = bias
+
+    def _fit_from_accumulated_sums_centered_after(self, generator: Iterable):
         xxt, yxt, x_sum, y_sum, sample_size = generator
         XXT = jnp.sum(xxt, axis=0)
         YXT = jnp.sum(yxt, axis=0)
@@ -176,8 +231,38 @@ class Ridge(ParallelNode):
 
         Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="sym")
 
-        self.Wout = Wout
         if self.fit_bias:
-            self.bias = Y_means - X_means @ Wout
+            bias = Y_means - X_means @ Wout
         else:
-            self.bias = jnp.zeros((self.output_dim,))
+            bias = jnp.zeros((self.output_dim,))
+
+        return Wout, bias
+
+    def _fit_from_all_samples_centered_before(self, generator: Iterable):
+        # one timeseries (see fit), stacked as by jax.vmap
+        x, y = generator
+        X, Y = x.reshape(-1, self.input_dim), y.reshape(-1, self.output_dim)
+
+        if self.fit_bias:
+            X_means, Y_means = X.mean(axis=0), Y.mean(axis=0)
+            X, Y = X - X_means, Y - Y_means
+
+        if self.solver == "cholesky":
+            Wout = linalg.solve(X.T @ X + self.ridge * jnp.eye(self.input_dim), X.T @ Y, assume_a="pos")
+        elif self.solver == "qr":
+            # [X; sqrt(ridge) Id] = QR, and the targets augmented with zeros: Q^T [Y; 0] = Q[:len(X)]^T Y
+            Q, R = jnp.linalg.qr(jnp.vstack([X, jnp.sqrt(self.ridge) * jnp.eye(self.input_dim)]))
+            Wout = jax.scipy.linalg.solve_triangular(R, Q[: len(X)].T @ Y)
+        else:  # svd
+            U, s, Vt = jnp.linalg.svd(X, full_matrices=False)
+            # (negligible singular values ignored, tolerance of np.linalg.pinv: no division by 0 with ridge=0)
+            keep = s > s[0] * jnp.finfo(X.dtype).eps * max(X.shape)
+            d = jnp.where(keep, s / jnp.where(keep, s**2 + self.ridge, 1.0), 0.0)
+            Wout = Vt.T @ (d[:, None] * (U.T @ Y))
+
+        if self.fit_bias:
+            bias = Y_means - X_means @ Wout
+        else:
+            bias = jnp.zeros((self.output_dim,))
+
+        return Wout, bias
