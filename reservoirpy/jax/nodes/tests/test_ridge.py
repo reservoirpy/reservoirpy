@@ -8,6 +8,7 @@ from joblib import Parallel, delayed
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 from reservoirpy.jax.nodes import Ridge
+from reservoirpy.nodes import Ridge as NumpyRidge
 
 
 def test_ridge_init():
@@ -118,3 +119,16 @@ def test_ridge_fit_parallel():
     assert node.output_dim == 10
     assert node.Wout.shape == (100, 10)
     assert_array_equal(node.bias, jnp.zeros((10,)))
+
+
+@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr"])
+def test_ridge_singular_raises(solver):
+    # ridge=0 and constant (zero) inputs: exactly singular system, Jax gives NaN, fit raises as the NumPy version
+    rng = numpy.random.default_rng(0)
+    X = numpy.zeros((50, 3))
+    X[:, 0] = rng.normal(size=50)
+    Y = rng.normal(size=(50, 2))
+    with pytest.raises(numpy.linalg.LinAlgError):
+        Ridge(solver=solver).fit(jnp.asarray(X), jnp.asarray(Y))
+    with pytest.raises(numpy.linalg.LinAlgError):
+        NumpyRidge(solver=solver).fit(X, Y)
