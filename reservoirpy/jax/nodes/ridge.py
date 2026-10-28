@@ -6,7 +6,8 @@ from typing import Callable, Iterable, Literal, Optional, Union
 
 import jax
 import jax.numpy as jnp
-from scipy import linalg
+from jax.scipy import linalg
+from numpy.linalg import LinAlgError
 
 from ...utils.data_validation import filter_nan_targets
 from ..node import ParallelNode
@@ -43,10 +44,10 @@ class Ridge(ParallelNode):
     - ``"normal"`` (default): the normal equations, with :math:`\\mathbf{XX}^\\top` and
       :math:`\\mathbf{YX}^\\top` accumulated over the timeseries on the raw inputs,
       centered afterwards (if ``fit_bias``) by subtracting the outer products of the
-      means, and solved with a symmetric (LDL) decomposition (Bunch-Kaufman, LAPACK
-      ``sytrf``). Fast and memory-light, but this centering loses precision when the
-      inputs have a large mean compared to their spread: with nearly dependent inputs
-      and a small ``ridge``, the learned weights can then be inaccurate.
+      means, and solved with an LU decomposition (:py:func:`jax.scipy.linalg.solve`; Jax
+      has no symmetric LDL solver). Fast and memory-light, but this centering loses
+      precision when the inputs have a large mean compared to their spread: with nearly
+      dependent inputs and a small ``ridge``, the learned weights can then be inaccurate.
     - ``"cholesky"``: the normal equations formed on the centered inputs (no loss in
       the centering), solved with a Cholesky decomposition. Forming
       :math:`\\mathbf{XX}^\\top` still squares the condition number of the inputs.
@@ -59,7 +60,9 @@ class Ridge(ParallelNode):
       equations, the most stable choice for ill-conditioned inputs.
 
     All the solvers except ``"normal"`` keep all the training data in memory during
-    ``fit``.
+    ``fit``. Jax returns NaN instead of raising on a singular system (or a matrix that is
+    not positive definite for ``"cholesky"``): ``fit`` then raises a ``LinAlgError``, as
+    the NumPy version.
 
 
     Parameters
@@ -211,6 +214,13 @@ class Ridge(ParallelNode):
         else:
             Wout, bias = self._fit_from_all_samples_centered_before(generator)
 
+        # Jax gives NaN where scipy raises (singular system, or not positive definite for "cholesky")
+        if not (jnp.all(jnp.isfinite(Wout)) and jnp.all(jnp.isfinite(bias))):
+            raise LinAlgError(
+                f"Ridge (solver '{self.solver}'): non-finite weights, the system is singular or not positive "
+                f"definite (or the inputs are not finite). Use ridge > 0 or the 'svd' solver."
+            )
+
         self.Wout = Wout
         self.bias = bias
 
@@ -229,7 +239,7 @@ class Ridge(ParallelNode):
             XXT -= total_samples * jnp.outer(X_means, X_means)
             YXT -= total_samples * jnp.outer(X_means, Y_means)
 
-        Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="sym")
+        Wout = linalg.solve(XXT + ridge_In, YXT, assume_a="gen")
 
         if self.fit_bias:
             bias = Y_means - X_means @ Wout
@@ -252,7 +262,7 @@ class Ridge(ParallelNode):
         elif self.solver == "qr":
             # [X; sqrt(ridge) Id] = QR, and the targets augmented with zeros: Q^T [Y; 0] = Q[:len(X)]^T Y
             Q, R = jnp.linalg.qr(jnp.vstack([X, jnp.sqrt(self.ridge) * jnp.eye(self.input_dim)]))
-            Wout = jax.scipy.linalg.solve_triangular(R, Q[: len(X)].T @ Y)
+            Wout = linalg.solve_triangular(R, Q[: len(X)].T @ Y)
         else:  # svd
             U, s, Vt = jnp.linalg.svd(X, full_matrices=False)
             # (negligible singular values ignored, tolerance of np.linalg.pinv: no division by 0 with ridge=0)
