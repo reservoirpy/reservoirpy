@@ -117,23 +117,15 @@ def test_ridge_fit_parallel():
     assert_array_equal(node.bias, np.zeros((10,)))
 
 
-def ridge_reference(X, Y, ridge, fit_bias=True):
-    # exact ridge regression: least squares of the centered data augmented with sqrt(ridge) * Id
-    x_mean = X.mean(axis=0) if fit_bias else np.zeros(X.shape[1])
-    y_mean = Y.mean(axis=0) if fit_bias else np.zeros(Y.shape[1])
-    A = np.vstack([X - x_mean, np.sqrt(ridge) * np.eye(X.shape[1])])
-    B = np.vstack([Y - y_mean, np.zeros((X.shape[1], Y.shape[1]))])
-    Wout = np.linalg.lstsq(A, B, rcond=None)[0]
-    return Wout, y_mean - x_mean @ Wout
-
-
 @pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd", "lsqr"])
 @pytest.mark.parametrize("fit_bias", [True, False])
 def test_ridge_solvers(solver, fit_bias):
     rng = np.random.default_rng(0)
     X = rng.normal(size=(8, 50, 20)) + 3.0
     Y = X @ rng.normal(size=(20, 4)) + 1.0 + 0.1 * rng.normal(size=(8, 50, 4))
-    Wout, bias = ridge_reference(X.reshape(-1, 20), Y.reshape(-1, 4), 1e-2, fit_bias)
+    # reference: the normal equations on one timeseries (well conditioned problem)
+    reference = Ridge(1e-2, fit_bias=fit_bias, solver="normal").fit(X.reshape(-1, 20), Y.reshape(-1, 4))
+    Wout, bias = reference.Wout, reference.bias
 
     # several timeseries, in parallel or not, and one timeseries
     for x, y, workers in [(X, Y, 1), (list(X), list(Y), -1), (X.reshape(-1, 20), Y.reshape(-1, 4), 1)]:
@@ -150,7 +142,12 @@ def test_ridge_solvers_ill_conditioned(solver):
     latent = rng.normal(size=(10, 200, 5))
     X = 100.0 + latent @ rng.normal(size=(5, 40)) + 1e-6 * rng.normal(size=(10, 200, 40))
     Y = latent @ rng.normal(size=(5, 3))
-    Wout, bias = ridge_reference(X.reshape(-1, 40), Y.reshape(-1, 3), 1e-12)
+    # reference (the normal equations fail here): least squares of the centered data augmented with sqrt(ridge) * Id
+    x_mean, y_mean = X.reshape(-1, 40).mean(axis=0), Y.reshape(-1, 3).mean(axis=0)
+    A = np.vstack([X.reshape(-1, 40) - x_mean, np.sqrt(1e-12) * np.eye(40)])
+    B = np.vstack([Y.reshape(-1, 3) - y_mean, np.zeros((40, 3))])
+    Wout = np.linalg.lstsq(A, B, rcond=None)[0]
+    bias = y_mean - x_mean @ Wout
 
     node = Ridge(1e-12, solver=solver)
     node.fit(X, Y)
