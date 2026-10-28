@@ -197,15 +197,17 @@ class Ridge(ParallelNode):
         return XXT, YXT, x_sum, y_sum, sample_size
 
     def master(self, generator: Iterable):
+        # "normal" centers the accumulated sums afterwards (X^T X - N mean mean^T): constant memory, but precision
+        # lost when the input means are large compared with their spread. The others center the samples first.
         if self.solver == "normal":
-            Wout, bias = self._fit_from_moments(generator)
+            Wout, bias = self._fit_from_accumulated_sums_centered_after(generator)
         else:
-            Wout, bias = self._fit_from_samples(generator)
+            Wout, bias = self._fit_from_all_samples_centered_before(generator)
 
         self.Wout = Wout
         self.bias = bias
 
-    def _fit_from_moments(self, generator: Iterable):
+    def _fit_from_accumulated_sums_centered_after(self, generator: Iterable):
         XXT = np.zeros((self.input_dim, self.input_dim))
         YXT = np.zeros((self.input_dim, self.output_dim))
         X_sum = 0.0
@@ -235,7 +237,7 @@ class Ridge(ParallelNode):
 
         return Wout, bias
 
-    def _fit_from_samples(self, generator: Iterable):
+    def _fit_from_all_samples_centered_before(self, generator: Iterable):
         xs, ys = [], []
         for x, y in generator:
             xs += x
