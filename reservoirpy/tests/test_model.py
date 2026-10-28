@@ -467,7 +467,7 @@ def test_fit_optimized_complex(build, multi_target, workers):
 
 
 @pytest.mark.parametrize("workers", [1, 2])
-@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd", "lsqr"])
+@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd"])
 def test_fit_optimized_ridge_solvers(solver, workers):
     # timeseries of the same length: their training data must be concatenated, not summed
     rng = np.random.default_rng(0)

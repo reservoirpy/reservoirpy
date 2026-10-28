@@ -5,7 +5,6 @@ from typing import Callable, Iterable, Literal, Optional, Union
 
 import numpy as np
 from scipy import linalg
-from scipy.sparse.linalg import lsqr
 
 from ..node import ParallelNode
 from ..type import NodeInput, State, Timeseries, Timestep, Weights, is_array
@@ -55,10 +54,6 @@ class Ridge(ParallelNode):
     - ``"svd"``: the regression solved with a singular value decomposition of the
       centered inputs themselves, as scikit-learn's ``Ridge(solver="svd")``: no normal
       equations, the most stable choice for ill-conditioned inputs.
-    - ``"lsqr"``: the iterative least squares solver :py:func:`scipy.sparse.linalg.lsqr`
-      (damped by :math:`\\sqrt{\\lambda}`), for each output, as scikit-learn's
-      ``Ridge(solver="lsqr")``: no normal equations, its precision is set by its
-      stopping tolerance.
 
     All the solvers except ``"normal"`` keep all the training data in memory during
     ``fit`` (and :py:meth:`~.Model.fit_optimized`).
@@ -84,7 +79,7 @@ class Ridge(ParallelNode):
         Input dimension. Can be inferred at first call.
     output_dim : int, optional
         Number of units in the readout, can be inferred at first call.
-    solver : {"normal", "cholesky", "qr", "svd", "lsqr"}, default to "normal"
+    solver : {"normal", "cholesky", "qr", "svd"}, default to "normal"
         Method used to solve the regression (see above).
     name : str, optional
         Node name.
@@ -123,11 +118,11 @@ class Ridge(ParallelNode):
         bias: Optional[Union[Weights, Callable]] = None,
         input_dim: Optional[int] = None,
         output_dim: Optional[int] = None,
-        solver: Literal["normal", "cholesky", "qr", "svd", "lsqr"] = "normal",
+        solver: Literal["normal", "cholesky", "qr", "svd"] = "normal",
         name: Optional[str] = None,
     ):
-        if solver not in ("normal", "cholesky", "qr", "svd", "lsqr"):
-            raise ValueError(f"Unknown solver '{solver}': must be 'normal', 'cholesky', 'qr', 'svd' or 'lsqr'.")
+        if solver not in ("normal", "cholesky", "qr", "svd"):
+            raise ValueError(f"Unknown solver '{solver}': must be 'normal', 'cholesky', 'qr' or 'svd'.")
         self.ridge = ridge
         self.fit_bias = fit_bias
         self.solver = solver
@@ -254,9 +249,6 @@ class Ridge(ParallelNode):
             # [X; sqrt(ridge) Id] = QR, and the targets augmented with zeros: Q^T [Y; 0] = Q[:len(X)]^T Y
             Q, R = np.linalg.qr(np.vstack([X, np.sqrt(self.ridge) * np.eye(self.input_dim)]))
             Wout = linalg.solve_triangular(R, Q[: len(X)].T @ Y)
-        elif self.solver == "lsqr":
-            damp = np.sqrt(self.ridge)
-            Wout = np.stack([lsqr(X, y, damp=damp, atol=1e-12, btol=1e-12)[0] for y in Y.T], axis=1)
         else:  # svd
             U, s, Vt = np.linalg.svd(X, full_matrices=False)
             # (negligible singular values ignored, tolerance of np.linalg.pinv: no division by 0 with ridge=0)
