@@ -43,10 +43,10 @@ class Ridge(ParallelNode):
     - ``"normal"`` (default): the normal equations, with :math:`\\mathbf{XX}^\\top` and
       :math:`\\mathbf{YX}^\\top` accumulated over the timeseries on the raw inputs,
       centered afterwards (if ``fit_bias``) by subtracting the outer products of the
-      means, and solved with a symmetric (LDL) decomposition. Fast and memory-light,
-      but this centering loses precision when the inputs have a large mean compared to
-      their spread: with nearly dependent inputs and a small ``ridge``, the learned
-      weights can then be inaccurate.
+      means, and solved with a symmetric (LDL) decomposition (Bunch-Kaufman, LAPACK
+      ``sytrf``). Fast and memory-light, but this centering loses precision when the
+      inputs have a large mean compared to their spread: with nearly dependent inputs
+      and a small ``ridge``, the learned weights can then be inaccurate.
     - ``"cholesky"``: the normal equations formed on the centered inputs (no loss in
       the centering), solved with a Cholesky decomposition. Forming
       :math:`\\mathbf{XX}^\\top` still squares the condition number of the inputs.
