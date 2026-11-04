@@ -35,6 +35,7 @@ seed.
     small_world
     zeros
     ones
+    block_input
     fast_spectral_initialization
     Initializer
 
@@ -138,6 +139,7 @@ __all__ = [
     "bernoulli",
     "zeros",
     "ones",
+    "block_input",
 ]
 
 _epsilon = 1e-8  # used to avoid division by zero when rescaling spectral radius
@@ -853,6 +855,89 @@ def _zeros(*shape: int, dtype: np.dtype = global_dtype, **kwargs):
 
 
 zeros = Initializer(_zeros, allow_sr=False)
+
+
+def _block_input(
+    *shape: int,
+    dist: str = "uniform",
+    dtype: np.dtype = global_dtype,
+    seed: Union[int, np.random.Generator] = None,
+    **kwargs,
+):
+    """Create a block input matrix: each input feature is connected to its own
+    block of ``units // input_dim`` units, with weights drawn from a
+    :py:mod:`scipy.stats` distribution (uniform in :math:`[0, 1)` by default).
+
+    Used as input matrix of :py:class:`~reservoirpy.nodes.HAGReservoir` [1]_.
+
+    Parameters
+    ----------
+    *shape : int, int
+        Shape (units, input_dim) of the matrix. ``units`` must be a multiple of
+        ``input_dim``.
+    dist : str, default to "uniform"
+        A distribution name from :py:mod:`scipy.stats` module, such as "norm" or
+        "uniform". Parameters like `loc` and `scale` can be passed to the distribution
+        functions as keyword arguments to this function.
+    input_scaling: float or array, optional
+        If defined, then will rescale the matrix using this coefficient or array
+        of coefficients (one per input feature).
+    dtype : numpy.dtype, default to numpy.float64
+        A Numpy numerical type.
+    seed : optional
+        Random generator seed. Default to the global value set with
+        :py:func:`reservoirpy.set_seed`.
+    **kwargs : optional
+        Arguments for the scipy.stats distribution.
+
+    Returns
+    -------
+    Numpy array or callable
+        If a shape is given to the initializer, then returns a matrix.
+        Else, returns a function partially initialized with the given keyword
+        parameters, which can be called with a shape and returns a matrix.
+
+    Note
+    ----
+
+    `sr` parameter is not available for this initializer: an input matrix is not
+    square.
+
+    References
+    ----------
+
+    .. [1] Cazalets, T., & Dambre, J. (2026). Reshaping reservoirs with
+           unsupervised Hebbian adaptation. Nature Communications, 17, 450.
+           https://doi.org/10.1038/s41467-025-67137-1
+
+    Example
+    -------
+    >>> from reservoirpy.mat_gen import block_input
+    >>> Win = block_input(6, 3, seed=0)
+    >>> Win.shape
+    (6, 3)
+    >>> (Win != 0).astype(int)
+    array([[1, 0, 0],
+           [1, 0, 0],
+           [0, 1, 0],
+           [0, 1, 0],
+           [0, 0, 1],
+           [0, 0, 1]])
+    """
+    if len(shape) != 2:
+        raise ValueError(f"block_input creates 2-dimensional matrices (units, input_dim), got shape {shape}.")
+    units, input_dim = shape
+    if units % input_dim:
+        raise ValueError(
+            f"'units' ({units}) must be a multiple of the input dimension ({input_dim}): "
+            f"each input feature is connected to a block of units // input_dim units."
+        )
+    weights = _random_sparse(units, input_dim, dist=dist, connectivity=1.0, dtype=dtype, seed=seed, **kwargs)
+    blocks = np.kron(np.eye(input_dim, dtype=dtype), np.ones((units // input_dim, 1), dtype=dtype))
+    return weights * blocks
+
+
+block_input = Initializer(_block_input, allow_sr=False)
 
 
 def _fast_spectral_initialization(

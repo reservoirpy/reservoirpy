@@ -28,7 +28,7 @@
 - [offline and online training](https://reservoirpy.readthedocs.io/en/latest/user_guide/learning_rules.html)
 - [parallelization across sequences](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Parallelization)
 - [sparse matrix computations](https://reservoirpy.readthedocs.io/en/latest/user_guide/advanced_demo.html#Custom-weight-matrices)
-- advanced learning rules (such as [*Intrinsic Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.IPReservoir.html), [*Local Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.LocalPlasticityReservoir.html) or [*NVAR* (Next-Generation Reservoir Computing)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.NVAR.html))
+- advanced learning rules (such as [*Intrinsic Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.IPReservoir.html), [*Local Plasticity*](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.LocalPlasticityReservoir.html), [*Homeostatic structural plasticity* (HAG)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.HAGReservoir.html) or [*NVAR* (Next-Generation Reservoir Computing)](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.NVAR.html))
 - interfacing with [scikit-learn](https://reservoirpy.readthedocs.io/en/latest/api/generated/reservoirpy.nodes.ScikitLearnNode.html) models
 - and much more!
 

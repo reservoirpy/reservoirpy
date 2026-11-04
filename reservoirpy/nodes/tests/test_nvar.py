@@ -32,3 +32,4 @@ def test_nvar():
     res = node.run(data)
 
     assert res.shape == (1000, _get_output_dim(10, 3, 2))
+    assert np.any(res != 0.0)

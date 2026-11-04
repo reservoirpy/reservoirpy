@@ -14,6 +14,7 @@ from scipy import linalg, sparse
 
 from reservoirpy.mat_gen import (
     bernoulli,
+    block_input,
     cluster,
     fast_spectral_initialization,
     line,
@@ -219,6 +220,39 @@ def test_zeros():
 
     with pytest.raises(ValueError):
         w = zeros(50, 50, sr=2.0)
+
+
+def test_block_input():
+    w = block_input(60, 3, seed=42)
+    blocks = np.kron(np.eye(3), np.ones((20, 1))) > 0
+
+    assert w.shape == (60, 3)
+    # each input feature is connected to its own block of 20 units
+    assert_array_equal(w[~blocks], 0.0)
+    assert np.all((w[blocks] > 0) & (w[blocks] < 1))
+
+    # input scaling, one coefficient per input feature
+    scaling = np.array([0.1, 0.5, 2.0])
+    assert_allclose(block_input(60, 3, input_scaling=scaling, seed=42), w * scaling)
+
+    # other distribution
+    w = block_input(60, 3, dist="norm", loc=5.0, scale=0.1, seed=42)
+    assert_array_equal(w[~blocks], 0.0)
+    assert_allclose(w[blocks].mean(), 5.0, atol=0.1)
+
+    # delayed creation and reproducibility
+    init = block_input(dist="uniform", loc=1.0, scale=2.0)
+    assert_array_equal(init(60, 3, seed=1), init(60, 3, seed=1))
+
+    w = block_input(60, 3, dtype=np.float32)
+    assert w.dtype == np.float32
+
+    with pytest.raises(ValueError):
+        block_input(50, 3)  # units not a multiple of the input dimension
+    with pytest.raises(ValueError):
+        block_input(60, 3, 2)
+    with pytest.raises(ValueError):
+        block_input(60, 3, sr=2.0)
 
 
 @pytest.mark.parametrize("N,expected", [(100, (100, 100)), (-1, Exception), ("foo", Exception)])

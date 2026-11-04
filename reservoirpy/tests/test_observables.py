@@ -8,12 +8,12 @@ from scipy.sparse import csr_array
 from ..nodes import Reservoir, Ridge
 from ..observables import (
     effective_spectral_radius,
+    mae,
     memory_capacity,
     mse,
     nrmse,
     rmse,
     rsquare,
-    mae,
     spectral_radius,
 )
 

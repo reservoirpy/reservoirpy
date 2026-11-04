@@ -115,3 +115,21 @@ def test_esn_freerunning():
     assert model.readout.input_dim == 100
     assert model.readout.output_dim == 3
     assert res.shape == (213, 3)
+
+
+def test_esn_feedback_buffer_updates():
+    esn = ESN(units=20, output_dim=3, lr=0.8, sr=0.4, ridge=1e-5, feedback=True, seed=0)
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(15, 5))
+    y = rng.normal(size=(15, 3))
+    esn.fit(x, y)
+
+    edge = next(iter(esn.feedback_buffers))
+    before = np.array(esn.feedback_buffers[edge])
+    esn.step(x[0])
+    esn.step(x[1])
+    after = np.array(esn.feedback_buffers[edge])
+
+    assert not np.allclose(before, after)
+    assert np.abs(after).max() > 0

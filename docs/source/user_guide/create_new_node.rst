@@ -34,9 +34,9 @@ relationships:
 
 - | A :py:class:`~.TrainableNode` is a node that can be trained. It implements the ``.fit`` method. This method
     can update attributes of the instance (for example, ``Wout``, ``bias``, ...).
-  | :py:class:`reservoirpy.nodes.LocalPlasticityReservoir`, :py:class:`reservoirpy.nodes.ScikitLearnNode` or
-    :py:class:`reservoirpy.nodes.IPReservoir` are some examples of node classes that inherit the ``TrainableNode`` class
-    but not the others.
+  | :py:class:`reservoirpy.nodes.LocalPlasticityReservoir`, :py:class:`reservoirpy.nodes.HAGReservoir`,
+    :py:class:`reservoirpy.nodes.ScikitLearnNode` or :py:class:`reservoirpy.nodes.IPReservoir` are some examples of node
+    classes that inherit the ``TrainableNode`` class but not the others.
 
 - | A :py:class:`~.ParallelNode` is a trainable node that can be fit in parallel on multiple timeseries. Parallel
     learning can be done using the ``workers`` argument of the :py:meth:`~.ParallelNode.fit` method.
@@ -60,7 +60,8 @@ Here is the general outline of a new node:
 .. code-block:: python
 
     from reservoirpy import Node
-    from reservoirpy.type import Timestep,Timeseries, MultiTimeseries, State
+    from reservoirpy.type import Timestep, Timeseries, MultiTimeseries, State
+
 
     class NodeName(Node):
         def __init__(self, params):
@@ -133,7 +134,7 @@ override the default implementation of ``_run``.
 
     import numpy as np
     from reservoirpy import Node
-    from reservoirpy.type import Timestep,Timeseries, State
+    from reservoirpy.type import Timestep, Timeseries, State
 
 
     class MyNode(Node):

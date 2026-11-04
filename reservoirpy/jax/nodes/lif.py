@@ -220,7 +220,7 @@ class LIF(Node):
     ):
         self._set_input_dim(x)
 
-        [Win_rng, W_rng, bias_rng] = self.rng.spawn(3)
+        [Win_rng, W_rng] = self.rng.spawn(2)
 
         if callable(self.Win):
             self.Win = self.Win(
@@ -242,7 +242,9 @@ class LIF(Node):
                 seed=W_rng,
             )
             n_inhibitory = int(self.inhibitory * self.units)
-            self.W.at[:, :n_inhibitory].multiply(-1)
+            # sign of each presynaptic neuron, -1 for the inhibitory ones
+            sign = jnp.where(jnp.arange(self.units) < n_inhibitory, -1.0, 1.0)
+            self.W = self.W * sign[None, :]
 
         self.state = {
             "internal": jnp.zeros((self.units,)),

@@ -3,7 +3,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 
 from ..model import Model
 from ..nodes import RLS, Input, Output, Reservoir, Ridge
@@ -390,3 +390,142 @@ def test_multiinputs():
     # model = source1 >> [res1, res2] & source2 >> [res1, res2]
     model = [source1, source2] >> res1 & [source1, source2] >> res2
     outputs = model.run({"s1": np.ones((10, 5)), "s2": np.ones((10, 3))})
+
+
+def test_feedback_reservoirs_cycle():
+
+    # Testing feedback without teacher forcing between reservoirs
+    # Also testing cycle handling in multi-reservoirs models
+
+    res1 = Reservoir(10)
+    res2 = Reservoir(10)
+    in_ = Input()
+    output = Output()
+
+    # create model with two reservoirs
+    model = in_ >> res1 >> res2 >> output
+
+    # feedback connection from reservoir 2 to reservoir 1 (cycle)
+    model &= res1 << res2
+    model &= res1 >> output
+
+    out = model.run(np.ones((100, 2)))
+
+    assert out.shape == (100, 20)
+
+
+def _fit_both(build, x, y, workers=1, **kwargs):
+    model_ref, model_opt = build(), build()
+    model_ref.fit(x, y, **kwargs)
+    model_opt.fit_optimized(x, y, workers=workers, **kwargs)
+    return model_ref, model_opt
+
+
+def _feedback_model():
+    reservoir = Reservoir(20, sr=0.9, seed=1)
+    return reservoir << (reservoir >> Ridge(ridge=1e-5))
+
+
+@pytest.mark.parametrize("warmup", [0, 5])
+def test_fit_optimized_simple(warmup):
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+
+    model_ref, model_opt = _fit_both(lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5), X, Y, warmup=warmup)
+
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
+    assert_allclose(model_opt.run(X[0]), model_ref.run(X[0]))
+
+    # single 2D timeseries (falls back to fit, with a warning)
+    with pytest.warns(UserWarning, match="single timeseries"):
+        model_ref, model_opt = _fit_both(lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5), X[0], Y[0])
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
+
+
+@pytest.mark.parametrize("workers", [1, 2])
+@pytest.mark.parametrize(
+    "build, multi_target",
+    [
+        (lambda: Reservoir(20, sr=0.9, seed=1) >> Reservoir(20, sr=0.9, seed=2) >> Ridge(ridge=1e-5), False),
+        (lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5, name="ro1") >> Ridge(ridge=1e-5, name="ro2"), True),
+        (_feedback_model, False),
+    ],
+    ids=["deep", "readouts_series", "feedback"],
+)
+def test_fit_optimized_complex(build, multi_target, workers):
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+    y = {"ro1": Y, "ro2": [y_[:, :1] for y_ in Y]} if multi_target else Y
+
+    model_ref, model_opt = _fit_both(build, X, y, workers=workers, warmup=5)
+
+    for ref, opt in zip(model_ref.trainable_nodes, model_opt.trainable_nodes):
+        assert_allclose(opt.Wout, ref.Wout)
+    assert_allclose(model_opt.run(X[0]), model_ref.run(X[0]))
+
+
+@pytest.mark.parametrize("workers", [1, 2])
+@pytest.mark.parametrize("solver", ["normal", "cholesky", "qr", "svd"])
+def test_fit_optimized_ridge_solvers(solver, workers):
+    # timeseries of the same length: their training data must be concatenated, not summed
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(40, 3)) for _ in range(4)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+
+    model_ref, model_opt = _fit_both(
+        lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5, solver=solver), X, Y, workers=workers
+    )
+
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout, atol=1e-10)
+    assert_allclose(model_opt.trainable_nodes[0].bias, model_ref.trainable_nodes[0].bias, atol=1e-10)
+
+
+def test_fit_optimized_multi_input():
+    rng = np.random.default_rng(0)
+    X1 = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
+    X2 = [rng.normal(size=(len(x), 2)) for x in X1]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X1]
+    x = {"r1": X1, "r2": X2}
+
+    def build():
+        return [Reservoir(20, sr=0.9, seed=1, name="r1"), Reservoir(20, sr=0.9, seed=2, name="r2")] >> Ridge(ridge=1e-5)
+
+    model_ref, model_opt = _fit_both(build, x, Y, workers=2)
+
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
+    assert_allclose(model_opt.run({"r1": X1[0], "r2": X2[0]}), model_ref.run({"r1": X1[0], "r2": X2[0]}))
+
+
+def test_fit_optimized_nan_targets():
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(5)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+    for y in Y:
+        y[rng.choice(len(y), size=5, replace=False)] = np.nan
+
+    model_ref, model_opt = _fit_both(lambda: Reservoir(20, sr=0.9, seed=1) >> Ridge(ridge=1e-5), X, Y, warmup=5)
+
+    assert not np.any(np.isnan(model_opt.trainable_nodes[0].Wout))
+    assert_allclose(model_opt.trainable_nodes[0].Wout, model_ref.trainable_nodes[0].Wout)
+
+
+def test_fit_optimized_parallel_is_exact():
+    rng = np.random.default_rng(0)
+    X = [rng.normal(size=(rng.integers(30, 60), 3)) for _ in range(8)]
+    Y = [np.cumsum(x[:, :2], axis=0) for x in X]
+
+    model_seq, model_par = _feedback_model(), _feedback_model()
+    model_seq.fit_optimized(X, Y, warmup=5, workers=1)
+    model_par.fit_optimized(X, Y, warmup=5, workers=2)
+
+    assert_array_equal(model_par.trainable_nodes[0].Wout, model_seq.trainable_nodes[0].Wout)
+    assert_array_equal(model_par.run(X[0]), model_seq.run(X[0]))
+
+
+def test_fit_optimized_online_readout():
+    model = Reservoir(10) >> RLS(alpha=1e-4)
+
+    with pytest.raises(NotImplementedError):
+        model.fit_optimized(np.ones((3, 10, 2)), np.ones((3, 10, 2)))
