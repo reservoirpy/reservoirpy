@@ -37,6 +37,7 @@ reservoirpy.nodes.Ridge
       ~Ridge.fit_bias
       ~Ridge.Wout
       ~Ridge.bias
+      ~Ridge.solver
       ~Ridge.state
    
    

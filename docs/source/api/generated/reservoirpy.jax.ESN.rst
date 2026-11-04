@@ -13,12 +13,14 @@ reservoirpy.jax.ESN
    
       ~ESN.__init__
       ~ESN.fit
+      ~ESN.fit_optimized
       ~ESN.initialize
       ~ESN.partial_fit
       ~ESN.predict
       ~ESN.reset
       ~ESN.run
       ~ESN.step
+      ~ESN.worker
    
    
 
